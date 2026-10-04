@@ -31,14 +31,19 @@ QEMU         := qemu-system-x86_64
 OVMF_CODE    := $(shell brew --prefix qemu 2>/dev/null)/share/qemu/edk2-x86_64-code.fd
 OVMF_VARS    := $(shell brew --prefix qemu 2>/dev/null)/share/qemu/edk2-i386-vars.fd
 
-QEMU_FLAGS   := -m 8G -cpu qemu64,+apic,+pdpe1gb \
+ESP          := $(BUILD)/esp
+
+# Dev boot: QEMU's vvfat driver serves $(ESP) directly as a FAT filesystem,
+# no GPT/mtools image needed. `make image` (GPT+FAT32, via mtools/sgdisk)
+# is kept as a separate release-only target.
+QEMU_FLAGS   := -machine q35 -m 8G -cpu qemu64,+apic,+pdpe1gb \
                 -drive if=pflash,format=raw,readonly=on,file=$(OVMF_CODE) \
                 -drive if=pflash,format=raw,file=$(BUILD)/ovmf_vars.fd \
-                -drive format=raw,file=$(IMAGE) \
+                -drive format=raw,file=fat:rw:$(ESP) \
                 -serial file:serial.log -monitor stdio -no-reboot \
                 -d int,cpu_reset -D qemu.log
 
-.PHONY: all image run debug clean limine
+.PHONY: all image run debug clean limine stage-esp
 
 all: $(KERNEL_ELF)
 
@@ -57,17 +62,23 @@ $(KERNEL_ELF): $(OBJS) kernel/boot/linker.ld
 limine:
 	@test -x $(LIMINE_DIR)/limine || $(MAKE) -C $(LIMINE_DIR)
 
-# Build a GPT disk with a FAT32 ESP containing BOOTX64.EFI, limine.conf,
-# and the kernel ELF. See tools/make_image.sh.
+stage-esp: $(KERNEL_ELF) limine.conf limine
+	@mkdir -p $(ESP)/EFI/BOOT $(ESP)/boot
+	cp $(LIMINE_DIR)/BOOTX64.EFI $(ESP)/EFI/BOOT/BOOTX64.EFI
+	cp limine.conf $(ESP)/limine.conf
+	cp $(KERNEL_ELF) $(ESP)/boot/kernel.elf
+
+# Release-only: build a GPT disk with a FAT32 ESP containing BOOTX64.EFI,
+# limine.conf, and the kernel ELF. See tools/make_image.sh.
 image: $(KERNEL_ELF) limine
 	./tools/make_image.sh $(IMAGE) $(KERNEL_ELF) $(LIMINE_DIR)
 
-run: image
+run: stage-esp
 	@mkdir -p $(BUILD)
 	cp $(OVMF_VARS) $(BUILD)/ovmf_vars.fd
 	$(QEMU) $(QEMU_FLAGS)
 
-debug: image
+debug: stage-esp
 	@mkdir -p $(BUILD)
 	cp $(OVMF_VARS) $(BUILD)/ovmf_vars.fd
 	$(QEMU) $(QEMU_FLAGS) -s -S
