@@ -1,6 +1,35 @@
 [
   {
     "directory": "/Users/brydenvaniderstine/Developer/LSOS",
+    "file": "kernel/arch/x86/clock.c",
+    "arguments": [
+      "clang",
+      "--target=x86_64-elf",
+      "-m64",
+      "-march=x86-64",
+      "-std=gnu11",
+      "-ffreestanding",
+      "-fno-stack-protector",
+      "-fno-stack-check",
+      "-fno-pic",
+      "-fno-pie",
+      "-mno-red-zone",
+      "-mcmodel=kernel",
+      "-mgeneral-regs-only",
+      "-Wall",
+      "-Wextra",
+      "-Ikernel",
+      "-Ilimine",
+      "-O2",
+      "-g",
+      "-c",
+      "-o",
+      "kernel/arch/x86/clock.o",
+      "kernel/arch/x86/clock.c"
+    ]
+  },
+  {
+    "directory": "/Users/brydenvaniderstine/Developer/LSOS",
     "file": "kernel/arch/x86/gdt.c",
     "arguments": [
       "clang",

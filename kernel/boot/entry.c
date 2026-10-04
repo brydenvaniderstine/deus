@@ -7,7 +7,7 @@
 #include "../arch/x86/idt.h"
 #include "../arch/x86/paging.h"
 #include "../arch/x86/lapic.h"
-#include "../arch/x86/pit.h"
+#include "../arch/x86/clock.h"
 #include "../sched/sched.h"
 #include "../lib/printf.h"
 
@@ -108,9 +108,9 @@ void kmain(void) {
 
     lapic_confirm_base();
     lapic_timer_init(0xFFFFFFFF); /* enable LAPIC, div16, periodic LVT - count is a placeholder */
-    uint32_t ticks_per_ms = pit_calibrate_lapic_ticks_per_ms();
+    uint32_t ticks_per_ms = clock_calibrate_lapic_ticks_per_ms();
     if (ticks_per_ms == 0) {
-        kprintf("[boot] FATAL: PIT calibration failed, no CPUID 0x15/HPET fallback implemented yet\n");
+        kprintf("[boot] FATAL: every clock calibration source (cpuid15/hpet/pit) failed\n");
         halt_forever();
     }
     lapic_timer_init(ticks_per_ms);
