@@ -21,11 +21,19 @@ SECTIONS
 
     . = ALIGN(CONSTANT(MAXPAGESIZE));
 
+    /* Page-aligned section boundaries, so paging.c can assign per-page
+       W^X protection by comparing each 4KiB page's address against
+       these instead of guessing where one section ends and the next
+       begins. */
+    PROVIDE(__rodata_start = .);
+
     .rodata : {
         *(.rodata .rodata.*)
     } :rodata
 
     . = ALIGN(CONSTANT(MAXPAGESIZE));
+
+    PROVIDE(__data_start = .);
 
     .data : {
         *(.data .data.*)

@@ -7,13 +7,50 @@
 #define PAGE_4KIB      0x1000ULL
 #define PAGE_1GIB      0x40000000ULL
 #define PML4_SIZE      0x8000000000ULL /* 512 GiB: one PML4 entry's span */
-#define PRESENT_RW     0x03ULL   /* present | writable */
+#define PAGE_PRESENT   0x01ULL
+#define PAGE_WRITE     0x02ULL
+#define PAGE_NX        (1ULL << 63) /* execute-disable; needs EFER.NXE=1 */
+#define PRESENT_RW     0x03ULL   /* present | writable - for page-table POINTERS
+                                  * (PML4E/PDPTE/PDE), never a W^X leaf PTE */
 #define PRESENT_RW_PS  0x83ULL   /* present | writable | PS (1 GiB page) */
 #define PCD_BIT        0x10ULL   /* page cache disable, set on the MMIO hole */
 
-/* Defined by linker.ld, right after .bss: the first byte past the loaded
- * image, so the higher-half kernel-image mapping can be sized exactly. */
+/* Defined by linker.ld: page-aligned section boundaries, so each kernel-image
+ * leaf PTE can get the right W^X flags instead of one blanket present+writable
+ * for the whole image. __kernel_end is the first byte past .bss. */
+extern char __rodata_start[];
+extern char __data_start[];
 extern char __kernel_end[];
+
+static inline uint64_t rdmsr(uint32_t msr) {
+    uint32_t lo, hi;
+    __asm__ volatile ("rdmsr" : "=a"(lo), "=d"(hi) : "c"(msr));
+    return ((uint64_t)hi << 32) | lo;
+}
+
+static inline void wrmsr(uint32_t msr, uint64_t val) {
+    __asm__ volatile ("wrmsr" :: "c"(msr), "a"((uint32_t)val), "d"((uint32_t)(val >> 32)));
+}
+
+#define IA32_EFER  0xC0000080ULL
+#define EFER_NXE   (1ULL << 11)
+
+/* Must run before the CR3 load that installs NX-bit leaf PTEs: NX is only
+ * honored when EFER.NXE=1, and a page's NX bit is otherwise just ignored
+ * (silently executable), which would make the W^X split above a no-op. */
+static inline void enable_nxe(void) {
+    wrmsr(IA32_EFER, rdmsr(IA32_EFER) | EFER_NXE);
+}
+
+/* Without CR0.WP, ring-0 (supervisor) writes ignore the page tables' R/W
+ * bit entirely and succeed even against a read-only page - the .rodata/
+ * .text protection above would be unenforced for our own kernel code. */
+static inline void enable_cr0_wp(void) {
+    uint64_t cr0;
+    __asm__ volatile ("mov %%cr0, %0" : "=r"(cr0));
+    cr0 |= (1ULL << 16);
+    __asm__ volatile ("mov %0, %%cr0" :: "r"(cr0) : "memory");
+}
 
 /* 3-4 GiB is documented (CLAUDE.md) as the MMIO hole; we mark it UC via
  * PCD on that single PDPT entry rather than relying on firmware MTRRs, so
@@ -145,17 +182,34 @@ void paging_init(struct limine_memmap_response *memmap,
     }
     kprintf("[paging] higher-half alias: 0xffffffff80000000 -> phys 0x%lx, %lu bytes (%lu x 4KiB pages)\n",
             kaddr->physical_base, kernel_size, kernel_pages);
+    /* Per-page W^X: .text is R+X (no write, no NX), .rodata is R+NX (no
+     * write), .data/.bss is RW+NX. Boundaries come from linker.ld, which
+     * page-aligns each section, so address comparison alone is exact -
+     * no need to know which section a given page "mostly" belongs to. */
+    uint64_t rodata_start = (uint64_t)__rodata_start;
+    uint64_t data_start    = (uint64_t)__data_start;
     for (uint64_t i = 0; i < kernel_pages; i++) {
-        pt_kernel[i] = (kaddr->physical_base + i * PAGE_4KIB) | PRESENT_RW;
+        uint64_t virt = kaddr->virtual_base + i * PAGE_4KIB;
+        uint64_t flags;
+        if (virt < rodata_start)      flags = PAGE_PRESENT;                       /* .text: R+X */
+        else if (virt < data_start)   flags = PAGE_PRESENT | PAGE_NX;             /* .rodata: R+NX */
+        else                          flags = PAGE_PRESENT | PAGE_WRITE | PAGE_NX; /* .data/.bss: RW+NX */
+        pt_kernel[i] = (kaddr->physical_base + i * PAGE_4KIB) | flags;
     }
     pd_kernel[0] = virt_to_phys(kaddr, (uint64_t)pt_kernel) | PRESENT_RW;
     pdpt_high[510] = virt_to_phys(kaddr, (uint64_t)pd_kernel) | PRESENT_RW;
     pml4[511] = virt_to_phys(kaddr, (uint64_t)pdpt_high) | PRESENT_RW;
 
+    enable_nxe(); /* before the CR3 load below, so NX is honored the instant it's live */
+    kprintf("[paging] EFER.NXE enabled\n");
+
     uint64_t pml4_phys = virt_to_phys(kaddr, (uint64_t)pml4);
     load_cr3(pml4_phys);
     kprintf("[paging] CR3 loaded at phys 0x%lx (virt 0x%lx); kernel survived the switch\n",
             pml4_phys, (uint64_t)pml4);
+
+    enable_cr0_wp();
+    kprintf("[paging] CR0.WP enabled\n");
 
     /* Verify the identity map reaches high RAM: probe just below max_phys. */
     volatile uint64_t *probe = (volatile uint64_t *)(max_phys - 8);
