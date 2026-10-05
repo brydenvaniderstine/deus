@@ -121,9 +121,14 @@ void paging_init(struct limine_memmap_response *memmap,
         for (;;) __asm__ volatile ("cli; hlt");
     }
 
-    kprintf("[paging] identity-mapping 0..0x%lx with %lu x 1GiB pages\n", max_phys, pages_needed);
+    /* NX on every identity-map entry (and, by extension, the HHDM alias:
+     * same flags, whether reused directly or copied - see below): the
+     * kernel only ever executes via the higher-half alias, which has its
+     * own per-page W^X split (see above). Nothing should be executable
+     * through these low/HHDM addresses at all. */
+    kprintf("[paging] identity-mapping 0..0x%lx with %lu x 1GiB pages (NX)\n", max_phys, pages_needed);
     for (uint64_t i = 0; i < pages_needed; i++) {
-        uint64_t flags = PRESENT_RW_PS;
+        uint64_t flags = PRESENT_RW_PS | PAGE_NX;
         if (i == MMIO_HOLE_PDPT_INDEX) flags |= PCD_BIT;
         pdpt_low[i] = (i * PAGE_1GIB) | flags;
     }

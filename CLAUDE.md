@@ -120,6 +120,7 @@ tools/       image build scripts
 - **CPUID 0x15/0x16 calibration is a stub.** qemu64 doesn't enumerate leaf 0x15 at all (`clock.c` logs and skips); even when enumerated on real hardware, converting crystal Hz to LAPIC ticks/ms isn't implemented.
 - **HPET calibration is a stub.** Needs an ACPI table walk (RSDP → XSDT/RSDT → HPET table) to find its MMIO base, which doesn't exist yet; `clock.c` logs and skips.
 - **TSC-deadline timer mode isn't implemented.** Milestone 1 only uses LAPIC periodic mode. The hard constraint above documents TSC-deadline as the preferred mode when `CPUID.01H:ECX[24]` is set and the TSC frequency is known - that detection and switch-over doesn't exist yet.
+- **Kernel `.text` is writable via identity/HHDM aliases (1 GiB RW pages).** W^X is enforced on the higher-half kernel-image mapping (4 KiB pages, per-section flags), but the same physical bytes are also reachable - read/write/exec before the NX addition below, read/write after it - through the identity map and HHDM alias, which use single 1 GiB pages with no sub-granularity to split W from X. Closing this requires splitting the kernel's physical range out of those 1 GiB pages. Revisit before untrusted code runs.
 
 ## Later phases
 - M2: compiler frontend (ZealC port) with a static pointer-safety verifier and loop counter injection.
