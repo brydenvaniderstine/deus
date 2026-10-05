@@ -26,6 +26,18 @@ static inline void load_cr3(uint64_t phys) {
     __asm__ volatile ("mov %0, %%cr3" :: "r"(phys) : "memory");
 }
 
+/* pml4/pdpt_low/pdpt_high/pdpt_hhdm are static arrays, so (uint64_t)&array
+ * is their link-time HIGHER-HALF VIRTUAL address. CR3 and every PML4/PDPT
+ * entry's pointer field are consumed directly by the CPU's page-walk
+ * hardware, which does zero translation - they must hold physical
+ * addresses, or the very first page-walk after load_cr3 triple-faults.
+ * Limine's kernel-address response gives the one fact needed to convert:
+ * this image's actual physical load address vs. its link-time virtual
+ * address, both for the SAME byte. */
+static inline uint64_t virt_to_phys(struct limine_kernel_address_response *kaddr, uint64_t virt) {
+    return kaddr->physical_base + (virt - kaddr->virtual_base);
+}
+
 void paging_init(struct limine_memmap_response *memmap,
                   struct limine_hhdm_response *hhdm,
                   struct limine_kernel_address_response *kaddr) {
@@ -55,7 +67,7 @@ void paging_init(struct limine_memmap_response *memmap,
         if (i == MMIO_HOLE_PDPT_INDEX) flags |= PCD_BIT;
         pdpt_low[i] = (i * PAGE_1GIB) | flags;
     }
-    pml4[0] = ((uint64_t)pdpt_low) | 0x03; /* present | writable */
+    pml4[0] = virt_to_phys(kaddr, (uint64_t)pdpt_low) | 0x03; /* present | writable */
 
     /* HHDM alias: Limine's response pointers (memmap entries, etc.) and the
      * boot stack it handed us may be addressed via hhdm_offset+phys rather
@@ -69,7 +81,7 @@ void paging_init(struct limine_memmap_response *memmap,
         for (;;) __asm__ volatile ("cli; hlt");
     }
     if ((hhdm_offset & (PML4_SIZE - 1)) == 0) {
-        pml4[hhdm_pml4_idx] = ((uint64_t)pdpt_low) | 0x03; /* share pdpt_low: already identity */
+        pml4[hhdm_pml4_idx] = virt_to_phys(kaddr, (uint64_t)pdpt_low) | 0x03; /* share pdpt_low: already identity */
         kprintf("[paging] hhdm alias: pml4[%lu] -> pdpt_low (offset=0x%lx, 512GiB-aligned)\n",
                 hhdm_pml4_idx, hhdm_offset);
     } else {
@@ -89,7 +101,7 @@ void paging_init(struct limine_memmap_response *memmap,
         for (uint64_t i = 0; i < pages_needed; i++) {
             pdpt_hhdm[sub_gib + i] = pdpt_low[i];
         }
-        pml4[hhdm_pml4_idx] = ((uint64_t)pdpt_hhdm) | 0x03;
+        pml4[hhdm_pml4_idx] = virt_to_phys(kaddr, (uint64_t)pdpt_hhdm) | 0x03;
         kprintf("[paging] hhdm alias: pml4[%lu] -> dedicated pdpt_hhdm (offset=0x%lx, not 512GiB-aligned, sub_gib=%lu)\n",
                 hhdm_pml4_idx, hhdm_offset, sub_gib);
     }
@@ -100,10 +112,12 @@ void paging_init(struct limine_memmap_response *memmap,
     kprintf("[paging] higher-half alias: 0xffffffff80000000 -> 0x%lx (kernel phys_base=0x%lx virt_base=0x%lx)\n",
             kphys_aligned, kaddr->physical_base, kaddr->virtual_base);
     pdpt_high[510] = kphys_aligned | PRESENT_RW_PS;
-    pml4[511] = ((uint64_t)pdpt_high) | 0x03;
+    pml4[511] = virt_to_phys(kaddr, (uint64_t)pdpt_high) | 0x03;
 
-    load_cr3((uint64_t)pml4);
-    kprintf("[paging] CR3 loaded at 0x%lx; kernel survived the switch\n", (uint64_t)pml4);
+    uint64_t pml4_phys = virt_to_phys(kaddr, (uint64_t)pml4);
+    load_cr3(pml4_phys);
+    kprintf("[paging] CR3 loaded at phys 0x%lx (virt 0x%lx); kernel survived the switch\n",
+            pml4_phys, (uint64_t)pml4);
 
     /* Verify the identity map reaches high RAM: probe just below max_phys. */
     volatile uint64_t *probe = (volatile uint64_t *)(max_phys - 8);
