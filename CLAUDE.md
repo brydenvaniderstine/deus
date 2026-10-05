@@ -9,7 +9,8 @@ You are lead co-developer. Build incrementally. Every milestone must boot in QEM
 ## Hard constraints (do not violate)
 - **x86_64 only, for now.** ARM/mobile is out of scope.
 - **Paging stays on.** Long mode requires CR0.PG.
-  - Build page tables once with 1 GiB pages. Load CR3 once and never reload it. Zero TLB flushes, near-zero misses, no syscall ring transitions.
+  - Build page tables once. Load CR3 once and never reload it. Zero TLB flushes, near-zero misses, no syscall ring transitions.
+  - 1 GiB pages for the identity map and the HHDM alias - both are naturally 1 GiB-aligned by construction. 4 KiB pages for the kernel-image alias: `virtual_base` is architecturally fixed at a 1 GiB-aligned address (0 offset within its frame), but Limine's `physical_base` is only ever guaranteed page-aligned, not 1 GiB - a 1 GiB page can only alias the two when their low 30 bits happen to match, which they generally won't. (Found the hard way: Milestone 1 silently aliased the kernel to the wrong physical frame this way - no fault, just undefined execution after the CR3 load.)
   - Context switches still save and restore registers (see `switch.S`/`sched.c`) — only the CR3 load is eliminated, not the register-save cost.
 - **Three mappings live in that single CR3:**
   1. An identity map of all RAM plus the MMIO holes — the 3–4 GiB hole (LAPIC at 0xFEE00000, IOAPIC, HPET) and any 64-bit PCI BARs.
@@ -115,6 +116,10 @@ tools/       image build scripts
 - **DMA bypasses LBS.** An IOMMU (VT-d) is required before untrusted drivers (see DMA protection above).
 - **Wasm bounds checks:** without guard pages, expect a 5–20% overhead.
 - **Cloud/EPT:** nested paging under a hypervisor adds 2D walks our flat-CR3 design doesn't see on bare metal (see Scope above).
+- **High 64-bit PCI BAR window unmapped:** QEMU's q35 reserves a sparse MMIO placeholder up near 1 TiB (seen at boot: base=0xfd00000000, length=0x300000000). We deliberately exclude it from the identity map (it's RESERVED, not RAM, and would need 1024+ 1 GiB pages in one PDPT). Mapping it for real needs a second PML4/PDPT entry - not needed by any M1 code path, but required before real PCI/virtio driver work.
+- **CPUID 0x15/0x16 calibration is a stub.** qemu64 doesn't enumerate leaf 0x15 at all (`clock.c` logs and skips); even when enumerated on real hardware, converting crystal Hz to LAPIC ticks/ms isn't implemented.
+- **HPET calibration is a stub.** Needs an ACPI table walk (RSDP → XSDT/RSDT → HPET table) to find its MMIO base, which doesn't exist yet; `clock.c` logs and skips.
+- **TSC-deadline timer mode isn't implemented.** Milestone 1 only uses LAPIC periodic mode. The hard constraint above documents TSC-deadline as the preferred mode when `CPUID.01H:ECX[24]` is set and the TSC frequency is known - that detection and switch-over doesn't exist yet.
 
 ## Later phases
 - M2: compiler frontend (ZealC port) with a static pointer-safety verifier and loop counter injection.
