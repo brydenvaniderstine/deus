@@ -28,8 +28,13 @@ OBJS   := $(patsubst %.c,$(BUILD)/%.o,$(C_SRCS)) \
           $(patsubst %.S,$(BUILD)/%.o,$(S_SRCS))
 
 QEMU         := qemu-system-x86_64
-OVMF_CODE    := $(shell brew --prefix qemu 2>/dev/null)/share/qemu/edk2-x86_64-code.fd
-OVMF_VARS    := $(shell brew --prefix qemu 2>/dev/null)/share/qemu/edk2-i386-vars.fd
+# Derived from the actual installed binary, not `brew --prefix qemu` -
+# that reports a path unconditionally, even when qemu was installed
+# some other way (e.g. a manual ./configure --prefix build) and the
+# formula was never `brew link`ed, so the guessed path doesn't exist.
+QEMU_PREFIX  := $(shell dirname $(shell dirname $(shell command -v $(QEMU))))
+OVMF_CODE    := $(QEMU_PREFIX)/share/qemu/edk2-x86_64-code.fd
+OVMF_VARS    := $(QEMU_PREFIX)/share/qemu/edk2-i386-vars.fd
 
 ESP          := $(BUILD)/esp
 
