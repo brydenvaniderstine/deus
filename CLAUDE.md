@@ -127,6 +127,8 @@ tools/       image build scripts
 - M3: bare-metal Wasm runtime (WAMR) and zero-copy IPC queues.
 - M4: telemetry-driven JIT and accelerator interfaces.
 
+See `VISION.md` for longer-range cross-platform/cloud-guest goals and R&D candidates (not committed roadmap).
+
 ## Working conventions
 - Small commits, one subsystem each. Run `make run` before claiming success.
 - Read `serial.log` and `qemu.log` to verify. Don't assume.
