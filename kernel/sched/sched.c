@@ -1,4 +1,4 @@
-// LSOS Phase 2: preemptive round-robin via LAPIC periodic timer
+// Deus Phase 2: preemptive round-robin via LAPIC periodic timer
 #include <stdint.h>
 #include <stddef.h>
 

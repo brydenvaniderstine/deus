@@ -70,7 +70,7 @@ static void printB(void) {
 
 void kmain(void) {
     serial_init();
-    kprintf("\n[boot] LSOS Milestone 1\n");
+    kprintf("\n[boot] Deus Milestone 1\n");
 
     if (!LIMINE_BASE_REVISION_SUPPORTED) {
         kprintf("[boot] FATAL: Limine base revision not supported\n");

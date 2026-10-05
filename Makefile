@@ -1,7 +1,7 @@
 
 BUILD        := build
 KERNEL_ELF   := $(BUILD)/kernel.elf
-IMAGE        := lsos_disk.img
+IMAGE        := deus_disk.img
 LIMINE_DIR   := limine
 
 CC           := clang

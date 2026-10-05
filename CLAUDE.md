@@ -1,4 +1,4 @@
-# LSOS — Liquid Silicon Operating System
+# Deus
 
 An infrastructure OS for the 2030s, targeting cloud infrastructure, high-performance edge devices, and laptops. It replaces the monolithic Linux paradigm and its costs: ring transitions, CR3 switches, and TLB churn.
 
@@ -69,7 +69,7 @@ If the memmap conflicts with these ranges, log it over serial. Then relocate the
     -serial file:serial.log -monitor stdio -no-reboot -d int,cpu_reset -D qemu.log
   ```
   - For IOMMU milestones, add `-device intel-iommu,intremap=on` and `-machine q35,kernel-irqchip=split`.
-- **Release builds** use a GPT image instead: a FAT32 ESP holding `EFI/BOOT/BOOTX64.EFI`, `limine.conf`, and the kernel ELF, booted with `-drive format=raw,file=lsos_disk.img` (`make image`, via `tools/make_image.sh`).
+- **Release builds** use a GPT image instead: a FAT32 ESP holding `EFI/BOOT/BOOTX64.EFI`, `limine.conf`, and the kernel ELF, booted with `-drive format=raw,file=deus_disk.img` (`make image`, via `tools/make_image.sh`).
 - `+pdpe1gb` is mandatory, because qemu64 lacks 1 GiB page support by default.
 - Provide a `Makefile` with these targets: `all`, `image`, `run`, `debug` (adds `-s -S`), and `clean`.
 

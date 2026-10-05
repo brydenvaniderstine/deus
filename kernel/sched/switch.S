@@ -1,4 +1,4 @@
-# LSOS Phase 2: LAPIC timer ISR + context switch (x86_64, GAS)
+# Deus Phase 2: LAPIC timer ISR + context switch (x86_64, GAS)
 # Entry: CPU pushed SS,RSP,RFLAGS,CS,RIP (40B). +120B GPRs => RSP 16B-aligned at call.
     .text
     .global isr_timer
