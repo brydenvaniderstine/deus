@@ -22,7 +22,10 @@ ASFLAGS      := $(TARGET_FLAGS) $(INCLUDES) -g -c
 
 LDFLAGS      := -m elf_x86_64 -T kernel/boot/linker.ld -static -nostdlib -z max-page-size=0x1000
 
-C_SRCS := $(shell find kernel -name '*.c')
+# test_wx.c needs -DWX_TEST=N (see the test-wx target) and is never part
+# of the default kernel.elf.
+TEST_WX_SRC := kernel/boot/test_wx.c
+C_SRCS := $(filter-out $(TEST_WX_SRC),$(shell find kernel -name '*.c'))
 S_SRCS := $(shell find kernel -name '*.S')
 OBJS   := $(patsubst %.c,$(BUILD)/%.o,$(C_SRCS)) \
           $(patsubst %.S,$(BUILD)/%.o,$(S_SRCS))
@@ -48,7 +51,7 @@ QEMU_FLAGS   := -machine q35 -m 8G -cpu qemu64,+apic,+pdpe1gb \
                 -serial file:serial.log -monitor stdio -no-reboot \
                 -d int,cpu_reset -D qemu.log
 
-.PHONY: all image run debug clean limine stage-esp
+.PHONY: all image run debug clean limine stage-esp test-wx
 
 all: $(KERNEL_ELF)
 
@@ -87,6 +90,41 @@ debug: stage-esp
 	@mkdir -p $(BUILD)
 	cp $(OVMF_VARS) $(BUILD)/ovmf_vars.fd
 	$(QEMU) $(QEMU_FLAGS) -s -S
+
+# W^X regression tests (never in the default build - see test_wx.c).
+# Builds and boots 3 variants, one per deliberate violation, each in its
+# own QEMU instance with its own serial/qemu log. No `timeout` binary on
+# macOS, so each run is backgrounded, given 5s to boot/fault/halt, then
+# killed - that's the full lifetime these need (boot is seconds; the
+# expected #PF plus our own cli;hlt happen immediately after).
+TEST_WX_DIR := $(BUILD)/test_wx
+SHARED_TEST_OBJS := $(filter-out $(BUILD)/kernel/boot/entry.o,$(OBJS))
+
+test-wx: $(SHARED_TEST_OBJS) limine.conf limine
+	@mkdir -p $(TEST_WX_DIR)
+	@cp $(OVMF_VARS) $(TEST_WX_DIR)/ovmf_vars_src.fd
+	@for n in 1 2 3; do \
+		echo "=== WX_TEST=$$n ==="; \
+		$(CC) $(CFLAGS) -DWX_TEST=$$n -o $(TEST_WX_DIR)/test_wx_$$n.o $(TEST_WX_SRC); \
+		$(LD) $(LDFLAGS) -o $(TEST_WX_DIR)/test_wx_$$n.elf $(TEST_WX_DIR)/test_wx_$$n.o $(SHARED_TEST_OBJS); \
+		mkdir -p $(TEST_WX_DIR)/esp_$$n/EFI/BOOT $(TEST_WX_DIR)/esp_$$n/boot; \
+		cp $(LIMINE_DIR)/BOOTX64.EFI $(TEST_WX_DIR)/esp_$$n/EFI/BOOT/BOOTX64.EFI; \
+		cp limine.conf $(TEST_WX_DIR)/esp_$$n/limine.conf; \
+		cp $(TEST_WX_DIR)/test_wx_$$n.elf $(TEST_WX_DIR)/esp_$$n/boot/kernel.elf; \
+		cp $(TEST_WX_DIR)/ovmf_vars_src.fd $(TEST_WX_DIR)/ovmf_vars_$$n.fd; \
+		( $(QEMU) -machine q35 -m 8G -cpu qemu64,+apic,+pdpe1gb \
+			-drive if=pflash,format=raw,readonly=on,file=$(OVMF_CODE) \
+			-drive if=pflash,format=raw,file=$(TEST_WX_DIR)/ovmf_vars_$$n.fd \
+			-drive format=raw,file=fat:rw:$(TEST_WX_DIR)/esp_$$n \
+			-serial file:$(TEST_WX_DIR)/serial_$$n.log -monitor none -no-reboot \
+			-d int,cpu_reset -D $(TEST_WX_DIR)/qemu_$$n.log & ); \
+		sleep 5; \
+		pkill -f "qemu-system-x86_64.*esp_$$n" 2>/dev/null || true; \
+		sleep 1; \
+		echo "--- serial_$$n.log ---"; \
+		cat $(TEST_WX_DIR)/serial_$$n.log; \
+		echo; \
+	done
 
 clean:
 	rm -rf $(BUILD) $(IMAGE) serial.log qemu.log

@@ -19,7 +19,8 @@ cflags = target_flags + ["-std=gnu11"] + freestanding + warn + includes + ["-O2"
 
 entries = []
 for f in sorted(glob.glob("kernel/**/*.c", recursive=True)):
-    args = [cc] + cflags + ["-o", os.path.splitext(f)[0] + ".o", f]
+    extra = ["-DWX_TEST=1"] if f == "kernel/boot/test_wx.c" else []
+    args = [cc] + cflags + extra + ["-o", os.path.splitext(f)[0] + ".o", f]
     entries.append({"directory": root, "file": f, "arguments": args})
 
 with open("compile_commands.json", "w") as fh:

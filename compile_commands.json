@@ -233,6 +233,36 @@
   },
   {
     "directory": "/Users/brydenvaniderstine/Developer/LSOS",
+    "file": "kernel/boot/test_wx.c",
+    "arguments": [
+      "clang",
+      "--target=x86_64-elf",
+      "-m64",
+      "-march=x86-64",
+      "-std=gnu11",
+      "-ffreestanding",
+      "-fno-stack-protector",
+      "-fno-stack-check",
+      "-fno-pic",
+      "-fno-pie",
+      "-mno-red-zone",
+      "-mcmodel=kernel",
+      "-mgeneral-regs-only",
+      "-Wall",
+      "-Wextra",
+      "-Ikernel",
+      "-Ilimine",
+      "-O2",
+      "-g",
+      "-c",
+      "-DWX_TEST=1",
+      "-o",
+      "kernel/boot/test_wx.o",
+      "kernel/boot/test_wx.c"
+    ]
+  },
+  {
+    "directory": "/Users/brydenvaniderstine/Developer/LSOS",
     "file": "kernel/lib/printf.c",
     "arguments": [
       "clang",
