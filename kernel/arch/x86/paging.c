@@ -4,10 +4,16 @@
 #include "../../lib/printf.h"
 #include "../../lib/string.h"
 
+#define PAGE_4KIB      0x1000ULL
 #define PAGE_1GIB      0x40000000ULL
 #define PML4_SIZE      0x8000000000ULL /* 512 GiB: one PML4 entry's span */
+#define PRESENT_RW     0x03ULL   /* present | writable */
 #define PRESENT_RW_PS  0x83ULL   /* present | writable | PS (1 GiB page) */
 #define PCD_BIT        0x10ULL   /* page cache disable, set on the MMIO hole */
+
+/* Defined by linker.ld, right after .bss: the first byte past the loaded
+ * image, so the higher-half kernel-image mapping can be sized exactly. */
+extern char __kernel_end[];
 
 /* 3-4 GiB is documented (CLAUDE.md) as the MMIO hole; we mark it UC via
  * PCD on that single PDPT entry rather than relying on firmware MTRRs, so
@@ -20,7 +26,16 @@ static uint64_t pml4[512]      __attribute__((aligned(4096)));
 static uint64_t pdpt_low[512]  __attribute__((aligned(4096)));
 static uint64_t pdpt_high[512] __attribute__((aligned(4096)));
 /* Only populated if the HHDM offset isn't 512 GiB-aligned (see below). */
-static uint64_t pdpt_hhdm[512] __attribute__((aligned(4096)));
+static uint64_t pdpt_hhdm[512]  __attribute__((aligned(4096)));
+/* The higher-half kernel-image mapping (see paging_init) uses 4 KiB pages,
+ * not 1 GiB: virtual_base is architecturally fixed at a 1 GiB-aligned
+ * address (offset 0 within its frame), but Limine's physical_base is only
+ * ever guaranteed page-aligned - a 1 GiB page can only alias the two when
+ * their low 30 bits happen to match, which they generally won't. 4 KiB
+ * pages have no such constraint. One PT covers 2 MiB, comfortably more
+ * than Milestone 1's kernel image needs. */
+static uint64_t pd_kernel[512]  __attribute__((aligned(4096)));
+static uint64_t pt_kernel[512]  __attribute__((aligned(4096)));
 
 static inline void load_cr3(uint64_t phys) {
     __asm__ volatile ("mov %0, %%cr3" :: "r"(phys) : "memory");
@@ -115,12 +130,27 @@ void paging_init(struct limine_memmap_response *memmap,
     }
 
     /* Higher-half alias: PML4[511] covers the top 512 GiB; within it, PDPT
-     * index 510 covers exactly 0xffffffff80000000-0xffffffffbfffffff. */
-    uint64_t kphys_aligned = kaddr->physical_base & ~(PAGE_1GIB - 1);
-    kprintf("[paging] higher-half alias: 0xffffffff80000000 -> 0x%lx (kernel phys_base=0x%lx virt_base=0x%lx)\n",
-            kphys_aligned, kaddr->physical_base, kaddr->virtual_base);
-    pdpt_high[510] = kphys_aligned | PRESENT_RW_PS;
-    pml4[511] = virt_to_phys(kaddr, (uint64_t)pdpt_high) | 0x03;
+     * index 510 covers exactly 0xffffffff80000000-0xffffffffbfffffff. That
+     * 1 GiB window is further split into 2 MiB (PD) and 4 KiB (PT) steps
+     * for just this mapping - see the pd_kernel/pt_kernel comment above. */
+    memset(pd_kernel, 0, sizeof(pd_kernel));
+    memset(pt_kernel, 0, sizeof(pt_kernel));
+
+    uint64_t kernel_size = (uint64_t)__kernel_end - kaddr->virtual_base;
+    uint64_t kernel_pages = (kernel_size + PAGE_4KIB - 1) / PAGE_4KIB;
+    if (kernel_pages > 512) {
+        kprintf("[paging] FATAL: kernel image is %lu bytes (%lu pages), exceeds one 2MiB PT\n",
+                kernel_size, kernel_pages);
+        for (;;) __asm__ volatile ("cli; hlt");
+    }
+    kprintf("[paging] higher-half alias: 0xffffffff80000000 -> phys 0x%lx, %lu bytes (%lu x 4KiB pages)\n",
+            kaddr->physical_base, kernel_size, kernel_pages);
+    for (uint64_t i = 0; i < kernel_pages; i++) {
+        pt_kernel[i] = (kaddr->physical_base + i * PAGE_4KIB) | PRESENT_RW;
+    }
+    pd_kernel[0] = virt_to_phys(kaddr, (uint64_t)pt_kernel) | PRESENT_RW;
+    pdpt_high[510] = virt_to_phys(kaddr, (uint64_t)pd_kernel) | PRESENT_RW;
+    pml4[511] = virt_to_phys(kaddr, (uint64_t)pdpt_high) | PRESENT_RW;
 
     uint64_t pml4_phys = virt_to_phys(kaddr, (uint64_t)pml4);
     load_cr3(pml4_phys);

@@ -36,6 +36,10 @@ SECTIONS
         *(.bss .bss.*)
     } :data
 
+    /* Marks the first byte past the loaded image, so paging.c can size the
+       higher-half kernel-image mapping exactly instead of guessing. */
+    PROVIDE(__kernel_end = .);
+
     /DISCARD/ : {
         *(.eh_frame)
         *(.note .note.*)
