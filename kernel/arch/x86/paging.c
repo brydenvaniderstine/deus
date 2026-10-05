@@ -46,9 +46,17 @@ void paging_init(struct limine_memmap_response *memmap,
     memset(pdpt_high, 0, sizeof(pdpt_high));
     memset(pdpt_hhdm, 0, sizeof(pdpt_hhdm));
 
+    /* RESERVED/BAD_MEMORY entries aren't RAM and nothing here dereferences
+     * them as such - a sparse one (e.g. QEMU q35's high 64-bit PCI MMIO
+     * window) can sit far above any real RAM and isn't worth paying for
+     * in a single 512-entry PDPT. The known 3-4 GiB MMIO hole is still
+     * unconditionally covered by the floor below regardless. Mapping a
+     * high PCI64 BAR window for real would need a second PML4/PDPT entry -
+     * tracked as a gap, not needed by any Milestone 1 code path. */
     uint64_t max_phys = 0;
     for (uint64_t i = 0; i < memmap->entry_count; i++) {
         struct limine_memmap_entry *e = memmap->entries[i];
+        if (e->type == LIMINE_MEMMAP_RESERVED || e->type == LIMINE_MEMMAP_BAD_MEMORY) continue;
         uint64_t end = e->base + e->length;
         if (end > max_phys) max_phys = end;
     }
