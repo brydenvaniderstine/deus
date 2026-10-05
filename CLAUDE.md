@@ -25,14 +25,14 @@ You are lead co-developer. Build incrementally. Every milestone must boot in QEM
 
 ## LBS and the language
 - Isolation is enforced by the compiler, not the MMU.
-- **LiquidC** descends from HolyC and has two compile targets:
+- **Manna** descends from HolyC and has two compile targets:
   - **User apps** compile to WebAssembly and run in a bare-metal Wasm runtime. Budget a 5–20% bounds-check overhead without guard pages.
   - **Kernel code** compiles to native machine code. It must pass a static verifier and carry a `[Kernel_Hook]` attribute to use raw pointers.
 
 ## Bootstrap path
-- The bootstrap kernel is written in x86_64 assembly and freestanding C, and hosts the resident LiquidC compiler.
-- Self-hosting is the goal: the kernel gets rewritten in LiquidC.
-- A minimal assembly core stays **permanently**: entry, ISR stubs, the context switch, and the CR3 load. This never gets rewritten in LiquidC.
+- The bootstrap kernel is written in x86_64 assembly and freestanding C, and hosts the resident Manna compiler.
+- Self-hosting is the goal: the kernel gets rewritten in Manna.
+- A minimal assembly core stays **permanently**: entry, ISR stubs, the context switch, and the CR3 load. This never gets rewritten in Manna.
 - Keep the C bootstrap buildable, for reproducibility and to cross-check the compiler (diverse double-compiling).
 
 ## DMA protection
