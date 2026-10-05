@@ -1,0 +1,16 @@
+1:1 KW_LET let
+1:5 IDENT a
+1:7 ASSIGN =
+1:9 ERROR_MALFORMED_NUMBER 0x msg="0x prefix with no hex digits following it"
+1:11 SEMI ;
+2:1 KW_LET let
+2:5 IDENT b
+2:7 ASSIGN =
+2:9 ERROR_MALFORMED_NUMBER 12ab msg="invalid digit or suffix immediately after a number"
+2:13 SEMI ;
+3:1 KW_LET let
+3:5 IDENT c
+3:7 ASSIGN =
+3:9 ERROR_MALFORMED_NUMBER 0xg msg="0x prefix with no hex digits following it"
+3:12 SEMI ;
+4:1 EOF 

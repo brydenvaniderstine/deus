@@ -1,0 +1,9 @@
+1:22 IDENT after
+1:28 STAR *
+1:29 SLASH /
+2:1 KW_LET let
+2:5 IDENT x
+2:7 ASSIGN =
+2:9 NUMBER 1 value=1
+2:10 SEMI ;
+3:1 EOF 

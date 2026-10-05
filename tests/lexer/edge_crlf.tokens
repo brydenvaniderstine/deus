@@ -1,0 +1,11 @@
+1:1 KW_LET let
+1:5 IDENT x
+1:7 ASSIGN =
+1:9 NUMBER 1 value=1
+1:10 SEMI ;
+2:1 KW_LET let
+2:5 IDENT y
+2:7 ASSIGN =
+2:9 NUMBER 2 value=2
+2:10 SEMI ;
+3:1 EOF 

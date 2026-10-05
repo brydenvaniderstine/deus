@@ -1,3 +1,4 @@
+SHELL        := /bin/bash
 
 BUILD        := build
 KERNEL_ELF   := $(BUILD)/kernel.elf
@@ -51,7 +52,7 @@ QEMU_FLAGS   := -machine q35 -m 8G -cpu qemu64,+apic,+pdpe1gb \
                 -serial file:serial.log -monitor stdio -no-reboot \
                 -d int,cpu_reset -D qemu.log
 
-.PHONY: all image run debug clean limine stage-esp test-wx
+.PHONY: all image run debug clean limine stage-esp test-wx test-lexer test-lexer-asan
 
 all: $(KERNEL_ELF)
 
@@ -125,6 +126,29 @@ test-wx: $(SHARED_TEST_OBJS) limine.conf limine
 		cat $(TEST_WX_DIR)/serial_$$n.log; \
 		echo; \
 	done
+
+# Host-side mannac lexer (docs/M2_PLAN.md stage 1) and its golden tests.
+# Plain macOS clang, no freestanding/kernel flags - this runs on the host,
+# not inside Deus.
+MANNAC_DIR  := $(BUILD)/mannac
+MANNAC_BIN  := $(MANNAC_DIR)/mannac
+MANNAC_SRCS := tools/mannac/lexer.c tools/mannac/main.c
+
+$(MANNAC_BIN): $(MANNAC_SRCS) tools/mannac/lexer.h
+	@mkdir -p $(MANNAC_DIR)
+	clang -std=c11 -Wall -Wextra -O2 -g -o $@ $(MANNAC_SRCS)
+
+test-lexer: $(MANNAC_BIN)
+	@./tools/run_lexer_goldens.sh $(MANNAC_BIN)
+
+MANNAC_ASAN_BIN := $(MANNAC_DIR)/mannac-asan
+
+$(MANNAC_ASAN_BIN): $(MANNAC_SRCS) tools/mannac/lexer.h
+	@mkdir -p $(MANNAC_DIR)
+	clang -std=c11 -Wall -Wextra -g -fsanitize=address,undefined -o $@ $(MANNAC_SRCS)
+
+test-lexer-asan: $(MANNAC_ASAN_BIN)
+	@./tools/run_lexer_goldens.sh $(MANNAC_ASAN_BIN)
 
 clean:
 	rm -rf $(BUILD) $(IMAGE) serial.log qemu.log

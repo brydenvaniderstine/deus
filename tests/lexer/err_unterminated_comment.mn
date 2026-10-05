@@ -1,0 +1,3 @@
+fn main() {
+/* this comment never closes
+let x = 1;

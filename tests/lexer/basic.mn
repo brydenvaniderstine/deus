@@ -1,0 +1,26 @@
+// a basic v0-ish sample
+fn add(a: u32, b: u32) -> u32 {
+    let sum = a + b;
+    return sum;
+}
+
+/* block comment
+   spanning lines */
+fn main() -> i32 {
+    let x = 0x1F;
+    let y = 42;
+    let flag = true;
+    if x == y {
+        return 1;
+    } else {
+        while x < 100 {
+            x = x + 1;
+        }
+    }
+    return 0;
+}
+
+[Kernel_Hook]
+fn raw_poke(addr: u64, val: u8) {
+    struct Foo { a: u8, b: u16 }
+}

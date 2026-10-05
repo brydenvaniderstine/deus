@@ -1,0 +1,2 @@
+/* outer /* inner */ after */
+let x = 1;

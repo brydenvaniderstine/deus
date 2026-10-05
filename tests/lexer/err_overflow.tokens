@@ -1,0 +1,16 @@
+1:1 KW_LET let
+1:5 IDENT a
+1:7 ASSIGN =
+1:9 ERROR_NUMBER_OVERFLOW 18446744073709551616 msg="decimal literal does not fit in 64 bits (no silent wraparound)"
+1:29 SEMI ;
+2:1 KW_LET let
+2:5 IDENT b
+2:7 ASSIGN =
+2:9 NUMBER 0xFFFFFFFFFFFFFFFF value=18446744073709551615
+2:27 SEMI ;
+3:1 KW_LET let
+3:5 IDENT c
+3:7 ASSIGN =
+3:9 ERROR_NUMBER_OVERFLOW 0x10000000000000000 msg="hex literal does not fit in 64 bits"
+3:28 SEMI ;
+4:1 EOF 

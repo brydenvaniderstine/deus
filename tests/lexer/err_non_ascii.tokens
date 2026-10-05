@@ -1,0 +1,12 @@
+1:1 KW_LET let
+1:5 IDENT x
+1:7 ASSIGN =
+1:9 NUMBER 5 value=5
+1:10 SEMI ;
+2:1 KW_LET let
+2:5 ERROR_BAD_CHAR Ã msg="non-ASCII byte (v0 source is ASCII-only)"
+2:6 ERROR_BAD_CHAR © msg="non-ASCII byte (v0 source is ASCII-only)"
+2:8 ASSIGN =
+2:10 NUMBER 1 value=1
+2:11 SEMI ;
+3:1 EOF 

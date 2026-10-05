@@ -91,6 +91,13 @@ source (.manna)
    .wasm module
 ```
 
+### Lexer decisions (stage 1, implemented)
+
+- **v0 source is ASCII-only.** Any byte ≥ 0x80 is a lex error (`ERROR_BAD_CHAR`, distinct message), not the start of a multi-byte identifier or anything else. No Unicode identifiers, no UTF-8 decoding, in v0.
+- **Block comments (`/* */`) do not nest**, matching C: the first closing delimiter ends the comment regardless of any opening delimiter seen since the outermost one. Tested explicitly (`tests/lexer/nested_comment.mn`) rather than left as incidental behavior.
+- **Numeric literals that don't fit in 64 bits are a lex error** (`ERROR_NUMBER_OVERFLOW`), not a silent wraparound - checked for both decimal and hex literals, including at the exact `2^64-1` boundary.
+- **Tabs count as 1 column**, not expanded to a tab-stop width. Simplest option consistent with "no feature creep"; revisit only if a real need for aligned-error-column tooling appears.
+
 ## 4. Test strategy
 
 - **Golden tests per stage:** for each stage, a fixed set of `.manna` (or, for the lexer specifically this session, `.mn`) inputs with checked-in expected output - token stream for the lexer, AST dump for the parser, typed-IR dump for the IR builder, annotated IR for loop-counter injection, `.wasm` binary (or its `wasm2wat` text form, for diffability) for the backend. Any stage's output changing unexpectedly fails the test; a deliberate change updates the golden file in the same commit as the code change, never silently.

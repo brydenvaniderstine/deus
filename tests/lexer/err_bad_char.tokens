@@ -1,0 +1,8 @@
+1:1 KW_LET let
+1:5 IDENT x
+1:7 ASSIGN =
+1:9 NUMBER 5 value=5
+1:11 ERROR_BAD_CHAR @ msg="unexpected character"
+1:13 NUMBER 3 value=3
+1:14 SEMI ;
+2:1 EOF 

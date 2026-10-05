@@ -1,0 +1,5 @@
+1:1 KW_LET let
+1:5 IDENT x
+1:7 ASSIGN =
+1:9 NUMBER 123 value=123
+1:12 EOF 

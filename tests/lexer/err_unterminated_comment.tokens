@@ -1,0 +1,9 @@
+1:1 KW_FN fn
+1:4 IDENT main
+1:8 LPAREN (
+1:9 RPAREN )
+1:11 LBRACE {
+2:1 ERROR_UNTERMINATED_COMMENT /* this comment never closes
+let x = 1;
+ msg="unterminated block comment"
+4:1 EOF 
