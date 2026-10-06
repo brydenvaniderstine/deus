@@ -52,7 +52,7 @@ QEMU_FLAGS   := -machine q35 -m 8G -cpu qemu64,+apic,+pdpe1gb \
                 -serial file:serial.log -monitor stdio -no-reboot \
                 -d int,cpu_reset -D qemu.log
 
-.PHONY: all image run debug clean limine stage-esp test-wx test-lexer test-lexer-asan test-arena test-arena-asan test-ast test-ast-asan
+.PHONY: all image run debug clean limine stage-esp test-wx test-lexer test-lexer-asan test-arena test-arena-asan test-ast test-ast-asan test-parser-state test-parser-state-asan
 
 all: $(KERNEL_ELF)
 
@@ -180,6 +180,22 @@ test-ast-asan:
 	@mkdir -p $(AST_TEST_DIR)
 	clang -std=c11 -Wall -Wextra -g -fsanitize=address,undefined -o $(AST_TEST_DIR)/ast_test-asan $(AST_TEST_SRCS)
 	$(AST_TEST_DIR)/ast_test-asan
+
+# Diagnostics + shared parser-state (depth bound, error cap, unified
+# arena/depth/error-cap escape point) unit test (plain + ASan/UBSan).
+PARSER_STATE_TEST_DIR  := $(BUILD)/parser_state_test
+PARSER_STATE_TEST_SRCS := tools/mannac/arena.c tools/mannac/ast.c tools/mannac/diag.c \
+                          tools/mannac/parser_state.c tools/mannac/parser_state_test.c
+
+test-parser-state:
+	@mkdir -p $(PARSER_STATE_TEST_DIR)
+	clang -std=c11 -Wall -Wextra -O2 -g -o $(PARSER_STATE_TEST_DIR)/parser_state_test $(PARSER_STATE_TEST_SRCS)
+	$(PARSER_STATE_TEST_DIR)/parser_state_test
+
+test-parser-state-asan:
+	@mkdir -p $(PARSER_STATE_TEST_DIR)
+	clang -std=c11 -Wall -Wextra -g -fsanitize=address,undefined -o $(PARSER_STATE_TEST_DIR)/parser_state_test-asan $(PARSER_STATE_TEST_SRCS)
+	$(PARSER_STATE_TEST_DIR)/parser_state_test-asan
 
 clean:
 	rm -rf $(BUILD) $(IMAGE) serial.log qemu.log
