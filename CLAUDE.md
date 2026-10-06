@@ -28,7 +28,7 @@ You are lead co-developer. Build incrementally. Every milestone must boot in QEM
 - Isolation is enforced by the compiler, not the MMU.
 - **Manna** descends from HolyC and has two compile targets:
   - **User apps** compile to WebAssembly and run in a bare-metal Wasm runtime. Budget a 5–20% bounds-check overhead without guard pages.
-  - **Kernel code** compiles to native machine code. It must pass a static verifier and carry a `[Kernel_Hook]` attribute to use raw pointers.
+  - **Kernel code** compiles to native machine code. It must pass a static verifier and carry a `[kernel_hook]` attribute to use raw pointers.
 - All Manna language changes must pass the Feature Admission Test in `docs/MANNA_PRINCIPLES.md`.
 
 ## Bootstrap path
@@ -138,3 +138,4 @@ See `VISION.md` for longer-range cross-platform/cloud-guest goals and R&D candid
 - Small commits, one subsystem each. Run `make run` before claiming success.
 - Read `serial.log` and `qemu.log` to verify. Don't assume.
 - Ask before changing any hard constraint above.
+- Write commit messages via a quoted heredoc (`git commit -F - <<'EOF' ... EOF`), never `git commit -m "..."` for anything containing backticks or `$`. An unquoted `-m` string is still subject to shell expansion - a backtick-wrapped code span like `` `manna` `` gets executed as a command substitution and silently vanishes (empty output) if that command doesn't exist. Lost a word this way once; the quoted-heredoc form passes the message through literally, no expansion at all.

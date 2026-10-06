@@ -31,7 +31,7 @@ typedef enum {
     /* Punctuation */
     TOK_LPAREN, TOK_RPAREN,
     TOK_LBRACE, TOK_RBRACE,
-    TOK_LBRACKET, TOK_RBRACKET, /* also used for the [Kernel_Hook] attribute */
+    TOK_LBRACKET, TOK_RBRACKET, /* also used for the [kernel_hook] attribute */
     TOK_COMMA, TOK_SEMI, TOK_COLON, TOK_ARROW, TOK_DOT, TOK_DOTDOT,
 
     /* Operators */

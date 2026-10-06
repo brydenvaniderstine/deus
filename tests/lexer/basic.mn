@@ -20,7 +20,7 @@ fn main() -> i32 {
     return 0;
 }
 
-[Kernel_Hook]
+[kernel_hook]
 fn raw_poke(addr: u64, val: u8) {
     struct Foo { a: u8, b: u16 }
 }

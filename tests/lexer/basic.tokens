@@ -74,7 +74,7 @@
 20:13 SEMI ;
 21:1 RBRACE }
 23:1 LBRACKET [
-23:2 IDENT Kernel_Hook
+23:2 IDENT kernel_hook
 23:13 RBRACKET ]
 24:1 KW_FN fn
 24:4 IDENT raw_poke

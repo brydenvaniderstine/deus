@@ -24,8 +24,8 @@ No feature creep. v0 needs exactly enough to express the loop-counter-injected, 
 - **Types:** `u8`/`u16`/`u32`/`u64`, `i8..i64`, `bool`, fixed-size arrays, structs (fixed layout, no tagged unions/variants yet). No generics, no traits, no interfaces.
 - **Functions:** named functions, fixed arity, no overloading, no closures, no varargs.
 - **Loops:** `for` (C-style three-clause) and `while` only. No `foreach`/iterators — those need a trait/protocol system v0 excludes.
-- **Safe pointers:** a single pointer kind, bounds-carrying (pointer + length, not a bare address) for anything outside `[Kernel_Hook]`. Raw/bare pointers don't exist in v0 source — they're an IR-level concept the verifier permits only inside verified `[Kernel_Hook]` regions.
-- **`[Kernel_Hook]` attribute:** marks a function as allowed raw pointer arithmetic and hardware intrinsics (port I/O, `cpuid`, MSR access — the exact primitives `kernel/arch/x86/*.c` already uses). Everything else in a `[Kernel_Hook]` function is still typed-IR-checked; it's an escape hatch from the safe-pointer rule only, not from the pipeline.
+- **Safe pointers:** a single pointer kind, bounds-carrying (pointer + length, not a bare address) for anything outside `[kernel_hook]`. Raw/bare pointers don't exist in v0 source — they're an IR-level concept the verifier permits only inside verified `[kernel_hook]` regions.
+- **`[kernel_hook]` attribute:** marks a function as allowed raw pointer arithmetic and hardware intrinsics (port I/O, `cpuid`, MSR access — the exact primitives `kernel/arch/x86/*.c` already uses). Everything else in a `[kernel_hook]` function is still typed-IR-checked; it's an escape hatch from the safe-pointer rule only, not from the pipeline.
 - **Explicitly excluded from v0:** generics, traits/interfaces, closures, exceptions/unwinding, operator overloading, modules/namespaces, dynamic dispatch, heap allocation, strings.
 - **Wasm backend target (v0): Wasm MVP only** — no threads, no SIMD, no GC proposal features. (Already noted inline in the pipeline-stages diagram below; restated here as an explicit scope decision, not just an implementation detail of one pipeline box.)
 - **Signed integers, overflow, and the negative-min literal:** `i8`/`i16`/`i32`/`i64` are first-class alongside `u8`-`u64` (already listed above). Unary `-` applied to an unsigned-typed operand is a type error, caught in the typed-IR stage — the parser has no type information yet, so it parses identically to the signed case; rejection happens one stage later. All arithmetic overflow, signed and unsigned, **traps at runtime** — no silent wraparound, no undefined behavior, in either direction. The most-negative `i64` literal (`-9223372036854775808`) needs special handling in the typed-IR stage specifically: the lexer only ever produces unsigned-magnitude `NUMBER` tokens, so `9223372036854775808` (2^63) lexes fine as an in-range `u64` value with no lexer-level overflow (confirmed: well under `2^64-1`); the IR stage must recognize negation applied directly to a literal of magnitude exactly `2^63` in an `i64` context as meaning `i64::MIN` — not validate the unsigned magnitude as a standalone `i64` first (which would wrongly fail, since positive `i64` only reaches `2^63-1`) and negate second.
@@ -69,7 +69,7 @@ source (.manna)
 │                   │  acceptable.)
 ├─────────────────┤
 │ Static pointer       │  walks the typed IR (counters already present);
-│ verifier            │  proves every non-[Kernel_Hook] pointer access
+│ verifier            │  proves every non-[kernel_hook] pointer access
 │                   │  in-bounds where it statically can, and REJECTS
 │                   │  the program outright for anything it can prove
 │                   │  is out-of-bounds. An access it can't prove
@@ -80,14 +80,14 @@ source (.manna)
 │                   │  The verifier's job is to eliminate as many of
 │                   │  those runtime checks as it can prove
 │                   │  unnecessary, not to be the only enforcement
-│                   │  mechanism. [Kernel_Hook] functions get a
+│                   │  mechanism. [kernel_hook] functions get a
 │                   │  narrower check: raw ops are allowed, everything
 │                   │  else is still verified the same way.
 ├─────────────────┤
 │ Wasm backend         │  typed, verified IR -> .wasm module.
 │                   │  Target: the Wasm MVP subset needed for v0 - no
 │                   │  SIMD, no threads, no GC proposal features.
-│                   │  Rejects any [Kernel_Hook] function outright,
+│                   │  Rejects any [kernel_hook] function outright,
 │                   │  with the diagnostic "native backend required" -
 │                   │  port I/O, cpuid, and MSR access have no Wasm
 │                   │  sandboxed equivalent, so silently miscompiling
@@ -322,12 +322,12 @@ TREE:
 (function_decl@2:1-6:1 add ...)
 ```
 
-Test categories mirror the lexer suite: a basic valid-program case, one golden per grammar construct, a `[Kernel_Hook]` case, the two dedicated-diagnostic cases above, the four nesting-depth-bound cases, and general error-recovery cases (missing semicolon, unclosed brace, multiple errors in one file to confirm resynchronization continues past the first).
+Test categories mirror the lexer suite: a basic valid-program case, one golden per grammar construct, a `[kernel_hook]` case, the two dedicated-diagnostic cases above, the four nesting-depth-bound cases, and general error-recovery cases (missing semicolon, unclosed brace, multiple errors in one file to confirm resynchronization continues past the first).
 
 ## 5. Test strategy
 
 - **Golden tests per stage:** for each stage, a fixed set of `.manna` (or, for the lexer specifically this session, `.mn`) inputs with checked-in expected output - token stream for the lexer, AST dump for the parser, typed-IR dump for the IR builder, annotated IR for loop-counter injection, `.wasm` binary (or its `wasm2wat` text form, for diffability) for the backend. Any stage's output changing unexpectedly fails the test; a deliberate change updates the golden file in the same commit as the code change, never silently.
-- **Verifier rejection tests:** a corpus of programs that *must* fail verification - out-of-bounds pointer arithmetic, a `[Kernel_Hook]`-only operation attempted outside one, a type mismatch - each asserting the specific rejection reason, not just "it failed." Also covers: a `[Kernel_Hook]` function reaching the Wasm backend must produce exactly the "native backend required" diagnostic, every time. This is also where VISION.md's adversarial-AST test lives once the AI-AST ingestion path exists: same corpus, same verifier, AST-shaped inputs instead of source-shaped ones.
+- **Verifier rejection tests:** a corpus of programs that *must* fail verification - out-of-bounds pointer arithmetic, a `[kernel_hook]`-only operation attempted outside one, a type mismatch - each asserting the specific rejection reason, not just "it failed." Also covers: a `[kernel_hook]` function reaching the Wasm backend must produce exactly the "native backend required" diagnostic, every time. This is also where VISION.md's adversarial-AST test lives once the AI-AST ingestion path exists: same corpus, same verifier, AST-shaped inputs instead of source-shaped ones.
 - **Wasm execution tests on macOS:** compile a `.manna` program to `.wasm`, run it under `wasmtime`, assert on stdout/return value. Host-side only - unrelated to M3's bare-metal runtime, purely "does the backend emit correct Wasm."
   - **`tools/fetch-wasmtime.sh`:** downloads the official prebuilt `wasmtime-v49.0.2-x86_64-macos.tar.xz` release asset directly from `bytecodealliance/wasmtime`'s GitHub releases (verified this session: Homebrew's formula has zero bottled platforms - it would build from source regardless of OS, and there's no Rust toolchain on this machine either, so that path is avoided entirely). The script verifies the downloaded tarball's checksum against a pinned value before extracting; the extracted `wasmtime` binary is `.gitignore`d, never committed - it's a fetched build tool, not project source.
   - **M3 seed note:** this prebuilt binary unblocks M2's own testing only. M3 needs a Wasm runtime that runs *inside* Deus, which a host CLI binary can't be. WAMR (already named in CLAUDE.md for M3) is the real candidate; a minimal hand-written C interpreter remains a fallback worth prototyping only if WAMR's bare-metal port turns out impractical - not needed to unblock anything in M2.
@@ -337,7 +337,7 @@ Test categories mirror the lexer suite: a basic valid-program case, one golden p
 
 Documentation only — nothing here is v0, nothing here is implemented or scheduled with code yet. Priority order:
 
-1. **`f32`/`f64`.** User-space (Wasm) only until the kernel has XSAVE — the kernel currently builds with `-mgeneral-regs-only` (CLAUDE.md hard constraint) specifically to avoid saving FPU/SSE state in ISRs, so no floating-point value can safely exist in kernel-side (`[Kernel_Hook]`) code until that changes. Float semantics — NaN handling, rounding mode — are specified in v1, not assumed now.
+1. **`f32`/`f64`.** User-space (Wasm) only until the kernel has XSAVE — the kernel currently builds with `-mgeneral-regs-only` (CLAUDE.md hard constraint) specifically to avoid saving FPU/SSE state in ISRs, so no floating-point value can safely exist in kernel-side (`[kernel_hook]`) code until that changes. Float semantics — NaN handling, rounding mode — are specified in v1, not assumed now.
 2. **Strings.** Needed for self-hosting (§2) and for any real diagnostic/identifier handling beyond what v0's fixed-layout approach supports.
 3. **Constants and enums.** Not in v0; naming and syntax undecided.
 4. **Modules.** Lowest priority of the four — v0's single-translation-unit model is sufficient until the codebase is large enough that namespacing actually hurts without it.
