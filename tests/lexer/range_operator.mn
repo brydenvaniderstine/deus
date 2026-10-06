@@ -1,0 +1,4 @@
+let a = arr[0..5];
+let b = arr[i..n];
+let c = 0x1F..0x2F;
+let d = 1...2;

@@ -24,12 +24,15 @@ typedef enum {
     TOK_KW_STRUCT,
     TOK_KW_TRUE,
     TOK_KW_FALSE,
+    TOK_KW_BREAK,
+    TOK_KW_CONTINUE,
+    TOK_KW_MANNA,     /* the 'manna v0;' file-header keyword (docs/M2_PLAN.md) */
 
     /* Punctuation */
     TOK_LPAREN, TOK_RPAREN,
     TOK_LBRACE, TOK_RBRACE,
     TOK_LBRACKET, TOK_RBRACKET, /* also used for the [Kernel_Hook] attribute */
-    TOK_COMMA, TOK_SEMI, TOK_COLON, TOK_ARROW, TOK_DOT,
+    TOK_COMMA, TOK_SEMI, TOK_COLON, TOK_ARROW, TOK_DOT, TOK_DOTDOT,
 
     /* Operators */
     TOK_PLUS, TOK_MINUS, TOK_STAR, TOK_SLASH, TOK_PERCENT,

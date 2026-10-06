@@ -106,6 +106,8 @@ static TokenKind keyword_kind(const char *s, size_t len) {
         {"else", TOK_KW_ELSE}, {"for", TOK_KW_FOR}, {"while", TOK_KW_WHILE},
         {"return", TOK_KW_RETURN}, {"struct", TOK_KW_STRUCT},
         {"true", TOK_KW_TRUE}, {"false", TOK_KW_FALSE},
+        {"break", TOK_KW_BREAK}, {"continue", TOK_KW_CONTINUE},
+        {"manna", TOK_KW_MANNA},
     };
     for (size_t i = 0; i < sizeof(kws) / sizeof(kws[0]); i++) {
         size_t wlen = strlen(kws[i].word);
@@ -211,7 +213,14 @@ Token lexer_next(Lexer *lx) {
         case ',': return make_token(TOK_COMMA, start, 1, line, col);
         case ';': return make_token(TOK_SEMI, start, 1, line, col);
         case ':': return make_token(TOK_COLON, start, 1, line, col);
-        case '.': return make_token(TOK_DOT, start, 1, line, col);
+        case '.':
+            /* Exactly two dots make a range operator. Three or more is not
+             * special-cased - v0 has no use for "...", so e.g. "1...2"
+             * simply lexes as DOTDOT then DOT (greedy two-dot match,
+             * then the leftover third dot on its own), not a dedicated
+             * error. Tested explicitly: tests/lexer/range_operator.mn. */
+            if (match(lx, '.')) return make_token(TOK_DOTDOT, start, 2, line, col);
+            return make_token(TOK_DOT, start, 1, line, col);
         case '+': return make_token(TOK_PLUS, start, 1, line, col);
         case '*': return make_token(TOK_STAR, start, 1, line, col);
         case '/': return make_token(TOK_SLASH, start, 1, line, col);
@@ -270,6 +279,9 @@ const char *token_kind_name(TokenKind kind) {
         case TOK_KW_STRUCT: return "KW_STRUCT";
         case TOK_KW_TRUE: return "KW_TRUE";
         case TOK_KW_FALSE: return "KW_FALSE";
+        case TOK_KW_BREAK: return "KW_BREAK";
+        case TOK_KW_CONTINUE: return "KW_CONTINUE";
+        case TOK_KW_MANNA: return "KW_MANNA";
         case TOK_LPAREN: return "LPAREN";
         case TOK_RPAREN: return "RPAREN";
         case TOK_LBRACE: return "LBRACE";
@@ -281,6 +293,7 @@ const char *token_kind_name(TokenKind kind) {
         case TOK_COLON: return "COLON";
         case TOK_ARROW: return "ARROW";
         case TOK_DOT: return "DOT";
+        case TOK_DOTDOT: return "DOTDOT";
         case TOK_PLUS: return "PLUS";
         case TOK_MINUS: return "MINUS";
         case TOK_STAR: return "STAR";
