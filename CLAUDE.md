@@ -29,6 +29,7 @@ You are lead co-developer. Build incrementally. Every milestone must boot in QEM
 - **Manna** descends from HolyC and has two compile targets:
   - **User apps** compile to WebAssembly and run in a bare-metal Wasm runtime. Budget a 5–20% bounds-check overhead without guard pages.
   - **Kernel code** compiles to native machine code. It must pass a static verifier and carry a `[Kernel_Hook]` attribute to use raw pointers.
+- All Manna language changes must pass the Feature Admission Test in `docs/MANNA_PRINCIPLES.md`.
 
 ## Bootstrap path
 - The bootstrap kernel is written in x86_64 assembly and freestanding C, and hosts the resident Manna compiler.
