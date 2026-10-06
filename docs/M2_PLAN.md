@@ -70,10 +70,19 @@ source (.manna)
 ├─────────────────┤
 │ Static pointer       │  walks the typed IR (counters already present);
 │ verifier            │  proves every non-[Kernel_Hook] pointer access
-│                   │  is in-bounds given its carried length, or
-│                   │  rejects the whole program. [Kernel_Hook]
-│                   │  functions get a narrower check: raw ops are
-│                   │  allowed, everything else is still verified.
+│                   │  in-bounds where it statically can, and REJECTS
+│                   │  the program outright for anything it can prove
+│                   │  is out-of-bounds. An access it can't prove
+│                   │  either way (e.g. arr[user_input]) isn't a
+│                   │  compile error - it gets a runtime bounds check
+│                   │  inserted, trapping on failure, same precedent
+│                   │  as arithmetic overflow (no silent wrap, no UB).
+│                   │  The verifier's job is to eliminate as many of
+│                   │  those runtime checks as it can prove
+│                   │  unnecessary, not to be the only enforcement
+│                   │  mechanism. [Kernel_Hook] functions get a
+│                   │  narrower check: raw ops are allowed, everything
+│                   │  else is still verified the same way.
 ├─────────────────┤
 │ Wasm backend         │  typed, verified IR -> .wasm module.
 │                   │  Target: the Wasm MVP subset needed for v0 - no
@@ -86,7 +95,14 @@ source (.manna)
 │                   │  separate native backend (kernel code's actual
 │                   │  compile target, per CLAUDE.md's "LBS and the
 │                   │  language" dual-target split) is what eventually
-│                   │  handles these - not scoped here.
+│                   │  handles these - not scoped here. Each v0
+│                   │  construct's machine cost (MANNA_PRINCIPLES.md
+│                   │  principle 10 / Admission Test item 4) gets
+│                   │  documented as part of writing this backend -
+│                   │  the Wasm instruction sequence each construct
+│                   │  lowers to is the natural place that cost
+│                   │  becomes concrete and checkable, not a separate
+│                   │  retroactive pass.
 └─────────────────┘
           │
           ▼
@@ -105,7 +121,11 @@ source (.manna)
 Text plan only — no parser code exists yet. Recursive-descent, built on the lexer above.
 
 ```ebnf
-translation_unit  ::= { top_level_item } ;
+translation_unit  ::= version_decl { top_level_item } ;
+version_decl      ::= 'manna' IDENT ';' ;
+  (* First non-comment line of every file, required - e.g. "manna v0;".
+     A missing or wrong version is a compile error. See "Language
+     design decisions" below. *)
 top_level_item    ::= struct_decl | function_decl ;
 
 attribute         ::= '[' IDENT ']' ;
@@ -114,6 +134,11 @@ struct_decl       ::= 'struct' IDENT '{' { field_decl } '}' ;
 field_decl        ::= IDENT ':' type ',' ;
 
 function_decl     ::= { attribute } 'fn' IDENT '(' [ param_list ] ')' [ '->' type ] block ;
+  (* Absent '-> type' means the function returns nothing (unit) -
+     stated explicitly, not inferred. Principle 15 (types at every
+     boundary) only permits inference inside function bodies; a
+     function's own signature, return type included, is never one of
+     those bodies. *)
 param_list        ::= param { ',' param } ;
 param             ::= IDENT ':' type ;
 
@@ -124,46 +149,83 @@ type              ::= IDENT
 
 block             ::= '{' { statement } '}' ;
 
-statement         ::= let_stmt | assign_stmt | if_stmt | while_stmt | for_stmt
-                    | return_stmt | break_stmt | continue_stmt | expr_stmt ;
+statement         ::= let_stmt | if_stmt | while_stmt | for_stmt
+                    | return_stmt | break_stmt | continue_stmt
+                    | postfix_stmt | expr_stmt ;
+  (* postfix_stmt and expr_stmt have disjoint FIRST sets - postfix_stmt
+     starts with whatever primary/postfix starts with (NUMBER, KW_TRUE,
+     KW_FALSE, IDENT, '('); expr_stmt, reached only when none of those
+     applied, starts with a unary prefix ('!', '-', '~'). Genuinely
+     LL(1) at this level, unlike the assign_stmt/expr_stmt split it
+     replaces. *)
 
 let_stmt          ::= 'let' IDENT [ ':' type ] '=' expression ';' ;
 
-assign_stmt       ::= postfix '=' expression ';' ;
-  (* Assignment is a STATEMENT, not an expression - it does not exist
-     inside `expression` at all. Consequences, all structural, none
-     needing a bespoke error message except the one noted below:
+postfix_stmt      ::= postfix expr_tail ';' ;
+  (* Left-factored (principle 5, LL(1)): assign_stmt and expr_stmt used
+     to be separate top-level `statement` alternatives, but both can
+     start with the exact same tokens (anything that starts a
+     `postfix`) - a single token of lookahead can't tell them apart
+     until AFTER the shared `postfix` prefix has been consumed. Naming
+     them as two alternatives at the `statement` level was therefore
+     not naively LL(1): an LL(1) table built straight off that FIRST-set
+     overlap doesn't exist. This merged form states the actual decision
+     point where it really is - right after `postfix`, with exactly one
+     token of lookahead ('=' or not) - which is both what any real
+     implementation already does and what makes the grammar honestly
+     LL(1) as written, not just LL(1) in spirit.
+
+     Consequences, all structural, none needing a bespoke error message
+     except the one noted under "Dedicated diagnostics" below:
        - `if x = 5 { ... }`: if_stmt's condition is `expression`, which
          can never produce '='. Parsing the condition stops at `x`,
-         then '{' is expected and '=' is found instead - this exact
-         spot gets a dedicated diagnostic (below), not a generic one.
-       - `a = b = c;`: assign_stmt's RHS is `expression` (no assignment
-         inside it), so a second '=' after the first RHS is simply
-         unconsumable - parse error at that '='.
+         then '{' is expected and '=' is found instead.
+       - `a = b = c;`: the assignment branch's RHS is `expression` (no
+         assignment inside it), so a second '=' after the first RHS is
+         simply unconsumable - parse error at that '='.
        - `1 + 2 = x;`: `1 + 2` cannot reduce to `postfix` (postfix has
-         no '+' production), so assign_stmt's left side never matches
-         it; falls through to expr_stmt, where '=' is unexpected where
-         ';' was expected.
-     Dispatch is backtrack-free: parse `postfix` first (cheap,
-     unambiguous prefix of any expression), then branch on the next
-     token - '=' means assign_stmt; anything else means resume normal
-     precedence-climbing expression parsing seeded with the
-     already-parsed postfix as its base operand, then expect ';' for
-     expr_stmt. *)
+         no '+' production), so `postfix_stmt` never matches starting
+         there at all; it's parsed as a plain expression instead, and
+         the '=' right after is unexpected where ';' was expected. *)
+
+expr_tail         ::= '=' expression
+                    | /* empty, continuing as a plain expression */
+                    ;
+  (* NOT a flat CFG production in the usual sense - this is the precise
+     operational definition, since precedence-climbing parsing isn't
+     naturally expressible as one. `postfix_stmt` has already consumed
+     one `postfix` as a complete operand (unary/postfix are the only
+     levels below `multiplicative`, and both are already spent). The
+     empty alternative means: resume the SAME precedence-climbing loop
+     `expression` itself uses, re-entered one level up - at
+     `multiplicative` and above - with the already-parsed `postfix` as
+     the left-hand operand instead of parsing a fresh one. Concretely:
+     repeatedly consume a binary operator at `multiplicative` precedence
+     or looser, each time parsing its right-hand side through the full
+     normal `expression` chain (every binary operator's RHS always
+     starts fresh), until no further operator applies. This is exactly
+     the loop `multiplicative`/`additive`/`shift`/.../`logic_or` already
+     describe for `expression`'s own first operand - `expr_tail` just
+     names the case where that first operand arrived pre-parsed. *)
 
 if_stmt           ::= 'if' expression block [ 'else' ( if_stmt | block ) ] ;
 while_stmt        ::= 'while' expression block ;
-for_stmt          ::= 'for' ( let_stmt | assign_stmt | expr_stmt ) expression ';' for_step block ;
-for_step          ::= postfix '=' expression | expression ;
-  (* e.g.: for let i = 0; i < n; i = i + 1 { ... }
-     No parens - matches if/while. Init clause is itself a
-     let_stmt/assign_stmt/expr_stmt and supplies its own ';'. Middle
-     clause is a bare expression with an explicit ';' after it. Step
-     clause has no trailing ';' - the block's '{' follows directly. *)
+for_stmt          ::= 'for' ( let_stmt | postfix_stmt | expr_stmt ) expression ';' for_step block ;
+for_step          ::= postfix expr_tail ;
+  (* Same left-factoring as postfix_stmt, reusing the same expr_tail -
+     just without the trailing ';' (the block's '{' follows directly).
+     e.g.: for let i = 0; i < n; i = i + 1 { ... } - the step clause
+     "i = i + 1" is postfix('i') expr_tail('= i + 1'). *)
 break_stmt        ::= 'break' ';' ;
 continue_stmt     ::= 'continue' ';' ;
 return_stmt       ::= 'return' [ expression ] ';' ;
 expr_stmt         ::= expression ';' ;
+  (* Still exists for statements that can't start with a postfix - e.g.
+     a bare unary expression like `!flag;` or `-x;` as a statement
+     (unusual, but not excluded). postfix_stmt and expr_stmt together
+     cover every expression-shaped statement; they're disjoint by
+     construction (postfix_stmt needs a leading postfix; expr_stmt here
+     only ever gets reached for the forms that don't have one). *)
 
 expression        ::= logic_or ;
 logic_or          ::= logic_and { '||' logic_and } ;
@@ -206,7 +268,7 @@ One shared counter, incremented/checked/decremented at entry and exit of **every
 
 ### AST node types
 
-Every node records a source span (`line:col` of its first token) — same precision discipline as the lexer.
+Every node records a **start and end** source span (`line:col` of its first and last token), not just a start — required by the `manna check --json` error schema (Language design decisions, §7, item 4) to emit precise ranges for tooling like editor squiggles and auto-fixes.
 
 ```
 Type   = TypeIdent(name) | TypeArray(size, elem: Type) | TypeSlice(elem: Type)
@@ -235,19 +297,19 @@ There is no `Assign` `Expr` variant — assignment lives only in `Stmt`, as `Ass
 
 ### Golden test format for ASTs
 
-Mirrors the lexer's convention directly: `tests/parser/*.mn` → `*.ast`, run via `make test-parser` (plain + `-asan` variants, same shared-script pattern as `test-lexer`/`test-lexer-asan`). An S-expression dump, each node tagged with its span, e.g.:
+Mirrors the lexer's convention directly: `tests/parser/*.mn` → `*.ast`, run via `make test-parser` (plain + `-asan` variants, same shared-script pattern as `test-lexer`/`test-lexer-asan`). An S-expression dump, each node tagged with its **start-end** span (§7 item 4 requires both, not just a start), e.g.:
 
 ```
-(function_decl@2:1 add
+(function_decl@2:1-5:1 add
   (params
-    (param@2:8 a u32)
-    (param@2:16 b u32))
+    (param@2:8-2:17 a u32)
+    (param@2:19-2:28 b u32))
   (return_type u32)
-  (block@2:31
-    (return_stmt@3:5
-      (binary@3:12 +
-        (ident@3:12 a)
-        (ident@3:16 b)))))
+  (block@2:31-5:1
+    (return_stmt@3:5-3:14
+      (binary@3:12-3:17 +
+        (ident@3:12-3:13 a)
+        (ident@3:16-3:17 b)))))
 ```
 
 For inputs with parse errors, the golden file has two sections — errors first, then whatever tree resulted:
@@ -257,7 +319,7 @@ ERRORS:
 4:9 expected ';' after expression, found '}'
 
 TREE:
-(function_decl@2:1 add ...)
+(function_decl@2:1-6:1 add ...)
 ```
 
 Test categories mirror the lexer suite: a basic valid-program case, one golden per grammar construct, a `[Kernel_Hook]` case, the two dedicated-diagnostic cases above, the four nesting-depth-bound cases, and general error-recovery cases (missing semicolon, unclosed brace, multiple errors in one file to confirm resynchronization continues past the first).
@@ -269,6 +331,7 @@ Test categories mirror the lexer suite: a basic valid-program case, one golden p
 - **Wasm execution tests on macOS:** compile a `.manna` program to `.wasm`, run it under `wasmtime`, assert on stdout/return value. Host-side only - unrelated to M3's bare-metal runtime, purely "does the backend emit correct Wasm."
   - **`tools/fetch-wasmtime.sh`:** downloads the official prebuilt `wasmtime-v49.0.2-x86_64-macos.tar.xz` release asset directly from `bytecodealliance/wasmtime`'s GitHub releases (verified this session: Homebrew's formula has zero bottled platforms - it would build from source regardless of OS, and there's no Rust toolchain on this machine either, so that path is avoided entirely). The script verifies the downloaded tarball's checksum against a pinned value before extracting; the extracted `wasmtime` binary is `.gitignore`d, never committed - it's a fetched build tool, not project source.
   - **M3 seed note:** this prebuilt binary unblocks M2's own testing only. M3 needs a Wasm runtime that runs *inside* Deus, which a host CLI binary can't be. WAMR (already named in CLAUDE.md for M3) is the real candidate; a minimal hand-written C interpreter remains a fallback worth prototyping only if WAMR's bare-metal port turns out impractical - not needed to unblock anything in M2.
+- **Determinism test:** compile the same input twice (same binary, same flags, two separate invocations) and byte-compare the output at every stage - token stream, AST dump, typed IR, `.wasm` module. Required by MANNA_PRINCIPLES.md principle 12 (deterministic builds) and load-bearing for diverse double-compiling (§1): if the C-bootstrap and self-hosted compilers' outputs are ever going to be meaningfully diffed against each other, each one individually producing byte-identical output across repeated runs is the precondition that comparison depends on.
 
 ## 6. v1 roadmap
 
@@ -279,7 +342,36 @@ Documentation only — nothing here is v0, nothing here is implemented or schedu
 3. **Constants and enums.** Not in v0; naming and syntax undecided.
 4. **Modules.** Lowest priority of the four — v0's single-translation-unit model is sufficient until the codebase is large enough that namespacing actually hurts without it.
 
-This list grows as later steps record more v1 leanings (memory model, error handling, contracts, effects) — this section is the standing home for all of them, not just these four.
+**v1 leanings** (decided at v1; no code now — recorded here per `docs/MANNA_PRINCIPLES.md` Part 4):
+
+5. **Memory model: arenas/regions.** A slice can't outlive its arena.
+6. **Optionals and errors.** `?T` is an optional value; `!T` is a value-or-error. Errors propagate with the keyword `try` (principle 9: words over symbols, not a `?`-postfix sigil). Discarding a `!T` is a compile error — matching Go's "ignored error codes" lesson in `MANNA_PRINCIPLES.md` Part 3.
+7. **Contracts (`requires`/`ensures`).** Proven at compile time where possible, otherwise a runtime trap. Never disableable — a contract that can be compiled out isn't a contract, it's a comment.
+8. **Effects.** Pure by default; a function declares anything else with `uses io, alloc`. `hw` is legal only in `[kernel_hook]` functions. A function's callees can't exceed its own declared effects — an effect-pure function can't call an effect-impure one.
+9. **Intent tags.** Optional `[intent: "..."]` annotations, searchable and comparable against actual behavior — `MANNA_PRINCIPLES.md`'s third AI-native candidate feature, grouped here alongside contracts and effects since all three need the same Feature Admission Test treatment before landing in any version.
+
+This section is the standing home for every v1 lean as it gets recorded, not just these nine.
+
+## 7. Language design decisions (v0, locked)
+
+Per `docs/MANNA_PRINCIPLES.md` Part 4 — recorded here so the implementation blueprint states them directly, not just the charter.
+
+1. **File header is a required statement.** The first non-comment line of every file is `manna v0;` — see `version_decl` in the grammar (§4) above. A missing or wrong version is a compile error, not a warning.
+2. **Naming is enforced as compile errors, not warnings.** Functions, variables, and fields: `snake_case`. Structs (and future enums): `PascalCase`. Constants (v1): `SCREAMING_SNAKE`. Attributes: `snake_case` — e.g. `[kernel_hook]`.
+3. **Source file extension: `.mn`.** Already the extension every test file in `tests/lexer/` uses.
+4. **Error JSON schema**, for `manna check --json` (implemented after the parser exists — not yet):
+   ```json
+   {"schema":1,"file":"a.mn","diagnostics":[{
+     "code":"E0102","severity":"error",
+     "message":"assignment is a statement; did you mean '=='?",
+     "span":{"start":{"line":3,"col":6},"end":{"line":3,"col":7}},
+     "expected":"'{'","found":"'='",
+     "fixes":[{"title":"use comparison","edits":[
+       {"span":{"start":{"line":3,"col":6},"end":{"line":3,"col":7}},"text":"=="}]}]}]}
+   ```
+   Error codes (`E0xxx`) are stable and documented in a registry. This is why every AST node needs both a start **and end** position, not just a start (the parser grammar's AST node types section, §4, is updated to reflect this — spans are now `start-end`, not just a single point).
+5. **AST IDs are name-based, top-level items only, in v0** — e.g. `fn:parse_expr`, `struct:Token`. Inner-node IDs (for addressing a specific statement or expression inside a function body) are deferred to v1.
+6. **Tooling: one public binary, `manna`**, with subcommands `build`, `check`, `test`, `fmt`, and `doc`. `mannac` (`tools/mannac/`) is the internal source folder and library name only — never a binary a user runs directly.
 
 ## Working log
 
