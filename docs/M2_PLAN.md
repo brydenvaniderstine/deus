@@ -268,10 +268,12 @@ One shared counter, incremented/checked/decremented at entry and exit of **every
 
 ### AST node types
 
-Every node records a **start and end** source span (`line:col` of its first and last token), not just a start — required by the `manna check --json` error schema (Language design decisions, §7, item 4) to emit precise ranges for tooling like editor squiggles and auto-fixes.
+Every node records a **start and end** source span (`line:col` of its first and last token), not just a start — required by the `manna check --json` error schema (Language design decisions, §7, item 4) to emit precise ranges for tooling like editor squiggles and auto-fixes. That includes `Field`/`Param` below: the shorthand notation omits a span for brevity, but every `Field`/`Param` in the actual implementation carries one, same as every other node — see the golden format below, where `(param@2:8-2:17 a u32)` shows it concretely.
 
 ```
 Type   = TypeIdent(name) | TypeArray(size, elem: Type) | TypeSlice(elem: Type)
+
+Field  = (span, name, type: Type)   (* also Param - same shape *)
 
 Decl   = StructDecl(name, fields: [Field])
        | FunctionDecl(attributes: [string], name, params: [Param], return_type: Type?, body: Block)
@@ -311,6 +313,14 @@ Mirrors the lexer's convention directly: `tests/parser/*.mn` → `*.ast`, run vi
         (ident@3:12-3:13 a)
         (ident@3:16-3:17 b)))))
 ```
+
+This dump format **is** the canonical machine interchange form (principle 11: the AST has a stable serialized form, and AI agents may emit it directly) — not just a test-golden convenience, so the rendering rules are spec, not implementation detail:
+
+- **`Field`/`Param` carry spans**, same as every other node (corrected above - the abstract shorthand omits one, the real type doesn't).
+- **An absent `-> type` renders as `(return_type unit)`**, explicit, never omitted - matching "stated, not inferred" (§2).
+- **A typed `let` renders as `name:type`**; an inferred (no explicit type) `let` renders as a bare `name`, with no placeholder standing in for the absent type.
+- **Types render inline as compact text** wherever they appear - `u32`, `[4]u32`, `[]u32` - never as their own nested `(type_ident ...)`/`(type_array ...)` S-expression. This is why `u32` appears bare in the example above rather than wrapped.
+- **Calls render as `(call@span name arg1 arg2 ...)`**, args inline with no separate `args` wrapper - unlike `params`/`fields`, which do get one, since those group a named, typed thing (`Field`) rather than bare expressions.
 
 For inputs with parse errors, the golden file has two sections — errors first, then whatever tree resulted:
 

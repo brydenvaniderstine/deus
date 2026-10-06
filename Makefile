@@ -52,7 +52,7 @@ QEMU_FLAGS   := -machine q35 -m 8G -cpu qemu64,+apic,+pdpe1gb \
                 -serial file:serial.log -monitor stdio -no-reboot \
                 -d int,cpu_reset -D qemu.log
 
-.PHONY: all image run debug clean limine stage-esp test-wx test-lexer test-lexer-asan test-arena test-arena-asan
+.PHONY: all image run debug clean limine stage-esp test-wx test-lexer test-lexer-asan test-arena test-arena-asan test-ast test-ast-asan
 
 all: $(KERNEL_ELF)
 
@@ -164,6 +164,22 @@ test-arena-asan:
 	@mkdir -p $(ARENA_TEST_DIR)
 	clang -std=c11 -Wall -Wextra -g -fsanitize=address,undefined -o $(ARENA_TEST_DIR)/arena_test-asan $(ARENA_TEST_SRCS)
 	@./tools/run_arena_test.sh $(ARENA_TEST_DIR)/arena_test-asan
+
+# AST node types + pretty-printer unit test (plain + ASan/UBSan). Also not
+# golden-file based - asserts the printer's output against docs/M2_PLAN.md's
+# documented example directly, byte-for-byte.
+AST_TEST_DIR  := $(BUILD)/ast_test
+AST_TEST_SRCS := tools/mannac/arena.c tools/mannac/ast.c tools/mannac/ast_test.c
+
+test-ast:
+	@mkdir -p $(AST_TEST_DIR)
+	clang -std=c11 -Wall -Wextra -O2 -g -o $(AST_TEST_DIR)/ast_test $(AST_TEST_SRCS)
+	$(AST_TEST_DIR)/ast_test
+
+test-ast-asan:
+	@mkdir -p $(AST_TEST_DIR)
+	clang -std=c11 -Wall -Wextra -g -fsanitize=address,undefined -o $(AST_TEST_DIR)/ast_test-asan $(AST_TEST_SRCS)
+	$(AST_TEST_DIR)/ast_test-asan
 
 clean:
 	rm -rf $(BUILD) $(IMAGE) serial.log qemu.log
