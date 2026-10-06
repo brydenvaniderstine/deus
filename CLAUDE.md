@@ -139,3 +139,8 @@ See `VISION.md` for longer-range cross-platform/cloud-guest goals and R&D candid
 - Read `serial.log` and `qemu.log` to verify. Don't assume.
 - Ask before changing any hard constraint above.
 - Write commit messages via a quoted heredoc (`git commit -F - <<'EOF' ... EOF`), never `git commit -m "..."` for anything containing backticks or `$`. An unquoted `-m` string is still subject to shell expansion - a backtick-wrapped code span like `` `manna` `` gets executed as a command substitution and silently vanishes (empty output) if that command doesn't exist. Lost a word this way once; the quoted-heredoc form passes the message through literally, no expansion at all.
+- **Approval tiers**, for incremental multi-step work (e.g. the parser build-out):
+  - **ROUTINE** - tests pass, no design choice made, no spec deviation: commit locally and continue without stopping for approval on that single step. **A batch is at most 3 steps** - present them together for review once that cap is reached, never more at a time. **No push until the batch itself is approved** - routine steps accumulate as local commits, not as things that reach the remote unreviewed.
+  - **STOP** - a design choice, a spec deviation, a failing test, or anything touching a hard-constraint area: stop immediately, before continuing to the next step, regardless of batch position.
+  - Every step report includes a plain-English summary: what changed, why, the risk level (low/medium/high), and which tests prove it - not just a diff dump.
+  - **Rule: no behavior change without a test.** If a change has no test demonstrating it, that's by itself a reason to treat the step as STOP, not ROUTINE.
