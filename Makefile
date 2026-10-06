@@ -52,7 +52,7 @@ QEMU_FLAGS   := -machine q35 -m 8G -cpu qemu64,+apic,+pdpe1gb \
                 -serial file:serial.log -monitor stdio -no-reboot \
                 -d int,cpu_reset -D qemu.log
 
-.PHONY: all image run debug clean limine stage-esp test-wx test-lexer test-lexer-asan
+.PHONY: all image run debug clean limine stage-esp test-wx test-lexer test-lexer-asan test-arena test-arena-asan
 
 all: $(KERNEL_ELF)
 
@@ -149,6 +149,21 @@ $(MANNAC_ASAN_BIN): $(MANNAC_SRCS) tools/mannac/lexer.h
 
 test-lexer-asan: $(MANNAC_ASAN_BIN)
 	@./tools/run_lexer_goldens.sh $(MANNAC_ASAN_BIN)
+
+# Arena allocator unit test (plain + ASan/UBSan). Not a golden-file test -
+# the arena has no stage output to diff, just invariants to assert.
+ARENA_TEST_DIR  := $(BUILD)/arena_test
+ARENA_TEST_SRCS := tools/mannac/arena.c tools/mannac/arena_test.c
+
+test-arena:
+	@mkdir -p $(ARENA_TEST_DIR)
+	clang -std=c11 -Wall -Wextra -O2 -g -o $(ARENA_TEST_DIR)/arena_test $(ARENA_TEST_SRCS)
+	@./tools/run_arena_test.sh $(ARENA_TEST_DIR)/arena_test
+
+test-arena-asan:
+	@mkdir -p $(ARENA_TEST_DIR)
+	clang -std=c11 -Wall -Wextra -g -fsanitize=address,undefined -o $(ARENA_TEST_DIR)/arena_test-asan $(ARENA_TEST_SRCS)
+	@./tools/run_arena_test.sh $(ARENA_TEST_DIR)/arena_test-asan
 
 clean:
 	rm -rf $(BUILD) $(IMAGE) serial.log qemu.log
