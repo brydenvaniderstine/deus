@@ -20,7 +20,7 @@ These are R&D leads under consideration, not roadmap. None are assumed anywhere 
 
 Multi-vendor accelerator support (M4 territory) is more tractable if Deus targets a standard IR rather than writing a bespoke backend per vendor. SPIR-V and MLIR are both candidates; neither is chosen.
 
-**Validates via:** a SPIR-V emission prototype — lower one trivial Manna/LiquidC kernel function to SPIR-V, confirm it round-trips through `spirv-val` and disassembles to sane IR. Until that prototype exists and is reviewed, no accelerator-interface code should assume SPIR-V/MLIR as the target IR.
+**Validates via:** a SPIR-V emission prototype — lower one trivial Manna kernel function to SPIR-V, confirm it round-trips through `spirv-val` and disassembles to sane IR. Until that prototype exists and is reviewed, no accelerator-interface code should assume SPIR-V/MLIR as the target IR.
 
 ### Tenstorrent as first native open-source hardware target
 
@@ -35,6 +35,31 @@ An LLM-based tool could emit a Manna AST directly for generated code, skipping t
 **Risk:** an AI-generated AST must never get a shortcut past verification. It has to pass through the exact same static pointer verifier and typed-IR checks (see the Milestone 2 blueprint) as hand-written, compiler-parsed source — no separate "trusted" ingestion path.
 
 **Validates via:** a sandboxed AST parsing test — hand-construct a deliberately malformed or adversarial AST (the kind a buggy or adversarial generator might produce) and confirm the verifier rejects it exactly as it would reject the equivalent malicious hand-written source. No AST-ingestion path ships until this test exists and passes.
+
+## "Better than Linux" scorecard
+
+A standing discipline, not a marketing claim: every item below is either something we can already point to in this repo, or a target we haven't measured yet. The two categories are never allowed to blur together.
+
+### Claims we can already demonstrate
+
+- **Memory safety via bounds-checked slices.** `arr[a..b]` carries its own bounds; the verifier proves accesses in range where it can and traps at runtime where it can't (docs/M2_PLAN.md).
+- **No undefined behavior.** Every Manna program has exactly one meaning, fails to compile, or traps — by design (docs/MANNA_PRINCIPLES.md principle 4), not by convention.
+- **Overflow traps, no silent wraparound.** Verified this session for both decimal and hex literals at the exact `2^64-1` boundary (`tests/lexer/err_overflow.mn`).
+- **W^X + NX enforced on the kernel image.** `.text` is R+X, `.rodata` is R+NX, `.data`/`.bss` is RW+NX, `EFER.NXE` set before the CR3 load, `CR0.WP` set after — verified via three deliberate-fault regression tests (`make test-wx`), each producing the exact predicted `#PF` error code.
+- **No CR3 reloads.** One CR3, loaded once, for the lifetime of the kernel (`kernel/arch/x86/paging.c`) — zero TLB flushes from context switching, by construction, not by tuning.
+
+Every one of these has a file, a test, or a log line backing it in this repo right now. That's the bar for staying in this list.
+
+### Metrics to benchmark against Linux (identical QEMU config, both sides)
+
+- **Context-switch latency** — the thing our zero-CR3-reload design is supposed to win on. Not benchmarked yet.
+- **IPC round-trip time** — needs the IPC design CLAUDE.md's M3 phase calls for; doesn't exist yet.
+- **Boot-to-shell time** — needs a shell; doesn't exist yet.
+- **Memory footprint** — kernel + minimal userspace, measured, not estimated.
+
+**Rule: no performance claim is made until benchmarked.** Not "should be faster," not "designed to be faster" presented as if it were a result — a number, measured on both sides under the same QEMU configuration, or no claim at all. This is the same discipline the cross-platform bridge section above already commits to for cloud-guest performance; this scorecard is where it applies to the bare-metal vs. Linux comparison specifically.
+
+**Benchmarks run no earlier than post-M3** — IPC and a shell are both prerequisites for every metric above except memory footprint. Until M3 lands, every item in this metrics list is a target, not a result, and must be presented as one.
 
 ## Non-goals (for now)
 
