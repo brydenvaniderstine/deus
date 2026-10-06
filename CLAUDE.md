@@ -60,6 +60,10 @@ If the memmap conflicts with these ranges, log it over serial. Then relocate the
 - ASIC/accelerator routing is long-term R&D. No architecture commitments yet.
 - Cloud note: under a hypervisor, nested paging (EPT/NPT) still adds 2D walks on top of our flat CR3. Plan virtio drivers.
 
+## Goals
+These are targets, not hard constraints (see above) - aspirational, not enforced by any build check today.
+- **Kernel scope: single-person-comprehensible, ~120k LOC max.** Kernel only - this budget excludes `mannac` (the Manna compiler, `tools/mannac/`) and the Wasm runtime (M3). If the kernel itself needs more than ~120k LOC to do its job, something has grown beyond what one person can hold in their head, which defeats the point of a small, auditable TCB.
+
 ## Toolchain & run
 - Compiler: `clang --target=x86_64-elf` (or `x86_64-elf-gcc`) plus `ld.lld`.
 - Bootloader: Limine (UEFI). Use the `limine.h` protocol with a base revision tag.
@@ -111,7 +115,7 @@ tools/       image build scripts
 **Acceptance:** `make run` boots. Serial log shows the memmap, the CR3 load, the calibration source and tick rate, and interleaved A/B output. No triple faults.
 
 ## Open risks (track every milestone; don't solve in M1)
-- **Spectre:** a single address space plus LBS leaks across sandboxes. A mitigation plan is required before networking.
+- **Spectre:** a single address space plus LBS leaks across sandboxes. A mitigation plan is required before networking. Candidate mitigations, not yet validated: compiler-emitted LFENCE serialization (at verifier-identified speculation gadgets - bounds checks being the obvious case) and coarsened timers inside sandboxes (denying the precision a timing side-channel needs). Neither is implemented or proven sufficient; both need real measurement before being trusted.
 - **TCB:** the compiler, verifier, and Wasm runtime all run in ring 0. One bug compromises everything. Fuzz them continuously.
 - **DMA bypasses LBS.** An IOMMU (VT-d) is required before untrusted drivers (see DMA protection above).
 - **Wasm bounds checks:** without guard pages, expect a 5–20% overhead.
