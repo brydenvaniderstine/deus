@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
+
+# Cancel a run still in flight when a newer push to the same branch lands.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # mannac host-side unit tests (plain Apple clang, no extra toolchain)
+  # plus the kernel compile check, in one job - a separate job per the
+  # same push is billed as a separate rounded-up minute each, which costs
+  # more than the few extra seconds of sharing a runner.
+  ci:
+    name: mannac tests (plain + ASan) + kernel compile check
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - run: make test-lexer
+      - run: make test-lexer-asan
+      - run: make test-arena
+      - run: make test-arena-asan
+      - run: make test-ast
+      - run: make test-ast-asan
+      - run: make test-parser-state
+      - run: make test-parser-state-asan
+
+      # Kernel compile check only (make all -> build/kernel.elf). Does not
+      # boot it - no Limine/QEMU/OVMF needed for that, just clang + ld.lld.
+      - name: Cache Homebrew downloads
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Caches/Homebrew
+          key: brew-lld-${{ runner.os }}-${{ runner.arch }}
+          restore-keys: |
+            brew-lld-${{ runner.os }}-
+      - name: Install ld.lld
+        run: |
+          brew install lld
+          echo "$(brew --prefix lld)/bin" >> "$GITHUB_PATH"
+      - run: make all
