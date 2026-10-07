@@ -67,7 +67,7 @@ These are targets, not hard constraints (see above) - aspirational, not enforced
 
 ## Toolchain & run
 - Compiler: `clang --target=x86_64-elf` (or `x86_64-elf-gcc`) plus `ld.lld`.
-- Bootloader: Limine (UEFI). Use the `limine.h` protocol with a base revision tag.
+- Bootloader: Limine (UEFI). Use the `limine.h` protocol with a base revision tag. Vendored (gitignored, not tracked) at pinned tag `v8.7.0-binary` (commit `aad3edd370955449717a334f0289dee10e2c5f01`) - `make all` fetches and verifies it automatically via `tools/fetch-limine.sh`, which fails loudly on a hash mismatch rather than building against an unverified checkout.
 - **Dev boot** (no disk image needed — QEMU's vvfat driver serves a staged directory directly):
   ```
   qemu-system-x86_64 -machine q35 -m 8G -cpu qemu64,+apic,+pdpe1gb \

@@ -56,11 +56,18 @@ QEMU_FLAGS   := -machine q35 -m 8G -cpu qemu64,+apic,+pdpe1gb \
 
 all: $(KERNEL_ELF)
 
-$(BUILD)/%.o: %.c
+# limine/ is gitignored (vendored, not tracked) - fetched on demand at the
+# pinned tag so a clean checkout (a fresh clone, or CI) can build without
+# a manual setup step first. See tools/fetch-limine.sh for the pinned
+# tag/hash.
+$(LIMINE_DIR)/limine.h:
+	./tools/fetch-limine.sh
+
+$(BUILD)/%.o: %.c | $(LIMINE_DIR)/limine.h
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -o $@ $<
 
-$(BUILD)/%.o: %.S
+$(BUILD)/%.o: %.S | $(LIMINE_DIR)/limine.h
 	@mkdir -p $(dir $@)
 	$(AS) $(ASFLAGS) -o $@ $<
 
