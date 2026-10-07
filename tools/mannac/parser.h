@@ -22,8 +22,21 @@
  * retrofitted here. */
 Expr *parser_parse_expression(ParserState *ps, Lexer *lx);
 
-/* Parses one '{' statement* '}' block. Step 6's `statement` recognizes
- * only let/return/break/continue (if/while/for/postfix_stmt/expr_stmt are
- * Step 7) - anything else in statement position is a clean "expected
- * statement, found X" (E0105), not a crash or a silently-accepted no-op. */
+/* Parses one '{' statement* '}' block. `statement` recognizes every
+ * alternative as of Step 7 (let/if/while/for/return/break/continue/
+ * postfix_stmt/expr_stmt) - anything else in statement position is a
+ * clean "expected statement, found X" (E0105), not a crash or a
+ * silently-accepted no-op. */
 Stmt *parser_parse_block(ParserState *ps, Lexer *lx);
+
+/* Parses a whole file: version_decl { top_level_item }. Returns false on
+ * any failure (a diagnostic is already recorded either way); *out_items
+ * is populated regardless only on success. There is no "Program"/
+ * TranslationUnit AST node - version_decl is a compile-time gate, not
+ * part of the semantic tree (docs/M2_PLAN.md's AST node types section
+ * has no such node), so the top-level items themselves, in order, are
+ * the whole program. Naming-convention enforcement and unknown-
+ * attribute/duplicate-name checks are explicitly NOT here - both are
+ * IR-stage errors (docs/M2_PLAN.md S7 items 7-8), requiring a symbol
+ * table this stage doesn't have. */
+bool parser_parse_file(ParserState *ps, Lexer *lx, NodeList *out_items);

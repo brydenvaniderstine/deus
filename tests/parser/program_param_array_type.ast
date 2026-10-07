@@ -1,0 +1,5 @@
+(function_decl@2:1-2:21 f
+  (params
+    (param@2:6-2:17 buf [4]u32))
+  (return_type unit)
+  (block@2:19-2:21))

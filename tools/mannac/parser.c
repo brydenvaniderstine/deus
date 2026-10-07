@@ -97,6 +97,17 @@ static const char *token_describe(Arena *a, Token t) {
  *   expr_stmt      ::= expression ';' ;
  *   type           ::= IDENT | '[' INTEGER ']' type | '[' ']' type ;
  *
+ *   translation_unit  ::= version_decl { top_level_item } ;
+ *   version_decl      ::= 'manna' IDENT ';' ;
+ *   top_level_item    ::= struct_decl | function_decl ;
+ *   attribute         ::= '[' IDENT ']' ;
+ *   struct_decl       ::= 'struct' IDENT '{' { field_decl } '}' ;
+ *   field_decl        ::= IDENT ':' type ',' ;
+ *   function_decl     ::= { attribute } 'fn' IDENT '(' [ param_list ] ')'
+ *                         [ '->' type ] block ;
+ *   param_list        ::= param { ',' param } ;
+ *   param             ::= IDENT ':' type ;
+ *
  * postfix_stmt/expr_stmt are disjoint by construction (starts_postfix),
  * not by a FIRST-set table: anything that can start a `postfix` tries
  * postfix_stmt; everything else (a bare unary prefix) tries expr_stmt.
@@ -153,6 +164,16 @@ static const char *token_describe(Arena *a, Token t) {
  *      "else { }" does.
  *      Counted by: parse_if_stmt's own hook - this is exactly why it
  *      needs one, the same reasoning as parse_unary and parse_type.
+ *
+ * Step 8 (translation_unit/top_level_item/struct_decl/function_decl)
+ * introduces no eighth cycle: top_level_item is a flat dispatch over a
+ * non-recursive loop in parser_parse_file (nothing calls translation_unit
+ * or top_level_item again), struct_decl's fields don't recurse into
+ * top_level_item, and function_decl's only recursive content is its body
+ * (a block, cycle 6 already) and its params'/return type (type, cycle 5
+ * already). Nothing new to hook, nothing new to empirically prove - this
+ * is itself the finding, confirmed by inspecting the call graph rather
+ * than assumed because nothing obviously recurses.
  *
  * Cycles 1-5 were proven at the cap in Steps 5-6 (tests/parser/depth_*);
  * cycle 6 (true if/while/for nesting) and cycle 7 (else-if chains) are
@@ -216,6 +237,14 @@ static Stmt *parse_while_stmt(Parser *p);
 static Stmt *parse_for_stmt(Parser *p);
 static Stmt *parse_for_init(Parser *p);
 static Stmt *parse_for_step(Parser *p);
+static bool  parse_version_decl(Parser *p);
+static Decl *parse_top_level_item(Parser *p);
+static Decl *parse_struct_decl(Parser *p);
+static Field *parse_field_decl(Parser *p);
+static bool  parse_attribute(Parser *p, const char **out_name);
+static Param *parse_param(Parser *p);
+static bool  parse_param_list(Parser *p, NodeList *out_params);
+static Decl *parse_function_decl(Parser *p);
 
 static Expr *parse_expression(Parser *p) {
     depth_enter(p->ps, token_span(p->cur));
@@ -1004,6 +1033,276 @@ static Stmt *parse_block(Parser *p) {
     return result;
 }
 
+/* version_decl ::= 'manna' IDENT ';' ;
+ * Required as the first non-comment line of every file (MANNA_PRINCIPLES.md
+ * Part 4 item 1) - a missing or wrong version is a compile error, not a
+ * warning. Three distinct mistakes, three distinct diagnostics: the
+ * 'manna' keyword altogether absent is the dedicated diag_missing_
+ * version_header (E0107, with a fix-it inserting "manna v0;\n" at 1:1);
+ * 'manna' present but malformed after that (no identifier, no ';') is the
+ * generic diag_expected (E0105); 'manna' present and well-formed but the
+ * wrong version is the dedicated diag_unsupported_version (E0106). No AST
+ * node: version_decl is a compile-time gate, not part of the semantic
+ * tree (docs/M2_PLAN.md's AST node types section has no such node). No
+ * depth hook: not recursive, called exactly once per file. */
+static bool parse_version_decl(Parser *p) {
+    if (p->cur.kind != TOK_KW_MANNA) {
+        parser_error(p->ps, diag_missing_version_header(p->ps->arena, token_span(p->cur)));
+        return false;
+    }
+    advance(p);
+
+    if (p->cur.kind != TOK_IDENT) {
+        parser_error(p->ps, diag_expected(p->ps->arena, token_span(p->cur), "version identifier",
+                                           token_describe(p->ps->arena, p->cur), "after 'manna'"));
+        return false;
+    }
+    Token version_tok = p->cur;
+    bool version_ok = version_tok.lexeme_len == 2 && version_tok.lexeme[0] == 'v' && version_tok.lexeme[1] == '0';
+    advance(p);
+
+    if (!version_ok) {
+        parser_error(p->ps, diag_unsupported_version(p->ps->arena, token_span(version_tok),
+                                                       version_tok.lexeme, version_tok.lexeme_len));
+        return false;
+    }
+
+    if (p->cur.kind != TOK_SEMI) {
+        parser_error(p->ps, diag_expected(p->ps->arena, token_span(p->cur), "';'",
+                                           token_describe(p->ps->arena, p->cur), "after version"));
+        return false;
+    }
+    advance(p);
+    return true;
+}
+
+/* field_decl ::= IDENT ':' type ',' ;
+ * The trailing comma is part of this production, not a separator between
+ * productions - every field needs one, including the last (no special-
+ * casing "last field, no comma"), per M2_PLAN.md's grammar as written. */
+static Field *parse_field_decl(Parser *p) {
+    if (p->cur.kind != TOK_IDENT) {
+        parser_error(p->ps, diag_expected(p->ps->arena, token_span(p->cur), "field name",
+                                           token_describe(p->ps->arena, p->cur), NULL));
+        return NULL;
+    }
+    Token name = p->cur;
+    advance(p);
+
+    if (p->cur.kind != TOK_COLON) {
+        parser_error(p->ps, diag_expected(p->ps->arena, token_span(p->cur), "':'",
+                                           token_describe(p->ps->arena, p->cur), "after field name"));
+        return NULL;
+    }
+    advance(p);
+
+    Type *type = parse_type(p);
+    if (!type) return NULL;
+
+    if (p->cur.kind != TOK_COMMA) {
+        parser_error(p->ps, diag_expected(p->ps->arena, token_span(p->cur), "','",
+                                           token_describe(p->ps->arena, p->cur), "after field type"));
+        return NULL;
+    }
+    Token comma = p->cur;
+    advance(p);
+
+    return field_new(p->ps->arena, span_merge(token_span(name), token_span(comma)), name.lexeme, name.lexeme_len, type);
+}
+
+/* struct_decl ::= 'struct' IDENT '{' { field_decl } '}' ;
+ * No depth hook: fields don't recurse into struct_decl or top_level_item,
+ * so this isn't on any cycle (same reasoning as parse_statement - a flat
+ * dispatch/loop, not a cycle of its own). */
+static Decl *parse_struct_decl(Parser *p) {
+    Token struct_tok = p->cur;
+    advance(p); /* consume 'struct' */
+
+    if (p->cur.kind != TOK_IDENT) {
+        parser_error(p->ps, diag_expected(p->ps->arena, token_span(p->cur), "identifier",
+                                           token_describe(p->ps->arena, p->cur), "after 'struct'"));
+        return NULL;
+    }
+    Token name = p->cur;
+    advance(p);
+
+    if (p->cur.kind != TOK_LBRACE) {
+        parser_error(p->ps, diag_expected(p->ps->arena, token_span(p->cur), "'{'",
+                                           token_describe(p->ps->arena, p->cur), "after struct name"));
+        return NULL;
+    }
+    advance(p);
+
+    NodeList fields;
+    node_list_init(&fields);
+    while (p->cur.kind != TOK_RBRACE && p->cur.kind != TOK_EOF) {
+        Field *f = parse_field_decl(p);
+        if (!f) return NULL;
+        node_list_push(p->ps->arena, &fields, f);
+    }
+
+    if (p->cur.kind != TOK_RBRACE) {
+        parser_error(p->ps, diag_expected(p->ps->arena, token_span(p->cur), "'}'",
+                                           token_describe(p->ps->arena, p->cur), "to close struct"));
+        return NULL;
+    }
+    Token rbrace = p->cur;
+    advance(p);
+
+    return decl_struct(p->ps->arena, span_merge(token_span(struct_tok), token_span(rbrace)),
+                        name.lexeme, name.lexeme_len, fields);
+}
+
+/* attribute ::= '[' IDENT ']' ; - the parser accepts any identifier here;
+ * whether it names a recognized attribute (e.g. "kernel_hook") is an
+ * IR-stage check (docs/M2_PLAN.md S7 item 8), not implemented here. */
+static bool parse_attribute(Parser *p, const char **out_name) {
+    advance(p); /* consume '[' */
+
+    if (p->cur.kind != TOK_IDENT) {
+        parser_error(p->ps, diag_expected(p->ps->arena, token_span(p->cur), "attribute name",
+                                           token_describe(p->ps->arena, p->cur), "after '['"));
+        return false;
+    }
+    Token name = p->cur;
+    advance(p);
+
+    if (p->cur.kind != TOK_RBRACKET) {
+        parser_error(p->ps, diag_expected(p->ps->arena, token_span(p->cur), "']'",
+                                           token_describe(p->ps->arena, p->cur), "after attribute name"));
+        return false;
+    }
+    advance(p);
+
+    *out_name = arena_sprintf(p->ps->arena, "%.*s", (int)name.lexeme_len, name.lexeme);
+    return true;
+}
+
+/* param ::= IDENT ':' type ; */
+static Param *parse_param(Parser *p) {
+    if (p->cur.kind != TOK_IDENT) {
+        parser_error(p->ps, diag_expected(p->ps->arena, token_span(p->cur), "parameter name",
+                                           token_describe(p->ps->arena, p->cur), NULL));
+        return NULL;
+    }
+    Token name = p->cur;
+    advance(p);
+
+    if (p->cur.kind != TOK_COLON) {
+        parser_error(p->ps, diag_expected(p->ps->arena, token_span(p->cur), "':'",
+                                           token_describe(p->ps->arena, p->cur), "after parameter name"));
+        return NULL;
+    }
+    advance(p);
+
+    Type *type = parse_type(p);
+    if (!type) return NULL;
+
+    return field_new(p->ps->arena, span_merge(token_span(name), type->span), name.lexeme, name.lexeme_len, type);
+}
+
+/* param_list ::= param { ',' param } ; - comma-SEPARATED, not self-
+ * terminated like field_decl: no trailing comma after the last param. */
+static bool parse_param_list(Parser *p, NodeList *out_params) {
+    node_list_init(out_params);
+    for (;;) {
+        Param *param = parse_param(p);
+        if (!param) return false;
+        node_list_push(p->ps->arena, out_params, param);
+        if (p->cur.kind == TOK_COMMA) {
+            advance(p);
+            continue;
+        }
+        break;
+    }
+    return true;
+}
+
+/* function_decl ::= { attribute } 'fn' IDENT '(' [ param_list ] ')'
+ *                   [ '->' type ] block ;
+ * Absent '-> type' means unit, stated explicitly in the AST (return_type
+ * = NULL), never inferred - function signatures are never one of the
+ * "inside a function body" contexts principle 15 permits inference in.
+ * No depth hook of its own: the only recursion here is the body, which
+ * is a block (already counted). */
+static Decl *parse_function_decl(Parser *p) {
+    Span start = token_span(p->cur); /* first attribute's '[', or 'fn' if none */
+
+    NodeList attributes;
+    node_list_init(&attributes);
+    while (p->cur.kind == TOK_LBRACKET) {
+        const char *attr_name;
+        if (!parse_attribute(p, &attr_name)) return NULL;
+        node_list_push(p->ps->arena, &attributes, (void *)attr_name);
+    }
+
+    if (p->cur.kind != TOK_KW_FN) {
+        parser_error(p->ps, diag_expected(p->ps->arena, token_span(p->cur), "'fn'",
+                                           token_describe(p->ps->arena, p->cur), NULL));
+        return NULL;
+    }
+    advance(p);
+
+    if (p->cur.kind != TOK_IDENT) {
+        parser_error(p->ps, diag_expected(p->ps->arena, token_span(p->cur), "identifier",
+                                           token_describe(p->ps->arena, p->cur), "after 'fn'"));
+        return NULL;
+    }
+    Token name = p->cur;
+    advance(p);
+
+    if (p->cur.kind != TOK_LPAREN) {
+        parser_error(p->ps, diag_expected(p->ps->arena, token_span(p->cur), "'('",
+                                           token_describe(p->ps->arena, p->cur), "after function name"));
+        return NULL;
+    }
+    advance(p);
+
+    NodeList params;
+    if (p->cur.kind == TOK_RPAREN) {
+        node_list_init(&params);
+    } else if (!parse_param_list(p, &params)) {
+        return NULL;
+    }
+
+    if (p->cur.kind != TOK_RPAREN) {
+        parser_error(p->ps, diag_expected(p->ps->arena, token_span(p->cur), "')'",
+                                           token_describe(p->ps->arena, p->cur), "after parameters"));
+        return NULL;
+    }
+    advance(p);
+
+    Type *return_type = NULL;
+    if (p->cur.kind == TOK_ARROW) {
+        advance(p);
+        return_type = parse_type(p);
+        if (!return_type) return NULL;
+    }
+
+    Stmt *body = parse_block(p);
+    if (!body) return NULL;
+
+    return decl_function(p->ps->arena, span_merge(start, body->span), attributes,
+                          name.lexeme, name.lexeme_len, params, return_type, body);
+}
+
+/* top_level_item ::= struct_decl | function_decl ;
+ * Flat dispatch, not a cycle of its own (same character as parse_
+ * statement) - the loop over top_level_item lives in parser_parse_file,
+ * not here, since there's no recursive "top_level_item inside a
+ * top_level_item" to speak of. */
+static Decl *parse_top_level_item(Parser *p) {
+    if (p->cur.kind == TOK_KW_STRUCT) {
+        return parse_struct_decl(p);
+    }
+    if (p->cur.kind == TOK_KW_FN || p->cur.kind == TOK_LBRACKET) {
+        return parse_function_decl(p);
+    }
+    parser_error(p->ps, diag_expected(p->ps->arena, token_span(p->cur), "struct or function declaration",
+                                       token_describe(p->ps->arena, p->cur), NULL));
+    return NULL;
+}
+
 Expr *parser_parse_expression(ParserState *ps, Lexer *lx) {
     Parser p;
     p.ps = ps;
@@ -1018,4 +1317,25 @@ Stmt *parser_parse_block(ParserState *ps, Lexer *lx) {
     p.lx = lx;
     advance(&p); /* prime the lookahead token */
     return parse_block(&p);
+}
+
+bool parser_parse_file(ParserState *ps, Lexer *lx, NodeList *out_items) {
+    Parser p;
+    p.ps = ps;
+    p.lx = lx;
+    advance(&p); /* prime the lookahead token */
+
+    if (!parse_version_decl(&p)) {
+        return false;
+    }
+
+    node_list_init(out_items);
+    while (p.cur.kind != TOK_EOF) {
+        Decl *item = parse_top_level_item(&p);
+        if (!item) {
+            return false;
+        }
+        node_list_push(ps->arena, out_items, item);
+    }
+    return true;
 }

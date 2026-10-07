@@ -1,0 +1,4 @@
+(struct_decl@2:1-5:2 Buf
+  (fields
+    (field@3:5-3:17 data []u32)
+    (field@4:5-4:19 fixed [4]u32)))

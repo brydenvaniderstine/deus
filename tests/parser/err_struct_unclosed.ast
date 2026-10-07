@@ -1,0 +1,5 @@
+ERRORS:
+1:33 expected '}' to close struct, found end of file
+
+TREE:
+(none)

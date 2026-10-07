@@ -1,0 +1,20 @@
+(struct_decl@2:1-5:2 Point
+  (fields
+    (field@3:5-3:12 x u32)
+    (field@4:5-4:12 y u32)))
+(function_decl@7:1-10:2 add
+  (attributes kernel_hook)
+  (params
+    (param@8:8-8:14 a u32)
+    (param@8:16-8:22 b u32))
+  (return_type u32)
+  (block@8:31-10:2
+    (return_stmt@9:5-9:18
+      (binary@9:12-9:17 +
+        (ident@9:12-9:13 a)
+        (ident@9:16-9:17 b)))))
+(function_decl@12:1-14:2 greet
+  (params)
+  (return_type unit)
+  (block@12:12-14:2
+    (return_stmt@13:5-13:12)))

@@ -1,0 +1,5 @@
+(function_decl@2:1-4:10 f
+  (attributes kernel_hook inline)
+  (params)
+  (return_type unit)
+  (block@4:8-4:10))

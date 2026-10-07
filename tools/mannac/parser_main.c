@@ -13,11 +13,15 @@
  * `manna` CLI, same role for the parser that main.c's lexer dump plays for
  * the lexer - never built into anything a user runs directly.
  *
- * Parses a single expression or a single block, not a whole file - full
- * top-level parsing doesn't exist until Step 8. Dispatch is a one-token
- * peek: a '{' first token means a block (Step 6: let/return/break/
- * continue), anything else means an expression (Steps 4-5) - no existing
- * expression golden test starts with '{', so this doesn't disturb them. */
+ * Parses an expression, a block, or a whole file, picked by a one-token
+ * peek: 'manna'/'struct'/'fn'/'[' means a whole file (Step 8 - these four
+ * are the only ways a translation_unit or a top_level_item can start, so
+ * this also correctly routes a file that's missing its version_decl -
+ * e.g. starting directly with 'struct' - into parser_parse_file, where
+ * the missing-version check actually lives); '{' means a block (Step 6-7:
+ * every statement kind); anything else means an expression (Steps 4-5).
+ * No existing block/expression golden test starts with any of the four
+ * file-mode tokens, so this doesn't disturb them. */
 
 static char *read_file(const char *path, size_t *out_len) {
     FILE *f = fopen(path, "rb");
@@ -67,13 +71,19 @@ int main(int argc, char **argv) {
     Lexer peek_lx;
     lexer_init(&peek_lx, src, len);
     Token first = lexer_next(&peek_lx);
-    bool is_block = (first.kind == TOK_LBRACE);
+    bool is_file = (first.kind == TOK_KW_MANNA || first.kind == TOK_KW_STRUCT ||
+                    first.kind == TOK_KW_FN || first.kind == TOK_LBRACKET);
+    bool is_block = !is_file && first.kind == TOK_LBRACE;
 
     Lexer lx;
     lexer_init(&lx, src, len);
     Expr *e = NULL;
     Stmt *s = NULL;
-    if (is_block) {
+    NodeList items = {0};
+    bool file_ok = false;
+    if (is_file) {
+        file_ok = parser_parse_file(&ps, &lx, &items);
+    } else if (is_block) {
         s = parser_parse_block(&ps, &lx);
     } else {
         e = parser_parse_expression(&ps, &lx);
@@ -84,13 +94,21 @@ int main(int argc, char **argv) {
         print_diags(&ps.diags);
         printf("\nTREE:\n");
     }
-    if (is_block ? (s != NULL) : (e != NULL)) {
-        if (is_block) {
+
+    bool have_tree = is_file ? file_ok : (is_block ? (s != NULL) : (e != NULL));
+    if (have_tree) {
+        if (is_file) {
+            for (size_t i = 0; i < items.len; i++) {
+                decl_print(stdout, (const Decl *)items.items[i]);
+                printf("\n");
+            }
+        } else if (is_block) {
             stmt_print(stdout, s, 0);
+            printf("\n");
         } else {
             expr_print(stdout, e, 0);
+            printf("\n");
         }
-        printf("\n");
     } else {
         printf("(none)\n");
     }

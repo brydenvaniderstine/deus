@@ -1,0 +1,5 @@
+ERRORS:
+1:28 expected ':' after field name, found 'u32'
+
+TREE:
+(none)

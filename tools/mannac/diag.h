@@ -76,3 +76,24 @@ Diagnostic diag_too_many_errors(Span span);
  * E0105 - the first non-dedicated parser diagnostic (E0101-E0104 above are
  * all dedicated; see docs/error_codes.md). */
 Diagnostic diag_expected(Arena *a, Span span, const char *expected, const char *found, const char *context);
+
+/* "unsupported manna version 'vN' (expected 'v0')" - raised by the file-
+ * level version_decl check (MANNA_PRINCIPLES.md Part 4 item 1: a missing
+ * or wrong version is a compile error) when 'manna' IS present and
+ * followed by a well-formed identifier, but that identifier isn't "v0".
+ * E0106. Three distinct version_decl mistakes, three distinct treatments:
+ * 'manna' keyword altogether absent is diag_missing_version_header
+ * (E0107, below); 'manna' present but malformed after that (no
+ * identifier, no ';') is the generic diag_expected (E0105) - a plain
+ * syntax error; 'manna' present and well-formed but the wrong version is
+ * this one (E0106). */
+Diagnostic diag_unsupported_version(Arena *a, Span span, const char *version, size_t version_len);
+
+/* "missing version header; add 'manna v0;' as the first line" - raised
+ * when the first token of the file isn't 'manna' at all (as opposed to
+ * 'manna' being present but malformed or wrong - see diag_unsupported_
+ * version above). Carries a fix-it: insert "manna v0;\n" at the very
+ * start of the file (1:1), regardless of where `found_span` (the
+ * diagnostic's own display location - wherever the file's actual first
+ * token is) points. E0107. */
+Diagnostic diag_missing_version_header(Arena *a, Span found_span);

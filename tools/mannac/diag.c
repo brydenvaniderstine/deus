@@ -87,3 +87,35 @@ Diagnostic diag_expected(Arena *a, Span span, const char *expected, const char *
     d.fix = NULL;
     return d;
 }
+
+Diagnostic diag_unsupported_version(Arena *a, Span span, const char *version, size_t version_len) {
+    const char *found = arena_sprintf(a, "'%.*s'", (int)version_len, version);
+    Diagnostic d = {0};
+    d.code = "E0106";
+    d.severity = DIAG_ERROR;
+    d.message = arena_sprintf(a, "unsupported manna version %s (expected 'v0')", found);
+    d.span = span;
+    d.expected = "'v0'";
+    d.found = found;
+    d.fix = NULL;
+    return d;
+}
+
+Diagnostic diag_missing_version_header(Arena *a, Span found_span) {
+    static const Span insert_at_start = {1, 1, 1, 1};
+
+    DiagFix *fix = arena_alloc(a, sizeof(DiagFix), alignof(DiagFix));
+    fix->title = "add version header";
+    fix->edit_span = insert_at_start;
+    fix->replacement_text = "manna v0;\n";
+
+    Diagnostic d = {0};
+    d.code = "E0107";
+    d.severity = DIAG_ERROR;
+    d.message = "missing version header; add 'manna v0;' as the first line";
+    d.span = found_span;
+    d.expected = "'manna v0;'";
+    d.found = NULL;
+    d.fix = fix;
+    return d;
+}
