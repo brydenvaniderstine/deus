@@ -55,7 +55,7 @@ Diagnostic diag_chained_comparison(Span second_operator_span);
  * reinvented. */
 Diagnostic diag_assignment_as_condition(Arena *a, Span equals_span);
 
-/* "maximum nesting depth (256) exceeded" - raised by parser_state.h's
+/* "maximum nesting depth (256 units) exceeded" - raised by parser_state.h's
  * depth_enter() when a recursive parse path goes past MAX_NESTING_DEPTH. */
 Diagnostic diag_max_depth_exceeded(Span span);
 

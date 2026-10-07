@@ -41,7 +41,7 @@ static void test_depth_bound(void) {
     if (setjmp(ps.fatal_target) != 0) {
         assert(ps.diags.len == 1);
         assert(strcmp(ps.diags.items[0].code, "E0103") == 0);
-        assert(strcmp(ps.diags.items[0].message, "maximum nesting depth (256) exceeded") == 0);
+        assert(strcmp(ps.diags.items[0].message, "maximum nesting depth (256 units) exceeded") == 0);
         printf("PASS: depth bound - 257th depth_enter longjmps with the right diagnostic\n");
         parser_state_destroy(&ps);
         return;

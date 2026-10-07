@@ -54,7 +54,7 @@ Diagnostic diag_max_depth_exceeded(Span span) {
     Diagnostic d = {0};
     d.code = "E0103";
     d.severity = DIAG_ERROR;
-    d.message = "maximum nesting depth (256) exceeded";
+    d.message = "maximum nesting depth (256 units) exceeded";
     d.span = span;
     d.expected = NULL;
     d.found = NULL;
