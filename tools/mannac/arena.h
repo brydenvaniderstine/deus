@@ -70,3 +70,10 @@ void arena_set_overflow_target(Arena *a, jmp_buf *target);
 
 void  *arena_alloc(Arena *a, size_t size, size_t align);
 size_t arena_used(const Arena *a);
+
+/* Formats into an arena-allocated, exactly-sized, NUL-terminated buffer -
+ * printf-family allocation with the same lifetime/no-free rules as every
+ * other arena_alloc result. Subject to the same HARD RULE above: only call
+ * this between a ParserState's setjmp and completion, same as any other
+ * arena_alloc. */
+const char *arena_sprintf(Arena *a, const char *fmt, ...);

@@ -1,0 +1,5 @@
+(field_access@1:1-1:9
+  (index@1:1-1:7
+    (field_access@1:1-1:4
+      (ident@1:1-1:2 a) b)
+    (number@1:5-1:6 0)) c)

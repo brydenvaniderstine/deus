@@ -13,9 +13,8 @@ Updated at every tag (`docs/README.md`'s consistency check runs at the same time
 - **Parser Step 1**: arena allocator - hard cap enforced via `longjmp`, zero allocation past the cap, documented ASan intra-arena-overflow limitation. `make test-arena`/`-asan`.
 - **Parser Step 2**: AST node types, constructors, S-expression pretty-printer - verified byte-for-byte against `M2_PLAN.md`'s own documented example. `make test-ast`/`-asan`.
 - **Parser Step 3**: diagnostics infrastructure (`Diagnostic`/`DiagList`, the four dedicated messages) and the shared `ParserState` - depth counter, error cap, and one unified `longjmp` escape point for all three "abandon this file" conditions. `docs/error_codes.md` registry started (E01xx). `make test-parser-state`/`-asan`.
+- **Parser Step 4**: primary + postfix expressions (`tools/mannac/parser.c`), `make test-parser`/`-asan` wired up for real against `tests/parser/*.mn` golden ASTs (24 cases, 100% line coverage on `parser.c`). Depth-bound hooks are in every parse function from this step onward. Added the generic `diag_expected` diagnostic (E0105) for every non-dedicated syntax error.
 
 ## Next
 
-**Parser Step 4**: primary + postfix expressions, with `make test-parser` wired up for real output for the first time. Depth-bound and error-recovery hooks go into every parse function from this step onward, per the approved plan - not retrofitted later.
-
-Remaining steps after that (approved plan, `docs/M2_PLAN.md`'s working log / session history): full expression precedence chain → simple statements → `postfix_stmt`/`expr_tail` dispatch + `if`/`while`/`for` (where the two dedicated diagnostics get exercised for real) → top-level items (`struct`/`function`/`version_decl`) → dedicated depth-bound tests → dedicated error-recovery tests → determinism test → libFuzzer harness.
+Remaining parser steps (approved plan, `docs/M2_PLAN.md`'s working log / session history): full expression precedence chain (Step 5) → simple statements (Step 6) → `postfix_stmt`/`expr_tail` dispatch + `if`/`while`/`for` (where the two dedicated diagnostics get exercised for real, Step 7) → top-level items (`struct`/`function`/`version_decl`, Step 8) → dedicated depth-bound tests (Step 9) → dedicated error-recovery tests (Step 10) → determinism test (Step 11) → libFuzzer harness (Step 12).

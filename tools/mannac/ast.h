@@ -178,3 +178,9 @@ Stmt *stmt_block(Arena *a, Span span, NodeList stmts);
 /* Writes the canonical S-expression dump (docs/M2_PLAN.md "Golden test
  * format for ASTs") to `out`, no trailing newline. */
 void decl_print(FILE *out, const Decl *d);
+
+/* Same dump format, for a standalone expression - used directly by the
+ * parser's own golden tests (tests/parser/), which exercise expression
+ * parsing before full declarations exist to wrap one in. `depth` is the
+ * starting indent level (0 for a top-level call). */
+void expr_print(FILE *out, const Expr *e, int depth);

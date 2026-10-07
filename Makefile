@@ -52,7 +52,7 @@ QEMU_FLAGS   := -machine q35 -m 8G -cpu qemu64,+apic,+pdpe1gb \
                 -serial file:serial.log -monitor stdio -no-reboot \
                 -d int,cpu_reset -D qemu.log
 
-.PHONY: all image run debug clean limine stage-esp test-wx test-lexer test-lexer-asan test-arena test-arena-asan test-ast test-ast-asan test-parser-state test-parser-state-asan coverage
+.PHONY: all image run debug clean limine stage-esp test-wx test-lexer test-lexer-asan test-arena test-arena-asan test-ast test-ast-asan test-parser-state test-parser-state-asan test-parser test-parser-asan coverage
 
 all: $(KERNEL_ELF)
 
@@ -204,6 +204,27 @@ test-parser-state-asan:
 	clang -std=c11 -Wall -Wextra -g -fsanitize=address,undefined -o $(PARSER_STATE_TEST_DIR)/parser_state_test-asan $(PARSER_STATE_TEST_SRCS)
 	$(PARSER_STATE_TEST_DIR)/parser_state_test-asan
 
+# Parser golden tests (plain + ASan/UBSan) - docs/M2_PLAN.md's "Golden test
+# format for ASTs". parser_dump is a test-only harness (tools/mannac/
+# parser_main.c), not the real `manna` CLI, same role here that main.c's
+# lexer dump plays for the lexer. Step 4 covers primary + postfix
+# expressions only - parser_dump parses a single expression, not a whole
+# file (full top-level parsing doesn't exist until Step 8).
+PARSER_DUMP_DIR  := $(BUILD)/parser_dump
+PARSER_DUMP_SRCS := tools/mannac/arena.c tools/mannac/ast.c tools/mannac/diag.c \
+                     tools/mannac/parser_state.c tools/mannac/parser.c \
+                     tools/mannac/lexer.c tools/mannac/parser_main.c
+
+test-parser:
+	@mkdir -p $(PARSER_DUMP_DIR)
+	clang -std=c11 -Wall -Wextra -O2 -g -o $(PARSER_DUMP_DIR)/parser_dump $(PARSER_DUMP_SRCS)
+	@./tools/run_parser_tests.sh $(PARSER_DUMP_DIR)/parser_dump
+
+test-parser-asan:
+	@mkdir -p $(PARSER_DUMP_DIR)
+	clang -std=c11 -Wall -Wextra -g -fsanitize=address,undefined -o $(PARSER_DUMP_DIR)/parser_dump-asan $(PARSER_DUMP_SRCS)
+	@./tools/run_parser_tests.sh $(PARSER_DUMP_DIR)/parser_dump-asan
+
 # Per-file coverage for mannac (lexer, arena, ast, diag, parser_state),
 # via clang's source-based coverage (llvm-profdata/llvm-cov, bundled with
 # Xcode - no brew dependency). Rebuilds each test binary instrumented
@@ -225,12 +246,15 @@ coverage:
 	LLVM_PROFILE_FILE=$(COVERAGE_DIR)/ast-%p.profraw $(COVERAGE_DIR)/ast_test
 	clang -std=c11 -Wall -Wextra -g $(COVERAGE_FLAGS) -o $(COVERAGE_DIR)/parser_state_test $(PARSER_STATE_TEST_SRCS)
 	LLVM_PROFILE_FILE=$(COVERAGE_DIR)/parser_state-%p.profraw $(COVERAGE_DIR)/parser_state_test
+	clang -std=c11 -Wall -Wextra -g $(COVERAGE_FLAGS) -o $(COVERAGE_DIR)/parser_dump $(PARSER_DUMP_SRCS)
+	LLVM_PROFILE_FILE=$(COVERAGE_DIR)/parser-%p.profraw ./tools/run_parser_tests.sh $(COVERAGE_DIR)/parser_dump
 	xcrun llvm-profdata merge -sparse $(COVERAGE_DIR)/*.profraw -o $(COVERAGE_DIR)/merged.profdata
 	xcrun llvm-cov report \
 		$(COVERAGE_DIR)/mannac \
 		-object $(COVERAGE_DIR)/arena_test \
 		-object $(COVERAGE_DIR)/ast_test \
 		-object $(COVERAGE_DIR)/parser_state_test \
+		-object $(COVERAGE_DIR)/parser_dump \
 		-instr-profile=$(COVERAGE_DIR)/merged.profdata \
 		-ignore-filename-regex='(_test\.c|main\.c)$$'
 

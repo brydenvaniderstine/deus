@@ -1,3 +1,4 @@
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include "arena.h"
@@ -63,4 +64,17 @@ void *arena_alloc(Arena *a, size_t size, size_t align) {
 
 size_t arena_used(const Arena *a) {
     return a->used;
+}
+
+const char *arena_sprintf(Arena *a, const char *fmt, ...) {
+    va_list args, args_copy;
+    va_start(args, fmt);
+    va_copy(args_copy, args);
+    int n = vsnprintf(NULL, 0, fmt, args_copy);
+    va_end(args_copy);
+
+    char *buf = arena_alloc(a, (size_t)n + 1, 1);
+    vsnprintf(buf, (size_t)n + 1, fmt, args);
+    va_end(args);
+    return buf;
 }

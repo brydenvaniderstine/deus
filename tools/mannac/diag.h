@@ -63,3 +63,16 @@ Diagnostic diag_max_depth_exceeded(Span span);
  * once the error count reaches MAX_ERRORS; a safety valve against
  * cascading noise on badly malformed input, not a precision mechanism. */
 Diagnostic diag_too_many_errors(Span span);
+
+/* Generic "expected X, found Y" - every parse error that isn't one of the
+ * two dedicated messages above goes through this one constructor, so the
+ * message format (docs/M2_PLAN.md's own golden-file example: "expected
+ * ';' after expression, found '}'") lives in one place. `expected` is a
+ * bare syntactic-category name ("expression") or a quoted literal
+ * ("')'") exactly as the caller wants it to read; `found` is normally
+ * built by the caller via a token-describe helper. `context` is an
+ * optional "after ..." clause (NULL omits it entirely, e.g. for primary's
+ * own "expected expression, found 'X'" with no "after" clause at all).
+ * E0105 - the first non-dedicated parser diagnostic (E0101-E0104 above are
+ * all dedicated; see docs/error_codes.md). */
+Diagnostic diag_expected(Arena *a, Span span, const char *expected, const char *found, const char *context);

@@ -73,3 +73,17 @@ Diagnostic diag_too_many_errors(Span span) {
     d.fix = NULL;
     return d;
 }
+
+Diagnostic diag_expected(Arena *a, Span span, const char *expected, const char *found, const char *context) {
+    Diagnostic d = {0};
+    d.code = "E0105";
+    d.severity = DIAG_ERROR;
+    d.message = context
+        ? arena_sprintf(a, "expected %s %s, found %s", expected, context, found)
+        : arena_sprintf(a, "expected %s, found %s", expected, found);
+    d.span = span;
+    d.expected = expected;
+    d.found = found;
+    d.fix = NULL;
+    return d;
+}

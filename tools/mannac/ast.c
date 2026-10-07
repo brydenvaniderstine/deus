@@ -328,9 +328,7 @@ static void print_span(FILE *out, const char *kind, Span sp) {
     fprintf(out, "(%s@%d:%d-%d:%d", kind, sp.start_line, sp.start_col, sp.end_line, sp.end_col);
 }
 
-static void expr_print(FILE *out, const Expr *e, int depth);
-
-static void expr_print(FILE *out, const Expr *e, int depth) {
+void expr_print(FILE *out, const Expr *e, int depth) {
     switch (e->kind) {
         case EXPR_NUMBER:
             print_span(out, "number", e->span);
