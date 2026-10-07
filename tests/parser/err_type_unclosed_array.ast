@@ -1,0 +1,5 @@
+ERRORS:
+1:13 expected ']' after array size, found '='
+
+TREE:
+(none)

@@ -394,9 +394,7 @@ void expr_print(FILE *out, const Expr *e, int depth) {
     }
 }
 
-static void stmt_print(FILE *out, const Stmt *s, int depth);
-
-static void stmt_print(FILE *out, const Stmt *s, int depth) {
+void stmt_print(FILE *out, const Stmt *s, int depth) {
     switch (s->kind) {
         case STMT_LET:
             print_span(out, "let_stmt", s->span);

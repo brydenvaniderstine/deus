@@ -184,3 +184,8 @@ void decl_print(FILE *out, const Decl *d);
  * parsing before full declarations exist to wrap one in. `depth` is the
  * starting indent level (0 for a top-level call). */
 void expr_print(FILE *out, const Expr *e, int depth);
+
+/* Same dump format, for a standalone statement/block - used directly by
+ * the parser's own golden tests, which exercise statement parsing (Step
+ * 6 onward) before full declarations exist to wrap one in. */
+void stmt_print(FILE *out, const Stmt *s, int depth);

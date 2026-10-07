@@ -1,0 +1,5 @@
+ERRORS:
+1:12 expected ';' after 'continue', found '}'
+
+TREE:
+(none)

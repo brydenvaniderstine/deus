@@ -1,0 +1,5 @@
+ERRORS:
+1:7 expected identifier after 'let', found '='
+
+TREE:
+(none)

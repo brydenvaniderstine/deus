@@ -1,3 +1,4 @@
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include "arena.h"
@@ -12,8 +13,11 @@
  * `manna` CLI, same role for the parser that main.c's lexer dump plays for
  * the lexer - never built into anything a user runs directly.
  *
- * Step 4 parses a single expression (parser_parse_expression), not a
- * whole file - full top-level parsing doesn't exist until Step 8. */
+ * Parses a single expression or a single block, not a whole file - full
+ * top-level parsing doesn't exist until Step 8. Dispatch is a one-token
+ * peek: a '{' first token means a block (Step 6: let/return/break/
+ * continue), anything else means an expression (Steps 4-5) - no existing
+ * expression golden test starts with '{', so this doesn't disturb them. */
 
 static char *read_file(const char *path, size_t *out_len) {
     FILE *f = fopen(path, "rb");
@@ -60,17 +64,32 @@ int main(int argc, char **argv) {
         return 0;
     }
 
+    Lexer peek_lx;
+    lexer_init(&peek_lx, src, len);
+    Token first = lexer_next(&peek_lx);
+    bool is_block = (first.kind == TOK_LBRACE);
+
     Lexer lx;
     lexer_init(&lx, src, len);
-    Expr *e = parser_parse_expression(&ps, &lx);
+    Expr *e = NULL;
+    Stmt *s = NULL;
+    if (is_block) {
+        s = parser_parse_block(&ps, &lx);
+    } else {
+        e = parser_parse_expression(&ps, &lx);
+    }
 
     if (ps.diags.len > 0) {
         printf("ERRORS:\n");
         print_diags(&ps.diags);
         printf("\nTREE:\n");
     }
-    if (e) {
-        expr_print(stdout, e, 0);
+    if (is_block ? (s != NULL) : (e != NULL)) {
+        if (is_block) {
+            stmt_print(stdout, s, 0);
+        } else {
+            expr_print(stdout, e, 0);
+        }
         printf("\n");
     } else {
         printf("(none)\n");

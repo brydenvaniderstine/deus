@@ -1,0 +1,5 @@
+ERRORS:
+1:11 expected array size or ']', found 'u32'
+
+TREE:
+(none)
