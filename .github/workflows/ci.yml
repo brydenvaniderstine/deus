@@ -31,6 +31,8 @@ jobs:
       - run: make test-ast-asan
       - run: make test-parser-state
       - run: make test-parser-state-asan
+      - run: make test-parser
+      - run: make test-parser-asan
 
       # Kernel compile check only (make all -> build/kernel.elf). Does not
       # boot it - no Limine/QEMU/OVMF needed for that, just clang + ld.lld.
