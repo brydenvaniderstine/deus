@@ -181,7 +181,10 @@ static const char *token_describe(Arena *a, Token t) {
  * cap below the single-construct 255/256 figures from Steps 5-6, since
  * each level here costs more than 1 depth unit (block's hook, and for
  * cycle 6 also if_stmt's), the same "shared budget" effect Step 6 found
- * for nested array types inside a block.
+ * for nested array types inside a block. docs/M2_PLAN.md's "Depth-bound
+ * proof summary" table (Step 9) consolidates every cycle, counted
+ * function, and proven limit in one place - that table, not a restatement
+ * here, is the place to look for the full picture across all of them.
  *
  * Any FUTURE recursive parse function must preserve this invariant:
  * either it sits on a cycle that already passes through parse_expression
