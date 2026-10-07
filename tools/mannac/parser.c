@@ -67,13 +67,23 @@ static const char *token_describe(Arena *a, Token t) {
  *                     ;
  *   arg_list       ::= expression { ',' expression } ;
  *
- * Every one of these gets depth_enter/depth_exit (parser_state.h: "every
- * recursive parse function, no exceptions") - including arg_list and
- * index_or_slice, which don't loop themselves but do sit in the mutual-
- * recursion chain (primary -> arg_list -> expression -> postfix ->
- * primary -> ...) that the depth bound exists to cap. parse_expression is
- * Step 4's placeholder for the full precedence-climbing chain Step 5
- * adds; its body is the only thing that step changes.
+ * Depth bound: parse_expression alone carries depth_enter/depth_exit. It
+ * is the only function on every cycle through this grammar (primary's
+ * '(' expression ')', primary -> arg_list -> expression for call args,
+ * postfix -> index_or_slice -> expression for index/slice bounds all
+ * re-enter the grammar AT parse_expression), so one hook there bounds all
+ * of them. An earlier version of this file also put depth_enter/depth_exit
+ * directly in primary, postfix, arg_list, and index_or_slice - redundant
+ * given the above, and worse than redundant in practice: it meant one
+ * level of, say, paren-nesting cost 3 depth units instead of 1 (parse_
+ * expression's own hook plus postfix's and primary's on the way back down
+ * to it), capping real nesting at ~85 levels instead of the intended 256.
+ * Measured via tests/parser/depth_*, caught before it shipped as part of
+ * Step 5's own depth-bound proof. Removed here, fixed first, so Step 5's
+ * precedence-chain commit lands on a correctly-calibrated base.
+ * parse_expression is Step 4's placeholder for the full precedence-
+ * climbing chain Step 5 adds; its body is the only thing that step
+ * changes.
  *
  * On a failure that isn't locally recoverable, the function that hit it
  * records a diagnostic (parser_error - itself possibly fatal if this is
@@ -96,12 +106,10 @@ static Expr *parse_expression(Parser *p) {
 }
 
 static bool parse_arg_list(Parser *p, NodeList *out_args) {
-    depth_enter(p->ps, token_span(p->cur));
     node_list_init(out_args);
     for (;;) {
         Expr *arg = parse_expression(p);
         if (!arg) {
-            depth_exit(p->ps);
             return false;
         }
         node_list_push(p->ps->arena, out_args, arg);
@@ -111,15 +119,12 @@ static bool parse_arg_list(Parser *p, NodeList *out_args) {
         }
         break;
     }
-    depth_exit(p->ps);
     return true;
 }
 
 static bool parse_index_or_slice(Parser *p, Expr **out_lo, Expr **out_hi) {
-    depth_enter(p->ps, token_span(p->cur));
     Expr *lo = parse_expression(p);
     if (!lo) {
-        depth_exit(p->ps);
         return false;
     }
     Expr *hi = NULL;
@@ -127,18 +132,15 @@ static bool parse_index_or_slice(Parser *p, Expr **out_lo, Expr **out_hi) {
         advance(p);
         hi = parse_expression(p);
         if (!hi) {
-            depth_exit(p->ps);
             return false;
         }
     }
     *out_lo = lo;
     *out_hi = hi;
-    depth_exit(p->ps);
     return true;
 }
 
 static Expr *parse_primary(Parser *p) {
-    depth_enter(p->ps, token_span(p->cur));
     Expr *result = NULL;
     Token t = p->cur;
 
@@ -205,15 +207,12 @@ static Expr *parse_primary(Parser *p) {
             break;
     }
 
-    depth_exit(p->ps);
     return result;
 }
 
 static Expr *parse_postfix(Parser *p) {
-    depth_enter(p->ps, token_span(p->cur));
     Expr *base = parse_primary(p);
     if (!base) {
-        depth_exit(p->ps);
         return NULL;
     }
 
@@ -223,7 +222,6 @@ static Expr *parse_postfix(Parser *p) {
             if (p->cur.kind != TOK_IDENT) {
                 parser_error(p->ps, diag_expected(p->ps->arena, token_span(p->cur), "field name",
                                                    token_describe(p->ps->arena, p->cur), "after '.'"));
-                depth_exit(p->ps);
                 return NULL;
             }
             Token name = p->cur;
@@ -234,13 +232,11 @@ static Expr *parse_postfix(Parser *p) {
             advance(p);
             Expr *lo, *hi;
             if (!parse_index_or_slice(p, &lo, &hi)) {
-                depth_exit(p->ps);
                 return NULL;
             }
             if (p->cur.kind != TOK_RBRACKET) {
                 parser_error(p->ps, diag_expected(p->ps->arena, token_span(p->cur), "']'",
                                                    token_describe(p->ps->arena, p->cur), "after index"));
-                depth_exit(p->ps);
                 return NULL;
             }
             Token rbracket = p->cur;
@@ -253,7 +249,6 @@ static Expr *parse_postfix(Parser *p) {
         }
     }
 
-    depth_exit(p->ps);
     return base;
 }
 
