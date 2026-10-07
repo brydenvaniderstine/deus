@@ -52,7 +52,7 @@ QEMU_FLAGS   := -machine q35 -m 8G -cpu qemu64,+apic,+pdpe1gb \
                 -serial file:serial.log -monitor stdio -no-reboot \
                 -d int,cpu_reset -D qemu.log
 
-.PHONY: all image run debug clean limine stage-esp test-wx test-lexer test-lexer-asan test-arena test-arena-asan test-ast test-ast-asan test-parser-state test-parser-state-asan
+.PHONY: all image run debug clean limine stage-esp test-wx test-lexer test-lexer-asan test-arena test-arena-asan test-ast test-ast-asan test-parser-state test-parser-state-asan coverage
 
 all: $(KERNEL_ELF)
 
@@ -196,6 +196,36 @@ test-parser-state-asan:
 	@mkdir -p $(PARSER_STATE_TEST_DIR)
 	clang -std=c11 -Wall -Wextra -g -fsanitize=address,undefined -o $(PARSER_STATE_TEST_DIR)/parser_state_test-asan $(PARSER_STATE_TEST_SRCS)
 	$(PARSER_STATE_TEST_DIR)/parser_state_test-asan
+
+# Per-file coverage for mannac (lexer, arena, ast, diag, parser_state),
+# via clang's source-based coverage (llvm-profdata/llvm-cov, bundled with
+# Xcode - no brew dependency). Rebuilds each test binary instrumented
+# (-fprofile-instr-generate -fcoverage-mapping), runs it with a per-process
+# profile filename (%p) since several tests exec their binary more than
+# once, merges every .profraw into one profile, then reports library
+# source files only - *_test.c and main.c are excluded since their own
+# coverage isn't the question `make coverage` is answering.
+COVERAGE_DIR   := $(BUILD)/coverage
+COVERAGE_FLAGS := -fprofile-instr-generate -fcoverage-mapping
+
+coverage:
+	@mkdir -p $(COVERAGE_DIR)
+	clang -std=c11 -Wall -Wextra -g $(COVERAGE_FLAGS) -o $(COVERAGE_DIR)/mannac $(MANNAC_SRCS)
+	LLVM_PROFILE_FILE=$(COVERAGE_DIR)/lexer-%p.profraw ./tools/run_lexer_goldens.sh $(COVERAGE_DIR)/mannac
+	clang -std=c11 -Wall -Wextra -g $(COVERAGE_FLAGS) -o $(COVERAGE_DIR)/arena_test $(ARENA_TEST_SRCS)
+	LLVM_PROFILE_FILE=$(COVERAGE_DIR)/arena-%p.profraw ./tools/run_arena_test.sh $(COVERAGE_DIR)/arena_test
+	clang -std=c11 -Wall -Wextra -g $(COVERAGE_FLAGS) -o $(COVERAGE_DIR)/ast_test $(AST_TEST_SRCS)
+	LLVM_PROFILE_FILE=$(COVERAGE_DIR)/ast-%p.profraw $(COVERAGE_DIR)/ast_test
+	clang -std=c11 -Wall -Wextra -g $(COVERAGE_FLAGS) -o $(COVERAGE_DIR)/parser_state_test $(PARSER_STATE_TEST_SRCS)
+	LLVM_PROFILE_FILE=$(COVERAGE_DIR)/parser_state-%p.profraw $(COVERAGE_DIR)/parser_state_test
+	xcrun llvm-profdata merge -sparse $(COVERAGE_DIR)/*.profraw -o $(COVERAGE_DIR)/merged.profdata
+	xcrun llvm-cov report \
+		$(COVERAGE_DIR)/mannac \
+		-object $(COVERAGE_DIR)/arena_test \
+		-object $(COVERAGE_DIR)/ast_test \
+		-object $(COVERAGE_DIR)/parser_state_test \
+		-instr-profile=$(COVERAGE_DIR)/merged.profdata \
+		-ignore-filename-regex='(_test\.c|main\.c)$$'
 
 clean:
 	rm -rf $(BUILD) $(IMAGE) serial.log qemu.log
