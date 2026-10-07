@@ -2,4 +2,7 @@ ERRORS:
 1:24 expected ']' after attribute name, found 'fn'
 
 TREE:
-(none)
+(function_decl@1:24-1:35 foo
+  (params)
+  (return_type unit)
+  (block@1:33-1:35))

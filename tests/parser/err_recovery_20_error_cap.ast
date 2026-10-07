@@ -1,0 +1,25 @@
+ERRORS:
+1:11 expected expression, found ';'
+1:21 expected expression, found ';'
+1:31 expected expression, found ';'
+1:41 expected expression, found ';'
+1:51 expected expression, found ';'
+1:61 expected expression, found ';'
+1:71 expected expression, found ';'
+1:81 expected expression, found ';'
+1:91 expected expression, found ';'
+1:101 expected expression, found ';'
+1:111 expected expression, found ';'
+1:121 expected expression, found ';'
+1:131 expected expression, found ';'
+1:141 expected expression, found ';'
+1:151 expected expression, found ';'
+1:161 expected expression, found ';'
+1:171 expected expression, found ';'
+1:181 expected expression, found ';'
+1:191 expected expression, found ';'
+1:201 expected expression, found ';'
+1:201 too many errors, stopping
+
+TREE:
+(none)

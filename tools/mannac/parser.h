@@ -13,30 +13,50 @@
  * itself) behind parser_parse_block - the statement-level counterpart,
  * reused as-is once if/while/for/postfix_stmt/expr_stmt (Step 7) and
  * top-level items (Step 8) extend what `statement` and `type` recognize.
+ * Step 10 adds panic-mode error recovery at the statement and top-level-
+ * item granularities (see parser.c) - an expression is not one of those
+ * granularities, so this function itself still has no recovery of its
+ * own: a malformed expression still returns NULL here exactly as before,
+ * with the nearest enclosing statement or top-level item being where
+ * recovery actually happens (it drops that whole statement/item, not
+ * just the bad sub-expression within it).
  *
  * Returns NULL on a parse failure that cannot be locally recovered from (a
  * diagnostic is already recorded in ps->diags either way, unless the
  * failure was itself a longjmp to ps->fatal_target, in which case control
- * never returns here at all). There is no resynchronization or
- * placeholder-node logic yet - real error recovery is Step 10's job, not
- * retrofitted here. */
+ * never returns here at all). */
 Expr *parser_parse_expression(ParserState *ps, Lexer *lx);
 
 /* Parses one '{' statement* '}' block. `statement` recognizes every
  * alternative as of Step 7 (let/if/while/for/return/break/continue/
  * postfix_stmt/expr_stmt) - anything else in statement position is a
  * clean "expected statement, found X" (E0105), not a crash or a
- * silently-accepted no-op. */
+ * silently-accepted no-op. As of Step 10, a malformed statement doesn't
+ * abort the whole block: it's dropped (no placeholder node) and parsing
+ * resumes at the next synchronization point (';', '}', EOF, or a top-
+ * level-start keyword) - see parse_block/recover_to_statement_boundary in
+ * parser.c. This function still returns NULL if the block's own
+ * delimiters are unrecoverably missing (no opening '{', or EOF reached
+ * before the closing '}') - recovering from a missing/mismatched
+ * delimiter itself is a different problem than recovering from bad
+ * content between two well-placed ones, and isn't handled here. */
 Stmt *parser_parse_block(ParserState *ps, Lexer *lx);
 
-/* Parses a whole file: version_decl { top_level_item }. Returns false on
- * any failure (a diagnostic is already recorded either way); *out_items
- * is populated regardless only on success. There is no "Program"/
- * TranslationUnit AST node - version_decl is a compile-time gate, not
- * part of the semantic tree (docs/M2_PLAN.md's AST node types section
- * has no such node), so the top-level items themselves, in order, are
- * the whole program. Naming-convention enforcement and unknown-
- * attribute/duplicate-name checks are explicitly NOT here - both are
- * IR-stage errors (docs/M2_PLAN.md S7 items 7-8), requiring a symbol
- * table this stage doesn't have. */
+/* Parses a whole file: version_decl { top_level_item }. There is no
+ * "Program"/TranslationUnit AST node - version_decl is a compile-time
+ * gate, not part of the semantic tree (docs/M2_PLAN.md's AST node types
+ * section has no such node), so the top-level items themselves, in
+ * order, are the whole program. Naming-convention enforcement and
+ * unknown-attribute/duplicate-name checks are explicitly NOT here - both
+ * are IR-stage errors (docs/M2_PLAN.md S7 items 7-8), requiring a symbol
+ * table this stage doesn't have.
+ *
+ * As of Step 10, a malformed top-level item doesn't abort the whole
+ * file: it's dropped (no placeholder node) and parsing resumes at the
+ * next synchronization point - see parser_parse_file/recover_to_top_
+ * level_boundary in parser.c. Returns false only if version_decl itself
+ * fails (unrecoverable by design - there's no sensible "resume" from a
+ * missing/wrong file header); *out_items is populated and the function
+ * returns true otherwise, even if one or more items were dropped along
+ * the way (check ps->diags.len to know whether that happened). */
 bool parser_parse_file(ParserState *ps, Lexer *lx, NodeList *out_items);

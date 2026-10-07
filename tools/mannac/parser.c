@@ -198,12 +198,15 @@ static const char *token_describe(Arena *a, Token t) {
  * On a failure that isn't locally recoverable, the function that hit it
  * records a diagnostic (parser_error - itself possibly fatal if this is
  * the MAX_ERRORS'th one) and returns NULL; every caller here checks for
- * NULL and propagates it immediately rather than attempting to continue.
- * There's no resynchronization yet - that's Step 10's job. The binary-
- * operator levels below need no diagnostic calls of their own: a failed
- * operand eventually bottoms out at parse_primary, which already emits
- * "expected expression, found X" - every level above it just propagates
- * NULL.
+ * NULL and propagates it immediately rather than attempting to continue -
+ * all the way up to the nearest statement or top-level item, where Step
+ * 10's panic-mode recovery (see parse_block/parser_parse_file and the
+ * recover_to_*_boundary functions) takes over: the bad statement/item is
+ * dropped and parsing resumes at the next synchronization point, rather
+ * than the whole enclosing block/file aborting. The binary-operator
+ * levels below need no diagnostic calls of their own: a failed operand
+ * eventually bottoms out at parse_primary, which already emits "expected
+ * expression, found X" - every level above it just propagates NULL.
  * ---------------------------------------------------------------- */
 
 static Expr *parse_expression(Parser *p);
@@ -248,6 +251,8 @@ static bool  parse_attribute(Parser *p, const char **out_name);
 static Param *parse_param(Parser *p);
 static bool  parse_param_list(Parser *p, NodeList *out_params);
 static Decl *parse_function_decl(Parser *p);
+static void  recover_to_statement_boundary(Parser *p);
+static void  recover_to_top_level_boundary(Parser *p);
 
 static Expr *parse_expression(Parser *p) {
     depth_enter(p->ps, token_span(p->cur));
@@ -979,6 +984,165 @@ static Stmt *parse_statement(Parser *p) {
     }
 }
 
+/* Step 10: panic-mode error recovery. A malformed statement no longer
+ * aborts the whole enclosing block (same for a malformed top-level item
+ * and the whole file) - it's dropped (no fake/placeholder AST node is
+ * synthesized) and parsing resumes at the next synchronization point, so
+ * one real mistake produces one error, not a cascade, and the rest of an
+ * otherwise-valid file still gets a real (partial) tree. Scope: exactly
+ * two recovery granularities - statement-level (inside parse_block) and
+ * top-level-item-level (inside parser_parse_file). A malformed struct
+ * field is NOT its own recovery granularity - it fails the whole
+ * struct_decl, which top-level recovery then drops entirely; a third,
+ * finer level wasn't asked for and isn't added speculatively. Recovering
+ * from a genuinely mismatched/missing delimiter (not just bad content
+ * between well-placed delimiters) is also out of scope - parse_block
+ * still returns NULL if '{' or '}' itself is unrecoverably missing,
+ * exactly as before Step 10.
+ *
+ * The trap this has to avoid: a failure that consumed zero tokens before
+ * returning (e.g. parse_primary's default case doesn't advance past the
+ * unrecognized token) can leave `cur` sitting exactly on one of the sync
+ * tokens recovery is looking for. A naive "while not at a sync point,
+ * advance" does ZERO iterations in that case - zero tokens consumed,
+ * so the caller's retry hits the identical failure at the identical
+ * position forever. Guarding against this can't be a blanket "advance
+ * once unconditionally, then search": that over-consumes the equally
+ * real case where `cur` is already sitting on the exact token recovery
+ * should stop AT (e.g. already on ';') - advancing first eats that
+ * token, then the search continues past it into the NEXT statement's
+ * content, not just the failed one's. The two cases need different
+ * treatment, which is why these functions switch on `cur` explicitly
+ * rather than looping uniformly.
+ *
+ * A second trap, found empirically (not by reasoning alone) while
+ * verifying every affected golden test by hand: a plain, brace-nesting-
+ * UNAWARE skip-until-sync-token can stop at a ';' or '}' that belongs to
+ * the inside of the very declaration/statement whose recovery is in
+ * progress - e.g. a malformed function whose param list fails before its
+ * body is even reached: skipping without tracking '{'/'}' nesting can
+ * land on the body's OWN internal ';', orphaning the function's real
+ * closing '}' and triggering a second, spurious failure where parsing
+ * resumes. Both functions below track brace depth while skipping for
+ * exactly this reason: a ';'/'}' only counts as a real boundary at
+ * depth 0 (not inside a '{' opened during this same skip). */
+
+/* Statement-level: sync set is ';', '}', EOF, and the three top-level-
+ * start keywords (a statement can't legally start with any of those
+ * three - seeing one here IS the mistake, not a boundary to preserve). */
+/* Every one of these keywords is unconditionally consumed as the very
+ * first action of its own parse_*_stmt function - so a statement failure
+ * can never leave `cur` sitting on one of these with zero tokens
+ * consumed overall (unlike 'fn'/'struct'/'[', which have no statement-
+ * level dispatch handler at all and so CAN fail with zero consumption).
+ * That makes it always safe to leave these alone during recovery and
+ * let the caller retry fresh, the same reasoning top-level recovery
+ * already applies to 'fn'/'struct'/'['. Found empirically, not by
+ * reasoning alone: an earlier version of this function didn't treat
+ * these as sync points, and a skip in progress (e.g. from an unrelated
+ * earlier failure) could run straight through an entire subsequent
+ * valid statement that happened to start with one of these, silently
+ * dropping it - not a cascade of spurious errors, but real collateral
+ * data loss, caught only by writing a multi-statement golden test and
+ * reading its output carefully rather than assuming the design was
+ * already complete. */
+static bool is_statement_start_keyword(TokenKind k) {
+    return k == TOK_KW_LET || k == TOK_KW_IF || k == TOK_KW_WHILE || k == TOK_KW_FOR ||
+           k == TOK_KW_RETURN || k == TOK_KW_BREAK || k == TOK_KW_CONTINUE;
+}
+
+static void recover_to_statement_boundary(Parser *p) {
+    if (p->cur.kind == TOK_RBRACE || p->cur.kind == TOK_EOF || is_statement_start_keyword(p->cur.kind)) {
+        /* Leave entirely alone - RBRACE/EOF because parse_block's own
+         * loop condition already terminates on them (consuming either
+         * would eat something the caller needs to see); the statement-
+         * start keywords because they're always safe to retry fresh. */
+        return;
+    }
+    if (p->cur.kind == TOK_SEMI) {
+        /* This already IS the boundary - consume exactly it and stop.
+         * Searching further would eat into the next statement's own
+         * tokens. */
+        advance(p);
+        return;
+    }
+    /* Ordinary garbage, or a 'fn'/'struct'/'[' that's illegal here (not a
+     * boundary to preserve) - guarantee at least one token of progress,
+     * then keep skipping until a real boundary. This is what rules out
+     * the infinite loop: a statement that failed having consumed zero
+     * tokens, landing back on the exact same token, would otherwise
+     * retry identically forever.
+     *
+     * depth starts at 1, not 0, if the very first discarded token is
+     * itself '{' - otherwise its later matching '}' would be miscounted
+     * as a depth-0 boundary (it isn't; it closes THIS '{', not something
+     * outer), only coincidentally giving the right answer when nothing
+     * meaningful follows it to expose the miscount. */
+    int depth = (p->cur.kind == TOK_LBRACE) ? 1 : 0;
+    advance(p);
+    while (p->cur.kind != TOK_EOF &&
+           !(depth == 0 && (p->cur.kind == TOK_SEMI || p->cur.kind == TOK_RBRACE ||
+                            p->cur.kind == TOK_KW_FN || p->cur.kind == TOK_KW_STRUCT ||
+                            p->cur.kind == TOK_LBRACKET || is_statement_start_keyword(p->cur.kind)))) {
+        if (p->cur.kind == TOK_LBRACE) {
+            depth++;
+        } else if (p->cur.kind == TOK_RBRACE) {
+            depth--; /* depth > 0 guaranteed: a depth-0 '}' already
+                      * satisfied the loop's own exit condition above */
+        }
+        advance(p);
+    }
+    if (p->cur.kind == TOK_SEMI) {
+        advance(p); /* consume the boundary we stopped at too */
+    }
+}
+
+/* Top-level-item-level: sync set is ';', '}' (a malformed declaration's
+ * body may plausibly have ended at either, the same reasoning as
+ * statement recovery's ';' case), EOF, and the three top-level-start
+ * keywords. Unlike statement recovery, 'fn'/'struct'/'[' are things to
+ * leave alone here, not discard - they're legitimate fresh starts, and
+ * parser_parse_file's own loop retries cleanly from one without this
+ * call consuming anything. */
+static void recover_to_top_level_boundary(Parser *p) {
+    if (p->cur.kind == TOK_EOF || p->cur.kind == TOK_KW_FN ||
+        p->cur.kind == TOK_KW_STRUCT || p->cur.kind == TOK_LBRACKET) {
+        return; /* leave alone - safe fresh-start points */
+    }
+    /* Everything else, including an already-there ';' or '}' - unlike
+     * statement recovery's immediate-';' case, a top-level failure that
+     * lands exactly on one of these isn't necessarily the FULL extent of
+     * the damage: a struct's field list has no recovery of its own (by
+     * design - a bad field fails the whole struct_decl), so a struct can
+     * leave a dangling ';' or '}' that's still followed by more of its
+     * OWN now-orphaned body (e.g. its real closing '}' coming right
+     * after a stray ';'). A single-token consume-and-stop here would
+     * leave that orphaned remainder to trigger its own spurious failure
+     * on the next loop iteration - found empirically via exactly that
+     * scenario, not reasoned out in advance. So this always continues
+     * into the same depth-tracked search below, the same way an
+     * ordinary non-boundary token does - consuming at least one more
+     * token is always safe (progress was already guaranteed by this
+     * being reached only when cur isn't one of the four leave-alone
+     * tokens above). */
+    int depth = (p->cur.kind == TOK_LBRACE) ? 1 : 0;
+    advance(p);
+    while (p->cur.kind != TOK_EOF &&
+           !(depth == 0 && (p->cur.kind == TOK_SEMI || p->cur.kind == TOK_RBRACE ||
+                            p->cur.kind == TOK_KW_FN || p->cur.kind == TOK_KW_STRUCT ||
+                            p->cur.kind == TOK_LBRACKET))) {
+        if (p->cur.kind == TOK_LBRACE) {
+            depth++;
+        } else if (p->cur.kind == TOK_RBRACE) {
+            depth--;
+        }
+        advance(p);
+    }
+    if (p->cur.kind == TOK_SEMI || p->cur.kind == TOK_RBRACE) {
+        advance(p);
+    }
+}
+
 /* block ::= '{' { statement } '}' ;
  * Carries its own depth_enter/depth_exit - added proactively in Step 6,
  * before any cycle closed through it (none of let/return/break/continue
@@ -1016,8 +1180,9 @@ static Stmt *parse_block(Parser *p) {
     while (p->cur.kind != TOK_RBRACE && p->cur.kind != TOK_EOF) {
         Stmt *s = parse_statement(p);
         if (!s) {
-            depth_exit(p->ps);
-            return NULL;
+            recover_to_statement_boundary(p);
+            continue; /* dropped - no placeholder node; loop condition
+                       * re-checks '}'/EOF before trying again */
         }
         node_list_push(p->ps->arena, &stmts, s);
     }
@@ -1336,7 +1501,9 @@ bool parser_parse_file(ParserState *ps, Lexer *lx, NodeList *out_items) {
     while (p.cur.kind != TOK_EOF) {
         Decl *item = parse_top_level_item(&p);
         if (!item) {
-            return false;
+            recover_to_top_level_boundary(&p);
+            continue; /* dropped - no placeholder node; loop condition
+                       * re-checks EOF before trying again */
         }
         node_list_push(ps->arena, out_items, item);
     }

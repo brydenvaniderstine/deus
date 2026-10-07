@@ -1,0 +1,4 @@
+manna v0;
+fn a() {}
+struct { x: u32, }
+fn b() {}

@@ -2,4 +2,3 @@ ERRORS:
 1:14 expected identifier after 'fn', found '('
 
 TREE:
-(none)

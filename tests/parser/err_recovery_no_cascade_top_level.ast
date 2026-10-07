@@ -1,0 +1,12 @@
+ERRORS:
+3:8 expected identifier after 'struct', found '{'
+
+TREE:
+(function_decl@2:1-2:10 a
+  (params)
+  (return_type unit)
+  (block@2:8-2:10))
+(function_decl@4:1-4:10 b
+  (params)
+  (return_type unit)
+  (block@4:8-4:10))

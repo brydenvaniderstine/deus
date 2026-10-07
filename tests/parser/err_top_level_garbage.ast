@@ -2,4 +2,3 @@ ERRORS:
 1:11 expected struct or function declaration, found '123'
 
 TREE:
-(none)

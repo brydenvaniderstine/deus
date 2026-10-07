@@ -2,4 +2,5 @@ ERRORS:
 1:36 expected '{', found 'return'
 
 TREE:
-(none)
+(block@1:1-1:45
+  (return_stmt@1:36-1:43))

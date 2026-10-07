@@ -2,4 +2,3 @@ ERRORS:
 1:20 expected ':' after parameter name, found 'u32'
 
 TREE:
-(none)

@@ -353,6 +353,21 @@ TREE:
 
 Test categories mirror the lexer suite: a basic valid-program case, one golden per grammar construct, a `[kernel_hook]` case, the two dedicated-diagnostic cases above, the four nesting-depth-bound cases, and general error-recovery cases (missing semicolon, unclosed brace, multiple errors in one file to confirm resynchronization continues past the first).
 
+### Error recovery (Step 10, implemented)
+
+Panic-mode recovery at exactly two granularities: statement-level (inside `parse_block`) and top-level-item-level (inside `parser_parse_file`). A malformed statement/item is dropped (no placeholder AST node) and parsing resumes at the next synchronization point, rather than the whole enclosing block/file aborting - see `tools/mannac/parser.c`'s own comment above `recover_to_statement_boundary`/`recover_to_top_level_boundary` for the exact sync-token sets and the case-by-case reasoning each one needs (a blanket "skip until sync point" rule is wrong in both directions: it can fail to make progress at all in one case, and over-consume in another).
+
+Two real bugs were found and fixed by writing and reading golden tests carefully, not by reasoning about the design alone:
+
+1. **Brace-nesting-unaware skipping.** A plain token skip without tracking `{`/`}` nesting can stop at a `;`/`}` that belongs to the *inside* of the very declaration being recovered from (e.g. a malformed function's param list failing before its body is reached - skipping without depth tracking can land on the body's own internal `;`, orphaning the function's real closing `}` and triggering a second, spurious failure). Fixed: both recovery functions track brace depth while skipping, only treating a `;`/`}` as a real boundary at depth 0.
+2. **Missing statement-start keywords in the sync set.** The literal sync-point list (`;`, `}`, top-level starts) doesn't by itself include `let`/`if`/`while`/`for`/`return`/`break`/`continue` - but a skip already in progress (from an unrelated earlier failure) could run straight through an entire subsequent *valid* statement that happened to start with one of these, silently dropping it. Safe to add: every `parse_*_stmt` function for these seven keywords unconditionally consumes its own leading keyword as its first action, so a statement failure can never leave `cur` sitting on one of these with zero tokens consumed overall (unlike `fn`/`struct`/`[`, which have no statement-level dispatch handler and so genuinely can fail with zero consumption) - meaning it's always safe to leave them alone and let the caller retry fresh.
+
+`parser_parse_block`/`parser_parse_file` still return failure (`NULL`/`false`) if a block's own delimiters are unrecoverably missing (no `{`, or EOF before `}`) or if `version_decl` itself fails - recovering from a missing/mismatched delimiter, or a missing file header, is a different problem than recovering from bad content between well-placed delimiters, and isn't attempted.
+
+### Known limitations
+
+- **A malformed `for`-loop init clause can still produce two diagnostics from one root mistake** (`tests/parser/known_limitation_for_init_cascade`). After the broken init is skipped, the remaining `cond`/`step` clauses happen to be independently-valid statement shapes (a comparison expression, an assignment) and get reinterpreted as fresh standalone statements - one of which can then fail on its own when it runs into the loop's own body. Fixing this would require a third recovery granularity (for-loop-clause-level, aware that it's in the middle of a compound statement's clause list) - deliberately not added; the two-level scope (statement, top-level-item) matches what was asked for, and a malformed struct field is handled the same way (fails the whole `struct_decl`, no field-level recovery) for the same reason.
+
 ## 5. Test strategy
 
 - **Golden tests per stage:** for each stage, a fixed set of `.manna` (or, for the lexer specifically this session, `.mn`) inputs with checked-in expected output - token stream for the lexer, AST dump for the parser, typed-IR dump for the IR builder, annotated IR for loop-counter injection, `.wasm` binary (or its `wasm2wat` text form, for diffability) for the backend. Any stage's output changing unexpectedly fails the test; a deliberate change updates the golden file in the same commit as the code change, never silently.

@@ -2,4 +2,3 @@ ERRORS:
 1:18 expected identifier after 'struct', found '{'
 
 TREE:
-(none)
