@@ -80,44 +80,60 @@ static const char *token_describe(Arena *a, Token t) {
  *   arg_list       ::= expression { ',' expression } ;
  *
  *   block          ::= '{' { statement } '}' ;
- *   statement      ::= let_stmt | return_stmt | break_stmt | continue_stmt ;
- *     (* Step 6 subset only - if_stmt/while_stmt/for_stmt and the
- *        postfix_stmt/expr_stmt left-factoring are Step 7; statement's
- *        full alternative list is docs/M2_PLAN.md S4. Anything else in
- *        statement position is a clean generic diagnostic. *)
+ *   statement      ::= let_stmt | if_stmt | while_stmt | for_stmt
+ *                     | return_stmt | break_stmt | continue_stmt
+ *                     | postfix_stmt | expr_stmt ;
  *   let_stmt       ::= 'let' IDENT [ ':' type ] '=' expression ';' ;
- *   return_stmt    ::= 'return' [ expression ] ';' ;
+ *   postfix_stmt   ::= postfix expr_tail ';' ;
+ *   expr_tail      ::= '=' expression | (* empty, continue as expression *) ;
+ *   if_stmt        ::= 'if' expression block [ 'else' ( if_stmt | block ) ] ;
+ *   while_stmt     ::= 'while' expression block ;
+ *   for_stmt       ::= 'for' ( let_stmt | postfix_stmt | expr_stmt )
+ *                      expression ';' for_step block ;
+ *   for_step       ::= postfix expr_tail ;
  *   break_stmt     ::= 'break' ';' ;
  *   continue_stmt  ::= 'continue' ';' ;
+ *   return_stmt    ::= 'return' [ expression ] ';' ;
+ *   expr_stmt      ::= expression ';' ;
  *   type           ::= IDENT | '[' INTEGER ']' type | '[' ']' type ;
  *
+ * postfix_stmt/expr_stmt are disjoint by construction (starts_postfix),
+ * not by a FIRST-set table: anything that can start a `postfix` tries
+ * postfix_stmt; everything else (a bare unary prefix) tries expr_stmt.
+ * Within postfix_stmt/for_step, the real decision - assignment vs. a
+ * plain expression statement - needs exactly one token of lookahead
+ * right after the shared `postfix` prefix ('=' or not), not before it;
+ * seeing this as two separate `statement` alternatives (the way an
+ * earlier draft of this grammar had it) would have an unbounded-lookahead
+ * FIRST-set overlap. See parse_expr_tail / parse_postfix_expr_tail.
+ *
  * Depth bound: only parse_expression, parse_unary's self-recursive prefix
- * case, parse_type (self-recursive: array/slice element types nest), and
- * parse_block carry depth_enter/depth_exit - not the 10 fixed-pipeline
- * binary-operator levels between logic_or and multiplicative (parsing a
- * plain "a" always walks all 10, a constant cost independent of input,
- * so instrumenting them individually would only inflate the counter
- * without bounding anything new), not primary/postfix/arg_list/
- * index_or_slice either (an earlier version of this file put hooks there
- * too - removed once proven redundant and worse: it cost extra depth per
- * level on top of parse_expression's own hook, capping real nesting
- * around 85 levels instead of the intended 256; see that commit message
- * and tests/parser/depth_*), and not parse_statement either (a one-shot
- * dispatch switch, same character as the 10 pipeline levels - not a cycle
- * of its own).
+ * case, parse_type (self-recursive: array/slice element types nest),
+ * parse_block, and parse_if_stmt (self-recursive: the else-if chain)
+ * carry depth_enter/depth_exit - not the 10 fixed-pipeline binary-
+ * operator levels between logic_or and multiplicative (parsing a plain
+ * "a" always walks all 10, a constant cost independent of input, so
+ * instrumenting them individually would only inflate the counter without
+ * bounding anything new), not primary/postfix/arg_list/index_or_slice
+ * either (an earlier version of this file put hooks there too - removed
+ * once proven redundant and worse: it cost extra depth per level on top
+ * of parse_expression's own hook, capping real nesting around 85 levels
+ * instead of the intended 256; see that commit message and tests/parser/
+ * depth_*), and not parse_statement, parse_postfix_or_expr_stmt,
+ * parse_for_init, parse_while_stmt, or parse_for_stmt either (one-shot
+ * dispatches or wrappers, not cycles of their own - same character as
+ * the 10 pipeline levels).
  *
  * INVARIANT: every recursive cycle in this call graph passes through at
  * least one depth-counted function, so no cycle can spin arbitrarily deep
  * without the shared counter incrementing. The call graph is a strict DAG
- * (expression -> logic_or -> logic_and -> equality -> comparison -> bitor
- * -> bitxor -> bitand -> shift -> additive -> multiplicative -> unary ->
- * postfix -> primary; separately, block -> statement -> {let,return,
- * break,continue}_stmt, with let_stmt also reaching type) plus exactly
- * five back-edges, each one a cycle:
+ * (expression -> logic_or -> ... -> multiplicative -> unary -> postfix ->
+ * primary; separately, block -> statement -> {every statement kind},
+ * with let_stmt also reaching type, and if/while/for_stmt each reaching
+ * block again) plus exactly seven back-edges, each one a cycle:
  *
  *   1. unary -> unary (self-recursive prefix case, "!!!!x")
- *      Counted by: parse_unary's own hook - this cycle never reaches
- *      parse_expression at all, which is exactly why it needs its own.
+ *      Counted by: parse_unary's own hook.
  *   2. primary -> expression (the '(' expression ')' case, "(((x)))")
  *      Counted by: parse_expression's hook.
  *   3. primary -> arg_list -> expression (call args, "f(f(f(x)))")
@@ -126,26 +142,34 @@ static const char *token_describe(Arena *a, Token t) {
  *      "a[a[a[x]]]")
  *      Counted by: parse_expression's hook.
  *   5. type -> type (self-recursive array/slice element, "[1][1][1]...T")
- *      Counted by: parse_type's own hook - same reasoning as unary, this
- *      cycle never reaches parse_expression or parse_block either.
+ *      Counted by: parse_type's own hook.
+ *   6. {if,while,for}_stmt -> block -> statement -> {if,while,for}_stmt
+ *      (real nesting, "if a { if b { ... } }")
+ *      Counted by: parse_block's own hook (and, for the if/if case,
+ *      redundantly by parse_if_stmt's too - both are "open" at once).
+ *   7. if_stmt -> if_stmt (the "else if" chain, "if a {} else if b {}
+ *      else if c {} ...") - does NOT pass through parse_block at all;
+ *      an "else if" link has no block of its own, only a bare
+ *      "else { }" does.
+ *      Counted by: parse_if_stmt's own hook - this is exactly why it
+ *      needs one, the same reasoning as parse_unary and parse_type.
  *
- * parse_block carries its own hook too, even though no cycle closes
- * through it yet in this step's grammar subset (none of let/return/break/
- * continue can themselves contain a nested block) - added now, when the
- * function is first written, because Step 7's if/while/for will each wrap
- * a block, closing a block -> statement -> if_stmt -> block cycle that
- * won't pass through parse_expression at all. Empirically proving THAT
- * cycle's cap is Step 7's job, once it exists; parse_type's cycle (nested
- * array types) is provable now and is (tests/parser/depth_type_*).
+ * Cycles 1-5 were proven at the cap in Steps 5-6 (tests/parser/depth_*);
+ * cycle 6 (true if/while/for nesting) and cycle 7 (else-if chains) are
+ * proven here (tests/parser/depth_nested_if_*, depth_elseif_*) - both
+ * cap below the single-construct 255/256 figures from Steps 5-6, since
+ * each level here costs more than 1 depth unit (block's hook, and for
+ * cycle 6 also if_stmt's), the same "shared budget" effect Step 6 found
+ * for nested array types inside a block.
  *
  * Any FUTURE recursive parse function must preserve this invariant:
  * either it sits on a cycle that already passes through parse_expression
  * or parse_block (nothing extra needed), or it introduces a new kind of
  * cycle that doesn't, in which case IT needs its own depth_enter/
- * depth_exit, the same way parse_unary and parse_type do for their self-
- * recursion. The thing to check before adding a new recursive production
- * is not "does every function have a hook" but "does every cycle have at
- * least one."
+ * depth_exit, the same way parse_unary, parse_type, and parse_if_stmt do
+ * for their self-recursion. The thing to check before adding a new
+ * recursive production is not "does every function have a hook" but
+ * "does every cycle have at least one."
  *
  * On a failure that isn't locally recoverable, the function that hit it
  * records a diagnostic (parser_error - itself possibly fatal if this is
@@ -159,16 +183,16 @@ static const char *token_describe(Arena *a, Token t) {
  * ---------------------------------------------------------------- */
 
 static Expr *parse_expression(Parser *p);
-static Expr *parse_logic_or(Parser *p);
-static Expr *parse_logic_and(Parser *p);
-static Expr *parse_equality(Parser *p);
-static Expr *parse_comparison(Parser *p);
-static Expr *parse_bitor(Parser *p);
-static Expr *parse_bitxor(Parser *p);
-static Expr *parse_bitand(Parser *p);
-static Expr *parse_shift(Parser *p);
-static Expr *parse_additive(Parser *p);
-static Expr *parse_multiplicative(Parser *p);
+static Expr *parse_logic_or(Parser *p, Expr *given_lhs);
+static Expr *parse_logic_and(Parser *p, Expr *given_lhs);
+static Expr *parse_equality(Parser *p, Expr *given_lhs);
+static Expr *parse_comparison(Parser *p, Expr *given_lhs);
+static Expr *parse_bitor(Parser *p, Expr *given_lhs);
+static Expr *parse_bitxor(Parser *p, Expr *given_lhs);
+static Expr *parse_bitand(Parser *p, Expr *given_lhs);
+static Expr *parse_shift(Parser *p, Expr *given_lhs);
+static Expr *parse_additive(Parser *p, Expr *given_lhs);
+static Expr *parse_multiplicative(Parser *p, Expr *given_lhs);
 static Expr *parse_unary(Parser *p);
 static Expr *parse_postfix(Parser *p);
 static Expr *parse_primary(Parser *p);
@@ -181,32 +205,68 @@ static Stmt *parse_let_stmt(Parser *p);
 static Stmt *parse_return_stmt(Parser *p);
 static Stmt *parse_break_stmt(Parser *p);
 static Stmt *parse_continue_stmt(Parser *p);
+static Expr *parse_expr_tail(Parser *p, Expr *lhs);
+static bool  starts_postfix(TokenKind k);
+static Stmt *parse_postfix_expr_tail(Parser *p, bool require_semi);
+static Stmt *parse_postfix_stmt(Parser *p);
+static Stmt *parse_expr_stmt(Parser *p);
+static Stmt *parse_postfix_or_expr_stmt(Parser *p);
+static Stmt *parse_if_stmt(Parser *p);
+static Stmt *parse_while_stmt(Parser *p);
+static Stmt *parse_for_stmt(Parser *p);
+static Stmt *parse_for_init(Parser *p);
+static Stmt *parse_for_step(Parser *p);
 
 static Expr *parse_expression(Parser *p) {
     depth_enter(p->ps, token_span(p->cur));
-    Expr *e = parse_logic_or(p);
+    Expr *e = parse_logic_or(p, NULL);
     depth_exit(p->ps);
     return e;
 }
 
-static Expr *parse_logic_or(Parser *p) {
-    Expr *lhs = parse_logic_and(p);
+/* expr_tail ::= '=' expression | (* empty, continuing as a plain
+ * expression *) ; - NOT called for the '=' case (postfix_stmt/for_step
+ * check for TOK_ASSIGN themselves, since that case's RHS is a fresh
+ * parse_expression, not a continuation). This function IS the "empty"
+ * case: resume the same precedence-climbing chain one level up from
+ * postfix (at multiplicative and above), with the already-parsed
+ * postfix as the initial left-hand operand instead of parsing a fresh
+ * one - exactly the mechanism M2_PLAN.md's expr_tail comment describes
+ * operationally, not expressible as a flat CFG production. No depth hook
+ * needed: this is a flat sequential chain through already-counted (or
+ * deliberately uncounted pipeline) functions, not a cycle of its own. */
+static Expr *parse_expr_tail(Parser *p, Expr *lhs) {
+    lhs = parse_multiplicative(p, lhs); if (!lhs) return NULL;
+    lhs = parse_additive(p, lhs);       if (!lhs) return NULL;
+    lhs = parse_shift(p, lhs);          if (!lhs) return NULL;
+    lhs = parse_bitand(p, lhs);         if (!lhs) return NULL;
+    lhs = parse_bitxor(p, lhs);         if (!lhs) return NULL;
+    lhs = parse_bitor(p, lhs);          if (!lhs) return NULL;
+    lhs = parse_comparison(p, lhs);     if (!lhs) return NULL;
+    lhs = parse_equality(p, lhs);       if (!lhs) return NULL;
+    lhs = parse_logic_and(p, lhs);      if (!lhs) return NULL;
+    lhs = parse_logic_or(p, lhs);       if (!lhs) return NULL;
+    return lhs;
+}
+
+static Expr *parse_logic_or(Parser *p, Expr *given_lhs) {
+    Expr *lhs = given_lhs ? given_lhs : parse_logic_and(p, NULL);
     if (!lhs) return NULL;
     while (p->cur.kind == TOK_OR) {
         advance(p);
-        Expr *rhs = parse_logic_and(p);
+        Expr *rhs = parse_logic_and(p, NULL);
         if (!rhs) return NULL;
         lhs = expr_binary(p->ps->arena, span_merge(lhs->span, rhs->span), BINOP_OR, lhs, rhs);
     }
     return lhs;
 }
 
-static Expr *parse_logic_and(Parser *p) {
-    Expr *lhs = parse_equality(p);
+static Expr *parse_logic_and(Parser *p, Expr *given_lhs) {
+    Expr *lhs = given_lhs ? given_lhs : parse_equality(p, NULL);
     if (!lhs) return NULL;
     while (p->cur.kind == TOK_AND) {
         advance(p);
-        Expr *rhs = parse_equality(p);
+        Expr *rhs = parse_equality(p, NULL);
         if (!rhs) return NULL;
         lhs = expr_binary(p->ps->arena, span_merge(lhs->span, rhs->span), BINOP_AND, lhs, rhs);
     }
@@ -234,13 +294,13 @@ static bool is_comparison_or_equality_op(TokenKind k) {
     return is_comparison_op(k) || k == TOK_EQ || k == TOK_NE;
 }
 
-static Expr *parse_equality(Parser *p) {
-    Expr *lhs = parse_comparison(p);
+static Expr *parse_equality(Parser *p, Expr *given_lhs) {
+    Expr *lhs = given_lhs ? given_lhs : parse_comparison(p, NULL);
     if (!lhs) return NULL;
     if (p->cur.kind == TOK_EQ || p->cur.kind == TOK_NE) {
         BinOp op = p->cur.kind == TOK_EQ ? BINOP_EQ : BINOP_NE;
         advance(p);
-        Expr *rhs = parse_comparison(p);
+        Expr *rhs = parse_comparison(p, NULL);
         if (!rhs) return NULL;
         lhs = expr_binary(p->ps->arena, span_merge(lhs->span, rhs->span), op, lhs, rhs);
         if (is_comparison_or_equality_op(p->cur.kind)) {
@@ -251,8 +311,8 @@ static Expr *parse_equality(Parser *p) {
     return lhs;
 }
 
-static Expr *parse_comparison(Parser *p) {
-    Expr *lhs = parse_bitor(p);
+static Expr *parse_comparison(Parser *p, Expr *given_lhs) {
+    Expr *lhs = given_lhs ? given_lhs : parse_bitor(p, NULL);
     if (!lhs) return NULL;
     if (is_comparison_op(p->cur.kind)) {
         BinOp op;
@@ -263,7 +323,7 @@ static Expr *parse_comparison(Parser *p) {
             default:     op = BINOP_GE; break; /* TOK_GE */
         }
         advance(p);
-        Expr *rhs = parse_bitor(p);
+        Expr *rhs = parse_bitor(p, NULL);
         if (!rhs) return NULL;
         lhs = expr_binary(p->ps->arena, span_merge(lhs->span, rhs->span), op, lhs, rhs);
         if (is_comparison_op(p->cur.kind)) {
@@ -274,70 +334,70 @@ static Expr *parse_comparison(Parser *p) {
     return lhs;
 }
 
-static Expr *parse_bitor(Parser *p) {
-    Expr *lhs = parse_bitxor(p);
+static Expr *parse_bitor(Parser *p, Expr *given_lhs) {
+    Expr *lhs = given_lhs ? given_lhs : parse_bitxor(p, NULL);
     if (!lhs) return NULL;
     while (p->cur.kind == TOK_PIPE) {
         advance(p);
-        Expr *rhs = parse_bitxor(p);
+        Expr *rhs = parse_bitxor(p, NULL);
         if (!rhs) return NULL;
         lhs = expr_binary(p->ps->arena, span_merge(lhs->span, rhs->span), BINOP_BITOR, lhs, rhs);
     }
     return lhs;
 }
 
-static Expr *parse_bitxor(Parser *p) {
-    Expr *lhs = parse_bitand(p);
+static Expr *parse_bitxor(Parser *p, Expr *given_lhs) {
+    Expr *lhs = given_lhs ? given_lhs : parse_bitand(p, NULL);
     if (!lhs) return NULL;
     while (p->cur.kind == TOK_CARET) {
         advance(p);
-        Expr *rhs = parse_bitand(p);
+        Expr *rhs = parse_bitand(p, NULL);
         if (!rhs) return NULL;
         lhs = expr_binary(p->ps->arena, span_merge(lhs->span, rhs->span), BINOP_BITXOR, lhs, rhs);
     }
     return lhs;
 }
 
-static Expr *parse_bitand(Parser *p) {
-    Expr *lhs = parse_shift(p);
+static Expr *parse_bitand(Parser *p, Expr *given_lhs) {
+    Expr *lhs = given_lhs ? given_lhs : parse_shift(p, NULL);
     if (!lhs) return NULL;
     while (p->cur.kind == TOK_AMP) {
         advance(p);
-        Expr *rhs = parse_shift(p);
+        Expr *rhs = parse_shift(p, NULL);
         if (!rhs) return NULL;
         lhs = expr_binary(p->ps->arena, span_merge(lhs->span, rhs->span), BINOP_BITAND, lhs, rhs);
     }
     return lhs;
 }
 
-static Expr *parse_shift(Parser *p) {
-    Expr *lhs = parse_additive(p);
+static Expr *parse_shift(Parser *p, Expr *given_lhs) {
+    Expr *lhs = given_lhs ? given_lhs : parse_additive(p, NULL);
     if (!lhs) return NULL;
     while (p->cur.kind == TOK_SHL || p->cur.kind == TOK_SHR) {
         BinOp op = p->cur.kind == TOK_SHL ? BINOP_SHL : BINOP_SHR;
         advance(p);
-        Expr *rhs = parse_additive(p);
+        Expr *rhs = parse_additive(p, NULL);
         if (!rhs) return NULL;
         lhs = expr_binary(p->ps->arena, span_merge(lhs->span, rhs->span), op, lhs, rhs);
     }
     return lhs;
 }
 
-static Expr *parse_additive(Parser *p) {
-    Expr *lhs = parse_multiplicative(p);
+static Expr *parse_additive(Parser *p, Expr *given_lhs) {
+    Expr *lhs = given_lhs ? given_lhs : parse_multiplicative(p, NULL);
     if (!lhs) return NULL;
     while (p->cur.kind == TOK_PLUS || p->cur.kind == TOK_MINUS) {
         BinOp op = p->cur.kind == TOK_PLUS ? BINOP_ADD : BINOP_SUB;
         advance(p);
-        Expr *rhs = parse_multiplicative(p);
+        Expr *rhs = parse_multiplicative(p, NULL);
         if (!rhs) return NULL;
         lhs = expr_binary(p->ps->arena, span_merge(lhs->span, rhs->span), op, lhs, rhs);
     }
     return lhs;
 }
 
-static Expr *parse_multiplicative(Parser *p) {
-    Expr *lhs = parse_unary(p);
+static Expr *parse_multiplicative(Parser *p, Expr *given_lhs) {
+    Expr *lhs = given_lhs ? given_lhs : parse_unary(p);
     if (!lhs) return NULL;
     while (p->cur.kind == TOK_STAR || p->cur.kind == TOK_SLASH || p->cur.kind == TOK_PERCENT) {
         BinOp op = p->cur.kind == TOK_STAR ? BINOP_MUL : p->cur.kind == TOK_SLASH ? BINOP_DIV : BINOP_MOD;
@@ -670,36 +730,233 @@ static Stmt *parse_continue_stmt(Parser *p) {
     return stmt_continue(p->ps->arena, span_merge(token_span(continue_tok), token_span(semi)));
 }
 
+/* postfix_stmt ::= postfix expr_tail ';' ;  for_step ::= postfix expr_tail ;
+ * Shared by both (M2_PLAN.md: "Same left-factoring as postfix_stmt,
+ * reusing the same expr_tail") - identical dispatch, differing only in
+ * whether a trailing ';' is required (postfix_stmt: yes; for_step: no,
+ * the block's '{' follows directly). One token of lookahead right after
+ * the shared `postfix` prefix - '=' or not - decides AssignStmt vs.
+ * ExprStmt; this is the actual LL(1) decision point, not the statement-
+ * level FIRST-set split the grammar used to have (see M2_PLAN.md S4). */
+static Stmt *parse_postfix_expr_tail(Parser *p, bool require_semi) {
+    Span start = token_span(p->cur);
+    Expr *lhs = parse_postfix(p);
+    if (!lhs) return NULL;
+
+    bool is_assign = (p->cur.kind == TOK_ASSIGN);
+    Expr *rhs = NULL;
+    Expr *full_expr = NULL;
+
+    if (is_assign) {
+        advance(p);
+        rhs = parse_expression(p); /* fresh - assignment's RHS is a full expression, not a continuation */
+        if (!rhs) return NULL;
+    } else {
+        full_expr = parse_expr_tail(p, lhs);
+        if (!full_expr) return NULL;
+    }
+
+    Span end_span = is_assign ? rhs->span : full_expr->span;
+
+    if (require_semi) {
+        if (p->cur.kind != TOK_SEMI) {
+            parser_error(p->ps, diag_expected(p->ps->arena, token_span(p->cur), "';'",
+                                               token_describe(p->ps->arena, p->cur), "after expression"));
+            return NULL;
+        }
+        end_span = token_span(p->cur);
+        advance(p);
+    }
+
+    Span full_span = span_merge(start, end_span);
+    return is_assign ? stmt_assign(p->ps->arena, full_span, lhs, rhs)
+                      : stmt_expr(p->ps->arena, full_span, full_expr);
+}
+
+static Stmt *parse_postfix_stmt(Parser *p) {
+    return parse_postfix_expr_tail(p, true);
+}
+
+static Stmt *parse_for_step(Parser *p) {
+    return parse_postfix_expr_tail(p, false);
+}
+
+/* expr_stmt ::= expression ';' ; - reached only for statements that can't
+ * start with a postfix (a bare unary prefix, "!flag;", "-x;"); postfix_
+ * stmt and expr_stmt are disjoint by construction, decided by one token
+ * of lookahead (starts_postfix) before either is attempted. */
+static bool starts_postfix(TokenKind k) {
+    return k == TOK_NUMBER || k == TOK_KW_TRUE || k == TOK_KW_FALSE || k == TOK_IDENT || k == TOK_LPAREN;
+}
+
+static Stmt *parse_expr_stmt(Parser *p) {
+    Span start = token_span(p->cur);
+    Expr *e = parse_expression(p);
+    if (!e) return NULL;
+    if (p->cur.kind != TOK_SEMI) {
+        parser_error(p->ps, diag_expected(p->ps->arena, token_span(p->cur), "';'",
+                                           token_describe(p->ps->arena, p->cur), "after expression"));
+        return NULL;
+    }
+    Token semi = p->cur;
+    advance(p);
+    return stmt_expr(p->ps->arena, span_merge(start, token_span(semi)), e);
+}
+
+static Stmt *parse_postfix_or_expr_stmt(Parser *p) {
+    return starts_postfix(p->cur.kind) ? parse_postfix_stmt(p) : parse_expr_stmt(p);
+}
+
+/* if_stmt ::= 'if' expression block [ 'else' ( if_stmt | block ) ] ;
+ * Carries its own depth_enter/depth_exit unconditionally, wrapping the
+ * whole function - needed for the else-if self-recursion (if -> else ->
+ * if), a cycle that does NOT pass through parse_block at all (an "else
+ * if" has no block of its own; only a bare "else { }" does). Every
+ * invocation corresponds to a real 'if' in the source, unlike unary's
+ * cheap non-recursive fallthrough case, so there's no calibration reason
+ * to make the hook conditional the way unary's is. */
+static Stmt *parse_if_stmt(Parser *p) {
+    depth_enter(p->ps, token_span(p->cur));
+
+    Token if_tok = p->cur;
+    advance(p); /* consume 'if' */
+
+    Expr *cond = parse_expression(p);
+    if (!cond) {
+        depth_exit(p->ps);
+        return NULL;
+    }
+
+    /* Dedicated diagnostic (M2_PLAN.md "Dedicated diagnostics"): condition
+     * is `expression`, which structurally can never produce '=' - so
+     * finding '=' right where the block's '{' is expected is always
+     * exactly this mistake, not a generic syntax error. */
+    if (p->cur.kind == TOK_ASSIGN) {
+        parser_error(p->ps, diag_assignment_as_condition(p->ps->arena, token_span(p->cur)));
+        depth_exit(p->ps);
+        return NULL;
+    }
+
+    Stmt *then_branch = parse_block(p);
+    if (!then_branch) {
+        depth_exit(p->ps);
+        return NULL;
+    }
+
+    Stmt *else_branch = NULL;
+    if (p->cur.kind == TOK_KW_ELSE) {
+        advance(p);
+        else_branch = (p->cur.kind == TOK_KW_IF) ? parse_if_stmt(p) : parse_block(p);
+        if (!else_branch) {
+            depth_exit(p->ps);
+            return NULL;
+        }
+    }
+
+    Span full_span = span_merge(token_span(if_tok), (else_branch ? else_branch->span : then_branch->span));
+    Stmt *result = stmt_if(p->ps->arena, full_span, cond, then_branch, else_branch);
+    depth_exit(p->ps);
+    return result;
+}
+
+/* while_stmt ::= 'while' expression block ; - no self-recursion, no new
+ * cycle of its own (while -> block -> statement -> while already passes
+ * through parse_block's hook), so no depth hook needed here. */
+static Stmt *parse_while_stmt(Parser *p) {
+    Token while_tok = p->cur;
+    advance(p); /* consume 'while' */
+
+    Expr *cond = parse_expression(p);
+    if (!cond) return NULL;
+
+    if (p->cur.kind == TOK_ASSIGN) {
+        parser_error(p->ps, diag_assignment_as_condition(p->ps->arena, token_span(p->cur)));
+        return NULL;
+    }
+
+    Stmt *body = parse_block(p);
+    if (!body) return NULL;
+
+    return stmt_while(p->ps->arena, span_merge(token_span(while_tok), body->span), cond, body);
+}
+
+/* for_stmt's init clause: let_stmt | postfix_stmt | expr_stmt only - not
+ * the full `statement` alternative set (if/while/for/return/break/
+ * continue make no sense as a loop initializer). Each of the three
+ * already consumes its own trailing ';', which is also for_stmt's own
+ * init/cond separator - no extra ';' handling needed here. */
+static Stmt *parse_for_init(Parser *p) {
+    if (p->cur.kind == TOK_KW_LET) {
+        return parse_let_stmt(p);
+    }
+    return parse_postfix_or_expr_stmt(p);
+}
+
+/* for_stmt ::= 'for' ( let_stmt | postfix_stmt | expr_stmt ) expression
+ *              ';' for_step block ;
+ * No parens around the clauses (confirmed against the grammar as
+ * written - "for let i = 0; i < n; i = i + 1 { ... }", not "for (...)").
+ * No self-recursion, no new cycle of its own beyond for -> block ->
+ * statement -> for (already counted via parse_block), so no depth hook
+ * needed here, same reasoning as while_stmt. */
+static Stmt *parse_for_stmt(Parser *p) {
+    Token for_tok = p->cur;
+    advance(p); /* consume 'for' */
+
+    Stmt *init = parse_for_init(p);
+    if (!init) return NULL;
+
+    Expr *cond = parse_expression(p);
+    if (!cond) return NULL;
+
+    if (p->cur.kind != TOK_SEMI) {
+        parser_error(p->ps, diag_expected(p->ps->arena, token_span(p->cur), "';'",
+                                           token_describe(p->ps->arena, p->cur), "after condition"));
+        return NULL;
+    }
+    advance(p);
+
+    Stmt *step = parse_for_step(p);
+    if (!step) return NULL;
+
+    Stmt *body = parse_block(p);
+    if (!body) return NULL;
+
+    return stmt_for(p->ps->arena, span_merge(token_span(for_tok), body->span), init, cond, step, body);
+}
+
 /* statement ::= let_stmt | if_stmt | while_stmt | for_stmt | return_stmt
  *             | break_stmt | continue_stmt | postfix_stmt | expr_stmt ;
- * Step 6 recognizes only the four leaf kinds that don't need a nested
- * expression nested inside a condition/dispatch decision - if/while/for
- * and the postfix_stmt/expr_tail left-factoring are Step 7. Anything else
- * in statement position is a clean generic diagnostic, not a crash or a
- * silently-accepted no-op; this dispatcher itself needs no depth hook
- * (it's a one-shot switch, not a cycle of its own - same character as
- * Step 5's precedence-pipeline functions). */
+ * Full set as of Step 7. Anything else in statement position falls
+ * through to parse_postfix_or_expr_stmt, which itself produces a clean
+ * generic diagnostic (via parse_expression -> ... -> parse_primary) for
+ * genuinely unparseable input - not a crash or a silently-accepted no-op.
+ * This dispatcher itself needs no depth hook (a one-shot switch, not a
+ * cycle of its own - same character as Step 5's precedence-pipeline
+ * functions). */
 static Stmt *parse_statement(Parser *p) {
     switch (p->cur.kind) {
         case TOK_KW_LET:      return parse_let_stmt(p);
+        case TOK_KW_IF:       return parse_if_stmt(p);
+        case TOK_KW_WHILE:    return parse_while_stmt(p);
+        case TOK_KW_FOR:      return parse_for_stmt(p);
         case TOK_KW_RETURN:   return parse_return_stmt(p);
         case TOK_KW_BREAK:    return parse_break_stmt(p);
         case TOK_KW_CONTINUE: return parse_continue_stmt(p);
-        default:
-            parser_error(p->ps, diag_expected(p->ps->arena, token_span(p->cur), "statement",
-                                               token_describe(p->ps->arena, p->cur), NULL));
-            return NULL;
+        default:               return parse_postfix_or_expr_stmt(p);
     }
 }
 
 /* block ::= '{' { statement } '}' ;
- * Carries its own depth_enter/depth_exit even though no cycle closes
- * through it yet in Step 6's grammar subset (none of let/return/break/
- * continue can themselves contain a nested block) - Step 7's if/while/for
- * will each wrap a block, closing a block -> statement -> if_stmt -> block
- * cycle that doesn't pass through parse_expression at all, so it needs a
- * counted function on it. Adding the hook here, when the function is
- * first written, rather than retrofitting it once that cycle exists. */
+ * Carries its own depth_enter/depth_exit - added proactively in Step 6,
+ * before any cycle closed through it (none of let/return/break/continue
+ * contain a nested block). As of Step 7, if_stmt/while_stmt/for_stmt each
+ * wrap a block, closing block -> statement -> {if,while,for}_stmt -> block
+ * cycles that don't pass through parse_expression at all - this hook is
+ * what bounds all three. (if_stmt's OWN else-if self-recursion is a
+ * separate cycle that doesn't pass through block either - see
+ * parse_if_stmt's own hook.) Empirically proven at the cap in
+ * tests/parser/depth_nested_if_* and depth_elseif_*. */
 static Stmt *parse_block(Parser *p) {
     depth_enter(p->ps, token_span(p->cur));
 

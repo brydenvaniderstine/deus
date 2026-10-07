@@ -1,0 +1,5 @@
+ERRORS:
+1:6 expected ';' after expression, found '}'
+
+TREE:
+(none)

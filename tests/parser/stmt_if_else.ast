@@ -1,0 +1,9 @@
+(block@1:1-1:28
+  (if_stmt@1:3-1:26
+    (ident@1:6-1:7 a)
+    (block@1:8-1:14
+      (expr_stmt@1:10-1:12
+        (ident@1:10-1:11 x)))
+    (block@1:20-1:26
+      (expr_stmt@1:22-1:24
+        (ident@1:22-1:23 y)))))
