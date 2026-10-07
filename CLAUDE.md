@@ -144,3 +144,4 @@ See `VISION.md` for longer-range cross-platform/cloud-guest goals and R&D candid
   - **STOP** - a design choice, a spec deviation, a failing test, or anything touching a hard-constraint area: stop immediately, before continuing to the next step, regardless of batch position.
   - Every step report includes a plain-English summary: what changed, why, the risk level (low/medium/high), and which tests prove it - not just a diff dump.
   - **Rule: no behavior change without a test.** If a change has no test demonstrating it, that's by itself a reason to treat the step as STOP, not ROUTINE.
+- **At every tag**, list uncovered lines in `lexer.c` and `parser.c` (`make coverage`); each must be justified as untestable or get a test. No percentage targets. The arena's abort path (`arena_test --no-target-overflow`) runs out-of-process and is expected to show as uncovered.
