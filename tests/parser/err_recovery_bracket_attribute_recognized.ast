@@ -1,0 +1,9 @@
+ERRORS:
+2:8 expected identifier after 'struct', found ';'
+
+TREE:
+(function_decl@3:1-4:10 g
+  (attributes kernel_hook)
+  (params)
+  (return_type unit)
+  (block@4:8-4:10))

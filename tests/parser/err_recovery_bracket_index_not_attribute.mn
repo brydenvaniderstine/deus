@@ -1,0 +1,3 @@
+manna v0;
+fn bad(p: T) -> x[y+1] {}
+fn g() {}

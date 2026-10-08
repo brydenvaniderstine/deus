@@ -5,6 +5,11 @@ void parser_state_init(ParserState *ps, size_t arena_max_size) {
     diag_list_init(&ps->diags);
     ps->depth = 0;
     ps->error_count = 0;
+    ps->sync_top_level = 0;
+    ps->sync_block = 0;
+    ps->sync_statement = 0;
+    ps->sync_header = 0;
+    ps->sync_for_header = 0;
     arena_set_overflow_target(ps->arena, &ps->fatal_target);
 }
 

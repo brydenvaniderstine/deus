@@ -18,4 +18,8 @@ Format: `- YYYY-MM-DD: idea, one or two sentences, and where it might eventually
 - Decide licence/IP model (proprietary + CLA vs open source); get legal advice.
 - Decide platform policy for contributors (Mac-only vs portable C on any OS).
 
+## 2026-10-07: Indentation-guided "missing `}`" location hints
+
+- When `parse_block`/`parser_parse_file` hit EOF (or any far-away resume point) looking for a `'}'` that was never there, the diagnostic currently just points at where the search gave up, not at the likely real culprit. A formatter (M2+, once one exists) could track the indentation level at each `'{'` and suggest "this `'{'` on line N (at indent level K) looks like the one missing its close" by comparing where indentation drops back below K without a matching `'}'` - a much more actionable hint than "expected '}', found end of file". Needs the formatter's indentation model to exist first; parked until then. Parser slot: a diagnostic enhancement, not a recovery-mechanism change.
+
 (Add new entries above this line as they come up.)

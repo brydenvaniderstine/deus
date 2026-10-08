@@ -1,0 +1,4 @@
+manna v0;
+struct ;
+[kernel_hook]
+fn g() {}

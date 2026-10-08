@@ -1,0 +1,8 @@
+ERRORS:
+3:8 expected expression, found '='
+
+TREE:
+(function_decl@4:1-4:10 y
+  (params)
+  (return_type unit)
+  (block@4:8-4:10))

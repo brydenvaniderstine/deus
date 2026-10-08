@@ -18,12 +18,44 @@
  * with a diagnostic already recorded in `diags` - the catch site just
  * reports `diags` and stops, the same way regardless of which of the
  * three fired. */
+/* Step 10b: Wirth-style follow-set error recovery. Each syntactic level
+ * that owns a resume point (docs/M2_PLAN.md's "Error recovery" table)
+ * increments its own counter on entry and decrements it on exit - a
+ * counter, not a stack of distinct sets, because every instance of a
+ * given level (e.g. two nested blocks) declares the identical resume set
+ * regardless of nesting depth, so "is this level active at all right
+ * now" is all skipping ever needs to know. top_level is incremented
+ * exactly once, for the whole file, by parser_parse_file; it stays at 0
+ * (inactive) when parser_parse_block/parser_parse_expression are used
+ * standalone (as most golden tests do) - there is no "outer" context to
+ * hand an orphaned fn/struct off to in that case, so it's correctly
+ * treated as ordinary garbage instead. See tools/mannac/parser.c's
+ * sync_* functions for the actual skip/ownership mechanism.
+ *
+ * sync_for_header is not a fifth level - it's a declared MASK, incremented
+ * and decremented in lockstep with sync_header only by for_stmt's own
+ * header (never by if/while's). While active, it hides statement's ';'
+ * from the active-set search (docs/M2_PLAN.md's "Error recovery" table
+ * has the level -> resume-tokens -> masks mapping): a for-header's own
+ * init/cond separators are bare ';' tokens, indistinguishable by kind
+ * alone from the enclosing statement's own resume point, so without the
+ * mask, an unresolved for-header's search stops at its OWN internal
+ * separator instead of finding '{', reinterpreting the remaining clauses
+ * as fresh statements. if/while's headers declare no such mask because
+ * their condition is a bare `expression`, which can never contain a ';' -
+ * so ';' always safely means "the enclosing statement already ended"
+ * for them, exactly as it does outside any header. */
 typedef struct {
     Arena   *arena;
     DiagList diags;
     int      depth;
     int      error_count;
     jmp_buf  fatal_target;
+    int      sync_top_level;
+    int      sync_block;
+    int      sync_statement;
+    int      sync_header;
+    int      sync_for_header;
 } ParserState;
 
 /* Creates the arena (arena_max_size) and registers fatal_target with it.

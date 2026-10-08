@@ -1,0 +1,7 @@
+ERRORS:
+1:9 expected expression, found ';'
+
+TREE:
+(block@1:1-1:15
+  (expr_stmt@1:11-1:13
+    (ident@1:11-1:12 y)))
