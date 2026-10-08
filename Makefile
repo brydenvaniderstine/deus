@@ -52,7 +52,7 @@ QEMU_FLAGS   := -machine q35 -m 8G -cpu qemu64,+apic,+pdpe1gb \
                 -serial file:serial.log -monitor stdio -no-reboot \
                 -d int,cpu_reset -D qemu.log
 
-.PHONY: all image run debug clean limine stage-esp test-wx test-lexer test-lexer-asan test-arena test-arena-asan test-ast test-ast-asan test-parser-state test-parser-state-asan test-parser test-parser-asan coverage
+.PHONY: all image run debug clean limine stage-esp test-wx test-lexer test-lexer-asan test-arena test-arena-asan test-ast test-ast-asan test-parser-state test-parser-state-asan test-parser test-parser-asan test-determinism coverage
 
 all: $(KERNEL_ELF)
 
@@ -224,6 +224,20 @@ test-parser-asan:
 	@mkdir -p $(PARSER_DUMP_DIR)
 	clang -std=c11 -Wall -Wextra -g -fsanitize=address,undefined -o $(PARSER_DUMP_DIR)/parser_dump-asan $(PARSER_DUMP_SRCS)
 	@./tools/run_parser_tests.sh $(PARSER_DUMP_DIR)/parser_dump-asan
+
+# Step 11: determinism (docs/M2_PLAN.md S5) - same input must produce
+# byte-identical output across two invocations of the same binary, and
+# across plain vs ASan builds, for both implemented stages (lexer,
+# parser). Rebuilds all four binaries (reusing the exact same sources/
+# flags as test-lexer/-asan and test-parser/-asan) so this target has no
+# ordering dependency on those having already run.
+test-determinism:
+	@mkdir -p $(MANNAC_DIR) $(PARSER_DUMP_DIR)
+	clang -std=c11 -Wall -Wextra -O2 -g -o $(MANNAC_BIN) $(MANNAC_SRCS)
+	clang -std=c11 -Wall -Wextra -g -fsanitize=address,undefined -o $(MANNAC_ASAN_BIN) $(MANNAC_SRCS)
+	clang -std=c11 -Wall -Wextra -O2 -g -o $(PARSER_DUMP_DIR)/parser_dump $(PARSER_DUMP_SRCS)
+	clang -std=c11 -Wall -Wextra -g -fsanitize=address,undefined -o $(PARSER_DUMP_DIR)/parser_dump-asan $(PARSER_DUMP_SRCS)
+	@./tools/run_determinism_test.sh $(MANNAC_BIN) $(MANNAC_ASAN_BIN) $(PARSER_DUMP_DIR)/parser_dump $(PARSER_DUMP_DIR)/parser_dump-asan
 
 # Per-file coverage for mannac (lexer, arena, ast, diag, parser_state),
 # via clang's source-based coverage (llvm-profdata/llvm-cov, bundled with
