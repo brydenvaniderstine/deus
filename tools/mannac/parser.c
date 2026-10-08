@@ -1639,6 +1639,15 @@ bool parser_parse_file(ParserState *ps, Lexer *lx, NodeList *out_items) {
                  * reasoning staying true forever - same justification as
                  * parse_block's own proactively-added '{' check back in
                  * Step 6, before anything could reach it either. */
+#ifdef MANNA_FUZZ_TRACE_LAST_RESORT
+                /* Fuzz-only (tools/fuzz/run_fuzzers.sh): if the above
+                 * reasoning is ever actually wrong, this makes libFuzzer
+                 * report and save the exact input that proved it, instead
+                 * of the line only ever being counted after the fact.
+                 * Compiled out of every normal build (plain, ASan, the
+                 * real binary) - zero behavior change there. */
+                __builtin_trap();
+#endif
                 advance(&p);
             }
             continue; /* dropped - no placeholder node; loop condition

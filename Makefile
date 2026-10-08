@@ -52,7 +52,7 @@ QEMU_FLAGS   := -machine q35 -m 8G -cpu qemu64,+apic,+pdpe1gb \
                 -serial file:serial.log -monitor stdio -no-reboot \
                 -d int,cpu_reset -D qemu.log
 
-.PHONY: all image run debug clean limine stage-esp test-wx test-lexer test-lexer-asan test-arena test-arena-asan test-ast test-ast-asan test-parser-state test-parser-state-asan test-parser test-parser-asan test-determinism coverage
+.PHONY: all image run debug clean limine stage-esp test-wx test-lexer test-lexer-asan test-arena test-arena-asan test-ast test-ast-asan test-parser-state test-parser-state-asan test-parser test-parser-asan test-determinism coverage fuzz fuzz-lexer fuzz-parser
 
 all: $(KERNEL_ELF)
 
@@ -271,6 +271,21 @@ coverage:
 		-object $(COVERAGE_DIR)/parser_dump \
 		-instr-profile=$(COVERAGE_DIR)/merged.profdata \
 		-ignore-filename-regex='(_test\.c|main\.c)$$'
+
+# Step 12: libFuzzer harnesses (tools/mannac/fuzz_lexer.c, fuzz_parser.c).
+# Deliberately NOT part of `test-*`/CI - needs brew's keg-only llvm (Apple's
+# Xcode clang has no libFuzzer runtime; see tools/fuzz/run_fuzzers.sh), and
+# runs for a fixed wall-clock budget rather than to a pass/fail verdict.
+# DURATION_LEXER/DURATION_PARSER (seconds) and LLVM_CLANG are overridable,
+# e.g. `make fuzz DURATION_PARSER=1800`.
+fuzz:
+	./tools/fuzz/run_fuzzers.sh both
+
+fuzz-lexer:
+	./tools/fuzz/run_fuzzers.sh lexer
+
+fuzz-parser:
+	./tools/fuzz/run_fuzzers.sh parser
 
 clean:
 	rm -rf $(BUILD) $(IMAGE) serial.log qemu.log
