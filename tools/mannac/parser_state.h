@@ -1,5 +1,6 @@
 #pragma once
 #include <setjmp.h>
+#include <stdbool.h>
 #include "arena.h"
 #include "diag.h"
 
@@ -44,7 +45,23 @@
  * as fresh statements. if/while's headers declare no such mask because
  * their condition is a bare `expression`, which can never contain a ';' -
  * so ';' always safely means "the enclosing statement already ended"
- * for them, exactly as it does outside any header. */
+ * for them, exactly as it does outside any header.
+ *
+ * recovered_past_body is a one-shot signal, not a counter: set by
+ * handle_header_failure (parser.c) exactly when a header's recovery
+ * search found its own '{' and parsed the dropped statement's body to
+ * surface its own errors. Without it, parse_block's statement loop has
+ * no way to tell "this header fully recovered past a real body - cur is
+ * already sitting wherever that left it" apart from "this statement
+ * failed outright and cur is still at the point of failure" - both look
+ * identical from the loop's side (parse_statement returned NULL), but
+ * only the second case should trigger another sync_skip. Treating the
+ * first case the same way could re-skip across content that was never
+ * part of the mistake (a block-level resume token happening to follow
+ * immediately, matched the first time only by chance - see the fixed
+ * for-init cascade's own commit for the general shape of this hazard).
+ * Set, then read and cleared (never left true across a loop iteration)
+ * by the one call site that consumes it - see parse_block in parser.c. */
 typedef struct {
     Arena   *arena;
     DiagList diags;
@@ -56,6 +73,7 @@ typedef struct {
     int      sync_statement;
     int      sync_header;
     int      sync_for_header;
+    bool     recovered_past_body;
 } ParserState;
 
 /* Creates the arena (arena_max_size) and registers fatal_target with it.
@@ -75,6 +93,20 @@ typedef struct {
  */
 void parser_state_init(ParserState *ps, size_t arena_max_size);
 void parser_state_destroy(ParserState *ps);
+
+/* Zeroes every sync_* counter and recovered_past_body - parser_state_init
+ * already calls this once, but a ParserState that outlives a single
+ * top-level parse call (reused across more than one parser_parse_file/
+ * block/expression call, or recovered into after a longjmp to
+ * fatal_target - which unwinds the C stack without running any of the
+ * sync_*-- decrements a normal return would have) could otherwise start
+ * its NEXT parse with stale, non-zero counters left over from whatever
+ * was active when the previous one stopped. No caller in this codebase
+ * does either of those things today (parser_main.c always makes a fresh
+ * ParserState per invocation), but parser.c's three public entry points
+ * call this defensively anyway, rather than depending on that staying
+ * true. */
+void parser_state_reset_sync(ParserState *ps);
 
 /* Call at the very start of EVERY recursive parse function - expression,
  * statement, block, type - no exceptions. This explicitly includes

@@ -60,6 +60,18 @@ typedef struct {
     const char *error_msg;    /* valid when kind is one of the TOK_ERROR_* kinds */
 } Token;
 
+/* Deliberately a plain value struct, copyable with a bare `Lexer copy =
+ * *lx;` - parser.c's is_top_level_resume_token relies on exactly this to
+ * peek several tokens ahead (checking for '[' IDENT ']' 'fn') without
+ * disturbing the real parser's position: it copies *lx, calls
+ * lexer_next() on the copy, then discards it. This is only safe because
+ * every field here is either an immutable borrowed pointer (`src`, never
+ * owned or mutated by the lexer - the copy aliases the exact same bytes,
+ * which is fine since lexing never writes through it) or a plain scalar.
+ * Adding a field that owns memory, points at something the lexer itself
+ * mutates, or otherwise makes two copies NOT independently advanceable
+ * would silently break that lookahead trick - keep this struct copy-safe
+ * by construction, not just true by accident today. */
 typedef struct {
     const char *src;
     size_t      len;

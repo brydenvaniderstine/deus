@@ -117,6 +117,15 @@ typedef enum {
 struct Expr {
     ExprKind kind;
     Span     span;
+    /* True if this exact node was the immediate operand of at least one
+     * '(' expression ')' grouping (docs/M2_PLAN.md records the IR-stage
+     * consumer: only a literal directly negated, e.g. "-9223372036854775808"
+     * with no parens in between, is the i64::MIN pattern - "-(2^63)" must
+     * be a plain overflow error instead, and this flag is how that stage
+     * tells the two apart without a dedicated Paren node, which the
+     * grammar deliberately doesn't have). Set (and the span widened to
+     * include the parens) in parse_primary's '(' case - see parser.c. */
+    bool     parenthesized;
     union {
         struct { uint64_t value; } number;
         struct { bool value; } boolean;

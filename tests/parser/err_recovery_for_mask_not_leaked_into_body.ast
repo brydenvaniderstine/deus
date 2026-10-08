@@ -1,0 +1,7 @@
+ERRORS:
+1:7 expected expression, found ';'
+1:17 expected expression, found '='
+1:21 expected expression, found '='
+
+TREE:
+(block@1:1-1:28)

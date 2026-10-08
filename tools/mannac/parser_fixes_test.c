@@ -1,0 +1,167 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <assert.h>
+#include "parser.h"
+
+/* Fresh-eyes audit triage (Phase A), covered here rather than as golden
+ * tests because each one needs either a synthetic Token parser_dump's
+ * harness has no way to construct (#16's multi-line token_span), direct
+ * access to an AST node field the S-expression dump never prints (#7's
+ * `parenthesized` flag - deliberately not given its own dump syntax,
+ * since there's no Paren AST node), or a dispatch path parser_dump's own
+ * one-token peek can never reach (#16's lexer-error-first-token: a file
+ * starting with a lexer error never peeks as 'manna'/'struct'/'fn'/'[',
+ * so parser_dump always routes it to expression mode, never to
+ * parser_parse_file - see parser_main.c's own comment on that peek). */
+
+static void test_token_span_single_line_unchanged(void) {
+    Token t = {0};
+    t.kind = TOK_IDENT;
+    t.lexeme = "foo";
+    t.lexeme_len = 3;
+    t.line = 2;
+    t.col = 4;
+
+    Span s = token_span(t);
+    assert(s.start_line == 2 && s.start_col == 4);
+    assert(s.end_line == 2 && s.end_col == 7); /* col + lexeme_len, as before */
+    printf("PASS: token_span - single-line token unaffected by the multi-line fix\n");
+}
+
+static void test_token_span_multiline_unterminated_comment(void) {
+    /* Mirrors lexer.c's own unterminated-block-comment token shape: the
+     * lexeme runs from the opening delimiter to EOF and can contain
+     * embedded newlines - the one token kind today where lexeme_len
+     * alone (a raw byte count) isn't enough to compute an end position,
+     * since most of those bytes belong to lines other than the start
+     * line. */
+    Token t = {0};
+    t.kind = TOK_ERROR_UNTERMINATED_COMMENT;
+    t.lexeme = "/*\nfoo\n"; /* 7 bytes: '\n' at offsets 2 and 6 */
+    t.lexeme_len = strlen(t.lexeme);
+    t.line = 5;
+    t.col = 10;
+    t.error_msg = "unterminated block comment";
+
+    Span s = token_span(t);
+    assert(s.start_line == 5 && s.start_col == 10);
+    /* 2 embedded newlines -> ends 2 lines down; 1 byte ("\n") follows the
+     * last embedded newline in the lexeme, so the final line this token
+     * covers has exactly 0 real characters on it before the end - the
+     * exclusive end column is 1 (nothing between the line start and the
+     * end of the token on that line). */
+    assert(s.end_line == 7);
+    assert(s.end_col == 1);
+    printf("PASS: token_span - multi-line lexeme (unterminated comment) computes a real end line/col, not col + raw byte count\n");
+}
+
+static void test_token_span_multiline_trailing_text(void) {
+    /* Same shape, but with real trailing content after the last '\n', to
+     * confirm the end column reflects THAT text's length, not always 1. */
+    Token t = {0};
+    t.kind = TOK_ERROR_UNTERMINATED_COMMENT;
+    t.lexeme = "/*\nabcde"; /* 8 bytes: one '\n' at offset 2, "abcde" (5 chars) after it */
+    t.lexeme_len = strlen(t.lexeme);
+    t.line = 1;
+    t.col = 1;
+    t.error_msg = "unterminated block comment";
+
+    Span s = token_span(t);
+    assert(s.start_line == 1 && s.start_col == 1);
+    assert(s.end_line == 2);   /* one embedded newline */
+    assert(s.end_col == 6);   /* "abcde" is 5 chars, columns 1-5, exclusive end 6 */
+    printf("PASS: token_span - multi-line lexeme end column reflects the final line's own length\n");
+}
+
+static Expr *parse_one_expression(const char *src) {
+    ParserState ps;
+    parser_state_init(&ps, 1 << 20);
+    if (setjmp(ps.fatal_target) != 0) {
+        fprintf(stderr, "FAIL: unexpected fatal longjmp parsing \"%s\"\n", src);
+        exit(1);
+    }
+    Lexer lx;
+    lexer_init(&lx, src, strlen(src));
+    Expr *e = parser_parse_expression(&ps, &lx);
+    assert(e != NULL);
+    assert(ps.diags.len == 0);
+    /* Leaks ps's arena deliberately - e points into it and the test needs
+     * it to outlive this call; process exit reclaims it, same trade-off
+     * parser_main.c itself makes for the lifetime of one dump. */
+    return e;
+}
+
+static void test_parenthesized_flag_direct_literal(void) {
+    /* "-9223372036854775808": a literal directly negated, no parens in
+     * between - the i64::MIN pattern the IR stage (docs/M2_PLAN.md
+     * records this) must recognize via operand->parenthesized == false,
+     * not by re-deriving it some other way. */
+    Expr *e = parse_one_expression("-9223372036854775808");
+    assert(e->kind == EXPR_UNARY);
+    assert(e->as.unary.op == UNOP_NEG);
+    Expr *operand = e->as.unary.operand;
+    assert(operand->kind == EXPR_NUMBER);
+    assert(operand->as.number.value == 9223372036854775808ULL);
+    assert(operand->parenthesized == false);
+    assert(operand->span.start_col == 2);  /* right after the '-' */
+    assert(operand->span.end_col == 21);   /* just the 19 digits, no parens */
+    printf("PASS: parenthesized flag - a directly-negated literal is NOT marked parenthesized\n");
+}
+
+static void test_parenthesized_flag_wrapped_literal(void) {
+    /* "-(9223372036854775808)": the SAME magnitude, but through a
+     * parenthesized sub-expression - docs/M2_PLAN.md records that the IR
+     * stage must treat this as a plain overflow error, not i64::MIN,
+     * and this flag plus the widened span are the mechanism that lets it
+     * tell the two apart (no dedicated Paren AST node exists to hang
+     * this fact on instead). */
+    Expr *e = parse_one_expression("-(9223372036854775808)");
+    assert(e->kind == EXPR_UNARY);
+    assert(e->as.unary.op == UNOP_NEG);
+    Expr *operand = e->as.unary.operand;
+    assert(operand->kind == EXPR_NUMBER);
+    assert(operand->as.number.value == 9223372036854775808ULL);
+    assert(operand->parenthesized == true);
+    assert(operand->span.start_col == 2);  /* the '(' itself */
+    assert(operand->span.end_col == 23);   /* through the ')', not just the digits */
+    printf("PASS: parenthesized flag - a parenthesized literal IS marked parenthesized, span widened to include the parens\n");
+}
+
+static void test_version_decl_lexer_error_not_e0107(void) {
+    /* A file whose very FIRST token is a lexer error (here: '@', an
+     * unrecognized byte) must not be reported as "missing version
+     * header" (E0107) - that diagnostic's own fix-it ("insert manna v0;
+     * at 1:1") would be actively misleading over text that isn't valid
+     * source to begin with. It should get the generic E0105, naming the
+     * actual problem (token_describe already renders a lexer-error
+     * token's own message, e.g. "unexpected character"). */
+    const char *src = "@ struct Foo {}";
+    ParserState ps;
+    parser_state_init(&ps, 1 << 20);
+    if (setjmp(ps.fatal_target) != 0) {
+        fprintf(stderr, "FAIL: unexpected fatal longjmp\n");
+        exit(1);
+    }
+    Lexer lx;
+    lexer_init(&lx, src, strlen(src));
+    NodeList items;
+    bool ok = parser_parse_file(&ps, &lx, &items);
+    assert(!ok);
+    assert(ps.diags.len == 1);
+    assert(strcmp(ps.diags.items[0].code, "E0105") == 0);
+    assert(strstr(ps.diags.items[0].message, "unexpected character") != NULL);
+    parser_state_destroy(&ps);
+    printf("PASS: version_decl - a lexer-error first token reports E0105, not E0107\n");
+}
+
+int main(void) {
+    test_token_span_single_line_unchanged();
+    test_token_span_multiline_unterminated_comment();
+    test_token_span_multiline_trailing_text();
+    test_parenthesized_flag_direct_literal();
+    test_parenthesized_flag_wrapped_literal();
+    test_version_decl_lexer_error_not_e0107();
+    printf("ALL PASS\n");
+    return 0;
+}

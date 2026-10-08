@@ -17,12 +17,47 @@ static void advance(Parser *p) {
     p->cur = lexer_next(p->lx);
 }
 
-static Span token_span(Token t) {
+/* Exposed (not static) so token_span_test.c can verify the multi-line
+ * case directly, without pulling in the rest of the parser's machinery
+ * just to exercise one pure function - see parser.h. */
+Span token_span(Token t) {
     Span s;
     s.start_line = t.line;
     s.start_col = t.col;
-    s.end_line = t.line;
-    s.end_col = t.col + (int)t.lexeme_len;
+
+    /* Every token kind except TOK_ERROR_UNTERMINATED_COMMENT is known to
+     * lex from exactly one line (comments are stripped transparently by
+     * the lexer and never reach the parser as tokens at all when closed
+     * properly - see lexer.c's skip_ws_and_comments). An unterminated
+     * block comment is the one case where `lexeme` can contain embedded
+     * '\n's, spanning from its opening delimiter all the way to EOF - the
+     * simple "end_col = col + lexeme_len" formula below silently produces
+     * a nonsensical end position for it (adding a byte count that mostly
+     * belongs to OTHER lines onto a single line's column). Scanning for
+     * embedded newlines here, rather than special-casing the one token
+     * kind that can have them, keeps this correct automatically for any
+     * future multi-line token kind too. */
+    int newlines = 0;
+    size_t last_newline_offset = 0;
+    for (size_t i = 0; i < t.lexeme_len; i++) {
+        if (t.lexeme[i] == '\n') {
+            newlines++;
+            last_newline_offset = i;
+        }
+    }
+    if (newlines > 0) {
+        s.end_line = t.line + newlines;
+        /* 1-based column right after the last character on the final
+         * line this token covers - exclusive-end, same convention as the
+         * single-line formula below (there, "col + lexeme_len" is simply
+         * this same idea when last_newline_offset is 0 and t.col is
+         * folded in; here the line restarts at column 1 after the '\n',
+         * so t.col plays no part in the end column at all). */
+        s.end_col = (int)(t.lexeme_len - last_newline_offset);
+    } else {
+        s.end_line = t.line;
+        s.end_col = t.col + (int)t.lexeme_len;
+    }
     return s;
 }
 
@@ -35,6 +70,11 @@ static Span span_merge(Span start, Span end) {
     return s;
 }
 
+static bool is_lexer_error_token(TokenKind k) {
+    return k == TOK_ERROR_BAD_CHAR || k == TOK_ERROR_UNTERMINATED_COMMENT ||
+           k == TOK_ERROR_MALFORMED_NUMBER || k == TOK_ERROR_NUMBER_OVERFLOW;
+}
+
 /* Short description for a diagnostic's "found" slot. Error tokens use the
  * lexer's own message (more useful than quoting whatever garbage text
  * triggered it); everything else quotes its literal source text. Bridging
@@ -45,15 +85,10 @@ static const char *token_describe(Arena *a, Token t) {
     if (t.kind == TOK_EOF) {
         return "end of file";
     }
-    switch (t.kind) {
-        case TOK_ERROR_BAD_CHAR:
-        case TOK_ERROR_UNTERMINATED_COMMENT:
-        case TOK_ERROR_MALFORMED_NUMBER:
-        case TOK_ERROR_NUMBER_OVERFLOW:
-            return t.error_msg;
-        default:
-            return arena_sprintf(a, "'%.*s'", (int)t.lexeme_len, t.lexeme);
+    if (is_lexer_error_token(t.kind)) {
+        return t.error_msg;
     }
+    return arena_sprintf(a, "'%.*s'", (int)t.lexeme_len, t.lexeme);
 }
 
 /* ---------------------------------------------------------------- *
@@ -199,11 +234,13 @@ static const char *token_describe(Arena *a, Token t) {
  * records a diagnostic (parser_error - itself possibly fatal if this is
  * the MAX_ERRORS'th one) and returns NULL; every caller here checks for
  * NULL and propagates it immediately rather than attempting to continue -
- * all the way up to the nearest statement or top-level item, where Step
- * 10's panic-mode recovery (see parse_block/parser_parse_file and the
- * recover_to_*_boundary functions) takes over: the bad statement/item is
- * dropped and parsing resumes at the next synchronization point, rather
- * than the whole enclosing block/file aborting. The binary-operator
+ * all the way up to the nearest level with a resume point of its own
+ * (statement, block, header, or top-level item), where Step 10b's
+ * Wirth-style follow-set recovery (see the sync_* functions, and
+ * docs/M2_PLAN.md's "Error recovery" table) takes over: the bad
+ * statement/item is dropped and parsing resumes at the next
+ * synchronization point, rather than the whole enclosing block/file
+ * aborting. The binary-operator
  * levels below need no diagnostic calls of their own: a failed operand
  * eventually bottoms out at parse_primary, which already emits "expected
  * expression, found X" - every level above it just propagates NULL.
@@ -553,7 +590,26 @@ static Expr *parse_primary(Parser *p) {
             result = parse_expression(p);
             if (result) {
                 if (p->cur.kind == TOK_RPAREN) {
+                    /* No Paren AST node (the grammar deliberately doesn't
+                     * have one - M2_PLAN.md's compact rendering), so the
+                     * only place to record "this was parenthesized" is on
+                     * the inner expression itself: widen its span to cover
+                     * the parens too (an inner literal's span would
+                     * otherwise under-report where the expression it's
+                     * part of actually starts/ends), and set the flag the
+                     * IR stage needs to tell "-9223372036854775808" (a
+                     * literal directly negated - i64::MIN) apart from
+                     * "-(9223372036854775808)" (the same magnitude, but
+                     * through a parenthesized sub-expression - an overflow
+                     * error instead, docs/M2_PLAN.md records why). Mutating
+                     * in place is safe and correct even through nested
+                     * parens, e.g. "((42))": each layer's RPAREN handling
+                     * widens the span a little further and the flag is
+                     * already true after the first, a no-op to set again. */
+                    Token rparen = p->cur;
                     advance(p);
+                    result->span = span_merge(token_span(t), token_span(rparen));
+                    result->parenthesized = true;
                 } else {
                     parser_error(p->ps, diag_expected(p->ps->arena, token_span(p->cur), "')'",
                                                        token_describe(p->ps->arena, p->cur), "after expression"));
@@ -957,22 +1013,37 @@ static bool is_in_any_active_sync_set(Parser *p) {
     return false;
 }
 
-/* The one shared skip, tracking brace depth exactly as Step 10 found
- * necessary (an inner '}' opened during THIS skip must not be mistaken
- * for an active level's own '}' - only a depth-0 occurrence counts),
- * except depth tracking is now unconditional (every '{'/'}' adjusts it
- * regardless of which level, if any, ends up owning the eventual stop),
- * not gated on which specific tokens happen to be in the active sets.
- * Idempotent by construction: if cur is already at a sync point when
- * called, this is a no-op (zero tokens) - which is exactly what makes
- * it safe for every level along an unwind path to call this same
- * function without re-skipping past where an inner level's call already
- * stopped. */
+static bool is_open_bracket(TokenKind k) {
+    return k == TOK_LBRACE || k == TOK_LPAREN || k == TOK_LBRACKET;
+}
+
+static bool is_close_bracket(TokenKind k) {
+    return k == TOK_RBRACE || k == TOK_RPAREN || k == TOK_RBRACKET;
+}
+
+/* The one shared skip, tracking bracket depth exactly as Step 10 found
+ * necessary for '{'/'}' alone - an inner closer opened during THIS skip
+ * must not be mistaken for an active level's own closer, only a depth-0
+ * occurrence counts - now extended to '('/')' and '['/']' too, as one
+ * combined depth rather than three separate ones: the only thing this
+ * depth gates is "is a ';' encountered here structurally INSIDE some
+ * still-open bracketing, or free-standing at the top of whatever's being
+ * skipped" - a stray ';' inside an unclosed call's argument list or
+ * (post-r1) an array-repeat literal "[v; N]" is never a real statement
+ * boundary either way, so which bracket KIND is open doesn't matter, only
+ * whether at least one still is. Depth tracking is unconditional (every
+ * opener/closer adjusts it regardless of which level, if any, ends up
+ * owning the eventual stop), not gated on which specific tokens happen to
+ * be in the active sets. Idempotent by construction: if cur is already at
+ * a sync point when called, this is a no-op (zero tokens) - which is
+ * exactly what makes it safe for every level along an unwind path to call
+ * this same function without re-skipping past where an inner level's
+ * call already stopped. */
 static void sync_skip(Parser *p) {
     if (is_in_any_active_sync_set(p)) {
         return;
     }
-    int depth = (p->cur.kind == TOK_LBRACE) ? 1 : 0;
+    int depth = is_open_bracket(p->cur.kind) ? 1 : 0;
     advance(p); /* guaranteed progress: cur is not already a sync point */
     for (;;) {
         if (p->cur.kind == TOK_EOF) {
@@ -981,9 +1052,9 @@ static void sync_skip(Parser *p) {
         if (depth == 0 && is_in_any_active_sync_set(p)) {
             return;
         }
-        if (p->cur.kind == TOK_LBRACE) {
+        if (is_open_bracket(p->cur.kind)) {
             depth++;
-        } else if (p->cur.kind == TOK_RBRACE && depth > 0) {
+        } else if (is_close_bracket(p->cur.kind) && depth > 0) {
             depth--;
         }
         advance(p);
@@ -1022,23 +1093,52 @@ static bool sync_recover_top_level(Parser *p) {
 /* Shared header-failure handling for if/while/for: the caller's own
  * sync_header must already be active (incremented) when this is called,
  * exactly once, regardless of how many header clauses preceded the
- * failure. Pops it, then checks whether recovery landed on this header's
- * own '{' - if so, parses the body anyway so ITS errors still surface
- * (the grammar guarantees headers never contain '{', so stopping at '{'
- * is always safe - docs/M2_PLAN.md's Step 10b table), even though the
- * enclosing if/while/for is still dropped from the AST either way. If
- * recovery instead landed on some OUTER level's token (this header's '{'
- * was never found), does nothing further - the caller just propagates
- * NULL, trusting the outer level to recognize its own token once control
- * unwinds there. Always returns NULL, so every call site can just
- * `return handle_header_failure(p);`. */
-static Stmt *handle_header_failure(Parser *p) {
+ * failure. Runs the recovery search, then pops EVERY counter the caller
+ * declared for this header - sync_header always, plus sync_for_header
+ * too when `is_for_header` (for_stmt's own ';'-mask, parser_state.h) -
+ * at this exact point: right after the search that needs them still
+ * active, but strictly BEFORE parsing any recovered body below. Popping
+ * sync_for_header any later (it used to happen in a wrapper AFTER this
+ * whole function, including after the recovered body was parsed) would
+ * leave the mask active while that body's own statements are recovering,
+ * wrongly hiding a bare ';' that's genuinely the body's own statement
+ * boundary - found by deliberately testing the two-statements-in-one-
+ * recovered-body shape, not by inspection (tests/parser/
+ * err_recovery_for_mask_not_leaked_into_body).
+ *
+ * Then checks whether the search landed on this header's own '{' - if
+ * so, parses the body anyway so ITS errors still surface (the grammar
+ * guarantees headers never contain '{', so stopping at '{' is always
+ * safe - docs/M2_PLAN.md's Step 10b table), even though the enclosing
+ * if/while/for is still dropped from the AST either way, and sets
+ * recovered_past_body so the enclosing parse_block's loop knows not to
+ * attempt its OWN sync_skip on whatever already-legitimate token follows
+ * (see parser_state.h's doc comment on that field, and parse_block
+ * below - this is the fix for a real swallowed-valid-statement bug,
+ * covered for if/while/for and for an else-if chain in tests/parser/
+ * err_recovery_*_header_recovered_next_stmt_preserved).
+ *
+ * If recovery instead landed on some OUTER level's token (this header's
+ * '{' was never found), does nothing further - the caller just
+ * propagates NULL, trusting the outer level to recognize its own token
+ * once control unwinds there. Always returns NULL, so every call site
+ * can just `return handle_header_failure(p);` (or
+ * `handle_for_header_failure(p)` for for_stmt). */
+static Stmt *handle_header_failure_impl(Parser *p, bool is_for_header) {
     bool found_body = sync_recover_header(p);
     p->ps->sync_header--;
+    if (is_for_header) {
+        p->ps->sync_for_header--;
+    }
     if (found_body) {
         (void)parse_block(p);
+        p->ps->recovered_past_body = true;
     }
     return NULL;
+}
+
+static Stmt *handle_header_failure(Parser *p) {
+    return handle_header_failure_impl(p, false);
 }
 
 /* if_stmt ::= 'if' expression block [ 'else' ( if_stmt | block ) ] ;
@@ -1141,15 +1241,10 @@ static Stmt *parse_for_init(Parser *p) {
  * No self-recursion, no new cycle of its own beyond for -> block ->
  * statement -> for (already counted via parse_block), so no depth hook
  * needed here, same reasoning as while_stmt. */
-/* Same contract as handle_header_failure, for for_stmt's header
- * specifically: additionally pops sync_for_header, AFTER the recovery
- * skip has run (handle_header_failure's own sync_recover_header call),
- * not before - the mask has to stay declared for the full duration of
- * the search it's meant to affect. */
+/* for_stmt's own header-failure entry point - see handle_header_failure_
+ * impl's doc comment just above for what `is_for_header` changes. */
 static Stmt *handle_for_header_failure(Parser *p) {
-    Stmt *dropped = handle_header_failure(p);
-    p->ps->sync_for_header--;
-    return dropped;
+    return handle_header_failure_impl(p, true);
 }
 
 static Stmt *parse_for_stmt(Parser *p) {
@@ -1174,6 +1269,19 @@ static Stmt *parse_for_stmt(Parser *p) {
 
     Expr *cond = parse_expression(p);
     if (!cond) {
+        return handle_for_header_failure(p);
+    }
+
+    /* Same dedicated diagnostic as if/while's condition (M2_PLAN.md
+     * "Dedicated diagnostics") - for's cond position is the bare
+     * `expression` grammar rule same as theirs, so "i = 5" here is
+     * exactly the same assignment-as-condition mistake, not a different
+     * one. Previously fell through to the generic "expected ';' after
+     * condition, found '='" below instead, which is technically true but
+     * doesn't name the actual mistake the way if/while's check already
+     * does. */
+    if (p->cur.kind == TOK_ASSIGN) {
+        parser_error(p->ps, diag_assignment_as_condition(p->ps->arena, token_span(p->cur)));
         return handle_for_header_failure(p);
     }
 
@@ -1265,6 +1373,20 @@ static Stmt *parse_block(Parser *p) {
     while (p->cur.kind != TOK_RBRACE && p->cur.kind != TOK_EOF) {
         Stmt *s = parse_statement(p);
         if (!s) {
+            if (p->ps->recovered_past_body) {
+                /* A nested header (this statement itself, or one nested
+                 * arbitrarily deep inside its else-if chain) already ran
+                 * its own recovery search AND parsed a real recovered
+                 * body - cur is wherever that legitimately left it, not
+                 * sitting at the point of failure. Attempting ANOTHER
+                 * sync_skip from here would treat already-valid content
+                 * as "junk to search past" purely because this statement
+                 * itself is still being dropped - re-check the loop guard
+                 * fresh instead (see parser_state.h's doc comment on this
+                 * field). */
+                p->ps->recovered_past_body = false;
+                continue;
+            }
             if (sync_recover_statement(p)) {
                 /* ';' is consumed as the boundary itself; a statement-
                  * start keyword is left alone for the next loop iteration
@@ -1311,16 +1433,28 @@ static Stmt *parse_block(Parser *p) {
 /* version_decl ::= 'manna' IDENT ';' ;
  * Required as the first non-comment line of every file (MANNA_PRINCIPLES.md
  * Part 4 item 1) - a missing or wrong version is a compile error, not a
- * warning. Three distinct mistakes, three distinct diagnostics: the
- * 'manna' keyword altogether absent is the dedicated diag_missing_
- * version_header (E0107, with a fix-it inserting "manna v0;\n" at 1:1);
- * 'manna' present but malformed after that (no identifier, no ';') is the
- * generic diag_expected (E0105); 'manna' present and well-formed but the
- * wrong version is the dedicated diag_unsupported_version (E0106). No AST
+ * warning. Four distinct mistakes, four distinct diagnostics: the file's
+ * very first token being a LEXER error (bad byte, unterminated comment,
+ * malformed/overflowing number - is_lexer_error_token) is the generic
+ * diag_expected (E0105) naming that actual problem, not E0107 - a lexer
+ * error isn't "manna is missing", it's "the file couldn't even be
+ * tokenized here", a different mistake that deserves its own wording
+ * rather than a misleading "add manna v0;" fix-it over text that isn't
+ * valid source to begin with. 'manna' keyword altogether absent (and not
+ * a lexer error) is the dedicated diag_missing_version_header (E0107,
+ * with a fix-it inserting "manna v0;\n" at 1:1); 'manna' present but
+ * malformed after that (no identifier, no ';') is the generic
+ * diag_expected (E0105); 'manna' present and well-formed but the wrong
+ * version is the dedicated diag_unsupported_version (E0106). No AST
  * node: version_decl is a compile-time gate, not part of the semantic
  * tree (docs/M2_PLAN.md's AST node types section has no such node). No
  * depth hook: not recursive, called exactly once per file. */
 static bool parse_version_decl(Parser *p) {
+    if (is_lexer_error_token(p->cur.kind)) {
+        parser_error(p->ps, diag_expected(p->ps->arena, token_span(p->cur), "'manna' version declaration",
+                                           token_describe(p->ps->arena, p->cur), NULL));
+        return false;
+    }
     if (p->cur.kind != TOK_KW_MANNA) {
         parser_error(p->ps, diag_missing_version_header(p->ps->arena, token_span(p->cur)));
         return false;
@@ -1578,7 +1712,19 @@ static Decl *parse_top_level_item(Parser *p) {
     return NULL;
 }
 
+/* Every public entry point resets the sync_* counters (and
+ * recovered_past_body) before parsing a token: parser_state_init already
+ * zeroes them once, but a ParserState that gets reused for a second parse
+ * call, or recovered into after a longjmp to fatal_target (which skips
+ * every sync_*-- decrement a normal return would have run), could
+ * otherwise start this call with stale state left over from whatever was
+ * active when a PREVIOUS call stopped. No caller does either of those
+ * things today, but these three functions are the only place a parse
+ * ever begins, so resetting here is the one place a defensive reset
+ * actually covers every case - see parser_state_reset_sync's own doc
+ * comment. */
 Expr *parser_parse_expression(ParserState *ps, Lexer *lx) {
+    parser_state_reset_sync(ps);
     Parser p;
     p.ps = ps;
     p.lx = lx;
@@ -1587,6 +1733,7 @@ Expr *parser_parse_expression(ParserState *ps, Lexer *lx) {
 }
 
 Stmt *parser_parse_block(ParserState *ps, Lexer *lx) {
+    parser_state_reset_sync(ps);
     Parser p;
     p.ps = ps;
     p.lx = lx;
@@ -1595,6 +1742,7 @@ Stmt *parser_parse_block(ParserState *ps, Lexer *lx) {
 }
 
 bool parser_parse_file(ParserState *ps, Lexer *lx, NodeList *out_items) {
+    parser_state_reset_sync(ps);
     Parser p;
     p.ps = ps;
     p.lx = lx;

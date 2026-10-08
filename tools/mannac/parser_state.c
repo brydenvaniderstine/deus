@@ -1,15 +1,20 @@
 #include "parser_state.h"
 
-void parser_state_init(ParserState *ps, size_t arena_max_size) {
-    ps->arena = arena_create(arena_max_size);
-    diag_list_init(&ps->diags);
-    ps->depth = 0;
-    ps->error_count = 0;
+void parser_state_reset_sync(ParserState *ps) {
     ps->sync_top_level = 0;
     ps->sync_block = 0;
     ps->sync_statement = 0;
     ps->sync_header = 0;
     ps->sync_for_header = 0;
+    ps->recovered_past_body = false;
+}
+
+void parser_state_init(ParserState *ps, size_t arena_max_size) {
+    ps->arena = arena_create(arena_max_size);
+    diag_list_init(&ps->diags);
+    ps->depth = 0;
+    ps->error_count = 0;
+    parser_state_reset_sync(ps);
     arena_set_overflow_target(ps->arena, &ps->fatal_target);
 }
 

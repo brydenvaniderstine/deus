@@ -17,16 +17,25 @@
  * block, header, and top-level-item granularities (see parser.c) - an
  * expression is not one of those granularities, so this function itself
  * still has no recovery of its own: a malformed expression still returns
- * NULL here exactly as before,
- * with the nearest enclosing statement or top-level item being where
- * recovery actually happens (it drops that whole statement/item, not
- * just the bad sub-expression within it).
+ * NULL here exactly as before, with the nearest enclosing statement or
+ * top-level item being where recovery actually happens (it drops that
+ * whole statement/item, not just the bad sub-expression within it).
  *
  * Returns NULL on a parse failure that cannot be locally recovered from (a
  * diagnostic is already recorded in ps->diags either way, unless the
  * failure was itself a longjmp to ps->fatal_target, in which case control
  * never returns here at all). */
 Expr *parser_parse_expression(ParserState *ps, Lexer *lx);
+
+/* Computes a token's full source span (start AND end line/col) from its
+ * line/col/lexeme_len - exposed for token_span_test.c (not just parser.c's
+ * internal use) because it's a pure, self-contained function worth
+ * verifying in isolation: lexeme_len is a raw byte count, so a token
+ * whose lexeme spans more than one line (the only one today is
+ * TOK_ERROR_UNTERMINATED_COMMENT - see lexer.c's skip_ws_and_comments)
+ * needs its embedded newlines accounted for, not just added onto the
+ * start column. */
+Span token_span(Token t);
 
 /* Parses one '{' statement* '}' block. `statement` recognizes every
  * alternative as of Step 7 (let/if/while/for/return/break/continue/

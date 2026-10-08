@@ -52,7 +52,7 @@ QEMU_FLAGS   := -machine q35 -m 8G -cpu qemu64,+apic,+pdpe1gb \
                 -serial file:serial.log -monitor stdio -no-reboot \
                 -d int,cpu_reset -D qemu.log
 
-.PHONY: all image run debug clean limine stage-esp test-wx test-lexer test-lexer-asan test-arena test-arena-asan test-ast test-ast-asan test-parser-state test-parser-state-asan test-parser test-parser-asan test-determinism coverage fuzz fuzz-lexer fuzz-parser
+.PHONY: all image run debug clean limine stage-esp test-wx test-lexer test-lexer-asan test-arena test-arena-asan test-ast test-ast-asan test-parser-state test-parser-state-asan test-parser-fixes test-parser-fixes-asan test-parser test-parser-asan test-determinism coverage fuzz fuzz-lexer fuzz-parser
 
 all: $(KERNEL_ELF)
 
@@ -204,6 +204,27 @@ test-parser-state-asan:
 	clang -std=c11 -Wall -Wextra -g -fsanitize=address,undefined -o $(PARSER_STATE_TEST_DIR)/parser_state_test-asan $(PARSER_STATE_TEST_SRCS)
 	$(PARSER_STATE_TEST_DIR)/parser_state_test-asan
 
+# Direct-assertion unit tests for fixes that a golden-dump test can't
+# reach (a synthetic multi-line Token; the `parenthesized` AST flag,
+# which has no dump syntax since there's no Paren node; a lexer-error
+# first token, which parser_dump's own one-token peek always routes to
+# expression mode, never parser_parse_file - see parser_fixes_test.c's
+# own top comment).
+PARSER_FIXES_TEST_DIR  := $(BUILD)/parser_fixes_test
+PARSER_FIXES_TEST_SRCS := tools/mannac/arena.c tools/mannac/ast.c tools/mannac/diag.c \
+                          tools/mannac/parser_state.c tools/mannac/parser.c \
+                          tools/mannac/lexer.c tools/mannac/parser_fixes_test.c
+
+test-parser-fixes:
+	@mkdir -p $(PARSER_FIXES_TEST_DIR)
+	clang -std=c11 -Wall -Wextra -O2 -g -o $(PARSER_FIXES_TEST_DIR)/parser_fixes_test $(PARSER_FIXES_TEST_SRCS)
+	$(PARSER_FIXES_TEST_DIR)/parser_fixes_test
+
+test-parser-fixes-asan:
+	@mkdir -p $(PARSER_FIXES_TEST_DIR)
+	clang -std=c11 -Wall -Wextra -g -fsanitize=address,undefined -o $(PARSER_FIXES_TEST_DIR)/parser_fixes_test-asan $(PARSER_FIXES_TEST_SRCS)
+	$(PARSER_FIXES_TEST_DIR)/parser_fixes_test-asan
+
 # Parser golden tests (plain + ASan/UBSan) - docs/M2_PLAN.md's "Golden test
 # format for ASTs". parser_dump is a test-only harness (tools/mannac/
 # parser_main.c), not the real `manna` CLI, same role here that main.c's
@@ -260,6 +281,8 @@ coverage:
 	LLVM_PROFILE_FILE=$(COVERAGE_DIR)/ast-%p.profraw $(COVERAGE_DIR)/ast_test
 	clang -std=c11 -Wall -Wextra -g $(COVERAGE_FLAGS) -o $(COVERAGE_DIR)/parser_state_test $(PARSER_STATE_TEST_SRCS)
 	LLVM_PROFILE_FILE=$(COVERAGE_DIR)/parser_state-%p.profraw $(COVERAGE_DIR)/parser_state_test
+	clang -std=c11 -Wall -Wextra -g $(COVERAGE_FLAGS) -o $(COVERAGE_DIR)/parser_fixes_test $(PARSER_FIXES_TEST_SRCS)
+	LLVM_PROFILE_FILE=$(COVERAGE_DIR)/parser_fixes-%p.profraw $(COVERAGE_DIR)/parser_fixes_test
 	clang -std=c11 -Wall -Wextra -g $(COVERAGE_FLAGS) -o $(COVERAGE_DIR)/parser_dump $(PARSER_DUMP_SRCS)
 	LLVM_PROFILE_FILE=$(COVERAGE_DIR)/parser-%p.profraw ./tools/run_parser_tests.sh $(COVERAGE_DIR)/parser_dump
 	xcrun llvm-profdata merge -sparse $(COVERAGE_DIR)/*.profraw -o $(COVERAGE_DIR)/merged.profdata
@@ -268,6 +291,7 @@ coverage:
 		-object $(COVERAGE_DIR)/arena_test \
 		-object $(COVERAGE_DIR)/ast_test \
 		-object $(COVERAGE_DIR)/parser_state_test \
+		-object $(COVERAGE_DIR)/parser_fixes_test \
 		-object $(COVERAGE_DIR)/parser_dump \
 		-instr-profile=$(COVERAGE_DIR)/merged.profdata \
 		-ignore-filename-regex='(_test\.c|main\.c)$$'

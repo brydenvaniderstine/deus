@@ -31,6 +31,8 @@ jobs:
       - run: make test-ast-asan
       - run: make test-parser-state
       - run: make test-parser-state-asan
+      - run: make test-parser-fixes
+      - run: make test-parser-fixes-asan
       - run: make test-parser
       - run: make test-parser-asan
       - run: make test-determinism

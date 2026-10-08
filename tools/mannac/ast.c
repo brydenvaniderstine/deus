@@ -95,6 +95,7 @@ Expr *expr_number(Arena *a, Span span, uint64_t value) {
     Expr *e = arena_alloc(a, sizeof(Expr), alignof(Expr));
     e->kind = EXPR_NUMBER;
     e->span = span;
+    e->parenthesized = false;
     e->as.number.value = value;
     return e;
 }
@@ -103,6 +104,7 @@ Expr *expr_bool(Arena *a, Span span, bool value) {
     Expr *e = arena_alloc(a, sizeof(Expr), alignof(Expr));
     e->kind = EXPR_BOOL;
     e->span = span;
+    e->parenthesized = false;
     e->as.boolean.value = value;
     return e;
 }
@@ -111,6 +113,7 @@ Expr *expr_ident(Arena *a, Span span, const char *name, size_t name_len) {
     Expr *e = arena_alloc(a, sizeof(Expr), alignof(Expr));
     e->kind = EXPR_IDENT;
     e->span = span;
+    e->parenthesized = false;
     e->as.ident.name = arena_strndup(a, name, name_len);
     return e;
 }
@@ -119,6 +122,7 @@ Expr *expr_unary(Arena *a, Span span, UnOp op, Expr *operand) {
     Expr *e = arena_alloc(a, sizeof(Expr), alignof(Expr));
     e->kind = EXPR_UNARY;
     e->span = span;
+    e->parenthesized = false;
     e->as.unary.op = op;
     e->as.unary.operand = operand;
     return e;
@@ -128,6 +132,7 @@ Expr *expr_binary(Arena *a, Span span, BinOp op, Expr *lhs, Expr *rhs) {
     Expr *e = arena_alloc(a, sizeof(Expr), alignof(Expr));
     e->kind = EXPR_BINARY;
     e->span = span;
+    e->parenthesized = false;
     e->as.binary.op = op;
     e->as.binary.lhs = lhs;
     e->as.binary.rhs = rhs;
@@ -138,6 +143,7 @@ Expr *expr_call(Arena *a, Span span, const char *name, size_t name_len, NodeList
     Expr *e = arena_alloc(a, sizeof(Expr), alignof(Expr));
     e->kind = EXPR_CALL;
     e->span = span;
+    e->parenthesized = false;
     e->as.call.name = arena_strndup(a, name, name_len);
     e->as.call.args = args;
     return e;
@@ -147,6 +153,7 @@ Expr *expr_index(Arena *a, Span span, Expr *base, Expr *index) {
     Expr *e = arena_alloc(a, sizeof(Expr), alignof(Expr));
     e->kind = EXPR_INDEX;
     e->span = span;
+    e->parenthesized = false;
     e->as.index.base = base;
     e->as.index.index = index;
     return e;
@@ -156,6 +163,7 @@ Expr *expr_slice(Arena *a, Span span, Expr *base, Expr *lo, Expr *hi) {
     Expr *e = arena_alloc(a, sizeof(Expr), alignof(Expr));
     e->kind = EXPR_SLICE;
     e->span = span;
+    e->parenthesized = false;
     e->as.slice.base = base;
     e->as.slice.lo = lo;
     e->as.slice.hi = hi;
@@ -166,6 +174,7 @@ Expr *expr_field_access(Arena *a, Span span, Expr *base, const char *name, size_
     Expr *e = arena_alloc(a, sizeof(Expr), alignof(Expr));
     e->kind = EXPR_FIELD_ACCESS;
     e->span = span;
+    e->parenthesized = false;
     e->as.field_access.base = base;
     e->as.field_access.name = arena_strndup(a, name, name_len);
     return e;

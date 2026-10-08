@@ -1,0 +1,8 @@
+ERRORS:
+3:22 assignment is a statement; did you mean '=='?
+
+TREE:
+(function_decl@2:1-6:2 f
+  (params)
+  (return_type unit)
+  (block@2:8-6:2))
