@@ -4,12 +4,12 @@ Updated at every tag (`docs/README.md`'s consistency check runs at the same time
 
 ## Current milestone
 
-**M2: the Manna compiler**, host-side on macOS (`docs/M2_PLAN.md`). Spec frozen at tag `m2-spec`; now implementing the parser (`tools/mannac/`).
+**M2: the Manna compiler**, host-side on macOS (`docs/M2_PLAN.md`). Spec frozen at tag `m2-spec`; the parser is complete and tagged `m2-parser` (`tools/mannac/`). Next up: the typed IR stage (type checker) - not yet started.
 
 ## Done
 
 - **M1** (tag `m1-boot`): Limine boot, GDT/IDT, 3-way paging (1 GiB identity/HHDM + 4 KiB kernel-image alias), PIT-calibrated LAPIC preemption, W^X+NX enforced and regression-tested (`make test-wx`). All Milestone 1 acceptance criteria verified against real `serial.log`/`qemu.log` output.
-- **M2 spec** (tag `m2-spec`): v0 language spec and grammar, the lexer (`tools/mannac/lexer.c`, 14 golden tests, plain + ASan/UBSan), `docs/MANNA_PRINCIPLES.md`, and the full set of v0 language design decisions (file header, naming, `.mn` extension, error JSON schema, AST IDs, `manna` tooling binary).
+- **M2 spec** (tag `m2-spec`): v0 language spec and grammar, the lexer (`tools/mannac/lexer.c`, 13 golden tests, plain + ASan/UBSan), `docs/MANNA_PRINCIPLES.md`, and the full set of v0 language design decisions (file header, naming, `.mn` extension, error JSON schema, AST IDs, `manna` tooling binary).
 - **Parser Step 1**: arena allocator - hard cap enforced via `longjmp`, zero allocation past the cap, documented ASan intra-arena-overflow limitation. `make test-arena`/`-asan`.
 - **Parser Step 2**: AST node types, constructors, S-expression pretty-printer - verified byte-for-byte against `M2_PLAN.md`'s own documented example. `make test-ast`/`-asan`.
 - **Parser Step 3**: diagnostics infrastructure (`Diagnostic`/`DiagList`, the four dedicated messages) and the shared `ParserState` - depth counter, error cap, and one unified `longjmp` escape point for all three "abandon this file" conditions. `docs/error_codes.md` registry started (E01xx). `make test-parser-state`/`-asan`.
@@ -30,4 +30,4 @@ Updated at every tag (`docs/README.md`'s consistency check runs at the same time
 
 ## Next
 
-Parser steps 1-12 (the approved `docs/M2_PLAN.md` plan) are complete. Next milestone work is IR-stage (naming-convention enforcement, unknown-attribute/duplicate-name checks - both already recorded as deferred-to-IR decisions in `docs/M2_PLAN.md` S7) or M3, per `docs/M2_PLAN.md`'s own working log - not yet scoped into steps.
+**The parser is done** (Steps 1-12, tag `m2-parser`). Next: the **typed IR stage / type checker** - includes the naming-convention enforcement and unknown-attribute/duplicate-name checks already recorded as deferred-to-IR decisions in `docs/M2_PLAN.md` §7 items 7-8. Not yet scoped into steps or started.

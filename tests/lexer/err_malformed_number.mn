@@ -1,3 +1,4 @@
 let a = 0x;
 let b = 12ab;
 let c = 0xg;
+let d = 0x1g;

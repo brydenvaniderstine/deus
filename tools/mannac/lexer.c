@@ -320,5 +320,12 @@ const char *token_kind_name(TokenKind kind) {
         case TOK_ERROR_MALFORMED_NUMBER: return "ERROR_MALFORMED_NUMBER";
         case TOK_ERROR_NUMBER_OVERFLOW: return "ERROR_NUMBER_OVERFLOW";
     }
+    /* Unreachable by construction, not untested by accident: every
+     * TokenKind enumerator has its own case above, so reaching here would
+     * require an actual enum value outside TokenKind's defined range -
+     * not producible by any real Token this lexer emits. Kept as a
+     * defensive catch-all (so a future TokenKind added without a
+     * matching case here fails softly instead of hitting undefined
+     * switch behavior) rather than removed just to chase 100% coverage. */
     return "UNKNOWN";
 }

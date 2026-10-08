@@ -16,3 +16,16 @@ One owner file per topic. Everything else **links** to the owner, never duplicat
 ## Consistency check (run at every tag)
 
 Before tagging, re-read `docs/STATUS.md` against the actual repo state (`git log`, `git tag -l`, what's actually implemented) and `docs/README.md`'s own table against what files actually exist, and report any contradiction found - a doc claiming something that isn't true anymore, two docs disagreeing with each other, or a doc listed here that no longer exists (or vice versa).
+
+## Fuzzing (`make fuzz`)
+
+`make fuzz` (or `fuzz-lexer`/`fuzz-parser` individually) runs the libFuzzer harnesses described in `docs/M2_PLAN.md`'s "Test strategy" (Step 12). Needs brew's keg-only llvm (`brew install llvm`) - Apple's Xcode clang ships no libFuzzer runtime at all. Not part of `make test-*`/CI: it runs for a fixed wall-clock budget, not to a pass/fail verdict.
+
+```
+make fuzz                                    # both targets, default budgets (180s / 600s)
+make fuzz-lexer DURATION_LEXER=600           # one target, custom budget (seconds)
+make fuzz-parser DURATION_PARSER=1800
+LLVM_CLANG=/path/to/clang make fuzz          # if brew's llvm isn't at /usr/local/opt/llvm
+```
+
+Each target's corpus lives at `tools/fuzz/corpus/{lexer,parser}/` - committed, pre-minimized, and the directory libFuzzer both reads from and writes newly-discovered inputs into (`tests/lexer`/`tests/parser` are passed as an additional read-only seed on every run, so new goldens are always re-offered). Periodically re-minimize it after it's grown from real runs: `./build/fuzz/fuzz_lexer -merge=1 <fresh-empty-dir> tools/fuzz/corpus/lexer` (same pattern for `fuzz_parser`), then replace the committed directory with the merge output. Every crash or timeout found becomes a golden test (minimized, then copied into `tests/lexer`/`tests/parser` with a name describing what broke) - never left as just a file under `build/fuzz`.

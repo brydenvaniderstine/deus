@@ -13,4 +13,9 @@
 3:7 ASSIGN =
 3:9 ERROR_MALFORMED_NUMBER 0xg msg="0x prefix with no hex digits following it"
 3:12 SEMI ;
-4:1 EOF 
+4:1 KW_LET let
+4:5 IDENT d
+4:7 ASSIGN =
+4:9 ERROR_MALFORMED_NUMBER 0x1g msg="invalid character immediately after a hex literal"
+4:13 SEMI ;
+5:1 EOF 

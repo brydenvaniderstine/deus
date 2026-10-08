@@ -1,6 +1,6 @@
 # Milestone 2 Blueprint — The Manna Compiler (host-side, macOS)
 
-Text blueprint only — no implementation here beyond the lexer named in the working log below. See `CLAUDE.md` for the hard constraints this must not violate, and `VISION.md` for longer-range context this does *not* assume.
+Started as a text-only blueprint; the lexer and parser it describes (`tools/mannac/`) are now both fully implemented against it (`docs/STATUS.md` has the step-by-step log - this file stays the design doc, not a running history of what's built). See `CLAUDE.md` for the hard constraints this must not violate, and `VISION.md` for longer-range context this does *not* assume.
 
 ## 1. Implementation language: C vs. Rust vs. other
 

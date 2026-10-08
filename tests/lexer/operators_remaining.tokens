@@ -1,0 +1,17 @@
+1:1 KW_FALSE false
+1:7 MINUS -
+1:9 PERCENT %
+1:11 AMP &
+1:13 PIPE |
+1:15 CARET ^
+1:17 TILDE ~
+1:19 BANG !
+1:21 NE !=
+1:24 GT >
+1:26 LE <=
+1:29 GE >=
+1:32 AND &&
+1:35 OR ||
+1:38 SHL <<
+1:41 SHR >>
+2:1 EOF 

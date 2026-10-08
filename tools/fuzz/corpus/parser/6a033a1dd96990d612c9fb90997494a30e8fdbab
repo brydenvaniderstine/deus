@@ -1,0 +1,10 @@
+manna v0;
+stru
+}
+
+[kernel_hook] 6a u32,
+}
+
+[ook]
+fn ad, bx7
+}

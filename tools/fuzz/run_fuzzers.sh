@@ -11,11 +11,17 @@ set -euo pipefail
 # libclang_rt.fuzzer_osx.a"). Uses brew's keg-only llvm instead, which
 # does ship it - override LLVM_CLANG if yours lives somewhere else.
 #
-# Seeds each corpus directly from the existing golden-test inputs
-# (tests/lexer, tests/parser) rather than a separate committed corpus -
-# this already includes every err_recovery_*.mn file, so the parser
-# fuzzer starts mutating from known-interesting recovery inputs instead
-# of from nothing. The parser binary is additionally built with
+# Each fuzzer's PRIMARY corpus is the committed, pre-minimized one under
+# tools/fuzz/corpus/{lexer,parser} - libFuzzer treats the first corpus
+# directory given as both input and output, so a run adds any newly
+# discovered interesting input directly there, growing it in place. The
+# golden-test directories (tests/lexer, tests/parser) are passed as a
+# second, read-only seed corpus on every run, so new goldens (including
+# every err_recovery_*.mn) always get re-offered even if a past run
+# predates them. Periodically re-minimize and commit
+# tools/fuzz/corpus/{lexer,parser} (see the -merge=1 recipe in this
+# script's own commit message / docs/M2_PLAN.md) rather than letting it
+# grow unbounded. The parser binary is additionally built with
 # -DMANNA_FUZZ_TRACE_LAST_RESORT (see parser.c), which turns reaching
 # the top-level loop's last-resort single-token-skip backstop into an
 # immediate, saved libFuzzer crash - compiled out of every other build,
@@ -30,8 +36,8 @@ LLVM_CLANG="${LLVM_CLANG:-/usr/local/opt/llvm/bin/clang}"
 DURATION_LEXER="${DURATION_LEXER:-180}"   # seconds
 DURATION_PARSER="${DURATION_PARSER:-600}" # seconds
 BUILD_DIR="build/fuzz"
-CORPUS_LEXER="$BUILD_DIR/corpus_lexer"
-CORPUS_PARSER="$BUILD_DIR/corpus_parser"
+CORPUS_LEXER="tools/fuzz/corpus/lexer"
+CORPUS_PARSER="tools/fuzz/corpus/parser"
 ARTIFACTS="$BUILD_DIR/artifacts"
 
 if [ ! -x "$LLVM_CLANG" ]; then
@@ -41,22 +47,18 @@ if [ ! -x "$LLVM_CLANG" ]; then
     exit 1
 fi
 
-mkdir -p "$ARTIFACTS"
+mkdir -p "$ARTIFACTS" "$CORPUS_LEXER" "$CORPUS_PARSER"
 
 run_lexer() {
-    mkdir -p "$CORPUS_LEXER"
-    cp tests/lexer/*.mn "$CORPUS_LEXER"/ 2>/dev/null || true
     echo "==> Building fuzz_lexer ($LLVM_CLANG)"
     "$LLVM_CLANG" -std=c11 -g -O1 -fsanitize=fuzzer,address,undefined \
         -o "$BUILD_DIR/fuzz_lexer" tools/mannac/lexer.c tools/mannac/fuzz_lexer.c
     echo "==> Fuzzing lexer for ${DURATION_LEXER}s"
     "$BUILD_DIR/fuzz_lexer" -max_total_time="$DURATION_LEXER" \
-        -artifact_prefix="$ARTIFACTS/lexer_" "$CORPUS_LEXER" || true
+        -artifact_prefix="$ARTIFACTS/lexer_" "$CORPUS_LEXER" tests/lexer || true
 }
 
 run_parser() {
-    mkdir -p "$CORPUS_PARSER"
-    cp tests/parser/*.mn "$CORPUS_PARSER"/ 2>/dev/null || true
     echo "==> Building fuzz_parser (MANNA_FUZZ_TRACE_LAST_RESORT on)"
     "$LLVM_CLANG" -std=c11 -g -O1 -fsanitize=fuzzer,address,undefined \
         -DMANNA_FUZZ_TRACE_LAST_RESORT \
@@ -66,7 +68,7 @@ run_parser() {
         tools/mannac/fuzz_parser.c
     echo "==> Fuzzing parser for ${DURATION_PARSER}s"
     "$BUILD_DIR/fuzz_parser" -max_total_time="$DURATION_PARSER" \
-        -artifact_prefix="$ARTIFACTS/parser_" "$CORPUS_PARSER" || true
+        -artifact_prefix="$ARTIFACTS/parser_" "$CORPUS_PARSER" tests/parser || true
 }
 
 case "$TARGET" in
