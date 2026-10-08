@@ -4,7 +4,9 @@ Updated at every tag (`docs/README.md`'s consistency check runs at the same time
 
 ## Current milestone
 
-**M2: the Manna compiler**, host-side on macOS (`docs/M2_PLAN.md`). Spec frozen at tag `m2-spec`; the parser is complete and tagged `m2-parser` (`tools/mannac/`). Next up: the typed IR stage (type checker) - not yet started.
+**M2: the Manna compiler**, host-side on macOS (`docs/M2_PLAN.md`). Spec frozen at tag `m2-spec`; the parser is complete and tagged `m2-parser` (`tools/mannac/`). After the tag, a fresh-eyes audit of `tools/mannac/parser.c` surfaced a triage list, now being worked through as "r1" before the typed IR stage starts.
+
+**Active work: r1 triage → see `docs/R1_TRIAGE.md`.** Next action: Phase B (spec-only M2_PLAN.md updates for struct construction/arrays/conversions, the `&&`/`||` comparison rule, and reserving `unit` - no parser code). Phase A (bug fixes) is done; Phase C (docs) and tagging `m2-parser-r1` come after Phase B. The typed IR stage starts only after r1 is tagged.
 
 ## Done
 
@@ -30,4 +32,4 @@ Updated at every tag (`docs/README.md`'s consistency check runs at the same time
 
 ## Next
 
-**The parser is done** (Steps 1-12, tag `m2-parser`). Next: the **typed IR stage / type checker** - includes the naming-convention enforcement and unknown-attribute/duplicate-name checks already recorded as deferred-to-IR decisions in `docs/M2_PLAN.md` §7 items 7-8. Not yet scoped into steps or started.
+**The parser is done** (Steps 1-12, tag `m2-parser`), currently going through post-tag audit triage ("r1" - see "Active work" above and `docs/R1_TRIAGE.md`; Phase A done, Phase B next). Once r1 is tagged `m2-parser-r1`, next is the **typed IR stage / type checker** - includes the naming-convention enforcement and unknown-attribute/duplicate-name checks already recorded as deferred-to-IR decisions in `docs/M2_PLAN.md` §7 items 7-8. Not yet scoped into steps or started.
