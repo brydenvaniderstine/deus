@@ -29,3 +29,5 @@ LLVM_CLANG=/path/to/clang make fuzz          # if brew's llvm isn't at /usr/loca
 ```
 
 Each target's corpus lives at `tools/fuzz/corpus/{lexer,parser}/` - committed, pre-minimized, and the directory libFuzzer both reads from and writes newly-discovered inputs into (`tests/lexer`/`tests/parser` are passed as an additional read-only seed on every run, so new goldens are always re-offered). Periodically re-minimize it after it's grown from real runs: `./build/fuzz/fuzz_lexer -merge=1 <fresh-empty-dir> tools/fuzz/corpus/lexer` (same pattern for `fuzz_parser`), then replace the committed directory with the merge output. Every crash or timeout found becomes a golden test (minimized, then copied into `tests/lexer`/`tests/parser` with a name describing what broke) - never left as just a file under `build/fuzz`.
+
+Commit corpus changes only as a re-minimized merge at milestone boundaries; never commit a grown corpus mid-milestone.
