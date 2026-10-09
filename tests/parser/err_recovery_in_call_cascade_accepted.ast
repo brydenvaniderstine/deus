@@ -1,0 +1,9 @@
+ERRORS:
+3:18 expected expression, found ';'
+3:21 expected ';' after expression, found ')'
+
+TREE:
+(function_decl@2:1-4:2 f
+  (params)
+  (return_type unit)
+  (block@2:8-4:2))

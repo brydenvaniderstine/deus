@@ -228,6 +228,48 @@ static void test_state_reset_error_count_between_parses(void) {
     printf("PASS: parse entry - error_count restarts at 0 for each parse\n");
 }
 
+/* Phase A #17 had no test of its own: the sync_* counters are bumped on
+ * entry to each recovery level and dropped on exit, and a fatal longjmp
+ * (E0103 deep inside a function body) skips every drop. They must read 0
+ * again after the NEXT parse, not carry the abandoned parse's levels. */
+static void test_sync_counters_reset_at_parse_entry(void) {
+    enum { LEVELS = 300 };
+    static char deep[2 * LEVELS + 64];
+    size_t n = 0;
+    n += (size_t)snprintf(deep + n, sizeof deep - n, "manna v0;\nfn f() {\n    let a = ");
+    for (int i = 0; i < LEVELS; i++) deep[n++] = '(';
+    deep[n++] = 'x';
+    for (int i = 0; i < LEVELS; i++) deep[n++] = ')';
+    n += (size_t)snprintf(deep + n, sizeof deep - n, ";\n}\n");
+
+    ParserState ps;
+    parser_state_init(&ps, 1 << 22);
+    Lexer lx1;
+    lexer_init(&lx1, deep, n);
+    NodeList items1;
+    if (setjmp(ps.fatal_target) == 0) {
+        parser_parse_file(&ps, &lx1, &items1);
+        fprintf(stderr, "FAIL: expected E0103\n");
+        exit(1);
+    }
+    /* precondition: the abandoned parse really left recovery levels active */
+    assert(ps.sync_top_level > 0 && ps.sync_block > 0 && ps.sync_statement > 0);
+
+    const char *ok = "manna v0;\nfn g() {}\n";
+    Lexer lx2;
+    lexer_init(&lx2, ok, strlen(ok));
+    NodeList items2;
+    if (setjmp(ps.fatal_target) != 0) {
+        fprintf(stderr, "FAIL: fatal on the second parse\n");
+        exit(1);
+    }
+    assert(parser_parse_file(&ps, &lx2, &items2));
+    assert(ps.sync_top_level == 0 && ps.sync_block == 0 && ps.sync_statement == 0 &&
+           ps.sync_header == 0 && ps.sync_for_header == 0 && ps.recovered_past_body == false);
+    parser_state_destroy(&ps);
+    printf("PASS: parse entry - sync_* counters and recovered_past_body are 0 after a parse that followed an abandoned one\n");
+}
+
 int main(void) {
     test_token_span_single_line_unchanged();
     test_token_span_multiline_unterminated_comment();
@@ -237,6 +279,7 @@ int main(void) {
     test_version_decl_lexer_error_not_e0107();
     test_state_reset_after_fatal_longjmp();
     test_state_reset_error_count_between_parses();
+    test_sync_counters_reset_at_parse_entry();
     printf("ALL PASS\n");
     return 0;
 }
