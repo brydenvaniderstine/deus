@@ -31,7 +31,7 @@ Every step also updates the `parser.c` header grammar comment (a copy of the gra
 
 | # | Step | Tier | Goldens |
 |---|---|---|---|
-| 0 | E0102 `expected` field (`'{'` for `if`/`while`, `';'` for `for`): extra parameter on `diag_assignment_as_condition`, 3 call sites, `parser_fixes_test.c` | ROUTINE | none (goldens print message text only) |
+| 0 | E0102 `expected` field (`'{'` for `if`/`while`, `';'` for `for`): extra parameter on `diag_assignment_as_condition`, 3 call sites, `parser_fixes_test.c` | ROUTINE | none (goldens print message text only). **DONE, committed locally, awaiting review** |
 | 1 | Reserve `u8`..`i64`, `bool`, `unit` **and** teach `parse_type` the nine `PRIM_TYPE` keywords (cannot be split: the moment `u32` is a keyword every typed golden breaks); fix the stale `lexer.h` comment; `token_kind_name`/`token_describe` cases | **STOP** (keyword reservation) | re-baseline `tests/lexer/basic.tokens`; new lexer golden for the 10 keywords; reserved-word-as-name errors; `unit` in type position; the 22 type-using parser goldens re-diffed byte-identical |
 | 2 | Conversions `u64(x)` (depth cycle 10): `EXPR_CONVERT`, `parse_primary`, `starts_postfix` += 9 keywords, `ast_test.c` | **STOP** (grammar) | `convert_*`, error shapes, `depth_conv_*` at the measured limit + 300, plain + ASan |
 | 3 | Array literal and `[v; N]` (depth cycle 9) **and** the `parser_main.c` mode-peek fix | **STOP** (grammar, recovery-adjacent) | `array_*`, `repeat_*` (incl. `repeat_zero`, `repeat_one`), the `[1 +; 3]` cascade pin, the `[IDENT] fn` misfire golden, `depth_array_*`/`depth_repeat_*` |
@@ -82,7 +82,7 @@ Implements #4 (struct construction, arrays, `[v; N]`, `u64(x)`, reserved primiti
 - **`parser.c` comments:** update the stale `is_top_level_resume_token` comment
   ("headers and statements can't otherwise produce one" is false once `'['` starts an
   expression) and the INVARIANT comment's back-edge count (seven -> nine);
-- **fix E0102's hardcoded `expected = "'{'"`** (wrong at the `for` condition site, where the parser wants `';'`): add an `expected` parameter to `diag_assignment_as_condition`, update its 3 call sites, pin with `parser_fixes_test.c` cases;
+- **DONE (step 0): fix E0102's hardcoded `expected = "'{'"`** (wrong at the `for` condition site, where the parser wants `';'`): add an `expected` parameter to `diag_assignment_as_condition`, update its 3 call sites, pin with `parser_fixes_test.c` cases;
 - goldens for `[v; 0]` (`repeat_zero`) and `[v; 1]`, and pinning goldens for the accepted
   in-bracket cascade (`[1 +; 3]`, `g(1 +; 3)`: two diagnostics each);
 - **`parser_main.c`'s mode-dispatch peek routes a leading `'['` to whole-file mode**

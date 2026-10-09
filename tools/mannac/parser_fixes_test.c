@@ -270,6 +270,38 @@ static void test_sync_counters_reset_at_parse_entry(void) {
     printf("PASS: parse entry - sync_* counters and recovered_past_body are 0 after a parse that followed an abandoned one\n");
 }
 
+/* E0102's JSON `expected` field named '{' at every call site, but a `for`
+ * header's condition clause is terminated by ';', not '{' (known inaccuracy
+ * recorded in docs/error_codes.md since r1 Phase C; message, span and the
+ * "==" fix-it were always right). Goldens print message text only, so the
+ * field is pinned here. */
+static const char *e0102_expected(const char *src) {
+    ParserState ps;
+    static char buf[16];
+    parser_state_init(&ps, 1 << 20);
+    if (setjmp(ps.fatal_target) != 0) {
+        fprintf(stderr, "FAIL: unexpected fatal longjmp parsing \"%s\"\n", src);
+        exit(1);
+    }
+    Lexer lx;
+    lexer_init(&lx, src, strlen(src));
+    parser_parse_block(&ps, &lx);
+    assert(ps.diags.len >= 1);
+    assert(strcmp(ps.diags.items[0].code, "E0102") == 0);
+    assert(ps.diags.items[0].fix != NULL);
+    assert(strcmp(ps.diags.items[0].fix->replacement_text, "==") == 0);
+    snprintf(buf, sizeof buf, "%s", ps.diags.items[0].expected);
+    parser_state_destroy(&ps);
+    return buf;
+}
+
+static void test_e0102_expected_field_per_site(void) {
+    assert(strcmp(e0102_expected("{ if x = 1 { } }"), "'{'") == 0);
+    assert(strcmp(e0102_expected("{ while x = 1 { } }"), "'{'") == 0);
+    assert(strcmp(e0102_expected("{ for let i = 0; i = 5; i = i + 1 { } }"), "';'") == 0);
+    printf("PASS: E0102 - expected field is '{' for if/while and ';' for a for condition\n");
+}
+
 int main(void) {
     test_token_span_single_line_unchanged();
     test_token_span_multiline_unterminated_comment();
@@ -280,6 +312,7 @@ int main(void) {
     test_state_reset_after_fatal_longjmp();
     test_state_reset_error_count_between_parses();
     test_sync_counters_reset_at_parse_entry();
+    test_e0102_expected_field_per_site();
     printf("ALL PASS\n");
     return 0;
 }

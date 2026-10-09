@@ -1226,7 +1226,7 @@ static Stmt *parse_if_stmt(Parser *p) {
      * finding '=' right where the block's '{' is expected is always
      * exactly this mistake, not a generic syntax error. */
     if (p->cur.kind == TOK_ASSIGN) {
-        parser_error(p->ps, diag_assignment_as_condition(p->ps->arena, token_span(p->cur)));
+        parser_error(p->ps, diag_assignment_as_condition(p->ps->arena, token_span(p->cur), "'{'"));
         Stmt *dropped = handle_header_failure(p);
         recover_else_branch(p);
         depth_exit(p->ps);
@@ -1270,7 +1270,7 @@ static Stmt *parse_while_stmt(Parser *p) {
     }
 
     if (p->cur.kind == TOK_ASSIGN) {
-        parser_error(p->ps, diag_assignment_as_condition(p->ps->arena, token_span(p->cur)));
+        parser_error(p->ps, diag_assignment_as_condition(p->ps->arena, token_span(p->cur), "'{'"));
         return handle_header_failure(p);
     }
     p->ps->sync_header--;
@@ -1340,7 +1340,7 @@ static Stmt *parse_for_stmt(Parser *p) {
      * doesn't name the actual mistake the way if/while's check already
      * does. */
     if (p->cur.kind == TOK_ASSIGN) {
-        parser_error(p->ps, diag_assignment_as_condition(p->ps->arena, token_span(p->cur)));
+        parser_error(p->ps, diag_assignment_as_condition(p->ps->arena, token_span(p->cur), "';'"));
         return handle_for_header_failure(p);
     }
 

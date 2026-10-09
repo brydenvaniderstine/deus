@@ -48,12 +48,14 @@ void diag_add(Arena *a, DiagList *list, Diagnostic d);
  * parsed. */
 Diagnostic diag_chained_comparison(Span second_operator_span);
 
-/* "assignment is a statement; did you mean '=='?" - raised when if/while
- * is expecting the condition-terminating '{' and finds '=' instead.
- * Carries a fix: replace the single '=' with '=='. This is E0102 in
- * docs/M2_PLAN.md's own worked JSON-schema example - reused here, not
+/* "assignment is a statement; did you mean '=='?" - raised when a
+ * condition is followed by '=' where its terminator was expected.
+ * `expected` names that terminator for the JSON `expected` field: "'{'"
+ * for if/while (the block opens), "';'" for a for header's condition
+ * clause. Carries a fix: replace the single '=' with '=='. This is E0102
+ * in docs/M2_PLAN.md's own worked JSON-schema example - reused here, not
  * reinvented. */
-Diagnostic diag_assignment_as_condition(Arena *a, Span equals_span);
+Diagnostic diag_assignment_as_condition(Arena *a, Span equals_span, const char *expected);
 
 /* "maximum nesting depth (256 units) exceeded" - raised by parser_state.h's
  * depth_enter() when a recursive parse path goes past MAX_NESTING_DEPTH. */

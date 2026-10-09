@@ -16,7 +16,7 @@ static void test_diag_list_and_dedicated_messages(void) {
     diag_list_init(&list);
 
     diag_add(a, &list, diag_chained_comparison(mk(1, 5, 1, 6)));
-    diag_add(a, &list, diag_assignment_as_condition(a, mk(2, 10, 2, 11)));
+    diag_add(a, &list, diag_assignment_as_condition(a, mk(2, 10, 2, 11), "'{'"));
 
     assert(list.len == 2);
     assert(strcmp(list.items[0].code, "E0101") == 0);

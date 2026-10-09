@@ -33,7 +33,7 @@ Diagnostic diag_chained_comparison(Span second_operator_span) {
     return d;
 }
 
-Diagnostic diag_assignment_as_condition(Arena *a, Span equals_span) {
+Diagnostic diag_assignment_as_condition(Arena *a, Span equals_span, const char *expected) {
     DiagFix *fix = arena_alloc(a, sizeof(DiagFix), alignof(DiagFix));
     fix->title = "use comparison";
     fix->edit_span = equals_span;
@@ -44,7 +44,7 @@ Diagnostic diag_assignment_as_condition(Arena *a, Span equals_span) {
     d.severity = DIAG_ERROR;
     d.message = "assignment is a statement; did you mean '=='?";
     d.span = equals_span;
-    d.expected = "'{'";
+    d.expected = expected;
     d.found = "'='";
     d.fix = fix;
     return d;

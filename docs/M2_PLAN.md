@@ -477,7 +477,6 @@ Also: `sync_skip` tracks `'('`/`')'` and `'['`/`']'` depth so that a `';'` insid
 ### Known limitations
 
 - **A `for`-header's error recovery discards, rather than preserves or re-reports, anything between a header failure and the next resume point** (`tests/parser/err_recovery_for_header_mask_swallows_filler`) - see "Error recovery" above for why the `';'`-mask makes this an accepted trade-off, not a bug: it replaces Step 10's for-init double-diagnostic cascade with silent loss instead, which is strictly better but still loses real content that a finer, clause-aware recovery could have preserved.
-- **E0102's JSON `expected` field is wrong at the `for` condition site** (`diag_assignment_as_condition` hardcodes `'{'`; the parser wants `';'` there). Message, span and fix-it are correct everywhere. Fix is on the #4 checklist (`docs/PARSER_STEP4.md`); see `docs/error_codes.md` E0102.
 - **A failure inside an already-opened `(`/`[` can cascade into a second diagnostic when it precedes a `';'` in that bracket** (`g(1 +; 3)` today; `[1 +; 3]` once the repeat literal exists) - `sync_skip`'s bracket depth only covers brackets the skip itself passes over, not ones the parser had already consumed. Reproduced on today's binary; see "Recovery: `'['` in `primary`'s FIRST set" above for the evidence and the decision. Accepted, not fixed, in r1.
 
 ### Reserved words, constructors, and conversions (r1 Phase B)
