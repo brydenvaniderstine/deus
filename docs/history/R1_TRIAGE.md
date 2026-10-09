@@ -15,7 +15,7 @@ memory - re-read this file's verbatim section against current repo state first.*
   300s, zero crashes, last-resort trap never hit), `make test-determinism` clean,
   coverage unchanged at the two pre-existing justified gaps (parser.c 99.81%, lexer.c
   99.64%).
-- **Phase B (spec only): WRITTEN and reviewed - committed locally, not pushed (awaiting approval).** Spec edits
+- **Phase B (spec only): DONE** (`2ee8fa8`, pushed). Spec edits
   in `docs/M2_PLAN.md` (§2, lexer decisions, §4 grammar + new "Reserved words,
   constructors, and conversions" subsection, AST/dump format, §8 Admission Test
   records) and `docs/error_codes.md` (E0108, E0109, documented E0105 exceptions). No
@@ -32,32 +32,9 @@ memory - re-read this file's verbatim section against current repo state first.*
   no counter added; (6) formatter rule (b), `[v; 1]` -> `[v]`; (7) `[v; 0]` is legal,
   a zero-length array - the only spelling of one, so no list-form overlap, and `v` is
   evaluated exactly once for any N (M2_PLAN §4 grammar comment).
-- **Phase C (docs): NOT STARTED.**
-- **#4 parser implementation** (struct construction / arrays / repeat-literal /
-  conversions, from Phase B's spec) **plus the #5/#6 code**: explicitly deferred to
-  its own step **after** `m2-parser-r1` is tagged - do not implement it as part of
-  Phase B or this triage. Its checklist (from Phase B):
-  - lexer keyword table + `tests/lexer/basic.tokens`;
-    `parse_type`/`parse_primary`/`starts_postfix`/`parse_arg_list`;
-  - `relational` merge (#5), **and flip `tests/parser/comparison_wrapped_by_equality_{lhs,rhs}`
-    from valid to E0108 error goldens**; add the E0101/E0108 table cases from M2_PLAN §4;
-  - `-> unit` (E0109); `ast.c:541` + `ast_test.c:142` + the 14 `(return_type unit)`
-    goldens -> `(return_type)`, every other golden re-diffed byte-identical;
-  - **`parser.c` comments:** update the stale `is_top_level_resume_token` comment
-    ("headers and statements can't otherwise produce one" is false once `'['` starts an
-    expression) and the INVARIANT comment's back-edge count (seven -> nine);
-  - **fix E0102's hardcoded `expected = "'{'"`** (wrong at the `for` condition site, where the parser wants `';'`): add an `expected` parameter to `diag_assignment_as_condition`, update its 3 call sites, pin with `parser_fixes_test.c` cases;
-  - goldens for `[v; 0]` (`repeat_zero`) and `[v; 1]`, and pinning goldens for the accepted
-    in-bracket cascade (`[1 +; 3]`, `g(1 +; 3)`: two diagnostics each);
-  - **`parser_main.c`'s mode-dispatch peek routes a leading `'['` to whole-file mode**
-    (it assumes `'['` can only start an attribute). Once `'['` starts an array literal,
-    expression goldens like `[1, 2, 3]` would be mis-routed: the peek must be changed
-    (e.g. `'['` + IDENT + `']'` + `fn`, the same shape `is_top_level_resume_token` uses);
-  - depth goldens (predicted 255/256/300); fuzz both targets with the last-resort trap on;
-  - **close the §8 Admission Test records (#4, #5, #6) from "pending admission (goldens
-    due in #4 step)" to "admitted"** once their listed goldens exist and pass;
-  - formatter requirement (not parser work, recorded for when `manna fmt` is built):
-    M2_PLAN §8 #4 item 5 array-literal canonicalization.
+- **Phase C (docs): DONE** (`cf54db5`..`e5137cd` plus this archive commit; CI green, run 37868443968).
+- **#4 parser implementation + the #5/#6 code, and every deferred item:** MOVED to
+  `docs/PARSER_STEP4.md` (the live working doc for that step). Nothing about #4 work is tracked here any more.
 
 ## Phase C #11: fix-hint candidates that need code (PENDING DECISION - not Phase C docs)
 

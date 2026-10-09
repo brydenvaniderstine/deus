@@ -331,7 +331,7 @@ array_body        ::= expression ( { ',' expression } | ';' NUMBER ) ;
        `x != 0` for the first; there is deliberately no spelling for the
        second (principle 1: not a second way to say `if b {1} else {0}`). The result of a conversion, an array
        literal, and a call is never an lvalue (lvalue validity -
-       an IR-stage check, as R1_TRIAGE #3 decided). *)
+       an IR-stage check, as `docs/history/R1_TRIAGE.md` #3 decided). *)
 ```
 
 ### Dedicated diagnostics (implementation requirements, not expressible in EBNF)
@@ -470,12 +470,12 @@ Also: `sync_skip` now tracks `'('`/`')'` and `'['`/`']'` depth the same way it a
 ### Known limitations
 
 - **A `for`-header's error recovery discards, rather than preserves or re-reports, anything between a header failure and the next resume point** (`tests/parser/err_recovery_for_header_mask_swallows_filler`) - see "Error recovery" above for why the `';'`-mask makes this an accepted trade-off, not a bug: it replaces Step 10's for-init double-diagnostic cascade with silent loss instead, which is strictly better but still loses real content that a finer, clause-aware recovery could have preserved.
-- **E0102's JSON `expected` field is wrong at the `for` condition site** (`diag_assignment_as_condition` hardcodes `'{'`; the parser wants `';'` there). Message, span and fix-it are correct everywhere. Fix is on the #4 checklist (`docs/R1_TRIAGE.md`); see `docs/error_codes.md` E0102.
+- **E0102's JSON `expected` field is wrong at the `for` condition site** (`diag_assignment_as_condition` hardcodes `'{'`; the parser wants `';'` there). Message, span and fix-it are correct everywhere. Fix is on the #4 checklist (`docs/PARSER_STEP4.md`); see `docs/error_codes.md` E0102.
 - **A failure inside an already-opened `(`/`[` can cascade into a second diagnostic when it precedes a `';'` in that bracket** (`g(1 +; 3)` today; `[1 +; 3]` once the repeat literal exists) - `sync_skip`'s bracket depth only covers brackets the skip itself passes over, not ones the parser had already consumed. Reproduced on today's binary; see "Recovery: `'['` in `primary`'s FIRST set" above for the evidence and the decision. Accepted, not fixed, in r1.
 
 ### Reserved words, constructors, and conversions (r1 Phase B)
 
-**Status: specification only.** Nothing in this subsection is implemented. `lexer.c`, `parser.c`, `ast.c` and every golden are unchanged until the post-r1 "#4 parser step" (`docs/R1_TRIAGE.md`), which also carries the #5 and #6 code (the new `&&`/`||` comparison error, the `-> unit` error, and the `(return_type)` dump change) - that deferral was decided at the start of Phase B. Every claim below that names a number or a behavior of code that doesn't exist yet is labeled **specified** or **predicted**, never **proven**; per CLAUDE.md's "proof over reasoning" lesson, the #4 step must prove each one with a built binary before this text is allowed to say otherwise.
+**Status: specification only.** Nothing in this subsection is implemented. `lexer.c`, `parser.c`, `ast.c` and every golden are unchanged until the post-r1 "#4 parser step" (`docs/PARSER_STEP4.md`), which also carries the #5 and #6 code (the new `&&`/`||` comparison error, the `-> unit` error, and the `(return_type)` dump change) - that deferral was decided at the start of Phase B. Every claim below that names a number or a behavior of code that doesn't exist yet is labeled **specified** or **predicted**, never **proven**; per CLAUDE.md's "proof over reasoning" lesson, the #4 step must prove each one with a built binary before this text is allowed to say otherwise.
 
 #### LL(1) re-verification
 
@@ -563,7 +563,7 @@ Registered in `docs/error_codes.md` now (marked "specified, not yet emitted"); t
 - `[]` - `expected expression, found ']'`; `[v; X]` with `X` not a `NUMBER` - `expected array repeat count (integer), found ...`;
 - conversion arity and shape: `u8()` - `expected expression, found ')'`; `u8(a, b)` - `expected ')' after conversion operand, found ','`; a bare `u8` in expression position - `expected '(' after 'u8', found ...`.
 
-**IR-stage diagnostics are specified here only as a to-do, with no codes yet.** The `E02xx` range is assigned when the IR stage starts; none ship in r1, so "no diagnostic ships unregistered" holds. They are: callee is not a struct / left of `':'` is not a bare field name; a field missing, repeated, unknown, or out of declaration order; named and positional arguments mixed in one call; array-literal element-type mismatch (a repeat count of 0 is legal, not an error); any conversion with a non-integer type on either side (`bool(x)` and `u8(b)` alike); an assignment target that isn't an lvalue (lvalue validity, R1_TRIAGE #3); maximum array size.
+**IR-stage diagnostics are specified here only as a to-do, with no codes yet.** The `E02xx` range is assigned when the IR stage starts; none ship in r1, so "no diagnostic ships unregistered" holds. They are: callee is not a struct / left of `':'` is not a bare field name; a field missing, repeated, unknown, or out of declaration order; named and positional arguments mixed in one call; array-literal element-type mismatch (a repeat count of 0 is legal, not an error); any conversion with a non-integer type on either side (`bool(x)` and `u8(b)` alike); an assignment target that isn't an lvalue (lvalue validity, `docs/history/R1_TRIAGE.md` #3); maximum array size.
 
 ## 5. Test strategy
 
@@ -619,7 +619,7 @@ Per `docs/MANNA_PRINCIPLES.md` Part 4 — recorded here so the implementation bl
 
 ## 8. Feature Admission Test records
 
-The five-item test is `docs/MANNA_PRINCIPLES.md`'s "Feature Admission Test". One record per language change that went through it; r1 Phase B (#4, #5, #6) is the first batch. **Item 2 requires golden tests, which can't exist for spec-only changes, so every record below is **"pending admission (goldens due in #4 step)"**: the spec is accepted, and the feature is not allowed to merge until the #4 step lands the goldens listed.** A record can only be upgraded to "admitted" by that step, which also closes the item in `docs/R1_TRIAGE.md`'s #4 checklist.
+The five-item test is `docs/MANNA_PRINCIPLES.md`'s "Feature Admission Test". One record per language change that went through it; r1 Phase B (#4, #5, #6) is the first batch. **Item 2 requires golden tests, which can't exist for spec-only changes, so every record below is **"pending admission (goldens due in #4 step)"**: the spec is accepted, and the feature is not allowed to merge until the #4 step lands the goldens listed.** A record can only be upgraded to "admitted" by that step, which also closes the item in `docs/PARSER_STEP4.md`'s checklist.
 
 ### #4 - struct construction, array literals, conversions, reserved primitive names
 

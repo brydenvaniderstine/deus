@@ -4,9 +4,9 @@ Updated at every tag (`docs/README.md`'s consistency check runs at the same time
 
 ## Current milestone
 
-**M2: the Manna compiler**, host-side on macOS (`docs/M2_PLAN.md`). Spec frozen at tag `m2-spec`; the parser is complete and tagged `m2-parser` (`tools/mannac/`). After the tag, a fresh-eyes audit of `tools/mannac/parser.c` surfaced a triage list, now being worked through as "r1" before the typed IR stage starts.
+**M2: the Manna compiler**, host-side on macOS (`docs/M2_PLAN.md`). Spec frozen at tag `m2-spec`; the parser is complete and tagged `m2-parser`, with a post-tag audit ("r1") tagged `m2-parser-r1` (`tools/mannac/`).
 
-**Active work: r1 triage → see `docs/R1_TRIAGE.md`.** Phase A (bug fixes) and Phase B (spec only, `docs/M2_PLAN.md` §4 "Reserved words, constructors, and conversions" + §8) are done and pushed; Phase C (docs) is written and awaiting review. Next action: review Phase C, settle the pending fix-hint question in `docs/R1_TRIAGE.md`, then run the tag checklist and tag `m2-parser-r1`. Order after that: the **#4 parser step** (struct construction/arrays/conversions/reserved words plus the #5/#6 code), then the typed IR stage.
+**Active work: the #4 parser step → see `docs/PARSER_STEP4.md`** (not started; needs an explicit go). The r1 audit triage is complete and tagged `m2-parser-r1`; its working document is archived at `docs/history/R1_TRIAGE.md`.
 
 ## Done
 
@@ -30,6 +30,11 @@ Updated at every tag (`docs/README.md`'s consistency check runs at the same time
 
 - **Parser Step 12**: libFuzzer harnesses for the lexer and parser (`make fuzz`/`fuzz-lexer`/`fuzz-parser`, `tools/fuzz/run_fuzzers.sh`, `tools/mannac/fuzz_lexer.c`/`fuzz_parser.c`) - libFuzzer + ASan + UBSan, seeded directly from the existing golden-test inputs. Apple's Xcode clang ships no libFuzzer runtime at all (confirmed: `-fsanitize=fuzzer` fails to link); uses brew's keg-only llvm instead. Deliberately not in CI - run locally for a fixed wall-clock budget. Aimed specifically at error recovery per request: the parser corpus is seeded with every `err_recovery_*.mn` golden, and the parser binary is built with `MANNA_FUZZ_TRACE_LAST_RESORT` (compiled out of every other build), which turns `parser_parse_file`'s last-resort single-token-skip backstop into an immediate, saved crash if ever actually reached - empirical proof one way or the other, not just the reasoning in Step 10b's commit message. First run: lexer 2,328,111 execs in 181s, parser 480,689 execs in 601s - zero crashes, zero timeouts, zero sanitizer reports on either target, and the last-resort backstop was never hit. No golden tests added this run (the instruction is "every crash becomes a golden test" - none occurred).
 
+- **r1: post-`m2-parser` fresh-eyes audit** (tag `m2-parser-r1`; working doc archived at `docs/history/R1_TRIAGE.md`). Three phases, each its own commits:
+  - **Phase A, bug fixes** (`da9f01c`): header recovery that skipped a valid following statement, the `for`-header `;` mask leaking into the recovered body, the `i64::MIN` literal rule (parenthesized flag + widened span), the stray-`fn` cascade check, multi-line token `end_col` / E0102 for `for` conditions / a lexer-error first token no longer reporting E0107, sync-counter reset at parse entry, and `sync_skip` bracket-depth tracking. Exit gate passed: both fuzz targets, determinism, coverage.
+  - **Phase B, spec only** (`2ee8fa8`): `docs/M2_PLAN.md` now specifies struct construction, array literals, `[v; N]`, `u64(x)` conversions, reserved primitive names, the one-comparison-per-operand rule (E0108) and `-> unit` (E0109), with an LL(1) re-verification, a recovery analysis for `'['` in `primary`'s FIRST set, new depth cycles (predicted, unproven), and Admission Test records marked "pending admission (goldens due in #4 step)". **No parser or lexer code changed**; the implementation is the #4 step.
+  - **Phase C, docs** (`cf54db5`..`e5137cd`): canonical interchange marked planned (#8); VISION scorecard cites only what exists, unbuilt claims moved to "designed, not yet implemented" (#10); fix-hint exceptions documented in `docs/error_codes.md`, no insert-style hints implemented by decision (#11); stale docs/comments, STATUS order, real counts, coverage listing, E0103 trimmed (#12-15); CLAUDE.md "Later phases" and the Part 3 legend corrected. Two test-only commits closed coverage gaps (a 9-statement block golden for `ast.c:20-21`, an out-of-process OOM test for `arena.c:24-26`). CI green on the final commit (run 37868443968). Numbers: see "Verification snapshot".
+
 ## Verification snapshot (r1 Phase C, 2026-10-08)
 
 Numbers below come from running the commands in this session, not carried forward from earlier entries (which record the count at the time they were written). There is no aggregate `make test`; the CI test targets are the `make test-*` lines in `.github/workflows/ci.yml`. All 13 of them plus `make coverage` exited 0. Two test-only commits landed after the first snapshot (the wide-block golden and the arena OOM test); the figures below are after them.
@@ -48,8 +53,8 @@ Numbers below come from running the commands in this session, not carried forwar
 
 ## Next
 
-**The parser is done** (Steps 1-12, tag `m2-parser`) and is going through post-tag audit triage ("r1" - see "Active work" above and `docs/R1_TRIAGE.md`; Phases A and B pushed, Phase C awaiting review). Order from here:
+**The parser is done** (Steps 1-12, tag `m2-parser`) and finished its post-tag audit triage ("r1", tag `m2-parser-r1`, archived at `docs/history/R1_TRIAGE.md`). Order from here:
 
-1. Tag **`m2-parser-r1`** once Phase C is approved and the tag checklist passes.
-2. The **#4 parser step**, after r1 and before any IR work: struct construction, array literals, `[v; N]`, `u64(x)` conversions, the reserved primitive names, plus the #5/#6 code (E0108, E0109, `(return_type)`), as specified in `docs/M2_PLAN.md` and checklisted in `docs/R1_TRIAGE.md`. Its own steps, goldens, depth proofs and fuzz run - not part of r1.
+1. *(done)* `m2-parser-r1` tagged.
+2. The **#4 parser step** (`docs/PARSER_STEP4.md`), after r1 and before any IR work: struct construction, array literals, `[v; N]`, `u64(x)` conversions, the reserved primitive names, plus the #5/#6 code (E0108, E0109, `(return_type)`), as specified in `docs/M2_PLAN.md` and checklisted in `docs/PARSER_STEP4.md`. Its own steps, goldens, depth proofs and fuzz run - not part of r1.
 3. The **typed IR stage / type checker** - includes the naming-convention enforcement and unknown-attribute/duplicate-name checks already recorded as deferred-to-IR decisions in `docs/M2_PLAN.md` §7 items 7-8. Not yet scoped into steps or started.
