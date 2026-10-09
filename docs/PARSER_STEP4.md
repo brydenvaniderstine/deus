@@ -28,7 +28,7 @@ Consequences for the checklist below:
 ## Settled decisions (decided, not open)
 
 - **E0108's fix-it is two zero-width inserts, with no source-text capture:** `(` at the first character of the comparison's left operand, `)` just past the last character of its right operand. The parser needs spans only. Consequence, implemented in step 5: `DiagFix` becomes a short edit list (the JSON schema already has `edits`); text in `docs/M2_PLAN.md` and `docs/error_codes.md` updated to match.
-- **Tag name: `m2-parser-v0`** (not the earlier suggestion `m2-parser-4`). **Its tagging condition is not recorded anywhere in the repo or in this working session - it must be written here before step 7.** Do not tag on assumption.
+- **Tag name: `m2-parser-v0`** (not the earlier suggestion `m2-parser-4`). **Condition (decided): before tagging, list every production in `docs/M2_PLAN.md` §4's grammar and cite, for each, a golden that exercises it. If any v0 production is unimplemented, tag `m2-parser-r2` instead and name it.** The list-with-citations is a step 7 deliverable, produced from the grammar block as it stands at that point (not from memory).
 - **Depth cycles keep the names 9 (array literal / `[v; N]`) and 10 (conversion)**, from the rows of the M2_PLAN depth table (row 8 is the confirmed-absent one). They are *added* in the order conversion (step 2) then array (step 3), so the `parser.c` INVARIANT comment's back-edge count goes seven -> eight -> nine, while the cycle names stay 9 and 10. Named args extend cycle 3 and add none.
 
 ## Approved step plan (one commit per step, each green on its own)
