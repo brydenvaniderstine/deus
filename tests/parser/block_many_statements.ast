@@ -1,0 +1,19 @@
+(block@1:1-11:2
+  (let_stmt@2:5-2:15 a
+    (number@2:13-2:14 1))
+  (let_stmt@3:5-3:15 b
+    (number@3:13-3:14 2))
+  (let_stmt@4:5-4:15 c
+    (number@4:13-4:14 3))
+  (let_stmt@5:5-5:15 d
+    (number@5:13-5:14 4))
+  (let_stmt@6:5-6:15 e
+    (number@6:13-6:14 5))
+  (let_stmt@7:5-7:15 f
+    (number@7:13-7:14 6))
+  (let_stmt@8:5-8:15 g
+    (number@8:13-8:14 7))
+  (let_stmt@9:5-9:15 h
+    (number@9:13-9:14 8))
+  (let_stmt@10:5-10:15 i
+    (number@10:13-10:14 9)))
