@@ -200,6 +200,17 @@ static const char *token_describe(Arena *a, Token t) {
  *      Counted by: parse_if_stmt's own hook - this is exactly why it
  *      needs one, the same reasoning as parse_unary and parse_type.
  *
+ * Error recovery realizes cycles 6 and 7 a second way, and is NOT an
+ * eighth cycle: handle_header_failure -> parse_block (the recovered
+ * body), and, since the R1 fix, parse_if_stmt -> handle_header_failure ->
+ * recover_else_branch -> parse_if_stmt / parse_block (the recovered else
+ * chain). Each passes through the same counted function as the direct
+ * path (parse_block / parse_if_stmt - the latter hooks on entry, before
+ * any recovery runs), so the count stays seven. Measured, not predicted:
+ * a failed `if` header followed by a valid else-if chain caps at 254
+ * total `if`s (255 and 300 fail with E0103), identical to the direct
+ * chain - tests/parser/depth_elseif_recovered_*.
+ *
  * Step 8 (translation_unit/top_level_item/struct_decl/function_decl)
  * introduces no eighth cycle: top_level_item is a flat dispatch over a
  * non-recursive loop in parser_parse_file (nothing calls translation_unit

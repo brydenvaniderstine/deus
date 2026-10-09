@@ -22,7 +22,7 @@ An external audit of `da9f01c` found recovery regressions that `m2-parser-r1` sh
 Consequences for the checklist below:
 - Step 3 (`[v; N]`): the `[1 +; 3]` cascade pin still has to be added (the call-form pin `err_recovery_in_call_cascade_accepted` exists now). The new `sync_skip` comment already names the r1-B forms as containing no `{ } fn struct` or statement keyword - keep that true.
 - Any step that adds a token which can start a statement, or an expression that can contain a block, must re-check `resets_bracket_mask` in `parser.c`.
-- Golden counts and determinism inputs in the plan are now 198 and 212 (were 187 and 201).
+- Golden counts and determinism inputs in the plan are now 201 and 215 (were 187 and 201). The R1 recovery path's depth limit was measured (254 total ifs, same as the direct else-if chain): `depth_elseif_recovered_*`, `docs/M2_PLAN.md` table row "7 (via header recovery)".
 - **Observed, pre-existing (also at `m2-parser`), not a regression and not fixed:** a stray `fn` inside a function body, `fn f() { let x = 1; fn g() {} let y = 2; }`, gives two diagnostics and drops `f` (the `fn` is handed to the top level, by the Step 10b design; compare `err_recovery_missing_rbrace_next_fn_preserved`).
 
 ## Where the spec lives (this file is a checklist, not a spec)
