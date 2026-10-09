@@ -1,0 +1,14 @@
+ERRORS:
+4:5 expected ']' after array elements, found 'let'
+
+TREE:
+(function_decl@2:1-5:2 f
+  (params)
+  (return_type unit)
+  (block@2:8-5:2
+    (let_stmt@4:5-4:15 b
+      (number@4:13-4:14 3))))
+(function_decl@6:1-6:10 g
+  (params)
+  (return_type unit)
+  (block@6:8-6:10))

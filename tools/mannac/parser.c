@@ -111,9 +111,11 @@ static const char *token_describe(Arena *a, Token t) {
  *   primary        ::= NUMBER | KW_TRUE | KW_FALSE
  *                     | IDENT [ '(' [ arg_list ] ')' ]
  *                     | PRIM_TYPE '(' expression ')'
+ *                     | '[' array_body ']'
  *                     | '(' expression ')'
  *                     ;
  *   arg_list       ::= expression { ',' expression } ;
+ *   array_body     ::= expression ( { ',' expression } | ';' NUMBER ) ;
  *
  *   block          ::= '{' { statement } '}' ;
  *   statement      ::= let_stmt | if_stmt | while_stmt | for_stmt
@@ -179,7 +181,7 @@ static const char *token_describe(Arena *a, Token t) {
  * (expression -> logic_or -> ... -> multiplicative -> unary -> postfix ->
  * primary; separately, block -> statement -> {every statement kind},
  * with let_stmt also reaching type, and if/while/for_stmt each reaching
- * block again) plus exactly eight back-edges, each one a cycle:
+ * block again) plus exactly nine back-edges, each one a cycle:
  *
  *   1. unary -> unary (self-recursive prefix case, "!!!!x")
  *      Counted by: parse_unary's own hook.
@@ -205,6 +207,12 @@ static const char *token_describe(Arena *a, Token t) {
  *   8. primary -> expression (the PRIM_TYPE '(' expression ')' conversion,
  *      "u8(u8(u8(x)))") - added in #4 step 2; "cycle 10" in docs/M2_PLAN.md's
  *      depth table, whose numbering counts that table's rows, not this list.
+ *      Counted by: parse_expression's hook, same as cycles 2-4.
+ *   9. primary -> array_body -> expression (array literal elements and the
+ *      repeat literal's value, "[[[x]]]", "[[[x; 1]; 1]; 1]") - added in #4
+ *      step 3; "cycle 9" in docs/M2_PLAN.md's depth table (that numbering
+ *      counts the table's rows, so this list's items 8 and 9 are the
+ *      table's cycles 10 and 9). The repeat count is a NUMBER leaf.
  *      Counted by: parse_expression's hook, same as cycles 2-4.
  *
  * Error recovery realizes cycles 6 and 7 a second way, and is NOT an
@@ -637,6 +645,67 @@ static Expr *parse_primary(Parser *p) {
             }
             break;
 
+        case TOK_LBRACKET: {
+            /* '[' array_body ']' : array_body ::= expression
+             * ( { ',' expression } | ';' NUMBER ). Both forms re-enter
+             * parse_expression (counted) - depth cycle 9 in
+             * docs/M2_PLAN.md's table. No trailing comma, and `[]` is an
+             * error (no element to infer a type from): both fall out of
+             * parse_expression failing on ']'. N in `[v; N]` is a NUMBER
+             * token, not an expression (v0 has no constant evaluation), so
+             * `[v; x]` and `[v; -1]` are errors; N == 0 and N == 1 are
+             * legal here (the IR stage and the formatter own the rest). */
+            advance(p); /* consume '[' */
+            Expr *first = parse_expression(p);
+            if (!first) {
+                break;
+            }
+            if (p->cur.kind == TOK_SEMI) {
+                advance(p);
+                if (p->cur.kind != TOK_NUMBER) {
+                    parser_error(p->ps, diag_expected(p->ps->arena, token_span(p->cur), "array repeat count (integer)",
+                                                       token_describe(p->ps->arena, p->cur), NULL));
+                    break;
+                }
+                uint64_t count = p->cur.number_value;
+                advance(p);
+                if (p->cur.kind != TOK_RBRACKET) {
+                    parser_error(p->ps, diag_expected(p->ps->arena, token_span(p->cur), "']'",
+                                                       token_describe(p->ps->arena, p->cur), "after repeat count"));
+                    break;
+                }
+                Token rb = p->cur;
+                advance(p);
+                result = expr_array_repeat(p->ps->arena, span_merge(token_span(t), token_span(rb)), first, count);
+                break;
+            }
+            NodeList elems;
+            node_list_init(&elems);
+            node_list_push(p->ps->arena, &elems, first);
+            bool ok = true;
+            while (p->cur.kind == TOK_COMMA) {
+                advance(p);
+                Expr *next = parse_expression(p);
+                if (!next) {
+                    ok = false;
+                    break;
+                }
+                node_list_push(p->ps->arena, &elems, next);
+            }
+            if (!ok) {
+                break;
+            }
+            if (p->cur.kind != TOK_RBRACKET) {
+                parser_error(p->ps, diag_expected(p->ps->arena, token_span(p->cur), "']'",
+                                                   token_describe(p->ps->arena, p->cur), "after array elements"));
+                break;
+            }
+            Token rb = p->cur;
+            advance(p);
+            result = expr_array(p->ps->arena, span_merge(token_span(t), token_span(rb)), elems);
+            break;
+        }
+
         case TOK_KW_U8: case TOK_KW_U16: case TOK_KW_U32: case TOK_KW_U64:
         case TOK_KW_I8: case TOK_KW_I16: case TOK_KW_I32: case TOK_KW_I64:
         case TOK_KW_BOOL: {
@@ -941,7 +1010,7 @@ static Stmt *parse_for_step(Parser *p) {
  * of lookahead (starts_postfix) before either is attempted. */
 static bool starts_postfix(TokenKind k) {
     return k == TOK_NUMBER || k == TOK_KW_TRUE || k == TOK_KW_FALSE || k == TOK_IDENT || k == TOK_LPAREN ||
-           is_prim_type_keyword(k);
+           k == TOK_LBRACKET || is_prim_type_keyword(k);
 }
 
 static Stmt *parse_expr_stmt(Parser *p) {
@@ -1030,10 +1099,14 @@ static bool is_header_resume_token(TokenKind k) {
 }
 
 /* '[' only counts as a top-level resume point when it's '[' IDENT ']'
- * 'fn' - a bare '[' alone is too weak a signal (headers and statements
- * can't otherwise produce one, but requiring the full attribute shape
- * avoids treating some unrelated, coincidental '[' as a fresh top-level
- * start). Peeks up to three tokens ahead via a throwaway copy of the
+ * 'fn' - a bare '[' alone is too weak a signal: since #4 step 3 it also
+ * starts an array literal (and has always been the index operator), so
+ * requiring the full attribute shape is what keeps some unrelated '[' from
+ * being treated as a fresh top-level start. The shape is still safe on
+ * valid input - `fn` cannot follow an expression, so `[x] fn` is only ever
+ * an attribute - and the one invalid-input misfire (an array-shaped
+ * `[y]` directly before a real `fn` is claimed as that function's
+ * attribute) is pinned by tests/parser/err_recovery_array_shaped_attribute. Peeks up to three tokens ahead via a throwaway copy of the
  * lexer (Lexer is a plain value struct - cheap and safe to copy; this
  * doesn't disturb the real parser's position at all, the same trick
  * parser_main.c's own mode-dispatch peek already uses). */

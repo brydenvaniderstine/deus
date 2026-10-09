@@ -41,6 +41,23 @@ static char *read_file(const char *path, size_t *out_len) {
     return buf;
 }
 
+/* '[' starts either an attribute (whole-file mode) or an array literal
+ * (expression mode) - since #4 step 3 it can no longer imply a file by
+ * itself. A file-level '[' is one or more `[ IDENT ]` groups followed by
+ * 'fn' (the shape parse_function_decl's attribute loop accepts), so look
+ * past as many groups as there are; anything else is an expression. Uses
+ * the caller's lexer copy (a plain value struct, advanced here), `first`
+ * being the already-read '['. */
+static bool starts_with_attribute(Lexer *lx, Token first) {
+    Token t = first;
+    while (t.kind == TOK_LBRACKET) {
+        if (lexer_next(lx).kind != TOK_IDENT) return false;
+        if (lexer_next(lx).kind != TOK_RBRACKET) return false;
+        t = lexer_next(lx);
+    }
+    return t.kind == TOK_KW_FN && first.kind == TOK_LBRACKET;
+}
+
 static void print_diags(const DiagList *diags) {
     for (size_t i = 0; i < diags->len; i++) {
         const Diagnostic *d = &diags->items[i];
@@ -72,7 +89,7 @@ int main(int argc, char **argv) {
     lexer_init(&peek_lx, src, len);
     Token first = lexer_next(&peek_lx);
     bool is_file = (first.kind == TOK_KW_MANNA || first.kind == TOK_KW_STRUCT ||
-                    first.kind == TOK_KW_FN || first.kind == TOK_LBRACKET);
+                    first.kind == TOK_KW_FN || starts_with_attribute(&peek_lx, first));
     bool is_block = !is_file && first.kind == TOK_LBRACE;
 
     Lexer lx;

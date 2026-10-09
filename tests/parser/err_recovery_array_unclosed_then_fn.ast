@@ -1,0 +1,8 @@
+ERRORS:
+4:1 expected ']' after array elements, found 'fn'
+
+TREE:
+(function_decl@4:1-4:10 g
+  (params)
+  (return_type unit)
+  (block@4:8-4:10))

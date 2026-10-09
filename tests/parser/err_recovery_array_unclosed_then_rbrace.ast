@@ -1,0 +1,12 @@
+ERRORS:
+4:1 expected ']' after array elements, found '}'
+
+TREE:
+(function_decl@2:1-4:2 f
+  (params)
+  (return_type unit)
+  (block@2:8-4:2))
+(function_decl@5:1-5:10 g
+  (params)
+  (return_type unit)
+  (block@5:8-5:10))

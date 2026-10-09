@@ -1,5 +1,5 @@
 ERRORS:
-3:5 expected expression, found '['
+4:5 expected expression, found 'let'
 
 TREE:
 (function_decl@2:1-5:2 f

@@ -1,0 +1,9 @@
+ERRORS:
+3:13 expected expression, found ')'
+
+TREE:
+(function_decl@3:15-4:10 g
+  (attributes y)
+  (params)
+  (return_type unit)
+  (block@4:8-4:10))

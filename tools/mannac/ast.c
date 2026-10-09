@@ -159,6 +159,25 @@ Expr *expr_convert(Arena *a, Span span, const char *target, size_t target_len, E
     return e;
 }
 
+Expr *expr_array(Arena *a, Span span, NodeList elems) {
+    Expr *e = arena_alloc(a, sizeof(Expr), alignof(Expr));
+    e->kind = EXPR_ARRAY;
+    e->span = span;
+    e->parenthesized = false;
+    e->as.array.elems = elems;
+    return e;
+}
+
+Expr *expr_array_repeat(Arena *a, Span span, Expr *value, uint64_t count) {
+    Expr *e = arena_alloc(a, sizeof(Expr), alignof(Expr));
+    e->kind = EXPR_ARRAY_REPEAT;
+    e->span = span;
+    e->parenthesized = false;
+    e->as.array_repeat.value = value;
+    e->as.array_repeat.count = count;
+    return e;
+}
+
 Expr *expr_index(Arena *a, Span span, Expr *base, Expr *index) {
     Expr *e = arena_alloc(a, sizeof(Expr), alignof(Expr));
     e->kind = EXPR_INDEX;
@@ -391,6 +410,21 @@ void expr_print(FILE *out, const Expr *e, int depth) {
             fprintf(out, " %s", e->as.convert.target);
             nl_indent(out, depth + 1);
             expr_print(out, e->as.convert.operand, depth + 1);
+            fprintf(out, ")");
+            return;
+        case EXPR_ARRAY:
+            print_span(out, "array", e->span);
+            for (size_t i = 0; i < e->as.array.elems.len; i++) {
+                nl_indent(out, depth + 1);
+                expr_print(out, (const Expr *)e->as.array.elems.items[i], depth + 1);
+            }
+            fprintf(out, ")");
+            return;
+        case EXPR_ARRAY_REPEAT:
+            print_span(out, "array_repeat", e->span);
+            fprintf(out, " %llu", (unsigned long long)e->as.array_repeat.count);
+            nl_indent(out, depth + 1);
+            expr_print(out, e->as.array_repeat.value, depth + 1);
             fprintf(out, ")");
             return;
         case EXPR_INDEX:

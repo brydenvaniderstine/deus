@@ -1,0 +1,5 @@
+ERRORS:
+1:4 expected array repeat count (integer), found ']'
+
+TREE:
+(none)

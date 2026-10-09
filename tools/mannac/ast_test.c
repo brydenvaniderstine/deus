@@ -177,7 +177,43 @@ static void test_convert_node_dump(void) {
     arena_destroy(a);
 }
 
+/* #4 step 3: (array@span e...) and (array_repeat@span N value). The count is
+ * a scalar attribute, so it sits in the header like a unary's operator or a
+ * convert's target; the value is the one child. */
+static void test_array_node_dumps(void) {
+    Arena *a = arena_create(1 << 20);
+    Expr *one = expr_number(a, mk(1, 2, 1, 3), 1);
+    Expr *two = expr_number(a, mk(1, 5, 1, 6), 2);
+    NodeList elems;
+    node_list_init(&elems);
+    node_list_push(a, &elems, one);
+    node_list_push(a, &elems, two);
+    Expr *arr = expr_array(a, mk(1, 1, 1, 7), elems);
+    Expr *v = expr_ident(a, mk(2, 2, 2, 3), "v", 1);
+    Expr *rep = expr_array_repeat(a, mk(2, 1, 2, 9), v, 16);
+
+    char buf[1024];
+    FILE *mem = fmemopen(buf, sizeof(buf), "w");
+    expr_print(mem, arr, 0);
+    fputc('|', mem);
+    expr_print(mem, rep, 0);
+    fclose(mem);
+    const char *expected =
+        "(array@1:1-1:7\n"
+        "  (number@1:2-1:3 1)\n"
+        "  (number@1:5-1:6 2))|"
+        "(array_repeat@2:1-2:9 16\n"
+        "  (ident@2:2-2:3 v))";
+    if (strcmp(buf, expected) != 0) {
+        fprintf(stderr, "FAIL: array dump mismatch\n--- expected ---\n%s\n--- actual ---\n%s\n", expected, buf);
+        exit(1);
+    }
+    printf("PASS: array and array_repeat nodes render as (array@span e...) and (array_repeat@span N value)\n");
+    arena_destroy(a);
+}
+
 int main(void) {
+    test_array_node_dumps();
     test_convert_node_dump();
     test_basic_function_matches_spec();
     test_struct_and_attributed_function();

@@ -1,0 +1,5 @@
+ERRORS:
+1:5 expected array repeat count (integer), found 'x'
+
+TREE:
+(none)

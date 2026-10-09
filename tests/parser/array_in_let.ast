@@ -1,0 +1,9 @@
+(block@1:1-1:46
+  (let_stmt@1:3-1:28 a:[3]u8
+    (array@1:18-1:27
+      (number@1:19-1:20 1)
+      (number@1:22-1:23 2)
+      (number@1:25-1:26 3)))
+  (let_stmt@1:29-1:44 b
+    (array_repeat@1:37-1:43 4
+      (number@1:38-1:39 0))))

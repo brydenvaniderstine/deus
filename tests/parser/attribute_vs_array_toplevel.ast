@@ -1,0 +1,8 @@
+(function_decl@2:1-5:2 f
+  (attributes kernel_hook)
+  (params)
+  (return_type unit)
+  (block@3:8-5:2
+    (let_stmt@4:5-4:17 a
+      (array@4:13-4:16
+        (number@4:14-4:15 1)))))
