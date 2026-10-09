@@ -25,6 +25,12 @@ Consequences for the checklist below:
 - Golden counts and determinism inputs in the plan are now 201 and 215 (were 187 and 201). The R1 recovery path's depth limit was measured (254 total ifs, same as the direct else-if chain): `depth_elseif_recovered_*`, `docs/M2_PLAN.md` table row "7 (via header recovery)".
 - **Observed, pre-existing (also at `m2-parser`), not a regression and not fixed:** a stray `fn` inside a function body, `fn f() { let x = 1; fn g() {} let y = 2; }`, gives two diagnostics and drops `f` (the `fn` is handed to the top level, by the Step 10b design; compare `err_recovery_missing_rbrace_next_fn_preserved`).
 
+## Settled decisions (decided, not open)
+
+- **E0108's fix-it is two zero-width inserts, with no source-text capture:** `(` at the first character of the comparison's left operand, `)` just past the last character of its right operand. The parser needs spans only. Consequence, implemented in step 5: `DiagFix` becomes a short edit list (the JSON schema already has `edits`); text in `docs/M2_PLAN.md` and `docs/error_codes.md` updated to match.
+- **Tag name: `m2-parser-v0`** (not the earlier suggestion `m2-parser-4`). **Its tagging condition is not recorded anywhere in the repo or in this working session - it must be written here before step 7.** Do not tag on assumption.
+- **Depth cycles keep the names 9 (array literal / `[v; N]`) and 10 (conversion)**, from the rows of the M2_PLAN depth table (row 8 is the confirmed-absent one). They are *added* in the order conversion (step 2) then array (step 3), so the `parser.c` INVARIANT comment's back-edge count goes seven -> eight -> nine, while the cycle names stay 9 and 10. Named args extend cycle 3 and add none.
+
 ## Approved step plan (one commit per step, each green on its own)
 
 Every step also updates the `parser.c` header grammar comment (a copy of the grammar), flips the `r1-B ... not yet implemented` / "Specified, not yet emitted" markers for its own piece in M2_PLAN.md and `error_codes.md`, and is pushed with its CI run watched to green. STOP steps end with a report and wait for approval.
@@ -36,7 +42,7 @@ Every step also updates the `parser.c` header grammar comment (a copy of the gra
 | 2 | Conversions `u64(x)` (depth cycle 10): `EXPR_CONVERT`, `parse_primary`, `starts_postfix` += 9 keywords, `ast_test.c` | **STOP** (grammar) | `convert_*`, error shapes, `depth_conv_*` at the measured limit + 300, plain + ASan |
 | 3 | Array literal and `[v; N]` (depth cycle 9) **and** the `parser_main.c` mode-peek fix | **STOP** (grammar, recovery-adjacent) | `array_*`, `repeat_*` (incl. `repeat_zero`, `repeat_one`), the `[1 +; 3]` cascade pin, the `[IDENT] fn` misfire golden, `depth_array_*`/`depth_repeat_*` |
 | 4 | Named args `Point(x: 1)` (cycle 3 extended), `EXPR_NAMED_ARG` | **STOP** (grammar) | `namedarg_*`, `depth_namedarg_*` |
-| 5 | `relational` merge + E0108 (flip the two `comparison_wrapped_by_equality_*` goldens) | **STOP** (grammar + golden flip) | the M2_PLAN E0101/E0108 table, `(a<b)==c`, `&&`-embedded; fix-it text pinned in `parser_fixes_test.c` |
+| 5 | `relational` merge + E0108 (flip the two `comparison_wrapped_by_equality_*` goldens); `DiagFix` grows from one edit to a short edit list (two inserts) | **STOP** (grammar + golden flip) | the M2_PLAN E0101/E0108 table, `(a<b)==c`, `&&`-embedded; both inserts pinned in `parser_fixes_test.c` |
 | 6 | E0109 `-> unit` + the `(return_type)` dump change | **STOP** (re-baseline) | re-baseline the 14 `(return_type unit)` goldens; `err_return_unit` |
 | 7 | Proof and close-out: fuzz both targets with `MANNA_FUZZ_TRACE_LAST_RESORT`, determinism, coverage, flip the Admission Test records to "admitted", STATUS Done entry, archive this file, tag, re-minimize the fuzz corpus | **STOP** (tag) | corpus only |
 
@@ -46,7 +52,7 @@ Depth limits stay predictions until each step's goldens measure them (255/256/30
 
 1. `lexer.h` still says built-in type names "are NOT keywords"; also `token_kind_name` and `token_describe` need the ten new kinds (step 1).
 2. E0108/E0109 fix-its need `parser_fixes_test.c` cases; goldens never print fix-its (steps 5, 6).
-3. E0108's fix-it needs the operands' source text, and `Span` carries line/col only, no byte offsets: a design decision (lean: capture start/end token lexeme pointers in the parser), STOP-level, raised in step 5.
+3. E0108's fix-it seemed to need the operands' source text, but `Span` carries line/col only, no byte offsets. **Resolved (see "Settled decisions"): two zero-width inserts, no source capture.**
 4. No AST work was listed: new `EXPR_*` kinds, builders, printers, `ast_test.c` cases. Cite `ast.c`/`ast_test.c` lines by content, not number (they shift).
 5. The `parser.c` INVARIANT back-edge count moves twice (step 2: eight, step 3: nine), not once. The recovery paths are not extra back-edges (see the INVARIANT comment).
 6. "Re-diff byte-identical" for the type-using goldens had no owning step; it is step 1.
