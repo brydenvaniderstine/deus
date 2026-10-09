@@ -149,6 +149,16 @@ Expr *expr_call(Arena *a, Span span, const char *name, size_t name_len, NodeList
     return e;
 }
 
+Expr *expr_convert(Arena *a, Span span, const char *target, size_t target_len, Expr *operand) {
+    Expr *e = arena_alloc(a, sizeof(Expr), alignof(Expr));
+    e->kind = EXPR_CONVERT;
+    e->span = span;
+    e->parenthesized = false;
+    e->as.convert.target = arena_strndup(a, target, target_len);
+    e->as.convert.operand = operand;
+    return e;
+}
+
 Expr *expr_index(Arena *a, Span span, Expr *base, Expr *index) {
     Expr *e = arena_alloc(a, sizeof(Expr), alignof(Expr));
     e->kind = EXPR_INDEX;
@@ -374,6 +384,13 @@ void expr_print(FILE *out, const Expr *e, int depth) {
                 nl_indent(out, depth + 1);
                 expr_print(out, (const Expr *)e->as.call.args.items[i], depth + 1);
             }
+            fprintf(out, ")");
+            return;
+        case EXPR_CONVERT:
+            print_span(out, "convert", e->span);
+            fprintf(out, " %s", e->as.convert.target);
+            nl_indent(out, depth + 1);
+            expr_print(out, e->as.convert.operand, depth + 1);
             fprintf(out, ")");
             return;
         case EXPR_INDEX:

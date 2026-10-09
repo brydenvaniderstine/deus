@@ -287,7 +287,7 @@ primary           ::= NUMBER | KW_TRUE | KW_FALSE
                     | IDENT [ '(' [ arg_list ] ')' ]
   (* The ONLY call form in v0: a bare identifier immediately followed
      by '('. No indirect calls, no calling an expression's result. *)
-                    | PRIM_TYPE '(' expression ')'          (* r1-B: conversion *)
+                    | PRIM_TYPE '(' expression ')'          (* implemented, #4 step 2: conversion *)
                     | '[' array_body ']'                    (* r1-B: array literal *)
                     | '(' expression ')'
                     ;
@@ -360,6 +360,7 @@ One shared counter, max **256 depth units** — not 256 levels of any particular
 | 7 | `if_stmt -> if_stmt` ("else if") | `parse_if_stmt` | `if a {} else if b {} else if c {} ...` | 254 | 255, 300 | `depth_elseif_*` |
 | 7 (via header recovery) | `parse_if_stmt -> handle_header_failure -> recover_else_branch -> parse_if_stmt` - the same cycle reached through the R1 recovery path, not an eighth cycle | `parse_if_stmt` (hooks on entry, before recovery runs) | `if x = 1 {} else if a {} else if b {} ...` (E0102 header, then a valid chain; limit counts the erroring `if` too) | 254 (measured) | 255, 300 (measured) | `depth_elseif_recovered_*` |
 | mixed (1+2) | `unary` and `primary -> expression` combined | `parse_unary` + `parse_expression` | `!(!(!(...x...)))` | 127 | 128, 300 | `depth_mixed_*` |
+| 10 (#4 step 2) | `primary -> PRIM_TYPE '(' expression ')' -> expression` | `parse_expression` | `u8(u8(u8(...x...)))` | 255 (measured) | 256, 300 (measured) | `depth_conv_{255_ok,256_fail,300_fail}` - same limit as cycle 2's parens, plain + ASan |
 | 8 | *(none - confirmed, not a new cycle)* | — | `function_decl`/`top_level_item`/`translation_unit` add no depth cost; cycle 6's figure (127/128) holds unchanged inside a real function body | — | — | `depth_nested_if_in_function_127_ok`/`128_fail` |
 
 Takeaways that don't fit a table cell: the 256-unit budget is global and shared, not reset per construct, so **effective limits only ever shrink with context** (never grow) as more already-counted constructs enclose the one being measured - cycle 5's 255→254 and cycle 7's 255→254 are both this same effect, not independent coincidences. No cycle has ever produced a crash or host-stack overflow at any tested depth (255/256/300, or 127/128/300 for the costlier ones) - the mechanism works exactly as designed in every case tested.
@@ -538,7 +539,7 @@ Rule (`parser.c`'s INVARIANT): every cycle must pass through at least one depth-
 | # | Cycle | Counted by | Construct example | Predicted succeeds | Predicted fails | Goldens required |
 |---|---|---|---|---|---|---|
 | 9 | `primary -> array_body -> expression` (covers list elements *and* the repeat literal's value; `N` is a `NUMBER` leaf) | `parse_expression` | `[[[...x...]]]` | 255 | 256, 300 | `depth_array_*`, `depth_repeat_*` |
-| 10 | `primary -> PRIM_TYPE '(' expression ')'` | `parse_expression` | `u8(u8(u8(...x...)))` | 255 | 256, 300 | `depth_conv_*` |
+| 10 | `primary -> PRIM_TYPE '(' expression ')'` | `parse_expression` | `u8(u8(u8(...x...)))` | **255, measured (#4 step 2)** | **256 and 300, measured** | `depth_conv_*` (plain + ASan) |
 | 3 (extended) | `primary -> arg_list -> arg -> expression`, on both sides of `':'` (the value side nests; the name side is parsed as an expression too, and nests the same way if someone writes `f(f(x): 1)`) | `parse_expression` | `f(a: f(a: ...x...))` | 255 | 256, 300 | `depth_namedarg_*` |
 
 Not cycles: `PRIM_TYPE` inside `type` is a leaf, so cycle 5 (`type -> type`) is unchanged; merging `equality`/`comparison` into `relational` removes one uninstrumented fixed-pipeline level (a constant cost, never a cycle, same character as the other pipeline levels); #6 adds no recursion. `parser.c`'s INVARIANT comment currently says "exactly seven back-edges" and must say nine in the #4 step. Mixed nesting follows the existing rule (e.g. `[(` costs 2 units/level, like cycle "mixed (1+2)"), and the same shared-budget shrinkage applies inside a block.

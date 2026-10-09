@@ -102,6 +102,7 @@ typedef enum {
     EXPR_NUMBER, EXPR_BOOL, EXPR_IDENT,
     EXPR_UNARY, EXPR_BINARY,
     EXPR_CALL, EXPR_INDEX, EXPR_SLICE, EXPR_FIELD_ACCESS,
+    EXPR_CONVERT, /* u64(x): explicit integer conversion, #4 step 2 */
 } ExprKind;
 
 typedef enum { UNOP_NOT, UNOP_NEG, UNOP_BITNOT } UnOp;
@@ -136,6 +137,7 @@ struct Expr {
         struct { Expr *base; Expr *index; } index;
         struct { Expr *base; Expr *lo; Expr *hi; } slice;
         struct { Expr *base; const char *name; } field_access;
+        struct { const char *target; Expr *operand; } convert; /* target: the type keyword's text */
     } as;
 };
 
@@ -148,6 +150,9 @@ Expr *expr_call(Arena *a, Span span, const char *name, size_t name_len, NodeList
 Expr *expr_index(Arena *a, Span span, Expr *base, Expr *index);
 Expr *expr_slice(Arena *a, Span span, Expr *base, Expr *lo, Expr *hi);
 Expr *expr_field_access(Arena *a, Span span, Expr *base, const char *name, size_t name_len);
+/* `target` is the primitive type keyword's text ("u64"); the parser accepts any
+ * of the nine PRIM_TYPE keywords, the IR stage decides which conversions are legal. */
+Expr *expr_convert(Arena *a, Span span, const char *target, size_t target_len, Expr *operand);
 
 /* ---- Statements ---- */
 

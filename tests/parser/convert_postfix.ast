@@ -1,0 +1,5 @@
+(field_access@1:1-1:12
+  (index@1:1-1:10
+    (convert@1:1-1:7 u32
+      (ident@1:5-1:6 x))
+    (number@1:8-1:9 1)) f)

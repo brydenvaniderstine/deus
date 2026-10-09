@@ -1,0 +1,7 @@
+ERRORS:
+1:5 expected '(' after 'u8', found ';'
+
+TREE:
+(block@1:1-1:19
+  (let_stmt@1:7-1:17 z
+    (number@1:15-1:16 1)))

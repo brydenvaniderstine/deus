@@ -153,7 +153,32 @@ static void test_struct_and_attributed_function(void) {
     arena_destroy(a);
 }
 
+/* #4 step 2: the convert node renders as (convert@span TARGET operand) - the
+ * dump shape decided in the Phase B review. */
+static void test_convert_node_dump(void) {
+    Arena *a = arena_create(1 << 20);
+    Expr *x = expr_ident(a, mk(1, 5, 1, 6), "x", 1);
+    Expr *inner = expr_convert(a, mk(1, 5, 1, 12), "u32", 3, x);
+    Expr *outer = expr_convert(a, mk(1, 1, 1, 13), "u64", 3, inner);
+
+    char buf[1024];
+    FILE *mem = fmemopen(buf, sizeof(buf), "w");
+    expr_print(mem, outer, 0);
+    fclose(mem);
+    const char *expected =
+        "(convert@1:1-1:13 u64\n"
+        "  (convert@1:5-1:12 u32\n"
+        "    (ident@1:5-1:6 x)))";
+    if (strcmp(buf, expected) != 0) {
+        fprintf(stderr, "FAIL: convert dump mismatch\n--- expected ---\n%s\n--- actual ---\n%s\n", expected, buf);
+        exit(1);
+    }
+    printf("PASS: convert node renders as (convert@span TARGET operand), nested\n");
+    arena_destroy(a);
+}
+
 int main(void) {
+    test_convert_node_dump();
     test_basic_function_matches_spec();
     test_struct_and_attributed_function();
     printf("ALL PASS\n");

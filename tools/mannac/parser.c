@@ -110,6 +110,7 @@ static const char *token_describe(Arena *a, Token t) {
  *   index_or_slice ::= expression [ '..' expression ] ;
  *   primary        ::= NUMBER | KW_TRUE | KW_FALSE
  *                     | IDENT [ '(' [ arg_list ] ')' ]
+ *                     | PRIM_TYPE '(' expression ')'
  *                     | '(' expression ')'
  *                     ;
  *   arg_list       ::= expression { ',' expression } ;
@@ -178,7 +179,7 @@ static const char *token_describe(Arena *a, Token t) {
  * (expression -> logic_or -> ... -> multiplicative -> unary -> postfix ->
  * primary; separately, block -> statement -> {every statement kind},
  * with let_stmt also reaching type, and if/while/for_stmt each reaching
- * block again) plus exactly seven back-edges, each one a cycle:
+ * block again) plus exactly eight back-edges, each one a cycle:
  *
  *   1. unary -> unary (self-recursive prefix case, "!!!!x")
  *      Counted by: parse_unary's own hook.
@@ -201,6 +202,10 @@ static const char *token_describe(Arena *a, Token t) {
  *      "else { }" does.
  *      Counted by: parse_if_stmt's own hook - this is exactly why it
  *      needs one, the same reasoning as parse_unary and parse_type.
+ *   8. primary -> expression (the PRIM_TYPE '(' expression ')' conversion,
+ *      "u8(u8(u8(x)))") - added in #4 step 2; "cycle 10" in docs/M2_PLAN.md's
+ *      depth table, whose numbering counts that table's rows, not this list.
+ *      Counted by: parse_expression's hook, same as cycles 2-4.
  *
  * Error recovery realizes cycles 6 and 7 a second way, and is NOT an
  * eighth cycle: handle_header_failure -> parse_block (the recovered
@@ -208,7 +213,7 @@ static const char *token_describe(Arena *a, Token t) {
  * recover_else_branch -> parse_if_stmt / parse_block (the recovered else
  * chain). Each passes through the same counted function as the direct
  * path (parse_block / parse_if_stmt - the latter hooks on entry, before
- * any recovery runs), so the count stays seven. Measured, not predicted:
+ * any recovery runs), so recovery adds no back-edge to the list above. Measured, not predicted:
  * a failed `if` header followed by a valid else-if chain caps at 254
  * total `if`s (255 and 300 fail with E0103), identical to the direct
  * chain - tests/parser/depth_elseif_recovered_*.
@@ -276,6 +281,7 @@ static Expr *parse_primary(Parser *p);
 static bool  parse_arg_list(Parser *p, NodeList *out_args);
 static bool  parse_index_or_slice(Parser *p, Expr **out_lo, Expr **out_hi);
 static Type *parse_type(Parser *p);
+static bool  is_prim_type_keyword(TokenKind k);
 static Stmt *parse_statement(Parser *p);
 static Stmt *parse_block(Parser *p);
 static Stmt *parse_let_stmt(Parser *p);
@@ -631,6 +637,40 @@ static Expr *parse_primary(Parser *p) {
             }
             break;
 
+        case TOK_KW_U8: case TOK_KW_U16: case TOK_KW_U32: case TOK_KW_U64:
+        case TOK_KW_I8: case TOK_KW_I16: case TOK_KW_I32: case TOK_KW_I64:
+        case TOK_KW_BOOL: {
+            /* PRIM_TYPE '(' expression ')' - explicit conversion, exactly one
+             * operand. The keyword alone is not an expression, and (unlike
+             * IDENT) it never takes an arg_list: `u8()` and `u8(a, b)` are
+             * syntax errors here. Which conversions are legal (bool <-> int
+             * is not) is an IR-stage decision, so `bool(x)` and `u8(true)`
+             * parse. Re-enters parse_expression (counted) - depth cycle 10
+             * in docs/M2_PLAN.md's table. */
+            advance(p);
+            if (p->cur.kind != TOK_LPAREN) {
+                parser_error(p->ps, diag_expected(p->ps->arena, token_span(p->cur), "'('",
+                                                   token_describe(p->ps->arena, p->cur),
+                                                   arena_sprintf(p->ps->arena, "after '%.*s'", (int)t.lexeme_len, t.lexeme)));
+                break;
+            }
+            advance(p); /* consume '(' */
+            Expr *operand = parse_expression(p);
+            if (!operand) {
+                break;
+            }
+            if (p->cur.kind != TOK_RPAREN) {
+                parser_error(p->ps, diag_expected(p->ps->arena, token_span(p->cur), "')'",
+                                                   token_describe(p->ps->arena, p->cur), "after conversion operand"));
+                break;
+            }
+            Token rparen = p->cur;
+            advance(p);
+            result = expr_convert(p->ps->arena, span_merge(token_span(t), token_span(rparen)),
+                                  t.lexeme, t.lexeme_len, operand);
+            break;
+        }
+
         default:
             parser_error(p->ps, diag_expected(p->ps->arena, token_span(t), "expression",
                                                token_describe(p->ps->arena, t), NULL));
@@ -900,7 +940,8 @@ static Stmt *parse_for_step(Parser *p) {
  * stmt and expr_stmt are disjoint by construction, decided by one token
  * of lookahead (starts_postfix) before either is attempted. */
 static bool starts_postfix(TokenKind k) {
-    return k == TOK_NUMBER || k == TOK_KW_TRUE || k == TOK_KW_FALSE || k == TOK_IDENT || k == TOK_LPAREN;
+    return k == TOK_NUMBER || k == TOK_KW_TRUE || k == TOK_KW_FALSE || k == TOK_IDENT || k == TOK_LPAREN ||
+           is_prim_type_keyword(k);
 }
 
 static Stmt *parse_expr_stmt(Parser *p) {
