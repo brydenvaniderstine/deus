@@ -102,7 +102,22 @@ static void no_target_overflow(void) {
     exit(1); /* only reached if arena_alloc wrongly returned */
 }
 
+/* Invoked as a separate process: a request no host can satisfy makes
+ * malloc return NULL, which arena_create must report and exit(1) on
+ * (the "host out-of-memory" branch, distinct from the designed cap).
+ * SIZE_MAX / 2 bytes fails without any fault injection. Out-of-process
+ * because exit() ends the program. */
+static void oom_create(void) {
+    arena_create((size_t)-1 / 2);
+    fprintf(stderr, "FAIL: arena_create returned despite an unsatisfiable size\n");
+    exit(2); /* distinct from the expected exit(1) */
+}
+
 int main(int argc, char **argv) {
+    if (argc > 1 && strcmp(argv[1], "--oom") == 0) {
+        oom_create();
+        return 2;
+    }
     if (argc > 1 && strcmp(argv[1], "--no-target-overflow") == 0) {
         no_target_overflow();
         return 1; /* unreachable if arena_alloc behaved correctly */

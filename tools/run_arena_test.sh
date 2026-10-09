@@ -18,3 +18,16 @@ else
     echo "FAIL: expected abort (status >=128), got $status"
     exit 1
 fi
+
+# Host out-of-memory: arena_create must print its message and exit(1) -
+# not abort, not return. ASan's allocator aborts on an absurd request by
+# default instead of returning NULL; allocator_may_return_null=1 makes it
+# behave like the plain allocator so both builds exercise the same branch.
+status=0
+oom_msg=$(ASAN_OPTIONS=allocator_may_return_null=1 "$BIN" --oom 2>&1 >/dev/null) || status=$?
+if [ "$status" -eq 1 ] && printf '%s' "$oom_msg" | grep -q "out of memory creating"; then
+    echo "PASS: unsatisfiable arena size exits 1 with the out-of-memory message"
+else
+    echo "FAIL: expected exit 1 + out-of-memory message, got status $status: $oom_msg"
+    exit 1
+fi
