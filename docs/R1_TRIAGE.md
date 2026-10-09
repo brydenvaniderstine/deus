@@ -54,6 +54,26 @@ memory - re-read this file's verbatim section against current repo state first.*
   - formatter requirement (not parser work, recorded for when `manna fmt` is built):
     M2_PLAN §8 #4 item 5 array-literal canonicalization.
 
+## Phase C #11: fix-hint candidates that need code (PENDING DECISION - not Phase C docs)
+
+Phase C documented every no-hint code as an explicit exception (`docs/error_codes.md`).
+Anything below needs a `parser.c`/`diag.c` change plus tests, so per the #11 rule it is
+listed here with its cost and **not implemented**. Fix-its are not printed in the
+`.ast` goldens (only message text is), so each would be pinned by new cases in
+`tools/mannac/parser_fixes_test.c`, not by regenerating goldens.
+
+| Candidate | Where | Cost | Caveat |
+|---|---|---|---|
+| Insert `;` for "expected ';' ..., found X" | 8 `diag_expected(..., "';'", ...)` sites in `parser.c` | new `diag_expected_with_fix` + the previous token's end span at each site, ~8 call edits, ~8 `parser_fixes_test.c` cases | The insertion point (end of the *previous* token) differs from the error span (the found token); wrong when the real mistake is elsewhere (`let x = 1 2;`) |
+| Insert `)` for "expected ')' ..." | 3 sites | same shape, ~3 cases | Position ambiguous when the missing `)` isn't at the found token |
+| Insert `]` / `}` | 5 sites | same | `}` is the least safe: where it belongs is a structural guess |
+| E0106: replace the version with `v0` | `diag_unsupported_version` (one site) | ~3 lines + 1 test | Asserts v0-compatibility the tool can't know; registered as a documented exception instead |
+| **E0102 `expected` field is wrong at the `for` site** (says `'{'`, parser wants `';'`) | `diag_assignment_as_condition` hardcodes it; 3 call sites | add an `expected` parameter, 3 call edits, 1-2 `parser_fixes_test.c` cases | Not a missing hint - an inaccuracy in existing JSON output; noted in the E0102 registry row |
+
+Recommendation (not a decision): do none of the insert-`;`/`)`/`]`/`}` hints (wrong more
+often than right), and fix the E0102 `expected` field with the #4 step since it touches
+`parser.c` anyway. Waiting for a call.
+
 ## Verbatim triage plan (as given)
 
 > Fresh-eyes audit triage. 3 phases, each its own commit(s), STOP tier.
