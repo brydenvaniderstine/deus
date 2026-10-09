@@ -21,7 +21,7 @@ The verifier does the safety work either way, so Rust's main advantage isn't dec
 
 No feature creep. v0 needs exactly enough to express the loop-counter-injected, pointer-verified kernel functions M1's C code already represents — nothing more:
 
-- **Types:** `u8`/`u16`/`u32`/`u64`, `i8..i64`, `bool`, fixed-size arrays, structs (fixed layout, no tagged unions/variants yet). No generics, no traits, no interfaces.
+- **Types:** `u8`/`u16`/`u32`/`u64`, `i8..i64`, `bool`, fixed-size arrays, structs (fixed layout, no tagged unions/variants yet). No generics, no traits, no interfaces. **`u8`..`u64`, `i8`..`i64`, `bool`, and `unit` are reserved words** (r1 Phase B; specified, not yet implemented - see §4 "Reserved words, constructors, and conversions"): they lex as keywords, never as identifiers, so `u64(x)` is a conversion *syntactically*, telling it apart from a call needs no name resolution. Struct values are built with `Point(x: 1, y: 2)`, array values with `[1, 2, 3]` or `[v; N]`, integer conversions are explicit `u64(x)`; there is no implicit conversion anywhere (principle 2).
 - **Functions:** named functions, fixed arity, no overloading, no closures, no varargs.
 - **Loops:** `for` (C-style three-clause) and `while` only. No `foreach`/iterators — those need a trait/protocol system v0 excludes.
 - **Safe pointers:** a single pointer kind, bounds-carrying (pointer + length, not a bare address) for anything outside `[kernel_hook]`. Raw/bare pointers don't exist in v0 source — they're an IR-level concept the verifier permits only inside verified `[kernel_hook]` regions.
@@ -117,6 +117,7 @@ source (.manna)
 - **Block comments (`/* */`) do not nest**, matching C: the first closing delimiter ends the comment regardless of any opening delimiter seen since the outermost one. Tested explicitly (`tests/lexer/nested_comment.mn`) rather than left as incidental behavior.
 - **Numeric literals that don't fit in 64 bits are a lex error** (`ERROR_NUMBER_OVERFLOW`), not a silent wraparound - checked for both decimal and hex literals, including at the exact `2^64-1` boundary.
 - **Tabs count as 1 column**, not expanded to a tab-stop width. Simplest option consistent with "no feature creep"; revisit only if a real need for aligned-error-column tooling appears.
+- **Ten more reserved words (r1 Phase B - specified, NOT yet implemented; `lexer.c`'s keyword table is unchanged until the post-r1 #4 step):** `u8`, `u16`, `u32`, `u64`, `i8`, `i16`, `i32`, `i64`, `bool`, `unit`. Each becomes its own `TOK_KW_*` kind, exactly like `fn`/`let`/`true` already are (`keyword_kind` in `lexer.c`), so an identifier position can never hold one: `let u8 = 1;`, `fn bool()`, a field called `unit`, and an attribute `[u8]` are all errors (generic E0105, "expected identifier, found 'u8'" - see "Diagnostics added by r1 Phase B" for why that is a documented exception, not a gap). Consequence for existing goldens, to be handled in the #4 step, not now: `tests/lexer/basic.mn` (its `basic.tokens` golden prints `u32` etc. as `IDENT` today) changes token kinds; the 22 `tests/parser/*.mn` files using these names as types are expected to keep byte-identical `.ast` dumps, since types render inline as bare text (§4, golden format) - that expectation is itself something the #4 step must verify, not assume.
 
 ## 4. Parser grammar (v0, approved)
 
@@ -140,14 +141,27 @@ function_decl     ::= { attribute } 'fn' IDENT '(' [ param_list ] ')' [ '->' typ
      stated explicitly, not inferred. Principle 15 (types at every
      boundary) only permits inference inside function bodies; a
      function's own signature, return type included, is never one of
-     those bodies. *)
+     those bodies.
+
+     r1 Phase B (specified, not yet implemented): writing `-> unit`
+     explicitly is a dedicated error (E0109) - `unit` is reserved but is
+     not a type name anywhere in source; the one way to say "returns
+     nothing" is to omit the annotation (principle 1). *)
 param_list        ::= param { ',' param } ;
 param             ::= IDENT ':' type ;
 
-type              ::= IDENT
+type              ::= PRIM_TYPE                          (* r1-B: new *)
+                    | IDENT
                     | '[' INTEGER ']' type   (* fixed-size array *)
                     | '[' ']' type           (* safe slice *)
                     ;
+PRIM_TYPE         ::= 'u8' | 'u16' | 'u32' | 'u64' | 'i8' | 'i16' | 'i32' | 'i64' | 'bool' ;
+  (* r1-B (specified, not yet implemented): these nine are keyword tokens,
+     no longer IDENT. `unit` is reserved too but is deliberately NOT in
+     PRIM_TYPE - it is not writable as a type. The two '[' alternatives
+     share a prefix; `parse_type` already implements the left-factored
+     form ('[' then branch on INTEGER vs ']'), which is the actual LL(1)
+     shape - see "LL(1) re-verification" below. *)
 
 block             ::= '{' { statement } '}' ;
 
@@ -156,10 +170,11 @@ statement         ::= let_stmt | if_stmt | while_stmt | for_stmt
                     | postfix_stmt | expr_stmt ;
   (* postfix_stmt and expr_stmt have disjoint FIRST sets - postfix_stmt
      starts with whatever primary/postfix starts with (NUMBER, KW_TRUE,
-     KW_FALSE, IDENT, '('); expr_stmt, reached only when none of those
-     applied, starts with a unary prefix ('!', '-', '~'). Genuinely
-     LL(1) at this level, unlike the assign_stmt/expr_stmt split it
-     replaces. *)
+     KW_FALSE, IDENT, '('; r1-B adds the nine PRIM_TYPE keywords and
+     '[' - `starts_postfix` in parser.c must grow to match); expr_stmt,
+     reached only when none of those applied, starts with a unary prefix
+     ('!', '-', '~'). Genuinely LL(1) at this level, unlike the
+     assign_stmt/expr_stmt split it replaces. *)
 
 let_stmt          ::= 'let' IDENT [ ':' type ] '=' expression ';' ;
 
@@ -231,12 +246,30 @@ expr_stmt         ::= expression ';' ;
 
 expression        ::= logic_or ;
 logic_or          ::= logic_and { '||' logic_and } ;
-logic_and         ::= equality { '&&' equality } ;
-equality          ::= comparison [ ( '==' | '!=' ) comparison ] ;
-comparison        ::= bitor [ ( '<' | '>' | '<=' | '>=' ) bitor ] ;
-  (* Non-associative: at most one comparison/equality operator per
-     expression. `a < b < c` parses "a < b" here, leaves the second
-     '<' unconsumed, and fails one level up. *)
+logic_and         ::= relational { '&&' relational } ;
+relational        ::= bitor [ rel_op bitor ] ;
+rel_op            ::= '<' | '>' | '<=' | '>=' | '==' | '!=' ;
+  (* r1-B (specified, not yet implemented) - REPLACES the former two
+     levels `equality ::= comparison [ ('=='|'!=') comparison ]` and
+     `comparison ::= bitor [ ('<'|'>'|'<='|'>=') bitor ]`. At most ONE
+     comparison/equality operator per operand of `&&`/`||` (every
+     expression is such an operand, a lone one if no `&&`/`||` is
+     present). Non-associative across BOTH former levels, not just
+     within each: `a < b < c` and `a == b != c` stay E0101 (same class,
+     the existing message); `a < b == c` and `a == b < c` - which the
+     two-level grammar accepted as `(a<b)==c` and `a==(b<c)` - are now
+     E0108, with a parenthesizing fix-it. Parenthesized operands are
+     fine (`(a < b) == c`): '(' re-enters `expression`, so each paren
+     group is its own operand. BEHAVIOR CHANGE vs. today's parser and
+     goldens: `tests/parser/comparison_wrapped_by_equality_{lhs,rhs}`
+     (`a<b==c`, `a==b<c`) currently parse and would become E0108 error
+     goldens in the #4 step; `parse_equality`'s comment calling `a < b ==
+     c` "the ordinary, unambiguous (a<b) == c" is reversed by this rule.
+     Rationale: that reading is only "unambiguous" to someone who has
+     memorized the precedence of two adjacent levels - the same
+     C-precedence-trap class MANNA_PRINCIPLES.md Part 3 already counts
+     the bitwise rule as fixing (principle 2: what you see is what
+     runs). *)
 bitor             ::= bitxor { '|' bitxor } ;
 bitxor            ::= bitand { '^' bitand } ;
 bitand            ::= shift { '&' shift } ;
@@ -254,15 +287,58 @@ primary           ::= NUMBER | KW_TRUE | KW_FALSE
                     | IDENT [ '(' [ arg_list ] ')' ]
   (* The ONLY call form in v0: a bare identifier immediately followed
      by '('. No indirect calls, no calling an expression's result. *)
+                    | PRIM_TYPE '(' expression ')'          (* r1-B: conversion *)
+                    | '[' array_body ']'                    (* r1-B: array literal *)
                     | '(' expression ')'
                     ;
-arg_list          ::= expression { ',' expression } ;
+arg_list          ::= arg { ',' arg } ;
+arg               ::= expression [ ':' expression ] ;       (* r1-B: was just `expression` *)
+array_body        ::= expression ( { ',' expression } | ';' NUMBER ) ;
+  (* r1-B (all of the r1-B productions: specified, not yet implemented).
+     - `arg`'s `:` form is struct construction: `Point(x: 1, y: 2)`. The
+       parser accepts ANY expression on the left of ':'; that it is a
+       bare field name, that the callee is a struct (not a function),
+       that every field is present exactly once in declaration order, and
+       that no call mixes named and positional args, are all IR-stage
+       checks (the parser has no field-name or symbol table). Struct
+       construction and a function call are the same syntax,
+       `IDENT '(' arg_list ')'`; which one it is is resolved by name at
+       the IR stage (naming-convention enforcement, §7 item 7, already
+       makes them visually distinct: PascalCase vs. snake_case).
+     - `[a, b, c]` is an array literal (at least one element: `[]` has
+       no element to infer a type from and is a generic E0105,
+       "expected expression, found ']'"; no trailing comma, matching
+       `arg_list`). `[v; N]` is the repeat literal: `v` is any
+       expression, `N` is a NUMBER token (not an expression - v0 has no
+       constant evaluation, matching the INTEGER in `'[' INTEGER ']'
+       type`). **`[v; 0]` is legal: a zero-length array** - `N == 0` is not an
+       error at any stage. It is the only spelling of a zero-length array
+       (the list form needs at least one element, so `[]` stays an
+       error), which is also why the formatter's `[v; 1]` -> `[v]` rule
+       never touches it. `v` is evaluated exactly once whatever `N` is,
+       including 0 (one meaning, principle 4), and still determines the
+       element type. A wrong element type is an IR check.
+     - `PRIM_TYPE '(' expression ')'` is an explicit conversion,
+       exactly one operand (not an `arg_list`). Semantics (IR/backend,
+       recorded here so the parser step doesn't re-decide them): the
+       result is `x` itself when the value fits the target type and a
+       runtime TRAP when it doesn't - covering narrowing (`u8(300)`) and
+       a sign change (`u32(-1)`) uniformly, per "all arithmetic overflow
+       traps" (§2). Conversions are between integer types only, and
+       **bool <-> integer conversion is not allowed in v0, in either
+       direction**: `bool(x)` and `u8(b)` (for a `bool` `b`) both parse -
+       `bool` is a PRIM_TYPE - and the IR stage rejects both. Write
+       `x != 0` for the first; there is deliberately no spelling for the
+       second (principle 1: not a second way to say `if b {1} else {0}`). The result of a conversion, an array
+       literal, and a call is never an lvalue (lvalue validity -
+       an IR-stage check, as R1_TRIAGE #3 decided). *)
 ```
 
 ### Dedicated diagnostics (implementation requirements, not expressible in EBNF)
 
 - **Chained comparison:** immediately after parsing one `comparison`, if the lookahead token is itself a comparison/equality operator, raise this exact diagnostic right there: `"comparisons can't be chained; use a < b && b < c"` — not a generic "expected X, found Y" surfacing later from whatever construct happens to be one level up.
 - **Assignment-as-condition:** when `if`/`while` is expecting the condition-terminating `'{'` and finds `'='` instead, raise this exact diagnostic: `"assignment is a statement; did you mean '=='?"` — the single most likely reason someone hits this exact token pair, given `expression` structurally can't contain `'='` anymore.
+- **Mixed comparison/equality (E0108) and `-> unit` (E0109)** - r1 Phase B, specified, not yet implemented; exact wording, trigger and fix-it are under "Reserved words, constructors, and conversions" below and in `docs/error_codes.md`.
 
 ### Universal nesting-depth bound
 
@@ -314,7 +390,13 @@ Expr   = NumberLit(value: u64) | BoolLit(value: bool) | Ident(name)
        | Index(base: Expr, index: Expr)
        | Slice(base: Expr, lo: Expr, hi: Expr)
        | FieldAccess(base: Expr, name)
+       | Convert(target: PrimType, operand: Expr)          (* r1-B: u64(x) *)
+       | ArrayLit(elems: [Expr])                           (* r1-B: [1, 2, 3] *)
+       | ArrayRepeat(value: Expr, count: u64)              (* r1-B: [v; N] *)
+
+Arg    = Expr | NamedArg(name_expr: Expr, value: Expr)     (* r1-B: x: 1 ; Call.args becomes [Arg] *)
 ```
+`Call` also represents struct construction (`Point(x: 1, y: 2)`) - the parser can't tell the two apart, and the IR stage retags a `Call` whose callee resolves to a struct. `NamedArg.name_expr` is an arbitrary `Expr` at parse time for the same reason (§4 grammar comment): "is a bare field name" is an IR check. `PrimType` is the nine `PRIM_TYPE` keywords; whether `Type` gains a `TypePrim` node or keeps `TypeIdent` holding the keyword text is the #4 step's call, since either renders identically (below).
 
 There is no `Assign` `Expr` variant — assignment lives only in `Stmt`, as `AssignStmt`.
 
@@ -338,7 +420,8 @@ Mirrors the lexer's convention directly: `tests/parser/*.mn` → `*.ast`, run vi
 This dump format **is** the canonical machine interchange form (principle 11: the AST has a stable serialized form, and AI agents may emit it directly) — not just a test-golden convenience, so the rendering rules are spec, not implementation detail:
 
 - **`Field`/`Param` carry spans**, same as every other node (corrected above - the abstract shorthand omits one, the real type doesn't).
-- **An absent `-> type` renders as `(return_type unit)`**, explicit, never omitted - matching "stated, not inferred" (§2).
+- **An absent `-> type` renders as `(return_type)`** (r1 Phase B - **specified, not yet implemented**; today's `ast.c` still prints `(return_type unit)`), explicit, never omitted - matching "stated, not inferred" (§2). The word `unit` no longer appears because `unit` is reserved and cannot be written in source (E0109), so a dump containing `(return_type unit)` is not a valid interchange form and a reader of it must reject it (principle 11). **This is a dump-format change:** the 14 `tests/parser/*.ast` goldens containing `(return_type unit)`, `tools/mannac/ast.c:541`, and `tools/mannac/ast_test.c:142` all change in the #4 step, and every other golden must be re-diffed to confirm it is byte-for-byte unchanged, not assumed so.
+- **r1-B expression nodes (specified, not yet implemented):** `(array@span e1 e2 ...)`, `(array_repeat@span value N)`, `(convert@span u64 operand)` (the target renders as bare inline text, like types), and a named call argument renders as `(named_arg@span name_expr value)` inline among the call's other args. Plain positional args keep rendering bare, as now.
 - **A typed `let` renders as `name:type`**; an inferred (no explicit type) `let` renders as a bare `name`, with no placeholder standing in for the absent type.
 - **Types render inline as compact text** wherever they appear - `u32`, `[4]u32`, `[]u32` - never as their own nested `(type_ident ...)`/`(type_array ...)` S-expression. This is why `u32` appears bare in the example above rather than wrapped.
 - **Calls render as `(call@span name arg1 arg2 ...)`**, args inline with no separate `args` wrapper - unlike `params`/`fields`, which do get one, since those group a named, typed thing (`Field`) rather than bare expressions.
@@ -387,6 +470,99 @@ Also: `sync_skip` now tracks `'('`/`')'` and `'['`/`']'` depth the same way it a
 ### Known limitations
 
 - **A `for`-header's error recovery discards, rather than preserves or re-reports, anything between a header failure and the next resume point** (`tests/parser/err_recovery_for_header_mask_swallows_filler`) - see "Error recovery" above for why the `';'`-mask makes this an accepted trade-off, not a bug: it replaces Step 10's for-init double-diagnostic cascade with silent loss instead, which is strictly better but still loses real content that a finer, clause-aware recovery could have preserved.
+- **A failure inside an already-opened `(`/`[` can cascade into a second diagnostic when it precedes a `';'` in that bracket** (`g(1 +; 3)` today; `[1 +; 3]` once the repeat literal exists) - `sync_skip`'s bracket depth only covers brackets the skip itself passes over, not ones the parser had already consumed. Reproduced on today's binary; see "Recovery: `'['` in `primary`'s FIRST set" above for the evidence and the decision. Accepted, not fixed, in r1.
+
+### Reserved words, constructors, and conversions (r1 Phase B)
+
+**Status: specification only.** Nothing in this subsection is implemented. `lexer.c`, `parser.c`, `ast.c` and every golden are unchanged until the post-r1 "#4 parser step" (`docs/R1_TRIAGE.md`), which also carries the #5 and #6 code (the new `&&`/`||` comparison error, the `-> unit` error, and the `(return_type)` dump change) - that deferral was decided at the start of Phase B. Every claim below that names a number or a behavior of code that doesn't exist yet is labeled **specified** or **predicted**, never **proven**; per CLAUDE.md's "proof over reasoning" lesson, the #4 step must prove each one with a built binary before this text is allowed to say otherwise.
+
+#### LL(1) re-verification
+
+`FIRST(primary)` becomes `{NUMBER, KW_TRUE, KW_FALSE, IDENT, u8, u16, u32, u64, i8, i16, i32, i64, bool, '(', '['}`. Every decision point the r1-B productions add or change, and why one token of lookahead decides it:
+
+| # | Decision | Alternatives, by current token | Why it's deterministic |
+|---|---|---|---|
+| 1 | `type` | `PRIM_TYPE` (9 keyword kinds) / `IDENT` / `'['` | Three disjoint token classes. After `'['`: `INTEGER` = sized array, `']'` = slice (the existing left-factored form in `parse_type`). |
+| 2 | `primary` | `NUMBER` / `true` / `false` / `IDENT` / `PRIM_TYPE` / `'('` / `'['` | Seven alternatives, pairwise-disjoint FIRST sets (distinct token kinds). **Reservation is what makes the `PRIM_TYPE` row disjoint from `IDENT`:** if `u64` were still an `IDENT`, `u64(x)` would match `IDENT '(' arg_list ')'` too, and only name resolution could say conversion vs. call. |
+| 3 | `IDENT [ '(' ... ]` | `'('` or not | Requires `'(' ∉ FOLLOW(primary)`. No production places `'('` after an operand, and the r1-B additions to `FOLLOW(expression)` are only `':'` (from `arg`) and `','`/`';'`/`']'` (from `array_body`) - none is `'('`. |
+| 4 | `arg ::= expression [ ':' expression ]` | `':'` or not | `FOLLOW(arg) = {',', ')'}`, which excludes `':'`. The other `':'` sites (`let IDENT ':' type`, `field_decl`, `param`) follow a declared *name*, never an expression, so `':'` joins `FOLLOW(expression)` only via `arg`. |
+| 5 | `array_body` after its first `expression` | `','` / `';'` / `']'` | Three disjoint tokens. `N` after `';'` is a `NUMBER` token, not an expression, so the repeat form adds no further decision. |
+| 6 | `'['` ∈ both `FIRST(primary)` and the `postfix` loop | operand-start position vs. after-operand position | The `postfix` loop is greedy and only runs after a complete `primary`; `primary` only dispatches at an operand-start position. Ambiguity would need some production that puts an operand-start directly after a complete operand (juxtaposition). Exhaustive check of every site an `expression` appears: `let ... '=' expression ';'`, `return [expression] ';'`, `if`/`while expression block` (next token `'{'`), `for ... expression ';'`, `for_step block`, `index_or_slice` (`']'`/`'..'`), `arg` (`','`/`')'`/`':'`), `array_body` (`','`/`';'`/`']'`), `'(' expression ')'`. Each is followed by a terminal that is not an operand-start, and statements in a block each end in `';'` or `'}'`, so a following statement's leading `'['` is never adjacent to a live operand. No juxtaposition exists, so no conflict. |
+| 7 | `return_stmt`'s optional `expression` | `';'` vs. `FIRST(expression)` | `';' ∉ FIRST(expression)` (unchanged property). |
+| 8 | `statement` dispatch | `starts_postfix` / unary prefix / statement keywords | `FIRST(postfix_stmt)` grows by the nine `PRIM_TYPE` keywords and `'['`; `FIRST(expr_stmt) = {'!', '-', '~'}` is unchanged; none of the new tokens is a statement keyword. Still pairwise disjoint. |
+| 9 | `relational ::= bitor [ rel_op bitor ]` | a `rel_op` token or not | `rel_op ∉ FOLLOW(relational)`. The follow-up "another `rel_op` right after?" is a deterministic error production on the next token (E0101 same class / E0108 mixed class), not a second parse path. |
+| 10 | `'->' type` | `KW_UNIT` after `'->'` | `KW_UNIT ∉ FIRST(type)`, so it can never be a valid start; the dedicated E0109 is an error production on that single token. |
+
+**Honest scope of this claim:** it is a hand argument over the productions (the repo has no FIRST/FOLLOW generator), so it is exactly as strong as the table above. The mechanical evidence has to come from the #4 step: one golden per decision row above (including the rows-6 and -8 adjacency cases, e.g. a statement beginning `[1, 2][0] = 3;` right after an `if` block), plus the fuzz run with the last-resort trap build described under "Recovery" below.
+
+#### Recovery: `'['` in `primary`'s FIRST set
+
+`'['` already means two things to the parser: the index/slice operator (post-operand) and an attribute opener (top level only). It now also starts an expression. The recovery code that mentions `'['` is the top-level resume rule, `sync_skip`'s bracket-depth tracking, and the top-level dispatch.
+
+**1. The `'[' IDENT ']' 'fn'` top-level resume rule - not broken for valid input; one bounded, previously-latent misfire for invalid input.** `parser.c` (`is_top_level_resume_token`):
+
+> `'[' only counts as a top-level resume point when it's '[' IDENT ']' 'fn' - a bare '[' alone is too weak a signal (headers and statements can't otherwise produce one, but requiring the full attribute shape avoids treating some unrelated, coincidental '[' as a fresh top-level start).`
+
+The predicate is a pure four-token lookahead and is unchanged. It cannot fire inside a *valid* program on a new construct: `[ IDENT ]` is now also a one-element array literal, but `fn` ∉ `FOLLOW(expression)`, so `[x] fn` can only occur as an attribute. For *invalid* input, the same text can occur when a statement's skip passes over an array-literal-shaped `[y]` that happens to sit directly before a real `fn`. Run on today's binary (the lexical situation is identical; `[y]` is not yet an expression, which doesn't matter to the skip), scratch input `manna v0;\nfn f() {\n    let a = ) [y]\nfn g() {}\n`:
+
+```
+ERRORS:
+3:13 expected expression, found ')'
+TREE:
+(function_decl@3:15-4:10 g
+  (attributes y)
+  ...
+```
+
+One diagnostic, `g` preserved - but `[y]` was claimed as `g`'s attribute. That is the same outcome any stray `[ident]` before `fn` has today, and the alternative (not resuming) would swallow `g`, the failure Step 10b's top-level level exists to prevent. Accepted; no change. **Stale comment to fix in the #4 step:** the parenthetical "(headers and statements can't otherwise produce one ...)" becomes false once `'['` starts an expression - the rule is still right, the stated reason is not.
+
+**2. `sync_skip`'s bracket-depth tracking (r1 #18) does what it was built for - when the skip *traverses* the opener.** `parser.c`: *"a stray ';' inside an unclosed call's argument list or (post-r1) an array-repeat literal "[v; N]" is never a real statement boundary either way, so which bracket KIND is open doesn't matter, only whether at least one still is."* Verified on today's binary with `manna v0;\nfn f() {\n    let a = ) [1; 3];\n    let b = 2;\n}\n`: one diagnostic (`3:13 expected expression, found ')'`), and `let b = 2;` survives in the tree - the `';'` inside `[1; 3]` was correctly not a boundary.
+
+**3. What is NOT guaranteed - a real limitation, ACCEPTED as a known limitation (user decision, Phase B review).** The bracket depth only exists inside `sync_skip`, which starts at depth 0 *at the failing token*. If the parser itself already consumed the opener and the error is inside it, the skip starts "inside" brackets it doesn't know about, and the first `';'` it meets is taken as a statement boundary. The repeat literal's own `';'` is exactly such a token: `[1 +; 3]` fails at that `';'`, the statement level resumes there, and `3]` is then parsed as a fresh statement - a second, spurious diagnostic from one mistake. This is not new in kind; today's binary does the same for calls (`manna v0;\nfn f() {\n    let a = g(1 +; 3);\n}\n` gives `3:18 expected expression, found ';'` **and** `3:21 expected ';' after expression, found ')'`). `[v; N]` adds a second construct with the property that its internal `';'` can be hit by an in-bracket error. No stated recovery guarantee is violated (`docs/STATUS.md`'s Step 10 entry claims no-cascade for statement- and top-level-item-granularity failures, not for failures inside an argument list), but the "one mistake -> one error" experience degrades for one more construct. **Decision: option (a), accept and list under "Known limitations"** (done). The rejected alternative, for the record: a bracket-open counter in `ParserState` masking the statement level's `';'` while inside a call/array/index, the same mechanism as `sync_for_header` - it would also have changed existing call behavior and needed its own goldens. The #4 step adds regression goldens that pin the current behavior (`[1 +; 3]` and `g(1 +; 3)`: two diagnostics) so it can't change silently.
+
+**4. Termination and progress are unaffected.** At the top level `'['` still dispatches to `parse_function_decl`, whose attribute loop consumes `'['` before it can fail (`parse_attribute`: `advance(p); /* consume '[' */`), so a bare `'['` still makes progress and `parser_parse_file`'s last-resort single-token skip stays unreachable by the same argument as before. At statement level `'['` is now consumed by `parse_primary` instead of failing with zero progress. That reachability claim is exactly what `MANNA_FUZZ_TRACE_LAST_RESORT` exists to check; the #4 step must re-run both fuzz targets with it on rather than rely on this paragraph.
+
+**5. The nine `PRIM_TYPE` keywords are NOT added to the statement level's resume set.** That set's rule (`parser.c`, `is_statement_start_keyword`) is that each keyword is "unconditionally consumed as the very first action of its own parse_*_stmt function" and "a statement can't legally start with any of them". Neither holds: `u8(x);` is a legal statement start, and `y = u8(x);` has one mid-statement. Making them resume tokens would make a skip stop inside valid expressions.
+
+#### New recursion cycles and their counted functions
+
+Rule (`parser.c`'s INVARIANT): every cycle must pass through at least one depth-counted function. r1-B adds **two** cycles and **extends one**; none needs a new hook, because each re-enters `parse_expression`, which is already counted. The "Succeeds"/"Fails" columns are **predictions** until the #4 step builds them:
+
+| # | Cycle | Counted by | Construct example | Predicted succeeds | Predicted fails | Goldens required |
+|---|---|---|---|---|---|---|
+| 9 | `primary -> array_body -> expression` (covers list elements *and* the repeat literal's value; `N` is a `NUMBER` leaf) | `parse_expression` | `[[[...x...]]]` | 255 | 256, 300 | `depth_array_*`, `depth_repeat_*` |
+| 10 | `primary -> PRIM_TYPE '(' expression ')'` | `parse_expression` | `u8(u8(u8(...x...)))` | 255 | 256, 300 | `depth_conv_*` |
+| 3 (extended) | `primary -> arg_list -> arg -> expression`, on both sides of `':'` (the value side nests; the name side is parsed as an expression too, and nests the same way if someone writes `f(f(x): 1)`) | `parse_expression` | `f(a: f(a: ...x...))` | 255 | 256, 300 | `depth_namedarg_*` |
+
+Not cycles: `PRIM_TYPE` inside `type` is a leaf, so cycle 5 (`type -> type`) is unchanged; merging `equality`/`comparison` into `relational` removes one uninstrumented fixed-pipeline level (a constant cost, never a cycle, same character as the other pipeline levels); #6 adds no recursion. `parser.c`'s INVARIANT comment currently says "exactly seven back-edges" and must say nine in the #4 step. Mixed nesting follows the existing rule (e.g. `[(` costs 2 units/level, like cycle "mixed (1+2)"), and the same shared-budget shrinkage applies inside a block.
+
+#### Diagnostics added by r1 Phase B
+
+Registered in `docs/error_codes.md` now (marked "specified, not yet emitted"); the codes are reserved forever from this commit on:
+
+| Code | Message (exact) | Fires | Fix hint |
+|---|---|---|---|
+| `E0108` | `comparison and equality can't be mixed without parentheses; use (a < b) == c` | The second `rel_op` of an operand, when it's in the other class (`<,>,<=,>=` vs. `==,!=`) than the first. Same-class repeats stay `E0101`. | One edit, **exact text**: the edit span runs from the first character of the comparison's left operand through the last character of its right operand, where "the comparison" is always the `<`, `<=`, `>`, `>=` pair (the inner expression, never the `==`/`!=` pair), and the replacement is `(` + the span's original source text, verbatim, + `)` - i.e. the fix inserts exactly one `(` and one `)` and nothing else. Operands are `bitor`-level, so they may be compound (`x + 1 >= y != z` -> `(x + 1 >= y) != z`). This preserves the meaning the retired two-level grammar gave the expression. `DiagFix` is a single edit today (`diag.h`) and this is one contiguous replace, so no schema change. Needs the source text at construction and, for the `a == b < c` order, the pair's second operand parsed before reporting. One violation is reported per operand (at the second operator); if the fixed text still has another, it is reported on the next check - the fix-it does not promise a one-pass cure of a longer chain. |
+| `E0109` | `'-> unit' is not written; omit the return type` | `'->'` followed by `KW_UNIT` | One edit, **exact text**: the edit span runs from the first character of `->` through the last character of `unit`, and the replacement is the empty string (`""`) - the fix inserts nothing. |
+
+**Which code each mixed/chained input gets** (E0101 is unchanged in message and in having no fix-it - the rewrite `a < b && b < c` would evaluate `b` twice, so it isn't a mechanical single-span edit, and its registry entry already says so):
+
+| Input | Code | Fix-it inserts | Result after fix |
+|---|---|---|---|
+| `a < b < c`, `a <= b > c` (both comparison-class) | `E0101` | nothing (no fix-it) | - |
+| **`a == b == c`**, `a == b != c` (both equality-class) | **`E0101`** | nothing (no fix-it) | - |
+| `a < b == c` | `E0108` | `(` before `a`, `)` after `b` | `(a < b) == c` |
+| `a == b < c` | `E0108` | `(` before `b`, `)` after `c` | `a == (b < c)` |
+| `x + 1 >= y != z` | `E0108` | `(` before `x`, `)` after `y` | `(x + 1 >= y) != z` |
+
+**Documented exceptions - generic `E0105`, no dedicated code, no machine-applicable fix.** Each of these is a plain "token X where Y was expected" that `diag_expected` already states completely; a dedicated message wouldn't add information, and renaming or choosing a different construct is semantic, not a single-span edit (the same stance the E0105 registry row already takes: "Varies by call site; most have none yet"):
+
+- a reserved word where an identifier is required (`let u8 = 1;`, `fn bool()`, a field named `unit`, `[u8]` as an attribute) - `expected identifier, found 'u8'`;
+- `unit` in any type position (`let x: unit`, a param, a field, an array element) - `expected type, found 'unit'` (only the `'->'` site gets the dedicated E0109, because that is the one place someone coming from another language will write it);
+- `[]` - `expected expression, found ']'`; `[v; X]` with `X` not a `NUMBER` - `expected array repeat count (integer), found ...`;
+- conversion arity and shape: `u8()` - `expected expression, found ')'`; `u8(a, b)` - `expected ')' after conversion operand, found ','`; a bare `u8` in expression position - `expected '(' after 'u8', found ...`.
+
+**IR-stage diagnostics are specified here only as a to-do, with no codes yet.** The `E02xx` range is assigned when the IR stage starts; none ship in r1, so "no diagnostic ships unregistered" holds. They are: callee is not a struct / left of `':'` is not a bare field name; a field missing, repeated, unknown, or out of declaration order; named and positional arguments mixed in one call; array-literal element-type mismatch (a repeat count of 0 is legal, not an error); any conversion with a non-integer type on either side (`bool(x)` and `u8(b)` alike); an assignment target that isn't an lvalue (lvalue validity, R1_TRIAGE #3); maximum array size.
 
 ## 5. Test strategy
 
@@ -439,6 +615,34 @@ Per `docs/MANNA_PRINCIPLES.md` Part 4 — recorded here so the implementation bl
 6. **Tooling: one public binary, `manna`**, with subcommands `build`, `check`, `test`, `fmt`, and `doc`. `mannac` (`tools/mannac/`) is the internal source folder and library name only — never a binary a user runs directly.
 7. **Naming-convention enforcement (principle 2 above) lives at the IR stage (E02xx), not the parser (E01xx)** — decided during Step 8, when the question became concrete (struct/function/field/param declarations are the first place names get checked). Consistent with unknown attributes and duplicate names also being IR-stage errors (item 8 below): one semantic-validation pass, not checks scattered across parser and IR, even though naming is purely syntactic and could in principle be checked the moment an IDENT is parsed. Not implemented in Step 8 - the parser accepts any syntactically-valid identifier at a declaration site for now. Requirements for when it is implemented: covers every declaration site (`let`, params, fields, structs, functions, attributes - not just structs/functions), and every violation carries a fix-it hint with the correctly-cased name (same `DiagFix` mechanism E0102 already uses).
 8. **Unknown attributes and duplicate names are IR-stage errors, not parser errors.** The parser accepts any `[IDENT]` attribute list and any declaration name without checking whether the attribute is recognized or the name collides with another declaration - those require a symbol table, which doesn't exist until the IR stage. Not implemented in Step 8.
+
+## 8. Feature Admission Test records
+
+The five-item test is `docs/MANNA_PRINCIPLES.md`'s "Feature Admission Test". One record per language change that went through it; r1 Phase B (#4, #5, #6) is the first batch. **Item 2 requires golden tests, which can't exist for spec-only changes, so every record below is **"pending admission (goldens due in #4 step)"**: the spec is accepted, and the feature is not allowed to merge until the #4 step lands the goldens listed.** A record can only be upgraded to "admitted" by that step, which also closes the item in `docs/R1_TRIAGE.md`'s #4 checklist.
+
+### #4 - struct construction, array literals, conversions, reserved primitive names
+
+1. **Principles / locked decisions:** no violation found. Supports principle 2 (conversions are explicit; no zero-initialized or partially-initialized aggregates), 3 (a constructor names every field at the point of use), 5 (LL(1) re-verified, §4), 9 (`u64(x)` is a word-led form, not a cast symbol or `as`), 6 (diagnostics registered). §7 items 1-8 are untouched; item 2 (naming) is what keeps `Point(...)` and `f(...)` visually distinct. One tension recorded under item 5 below.
+2. **Spec entry / goldens / errors:** spec = §2, §4 grammar + "Reserved words, constructors, and conversions". Errors = generic E0105 sites documented as exceptions (no dedicated message adds information); IR-stage checks listed without codes, none shipping. **Goldens: not yet written.** Required in the #4 step, plain + ASan: one per decision row of the LL(1) table (including the `[`-adjacency cases), `depth_array_*`/`depth_repeat_*`/`depth_conv_*`/`depth_namedarg_*` pairs at the predicted 255/256 and 300, `repeat_zero` (`[v; 0]` parses, dumps as an `array_repeat` node with count 0) and `repeat_one_nonlist` (`[v; 1]` parses), each documented exception, the `[IDENT]`-before-`fn` misfire and repeat-literal-skip cases from §4 "Recovery" as regression goldens, the `lexer` `basic.tokens` update, and a re-diff showing the 22 type-using parser goldens unchanged.
+3. **Scope:** v0. §2 already puts fixed-size arrays and structs in v0 ("driver and microkernel task formatting need them now") but defined no way to write a value of either, and with no implicit conversions (principle 2) mixed-width integer code cannot be written at all without explicit conversion. These complete v0's type story; no v1 feature is pulled forward.
+4. **Machine cost (Wasm MVP, per construct; exact instruction sequences get recorded when the backend lowers each one, §3):** struct construction = one store per field into a stack/linear-memory slot, no allocation (no heap in v0), O(fields). Array literal = one store per element, O(N). `[v; N]` = `N` is a compile-time `NUMBER`, so a statically-known O(N) store loop, **lowered as a counted loop, not `memory.fill`** (bulk-memory is outside the MVP target, §2) and so subject to loop-counter injection like any loop. Conversion (**specified**; the exact sequences are fixed when the backend is written, and assume the backend keeps sub-32-bit values normalized in an `i32`, a backend decision): value-preserving widening is zero or one instruction (`u8`->`u32` and `i8`->`i32` are free; `u32`->`u64` is `i64.extend_i32_u`, `i32`->`i64` is `i64.extend_i32_s`). Anything that can fail is **a compare-and-trap**: the operand is duplicated through one scratch local (`local.tee`), tested, and a forward `if` branches to `unreachable` - roughly 4 instructions for a sign test (`i32`->`u32`, `u32`->`i32`, signed->wider-unsigned) and 5-7 for a range test (`u32`->`u8`; `i32`->`i8` as one biased unsigned compare), plus the extend when widening too; 64-bit forms use the `i64` equivalents at the same count. Per conversion site: O(1), one extra local, one never-taken forward branch, no loop, no call, no memory access; the trap itself is Wasm's `unreachable`, the same mechanism overflow traps use. The verifier may drop the check where it proves the value in range. The native backend's cost (compare plus a conditional jump to a trap stub) is recorded when that backend is written, not here. The v0 maximum array size is an IR-stage limit, not specified here.
+5. **Second way to say the same thing?** Struct construction is the *only* way to create a struct value (`let` always requires an initializer, so declare-then-assign-fields doesn't exist). Conversion has exactly one spelling (no `as`, no implicit form; `bool`<->integer is not a conversion in v0, so `bool(x)` is rejected in favor of `x != 0` and `u8(b)` has no spelling at all). **Overlap closed by a formatter rule, not accepted as a tension:** `[0, 0, 0]` and `[0; 3]` mean the same, so the canonical form is fixed by `manna fmt` (§7 item 6; principle 1: "the official formatter defines the layout... the same meaning always produces the same text"). **Formatter requirement (recorded here; `fmt` is unbuilt, so this binds it when it's written):** (a) an array literal of length >= 2 whose elements are all the *same literal token* - same token kind and same lexeme, so `[0, 0, 0]` and `[true, true]` qualify while `[0, 0x0]` and `[x, x]` do not - is rewritten to `[v; N]` (`[0, 0, 0]` -> `[0; 3]`); (b) a repeat literal with `N == 1` is rewritten to the list form (`[v; 1]` -> `[v]`), which the user's rule (a) leaves otherwise as a second spelling of `[v]` - flagged as an addition to confirm; (c) every other array literal is left as written. After (a)-(c) each value has exactly one canonical text. This is a formatter requirement only: both forms stay legal *input* to the parser, and the compiler treats them identically.
+
+### #5 - at most one comparison/equality operator per `&&`/`||` operand
+
+1. **Principles / locked decisions:** principles 1 (parentheses are the one way to combine them), 2, 5, 6; extends Part 3's "Chained comparisons" and "C operator-precedence traps" rows. No locked decision touched. **It does reverse currently-accepted, golden-tested behavior** (`a<b==c`, `a==b<c`), which is not a locked decision but is called out in the grammar comment and must be confirmed.
+2. **Spec / goldens / errors:** spec = §4 `relational` + comment; E0108 registered with an applicable fix. **Goldens, #4 step:** `err_mixed_cmp_eq_lhs`/`_rhs` (the two existing `comparison_wrapped_by_equality_*` inputs, moved from valid to error), a parenthesized-valid pair `(a<b)==c` / `a==(b<c)`, an `&&`-embedded case, and a check that `err_chained_cross_cmp` (`a<b>c`, same class) still yields E0101 unchanged.
+3. **Scope:** v0; a parser-level restriction on existing operators.
+4. **Machine cost:** none - compile-time only, no runtime construct added or changed.
+5. **Second way?** It removes one: `a < b == c` and `(a < b) == c` meant the same thing; now only the second is writable.
+
+### #6 - reserve `unit`; `-> unit` is an error; absent return type dumps as `(return_type)`
+
+1. **Principles / locked decisions:** principle 1 (omitting the annotation is the single way to say "returns nothing"), 15 (signatures fully typed - absence is already the stated, not inferred, form per §2), 11 (the interchange form must have one rendering per meaning), 6. No locked decision touched.
+2. **Spec / goldens / errors:** spec = §2, §4 `function_decl` comment, golden-format bullet; E0109 registered with an applicable fix. **Goldens, #4 step:** `err_return_unit` (+ fix-it), `unit` as a name and in other type positions (the documented E0105 exceptions), and regeneration of the 14 `(return_type unit)` goldens with every other golden re-diffed to be byte-identical.
+3. **Scope:** v0.
+4. **Machine cost:** none - no runtime construct.
+5. **Second way?** It removes one: `fn f() {}` and `fn f() -> unit {}` can no longer both be written.
 
 ## Working log
 

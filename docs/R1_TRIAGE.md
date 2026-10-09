@@ -15,14 +15,44 @@ memory - re-read this file's verbatim section against current repo state first.*
   300s, zero crashes, last-resort trap never hit), `make test-determinism` clean,
   coverage unchanged at the two pre-existing justified gaps (parser.c 99.81%, lexer.c
   99.64%).
-- **Phase B (spec only): NOT STARTED.** No code, no M2_PLAN.md edits yet beyond what
-  Phase A already touched. See "Locked Phase B decisions" below for what's already
-  decided and ready to write up - the work itself is turning those into M2_PLAN.md
-  prose/grammar/admission-test entries, not deciding them fresh.
+- **Phase B (spec only): WRITTEN and reviewed - committed locally, not pushed (awaiting approval).** Spec edits
+  in `docs/M2_PLAN.md` (§2, lexer decisions, §4 grammar + new "Reserved words,
+  constructors, and conversions" subsection, AST/dump format, §8 Admission Test
+  records) and `docs/error_codes.md` (E0108, E0109, documented E0105 exceptions). No
+  parser or lexer code, no golden touched. **Decision (user, start of Phase B): the
+  #5/#6 code - the new `&&`/`||` comparison error (E0108), the `-> unit` error
+  (E0109), and the `(return_type)` dump change - is deferred to the post-r1 #4 parser
+  step, with the rest of #4.** Phase B only specs them. **Phase B decisions - ALL CONFIRMED
+  (user, Phase B review):** (1) #5 reverses the formerly-accepted `a<b==c` /
+  `a==b<c` (the checklist below flips those goldens); (2) the `[v; N]` count is a
+  `NUMBER` token, not an expression; (3) conversions trap on any out-of-range value,
+  including same-width sign changes, not only narrowing; (4) dump shapes
+  `(array …)`, `(array_repeat …)`, `(convert T x)`, `(named_arg …)`; (5) the in-bracket
+  recovery cascade (`g(1 +; 3)`, `[1 +; 3]`) is **accepted as a known limitation**,
+  no counter added; (6) formatter rule (b), `[v; 1]` -> `[v]`; (7) `[v; 0]` is legal,
+  a zero-length array - the only spelling of one, so no list-form overlap, and `v` is
+  evaluated exactly once for any N (M2_PLAN §4 grammar comment).
 - **Phase C (docs): NOT STARTED.**
 - **#4 parser implementation** (struct construction / arrays / repeat-literal /
-  conversions, from Phase B's spec): explicitly deferred to its own step **after**
-  `m2-parser-r1` is tagged - do not implement it as part of Phase B or this triage.
+  conversions, from Phase B's spec) **plus the #5/#6 code**: explicitly deferred to
+  its own step **after** `m2-parser-r1` is tagged - do not implement it as part of
+  Phase B or this triage. Its checklist (from Phase B):
+  - lexer keyword table + `tests/lexer/basic.tokens`;
+    `parse_type`/`parse_primary`/`starts_postfix`/`parse_arg_list`;
+  - `relational` merge (#5), **and flip `tests/parser/comparison_wrapped_by_equality_{lhs,rhs}`
+    from valid to E0108 error goldens**; add the E0101/E0108 table cases from M2_PLAN §4;
+  - `-> unit` (E0109); `ast.c:541` + `ast_test.c:142` + the 14 `(return_type unit)`
+    goldens -> `(return_type)`, every other golden re-diffed byte-identical;
+  - **`parser.c` comments:** update the stale `is_top_level_resume_token` comment
+    ("headers and statements can't otherwise produce one" is false once `'['` starts an
+    expression) and the INVARIANT comment's back-edge count (seven -> nine);
+  - goldens for `[v; 0]` (`repeat_zero`) and `[v; 1]`, and pinning goldens for the accepted
+    in-bracket cascade (`[1 +; 3]`, `g(1 +; 3)`: two diagnostics each);
+  - depth goldens (predicted 255/256/300); fuzz both targets with the last-resort trap on;
+  - **close the §8 Admission Test records (#4, #5, #6) from "pending admission (goldens
+    due in #4 step)" to "admitted"** once their listed goldens exist and pass;
+  - formatter requirement (not parser work, recorded for when `manna fmt` is built):
+    M2_PLAN §8 #4 item 5 array-literal canonicalization.
 
 ## Verbatim triage plan (as given)
 
