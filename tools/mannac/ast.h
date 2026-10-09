@@ -184,8 +184,9 @@ Stmt *stmt_block(Arena *a, Span span, NodeList stmts);
 
 /* ---- Pretty-printer: the S-expression golden-test dump format ---- */
 
-/* Writes the canonical S-expression dump (docs/M2_PLAN.md "Golden test
- * format for ASTs") to `out`, no trailing newline. */
+/* Writes the S-expression dump (docs/M2_PLAN.md "Golden test format for
+ * ASTs") to `out`, no trailing newline. Output-only: the planned canonical
+ * interchange form, but no reader exists yet (same section). */
 void decl_print(FILE *out, const Decl *d);
 
 /* Same dump format, for a standalone expression - used directly by the
