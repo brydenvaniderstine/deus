@@ -178,6 +178,16 @@ Expr *expr_array_repeat(Arena *a, Span span, Expr *value, uint64_t count) {
     return e;
 }
 
+Expr *expr_named_arg(Arena *a, Span span, Expr *name, Expr *value) {
+    Expr *e = arena_alloc(a, sizeof(Expr), alignof(Expr));
+    e->kind = EXPR_NAMED_ARG;
+    e->span = span;
+    e->parenthesized = false;
+    e->as.named_arg.name = name;
+    e->as.named_arg.value = value;
+    return e;
+}
+
 Expr *expr_index(Arena *a, Span span, Expr *base, Expr *index) {
     Expr *e = arena_alloc(a, sizeof(Expr), alignof(Expr));
     e->kind = EXPR_INDEX;
@@ -425,6 +435,14 @@ void expr_print(FILE *out, const Expr *e, int depth) {
             fprintf(out, " %llu", (unsigned long long)e->as.array_repeat.count);
             nl_indent(out, depth + 1);
             expr_print(out, e->as.array_repeat.value, depth + 1);
+            fprintf(out, ")");
+            return;
+        case EXPR_NAMED_ARG:
+            print_span(out, "named_arg", e->span);
+            nl_indent(out, depth + 1);
+            expr_print(out, e->as.named_arg.name, depth + 1);
+            nl_indent(out, depth + 1);
+            expr_print(out, e->as.named_arg.value, depth + 1);
             fprintf(out, ")");
             return;
         case EXPR_INDEX:

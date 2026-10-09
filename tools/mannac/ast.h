@@ -104,6 +104,7 @@ typedef enum {
     EXPR_CALL, EXPR_INDEX, EXPR_SLICE, EXPR_FIELD_ACCESS,
     EXPR_CONVERT, /* u64(x): explicit integer conversion, #4 step 2 */
     EXPR_ARRAY, EXPR_ARRAY_REPEAT, /* [a, b, c] and [v; N], #4 step 3 */
+    EXPR_NAMED_ARG,                /* x: 1 inside a call's args, #4 step 4 */
 } ExprKind;
 
 typedef enum { UNOP_NOT, UNOP_NEG, UNOP_BITNOT } UnOp;
@@ -141,6 +142,7 @@ struct Expr {
         struct { const char *target; Expr *operand; } convert; /* target: the type keyword's text */
         struct { NodeList elems; } array;                      /* elems: Expr*, at least one */
         struct { Expr *value; uint64_t count; } array_repeat;  /* count: the NUMBER token's value */
+        struct { Expr *name; Expr *value; } named_arg;         /* only ever an element of a call's args */
     } as;
 };
 
@@ -158,6 +160,10 @@ Expr *expr_field_access(Arena *a, Span span, Expr *base, const char *name, size_
 Expr *expr_convert(Arena *a, Span span, const char *target, size_t target_len, Expr *operand);
 Expr *expr_array(Arena *a, Span span, NodeList elems);
 Expr *expr_array_repeat(Arena *a, Span span, Expr *value, uint64_t count);
+/* `name` is ANY expression at parse time (the grammar is `expression ':'
+ * expression`); that it is a bare field name, and that the callee is a struct,
+ * are IR-stage checks. */
+Expr *expr_named_arg(Arena *a, Span span, Expr *name, Expr *value);
 
 /* ---- Statements ---- */
 

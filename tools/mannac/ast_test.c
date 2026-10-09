@@ -212,7 +212,30 @@ static void test_array_node_dumps(void) {
     arena_destroy(a);
 }
 
+/* #4 step 4: (named_arg@span name_expr value) - both children, in order. */
+static void test_named_arg_dump(void) {
+    Arena *a = arena_create(1 << 20);
+    Expr *name = expr_ident(a, mk(1, 7, 1, 8), "x", 1);
+    Expr *value = expr_number(a, mk(1, 10, 1, 11), 1);
+    Expr *na = expr_named_arg(a, mk(1, 7, 1, 11), name, value);
+    char buf[512];
+    FILE *mem = fmemopen(buf, sizeof(buf), "w");
+    expr_print(mem, na, 0);
+    fclose(mem);
+    const char *expected =
+        "(named_arg@1:7-1:11\n"
+        "  (ident@1:7-1:8 x)\n"
+        "  (number@1:10-1:11 1))";
+    if (strcmp(buf, expected) != 0) {
+        fprintf(stderr, "FAIL: named_arg dump mismatch\n--- expected ---\n%s\n--- actual ---\n%s\n", expected, buf);
+        exit(1);
+    }
+    printf("PASS: named_arg renders as (named_arg@span name_expr value)\n");
+    arena_destroy(a);
+}
+
 int main(void) {
+    test_named_arg_dump();
     test_array_node_dumps();
     test_convert_node_dump();
     test_basic_function_matches_spec();

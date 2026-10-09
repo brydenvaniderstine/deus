@@ -114,7 +114,8 @@ static const char *token_describe(Arena *a, Token t) {
  *                     | '[' array_body ']'
  *                     | '(' expression ')'
  *                     ;
- *   arg_list       ::= expression { ',' expression } ;
+ *   arg_list       ::= arg { ',' arg } ;
+ *   arg            ::= expression [ ':' expression ] ;
  *   array_body     ::= expression ( { ',' expression } | ';' NUMBER ) ;
  *
  *   block          ::= '{' { statement } '}' ;
@@ -187,7 +188,9 @@ static const char *token_describe(Arena *a, Token t) {
  *      Counted by: parse_unary's own hook.
  *   2. primary -> expression (the '(' expression ')' case, "(((x)))")
  *      Counted by: parse_expression's hook.
- *   3. primary -> arg_list -> expression (call args, "f(f(f(x)))")
+ *   3. primary -> arg_list -> expression (call args, "f(f(f(x)))", and
+ *      both sides of a named arg, "f(a: f(a: x))" - #4 step 4 extends this
+ *      cycle, it adds none)
  *      Counted by: parse_expression's hook.
  *   4. postfix -> index_or_slice -> expression (index/slice bounds,
  *      "a[a[a[x]]]")
@@ -536,6 +539,21 @@ static bool parse_arg_list(Parser *p, NodeList *out_args) {
         Expr *arg = parse_expression(p);
         if (!arg) {
             return false;
+        }
+        /* arg ::= expression [ ':' expression ] - struct construction,
+         * `Point(x: 1, y: 2)`. The left side is ANY expression here; that
+         * it is a bare field name, that the callee is a struct, and that
+         * named and positional args are not mixed are all IR-stage checks
+         * (the parser has no symbol table). Both sides go through
+         * parse_expression (counted) - cycle 3, extended, not a new cycle:
+         * `f(a: f(a: ...))` costs one unit per level like `f(f(...))`. */
+        if (p->cur.kind == TOK_COLON) {
+            advance(p);
+            Expr *value = parse_expression(p);
+            if (!value) {
+                return false;
+            }
+            arg = expr_named_arg(p->ps->arena, span_merge(arg->span, value->span), arg, value);
         }
         node_list_push(p->ps->arena, out_args, arg);
         if (p->cur.kind == TOK_COMMA) {

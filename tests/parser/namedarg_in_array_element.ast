@@ -1,0 +1,9 @@
+(array@1:1-1:19
+  (call@1:2-1:9 f
+    (named_arg@1:4-1:8
+      (ident@1:4-1:5 a)
+      (number@1:7-1:8 1)))
+  (call@1:11-1:18 f
+    (named_arg@1:13-1:17
+      (ident@1:13-1:14 b)
+      (number@1:16-1:17 2))))
