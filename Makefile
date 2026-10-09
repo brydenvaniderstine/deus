@@ -228,9 +228,9 @@ test-parser-fixes-asan:
 # Parser golden tests (plain + ASan/UBSan) - docs/M2_PLAN.md's "Golden test
 # format for ASTs". parser_dump is a test-only harness (tools/mannac/
 # parser_main.c), not the real `manna` CLI, same role here that main.c's
-# lexer dump plays for the lexer. Step 4 covers primary + postfix
-# expressions only - parser_dump parses a single expression, not a whole
-# file (full top-level parsing doesn't exist until Step 8).
+# lexer dump plays for the lexer. parser_dump parses a whole file,
+# a block, or a single expression - parser_main.c picks the mode by
+# peeking the first token.
 PARSER_DUMP_DIR  := $(BUILD)/parser_dump
 PARSER_DUMP_SRCS := tools/mannac/arena.c tools/mannac/ast.c tools/mannac/diag.c \
                      tools/mannac/parser_state.c tools/mannac/parser.c \

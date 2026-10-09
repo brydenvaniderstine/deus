@@ -7,13 +7,11 @@
  * lexer, threaded through one ParserState (arena/depth/error-cap escape
  * point - see parser_state.h) per file.
  *
- * Steps 4-5 built the expression grammar (primary/postfix, then the full
- * precedence chain) behind parser_parse_expression. Step 6 adds block-
- * level statements (let/return/break/continue, and the block wrapper
- * itself) behind parser_parse_block - the statement-level counterpart,
- * reused as-is once if/while/for/postfix_stmt/expr_stmt (Step 7) and
- * top-level items (Step 8) extend what `statement` and `type` recognize.
- * Step 10b adds Wirth-style follow-set error recovery at the statement,
+ * Three entry points, built up in steps: parser_parse_expression (Steps
+ * 4-5: primary/postfix, then the full precedence chain), parser_parse_block
+ * (Steps 6-7: every statement kind, plus the block wrapper), and
+ * parser_parse_file (Step 8: version_decl and top-level items). Step 10b
+ * adds Wirth-style follow-set error recovery at the statement,
  * block, header, and top-level-item granularities (see parser.c) - an
  * expression is not one of those granularities, so this function itself
  * still has no recovery of its own: a malformed expression still returns

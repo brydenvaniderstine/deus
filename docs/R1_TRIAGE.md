@@ -48,6 +48,10 @@ memory - re-read this file's verbatim section against current repo state first.*
     expression) and the INVARIANT comment's back-edge count (seven -> nine);
   - goldens for `[v; 0]` (`repeat_zero`) and `[v; 1]`, and pinning goldens for the accepted
     in-bracket cascade (`[1 +; 3]`, `g(1 +; 3)`: two diagnostics each);
+  - **`parser_main.c`'s mode-dispatch peek routes a leading `'['` to whole-file mode**
+    (it assumes `'['` can only start an attribute). Once `'['` starts an array literal,
+    expression goldens like `[1, 2, 3]` would be mis-routed: the peek must be changed
+    (e.g. `'['` + IDENT + `']'` + `fn`, the same shape `is_top_level_resume_token` uses);
   - depth goldens (predicted 255/256/300); fuzz both targets with the last-resort trap on;
   - **close the §8 Admission Test records (#4, #5, #6) from "pending admission (goldens
     due in #4 step)" to "admitted"** once their listed goldens exist and pass;
