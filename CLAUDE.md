@@ -128,7 +128,7 @@ tools/       image build scripts
 - **Kernel `.text` is writable via identity/HHDM aliases (1 GiB RW pages).** W^X is enforced on the higher-half kernel-image mapping (4 KiB pages, per-section flags), but the same physical bytes are also reachable - read/write/exec before the NX addition below, read/write after it - through the identity map and HHDM alias, which use single 1 GiB pages with no sub-granularity to split W from X. Closing this requires splitting the kernel's physical range out of those 1 GiB pages. Revisit before untrusted code runs.
 
 ## Later phases
-- M2: compiler frontend (ZealC port) with a static pointer-safety verifier and loop counter injection.
+- M2: the Manna compiler, `tools/mannac/` (design: `docs/M2_PLAN.md`) - a from-scratch, host-side C implementation (macOS), **not a ZealC port**. Built so far: the lexer and a recursive-descent parser with panic-mode error recovery (tag `m2-parser`; a post-tag audit, r1, is in progress). Not built yet, in pipeline order: typed IR / type checker, loop-counter injection, the static pointer-safety verifier, and the Wasm backend. Current state and next step: `docs/STATUS.md`.
 - M3: bare-metal Wasm runtime (WAMR) and zero-copy IPC queues.
 - M4: telemetry-driven JIT and accelerator interfaces.
 
