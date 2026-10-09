@@ -1712,19 +1712,19 @@ static Decl *parse_top_level_item(Parser *p) {
     return NULL;
 }
 
-/* Every public entry point resets the sync_* counters (and
- * recovered_past_body) before parsing a token: parser_state_init already
- * zeroes them once, but a ParserState that gets reused for a second parse
- * call, or recovered into after a longjmp to fatal_target (which skips
- * every sync_*-- decrement a normal return would have run), could
- * otherwise start this call with stale state left over from whatever was
- * active when a PREVIOUS call stopped. No caller does either of those
- * things today, but these three functions are the only place a parse
- * ever begins, so resetting here is the one place a defensive reset
- * actually covers every case - see parser_state_reset_sync's own doc
- * comment. */
+/* Every public entry point resets ALL per-parse state (depth, error_count,
+ * the sync_* counters, recovered_past_body) before parsing a token:
+ * parser_state_init zeroes it once, but a ParserState that gets reused for
+ * a second parse call, or recovered into after a longjmp to fatal_target
+ * (which skips every depth_exit and every sync_*-- decrement a normal
+ * return would have run), could otherwise start this call with stale
+ * state left over from whatever was active when a PREVIOUS call stopped -
+ * a stale depth made a perfectly valid second file hit E0103 immediately.
+ * These three functions are the only place a parse ever begins, so
+ * resetting here covers every case - see parser_state_reset_for_parse's
+ * own doc comment. */
 Expr *parser_parse_expression(ParserState *ps, Lexer *lx) {
-    parser_state_reset_sync(ps);
+    parser_state_reset_for_parse(ps);
     Parser p;
     p.ps = ps;
     p.lx = lx;
@@ -1733,7 +1733,7 @@ Expr *parser_parse_expression(ParserState *ps, Lexer *lx) {
 }
 
 Stmt *parser_parse_block(ParserState *ps, Lexer *lx) {
-    parser_state_reset_sync(ps);
+    parser_state_reset_for_parse(ps);
     Parser p;
     p.ps = ps;
     p.lx = lx;
@@ -1742,7 +1742,7 @@ Stmt *parser_parse_block(ParserState *ps, Lexer *lx) {
 }
 
 bool parser_parse_file(ParserState *ps, Lexer *lx, NodeList *out_items) {
-    parser_state_reset_sync(ps);
+    parser_state_reset_for_parse(ps);
     Parser p;
     p.ps = ps;
     p.lx = lx;

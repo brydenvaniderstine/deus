@@ -155,6 +155,76 @@ static void test_version_decl_lexer_error_not_e0107(void) {
     printf("PASS: version_decl - a lexer-error first token reports E0105, not E0107\n");
 }
 
+/* R6 (external audit of da9f01c): a ParserState reused for a second parse
+ * kept the PREVIOUS parse's depth and error_count. After a fatal longjmp
+ * (E0103 here) depth is left at 257, so the next, perfectly valid file
+ * hit a spurious E0103 on its very first depth_enter. Phase A's #17 only
+ * reset the sync_* counters and recovered_past_body. All per-parse state
+ * now resets at every public parse entry. */
+static void test_state_reset_after_fatal_longjmp(void) {
+    enum { LEVELS = 300 };
+    static char deep[2 * LEVELS + 64];
+    size_t n = 0;
+    n += (size_t)snprintf(deep + n, sizeof deep - n, "manna v0;\nfn f() {\n    let a = ");
+    for (int i = 0; i < LEVELS; i++) deep[n++] = '(';
+    deep[n++] = 'x';
+    for (int i = 0; i < LEVELS; i++) deep[n++] = ')';
+    n += (size_t)snprintf(deep + n, sizeof deep - n, ";\n}\n");
+
+    ParserState ps;
+    parser_state_init(&ps, 1 << 22);
+    Lexer lx1;
+    lexer_init(&lx1, deep, n);
+    NodeList items1;
+    if (setjmp(ps.fatal_target) == 0) {
+        parser_parse_file(&ps, &lx1, &items1);
+        fprintf(stderr, "FAIL: expected the 300-level input to hit E0103\n");
+        exit(1);
+    }
+    assert(ps.diags.len == 1 && strcmp(ps.diags.items[0].code, "E0103") == 0);
+    assert(ps.depth > 0); /* stale, left behind by the longjmp - the precondition of the bug */
+
+    const char *ok = "manna v0;\nfn g() {\n    let b = 1;\n}\n";
+    Lexer lx2;
+    lexer_init(&lx2, ok, strlen(ok));
+    NodeList items2;
+    if (setjmp(ps.fatal_target) != 0) {
+        fprintf(stderr, "FAIL: valid file hit a fatal error after the earlier longjmp (depth not reset)\n");
+        exit(1);
+    }
+    bool good = parser_parse_file(&ps, &lx2, &items2);
+    assert(good);
+    assert(items2.len == 1);
+    assert(ps.diags.len == 1); /* still only the first parse's E0103: nothing new */
+    assert(ps.depth == 0 && ps.error_count == 0);
+    parser_state_destroy(&ps);
+    printf("PASS: parse entry - depth reset after a fatal longjmp; a valid file parses clean\n");
+}
+
+static void test_state_reset_error_count_between_parses(void) {
+    const char *bad = "manna v0;\nfn f() {\n    let = 1;\n    let = 2;\n    let = 3;\n}\n";
+    const char *ok = "manna v0;\nfn g() {\n    let b = 1;\n}\n";
+    ParserState ps;
+    parser_state_init(&ps, 1 << 20);
+    if (setjmp(ps.fatal_target) != 0) {
+        fprintf(stderr, "FAIL: unexpected fatal longjmp\n");
+        exit(1);
+    }
+    Lexer lx1;
+    lexer_init(&lx1, bad, strlen(bad));
+    NodeList items1;
+    parser_parse_file(&ps, &lx1, &items1);
+    assert(ps.error_count == 3);
+    Lexer lx2;
+    lexer_init(&lx2, ok, strlen(ok));
+    NodeList items2;
+    assert(parser_parse_file(&ps, &lx2, &items2));
+    assert(ps.error_count == 0); /* not 3: it counts THIS parse's errors */
+    assert(ps.diags.len == 3);
+    parser_state_destroy(&ps);
+    printf("PASS: parse entry - error_count restarts at 0 for each parse\n");
+}
+
 int main(void) {
     test_token_span_single_line_unchanged();
     test_token_span_multiline_unterminated_comment();
@@ -162,6 +232,8 @@ int main(void) {
     test_parenthesized_flag_direct_literal();
     test_parenthesized_flag_wrapped_literal();
     test_version_decl_lexer_error_not_e0107();
+    test_state_reset_after_fatal_longjmp();
+    test_state_reset_error_count_between_parses();
     printf("ALL PASS\n");
     return 0;
 }

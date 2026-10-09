@@ -9,12 +9,16 @@ void parser_state_reset_sync(ParserState *ps) {
     ps->recovered_past_body = false;
 }
 
-void parser_state_init(ParserState *ps, size_t arena_max_size) {
-    ps->arena = arena_create(arena_max_size);
-    diag_list_init(&ps->diags);
+void parser_state_reset_for_parse(ParserState *ps) {
     ps->depth = 0;
     ps->error_count = 0;
     parser_state_reset_sync(ps);
+}
+
+void parser_state_init(ParserState *ps, size_t arena_max_size) {
+    ps->arena = arena_create(arena_max_size);
+    diag_list_init(&ps->diags);
+    parser_state_reset_for_parse(ps);
     arena_set_overflow_target(ps->arena, &ps->fatal_target);
 }
 

@@ -108,6 +108,16 @@ void parser_state_destroy(ParserState *ps);
  * true. */
 void parser_state_reset_sync(ParserState *ps);
 
+/* Resets ALL per-parse state: depth, error_count, and everything
+ * parser_state_reset_sync zeroes. Every public parse entry point calls
+ * this first. depth and error_count belong here too, not just the sync
+ * counters: a fatal longjmp (E0103, E0104, arena overflow) skips every
+ * depth_exit, so a ParserState reused afterwards started its next parse
+ * at the stale depth and hit a spurious E0103 on a valid file (external
+ * audit of da9f01c, R6). diags is deliberately NOT cleared - it is the
+ * accumulated result list, owned by the caller. */
+void parser_state_reset_for_parse(ParserState *ps);
+
 /* Call at the very start of EVERY recursive parse function - expression,
  * statement, block, type - no exceptions. This explicitly includes
  * unary's self-recursion (`!!!!x`) and nested array types (`[1][1]...T`):
