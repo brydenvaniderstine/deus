@@ -74,21 +74,20 @@ static void test_token_span_multiline_trailing_text(void) {
     printf("PASS: token_span - multi-line lexeme end column reflects the final line's own length\n");
 }
 
-static Expr *parse_one_expression(const char *src) {
-    ParserState ps;
-    parser_state_init(&ps, 1 << 20);
-    if (setjmp(ps.fatal_target) != 0) {
+/* The returned Expr points into ps's arena, so the CALLER owns ps and must
+ * parser_state_destroy it once done with the node (an earlier version
+ * leaked the arena "deliberately" - `leaks`/LSan flagged it, R7). */
+static Expr *parse_one_expression(const char *src, ParserState *ps) {
+    parser_state_init(ps, 1 << 20);
+    if (setjmp(ps->fatal_target) != 0) {
         fprintf(stderr, "FAIL: unexpected fatal longjmp parsing \"%s\"\n", src);
         exit(1);
     }
     Lexer lx;
     lexer_init(&lx, src, strlen(src));
-    Expr *e = parser_parse_expression(&ps, &lx);
+    Expr *e = parser_parse_expression(ps, &lx);
     assert(e != NULL);
-    assert(ps.diags.len == 0);
-    /* Leaks ps's arena deliberately - e points into it and the test needs
-     * it to outlive this call; process exit reclaims it, same trade-off
-     * parser_main.c itself makes for the lifetime of one dump. */
+    assert(ps->diags.len == 0);
     return e;
 }
 
@@ -97,7 +96,8 @@ static void test_parenthesized_flag_direct_literal(void) {
      * between - the i64::MIN pattern the IR stage (docs/M2_PLAN.md
      * records this) must recognize via operand->parenthesized == false,
      * not by re-deriving it some other way. */
-    Expr *e = parse_one_expression("-9223372036854775808");
+    ParserState ps;
+    Expr *e = parse_one_expression("-9223372036854775808", &ps);
     assert(e->kind == EXPR_UNARY);
     assert(e->as.unary.op == UNOP_NEG);
     Expr *operand = e->as.unary.operand;
@@ -106,6 +106,7 @@ static void test_parenthesized_flag_direct_literal(void) {
     assert(operand->parenthesized == false);
     assert(operand->span.start_col == 2);  /* right after the '-' */
     assert(operand->span.end_col == 21);   /* just the 19 digits, no parens */
+    parser_state_destroy(&ps);
     printf("PASS: parenthesized flag - a directly-negated literal is NOT marked parenthesized\n");
 }
 
@@ -116,7 +117,8 @@ static void test_parenthesized_flag_wrapped_literal(void) {
      * and this flag plus the widened span are the mechanism that lets it
      * tell the two apart (no dedicated Paren AST node exists to hang
      * this fact on instead). */
-    Expr *e = parse_one_expression("-(9223372036854775808)");
+    ParserState ps;
+    Expr *e = parse_one_expression("-(9223372036854775808)", &ps);
     assert(e->kind == EXPR_UNARY);
     assert(e->as.unary.op == UNOP_NEG);
     Expr *operand = e->as.unary.operand;
@@ -125,6 +127,7 @@ static void test_parenthesized_flag_wrapped_literal(void) {
     assert(operand->parenthesized == true);
     assert(operand->span.start_col == 2);  /* the '(' itself */
     assert(operand->span.end_col == 23);   /* through the ')', not just the digits */
+    parser_state_destroy(&ps);
     printf("PASS: parenthesized flag - a parenthesized literal IS marked parenthesized, span widened to include the parens\n");
 }
 

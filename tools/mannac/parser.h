@@ -26,7 +26,7 @@
 Expr *parser_parse_expression(ParserState *ps, Lexer *lx);
 
 /* Computes a token's full source span (start AND end line/col) from its
- * line/col/lexeme_len - exposed for token_span_test.c (not just parser.c's
+ * line/col/lexeme_len - exposed for parser_fixes_test.c (not just parser.c's
  * internal use) because it's a pure, self-contained function worth
  * verifying in isolation: lexeme_len is a raw byte count, so a token
  * whose lexeme spans more than one line (the only one today is

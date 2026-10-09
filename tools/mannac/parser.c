@@ -17,7 +17,7 @@ static void advance(Parser *p) {
     p->cur = lexer_next(p->lx);
 }
 
-/* Exposed (not static) so token_span_test.c can verify the multi-line
+/* Exposed (not static) so parser_fixes_test.c can verify the multi-line
  * case directly, without pulling in the rest of the parser's machinery
  * just to exercise one pure function - see parser.h. */
 Span token_span(Token t) {
