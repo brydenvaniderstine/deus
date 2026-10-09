@@ -1141,6 +1141,27 @@ static Stmt *handle_header_failure(Parser *p) {
     return handle_header_failure_impl(p, false);
 }
 
+/* After an `if` header failed and its body was recovered past
+ * (recovered_past_body is set - only handle_header_failure_impl sets it,
+ * and only when it found the body), the construct is not over yet:
+ * `if x = 5 { a; } else { b; }` still has its else branch. Leaving it
+ * unconsumed made parse_block's loop (which, correctly, does not skip
+ * after a recovered body) try to parse `else` as a statement - a second,
+ * spurious diagnostic from the same mistake - and for an `else if` chain
+ * the skip that followed stopped at the `if` and parsed the rest of the
+ * chain as a stray statement of its own (external audit of da9f01c, R1).
+ * Consumes the same `'else' ( if_stmt | block )` the success path would,
+ * dropping the result like the rest of the dropped statement, so any
+ * error inside it still surfaces. Depth-wise this adds no cycle: it
+ * re-enters parse_if_stmt/parse_block, both already counted. */
+static void recover_else_branch(Parser *p) {
+    if (!p->ps->recovered_past_body || p->cur.kind != TOK_KW_ELSE) {
+        return;
+    }
+    advance(p);
+    (void)((p->cur.kind == TOK_KW_IF) ? parse_if_stmt(p) : parse_block(p));
+}
+
 /* if_stmt ::= 'if' expression block [ 'else' ( if_stmt | block ) ] ;
  * Carries its own depth_enter/depth_exit unconditionally, wrapping the
  * whole function - needed for the else-if self-recursion (if -> else ->
@@ -1159,6 +1180,7 @@ static Stmt *parse_if_stmt(Parser *p) {
     Expr *cond = parse_expression(p);
     if (!cond) {
         Stmt *dropped = handle_header_failure(p);
+        recover_else_branch(p);
         depth_exit(p->ps);
         return dropped;
     }
@@ -1170,6 +1192,7 @@ static Stmt *parse_if_stmt(Parser *p) {
     if (p->cur.kind == TOK_ASSIGN) {
         parser_error(p->ps, diag_assignment_as_condition(p->ps->arena, token_span(p->cur)));
         Stmt *dropped = handle_header_failure(p);
+        recover_else_branch(p);
         depth_exit(p->ps);
         return dropped;
     }

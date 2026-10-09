@@ -1,0 +1,5 @@
+manna v0;
+fn f() {
+    if a { p; } else if x = 1 { q; } else { r; }
+    c;
+}
