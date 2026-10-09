@@ -61,7 +61,7 @@ All Manna language changes must pass the **Feature Admission Test** at the end o
 
 ## Part 3: Lessons learned from other languages
 
-✅ = already solved in v0 · ▶ = planned · ✗ = permanently excluded
+✅ = decided in the v0 spec (not necessarily built - see VISION.md's "Claims we can already demonstrate" for what exists and is tested today) · ▶ = planned · ✗ = permanently excluded
 
 ### Memory and safety (C/C++)
 | Problem | Manna answer |

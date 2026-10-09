@@ -46,6 +46,7 @@ memory - re-read this file's verbatim section against current repo state first.*
   - **`parser.c` comments:** update the stale `is_top_level_resume_token` comment
     ("headers and statements can't otherwise produce one" is false once `'['` starts an
     expression) and the INVARIANT comment's back-edge count (seven -> nine);
+  - **fix E0102's hardcoded `expected = "'{'"`** (wrong at the `for` condition site, where the parser wants `';'`): add an `expected` parameter to `diag_assignment_as_condition`, update its 3 call sites, pin with `parser_fixes_test.c` cases;
   - goldens for `[v; 0]` (`repeat_zero`) and `[v; 1]`, and pinning goldens for the accepted
     in-bracket cascade (`[1 +; 3]`, `g(1 +; 3)`: two diagnostics each);
   - **`parser_main.c`'s mode-dispatch peek routes a leading `'['` to whole-file mode**
@@ -74,9 +75,7 @@ listed here with its cost and **not implemented**. Fix-its are not printed in th
 | E0106: replace the version with `v0` | `diag_unsupported_version` (one site) | ~3 lines + 1 test | Asserts v0-compatibility the tool can't know; registered as a documented exception instead |
 | **E0102 `expected` field is wrong at the `for` site** (says `'{'`, parser wants `';'`) | `diag_assignment_as_condition` hardcodes it; 3 call sites | add an `expected` parameter, 3 call edits, 1-2 `parser_fixes_test.c` cases | Not a missing hint - an inaccuracy in existing JSON output; noted in the E0102 registry row |
 
-Recommendation (not a decision): do none of the insert-`;`/`)`/`]`/`}` hints (wrong more
-often than right), and fix the E0102 `expected` field with the #4 step since it touches
-`parser.c` anyway. Waiting for a call.
+**Decision (user, Phase C review): implement no insert-style fix hints** (`;`, `)`, `]`, `}`) and no E0106 rewrite. The E0102 `expected` bug goes on the #4 checklist and into M2_PLAN "Known limitations" (done).
 
 ## Verbatim triage plan (as given)
 
