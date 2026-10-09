@@ -249,7 +249,7 @@ logic_or          ::= logic_and { '||' logic_and } ;
 logic_and         ::= relational { '&&' relational } ;
 relational        ::= bitor [ rel_op bitor ] ;
 rel_op            ::= '<' | '>' | '<=' | '>=' | '==' | '!=' ;
-  (* r1-B (specified, not yet implemented) - REPLACES the former two
+  (* Implemented, #4 step 5 - REPLACES the former two
      levels `equality ::= comparison [ ('=='|'!=') comparison ]` and
      `comparison ::= bitor [ ('<'|'>'|'<='|'>=') bitor ]`. At most ONE
      comparison/equality operator per operand of `&&`/`||` (every
@@ -260,11 +260,14 @@ rel_op            ::= '<' | '>' | '<=' | '>=' | '==' | '!=' ;
      two-level grammar accepted as `(a<b)==c` and `a==(b<c)` - are now
      E0108, with a parenthesizing fix-it. Parenthesized operands are
      fine (`(a < b) == c`): '(' re-enters `expression`, so each paren
-     group is its own operand. BEHAVIOR CHANGE vs. today's parser and
-     goldens: `tests/parser/comparison_wrapped_by_equality_{lhs,rhs}`
-     (`a<b==c`, `a==b<c`) currently parse and would become E0108 error
-     goldens in the #4 step; `parse_equality`'s comment calling `a < b ==
-     c` "the ordinary, unambiguous (a<b) == c" is reversed by this rule.
+     group is its own operand. BEHAVIOR CHANGE (done in step 5):
+     `tests/parser/comparison_wrapped_by_equality_{lhs,rhs}` (`a<b==c`,
+     `a==b<c`) used to parse and are now E0108 error goldens, and
+     `full_chain_smoke` (its input contained `c==d<e`) had its input
+     parenthesized to `c==(d<e)` so it still walks the whole precedence
+     chain, with the old input kept as `err_mixed_full_chain`;
+     the old `parse_equality` comment calling `a < b == c` "the ordinary,
+     unambiguous (a<b) == c" is gone.
      Rationale: that reading is only "unambiguous" to someone who has
      memorized the precedence of two adjacent levels - the same
      C-precedence-trap class MANNA_PRINCIPLES.md Part 3 already counts

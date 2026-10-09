@@ -1,0 +1,5 @@
+ERRORS:
+1:17 comparison and equality can't be mixed without parentheses; use (a < b) == c
+
+TREE:
+(block@1:1-1:23)

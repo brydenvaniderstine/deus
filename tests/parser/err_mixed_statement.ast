@@ -1,0 +1,7 @@
+ERRORS:
+1:9 comparison and equality can't be mixed without parentheses; use (a < b) == c
+
+TREE:
+(block@1:1-1:27
+  (let_stmt@1:15-1:25 x
+    (number@1:23-1:24 1)))

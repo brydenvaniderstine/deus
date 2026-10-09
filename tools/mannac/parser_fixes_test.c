@@ -289,7 +289,8 @@ static const char *e0102_expected(const char *src) {
     assert(ps.diags.len >= 1);
     assert(strcmp(ps.diags.items[0].code, "E0102") == 0);
     assert(ps.diags.items[0].fix != NULL);
-    assert(strcmp(ps.diags.items[0].fix->replacement_text, "==") == 0);
+    assert(ps.diags.items[0].fix->n_edits == 1);
+    assert(strcmp(ps.diags.items[0].fix->edits[0].text, "==") == 0);
     snprintf(buf, sizeof buf, "%s", ps.diags.items[0].expected);
     parser_state_destroy(&ps);
     return buf;
@@ -300,6 +301,65 @@ static void test_e0102_expected_field_per_site(void) {
     assert(strcmp(e0102_expected("{ while x = 1 { } }"), "'{'") == 0);
     assert(strcmp(e0102_expected("{ for let i = 0; i = 5; i = i + 1 { } }"), "';'") == 0);
     printf("PASS: E0102 - expected field is '{' for if/while and ';' for a for condition\n");
+}
+
+/* E0108's fix-it (#4 step 5): two zero-width inserts, `(` at the start of
+ * the comparison-class (<, <=, >, >=) pair's left operand and `)` at the end
+ * of its right operand. Goldens never print fix-its, so the exact positions
+ * are pinned here. Positions are 1-based line:col; an insert at 1:6 goes
+ * BEFORE the character at column 6, i.e. just after a token ending at col 6
+ * (end columns are exclusive). */
+static void check_mixed_fix(const char *src, int l1, int c1, int l2, int c2) {
+    ParserState ps;
+    parser_state_init(&ps, 1 << 20);
+    if (setjmp(ps.fatal_target) != 0) {
+        fprintf(stderr, "FAIL: unexpected fatal longjmp parsing \"%s\"\n", src);
+        exit(1);
+    }
+    Lexer lx;
+    lexer_init(&lx, src, strlen(src));
+    Expr *e = parser_parse_expression(&ps, &lx);
+    if (e != NULL || ps.diags.len != 1 || strcmp(ps.diags.items[0].code, "E0108") != 0) {
+        fprintf(stderr, "FAIL: expected exactly one E0108 for \"%s\"\n", src);
+        exit(1);
+    }
+    const DiagFix *f = ps.diags.items[0].fix;
+    assert(f != NULL && f->n_edits == 2);
+    assert(strcmp(f->edits[0].text, "(") == 0 && strcmp(f->edits[1].text, ")") == 0);
+    /* both edits are pure insertions: zero-width spans */
+    assert(f->edits[0].span.start_line == f->edits[0].span.end_line);
+    assert(f->edits[0].span.start_col == f->edits[0].span.end_col);
+    assert(f->edits[1].span.start_line == f->edits[1].span.end_line);
+    assert(f->edits[1].span.start_col == f->edits[1].span.end_col);
+    if (f->edits[0].span.start_line != l1 || f->edits[0].span.start_col != c1 ||
+        f->edits[1].span.start_line != l2 || f->edits[1].span.start_col != c2) {
+        fprintf(stderr, "FAIL: \"%s\": '(' at %d:%d, ')' at %d:%d; expected %d:%d and %d:%d\n", src,
+                f->edits[0].span.start_line, f->edits[0].span.start_col,
+                f->edits[1].span.start_line, f->edits[1].span.start_col, l1, c1, l2, c2);
+        exit(1);
+    }
+    parser_state_destroy(&ps);
+}
+
+static void test_e0108_fix_positions(void) {
+    /* comparison first: the pair is (a, b)        a < b == c -> (a < b) == c */
+    check_mixed_fix("a < b == c", 1, 1, 1, 6);
+    /* equality first: the pair is (b, c)          a == b < c -> a == (b < c) */
+    check_mixed_fix("a == b < c", 1, 6, 1, 11);
+    /* compound operands are wrapped whole         (x + 1 >= y) != z */
+    check_mixed_fix("x + 1 >= y != z", 1, 1, 1, 11);
+    /* a parenthesized operand: its span includes the parens, so '(' goes
+     * BEFORE the existing '(' and ')' AFTER b:    ((a) < b) == c */
+    check_mixed_fix("(a) < b == c", 1, 1, 1, 8);
+    /* parenthesized right operand of the pair:    a == ((b) < (c)) */
+    check_mixed_fix("a == (b) < (c)", 1, 6, 1, 15);
+    /* a multi-line left operand: the ')' lands on the LAST line, after b */
+    check_mixed_fix("a +\n  1 < b == c", 1, 1, 2, 8);
+    /* a multi-line right operand of the equality-first pair */
+    check_mixed_fix("a == b +\n  1 < c", 1, 6, 2, 8);
+    /* third operator present: still one diagnostic, pair is the first comparison */
+    check_mixed_fix("a < b == c < d", 1, 1, 1, 6);
+    printf("PASS: E0108 - fix-it is two zero-width inserts at the exact pair boundaries (incl. parenthesized and multi-line operands)\n");
 }
 
 int main(void) {
@@ -313,6 +373,7 @@ int main(void) {
     test_state_reset_error_count_between_parses();
     test_sync_counters_reset_at_parse_entry();
     test_e0102_expected_field_per_site();
+    test_e0108_fix_positions();
     printf("ALL PASS\n");
     return 0;
 }

@@ -1,0 +1,5 @@
+ERRORS:
+1:8 comparisons can't be chained; use a < b && b < c
+
+TREE:
+(none)

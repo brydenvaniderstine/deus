@@ -42,11 +42,15 @@ Every step also updates the `parser.c` header grammar comment (a copy of the gra
 | 2 | **DONE, committed locally, awaiting review.** Conversions `u64(x)` (depth cycle 10): `EXPR_CONVERT`, `parse_primary`, `starts_postfix` += 9 keywords, `ast_test.c` | **STOP** (grammar) | `convert_*`, error shapes, `depth_conv_*` at the measured limit + 300, plain + ASan |
 | 3 | **DONE, committed locally, awaiting review.** Array literal and `[v; N]` (depth cycle 9) **and** the `parser_main.c` mode-peek fix | **STOP** (grammar, recovery-adjacent) | `array_*`, `repeat_*` (incl. `repeat_zero`, `repeat_one`), the `[1 +; 3]` cascade pin, the `[IDENT] fn` misfire golden, `depth_array_*`/`depth_repeat_*` |
 | 4 | **DONE, committed locally, awaiting review.** Named args `Point(x: 1)` (cycle 3 extended), `EXPR_NAMED_ARG` | **STOP** (grammar) | `namedarg_*`, `depth_namedarg_*` |
-| 5 | `relational` merge + E0108 (flip the two `comparison_wrapped_by_equality_*` goldens); `DiagFix` grows from one edit to a short edit list (two inserts) | **STOP** (grammar + golden flip) | the M2_PLAN E0101/E0108 table, `(a<b)==c`, `&&`-embedded; both inserts pinned in `parser_fixes_test.c` |
+| 5 | **DONE, committed locally, awaiting review.** `relational` merge + E0108 (flip the two `comparison_wrapped_by_equality_*` goldens); `DiagFix` grows from one edit to a short edit list (two inserts) | **STOP** (grammar + golden flip) | the M2_PLAN E0101/E0108 table, `(a<b)==c`, `&&`-embedded; both inserts pinned in `parser_fixes_test.c` |
 | 6 | E0109 `-> unit` + the `(return_type)` dump change | **STOP** (re-baseline) | re-baseline the 14 `(return_type unit)` goldens; `err_return_unit` |
 | 7 | Proof and close-out: fuzz both targets with `MANNA_FUZZ_TRACE_LAST_RESORT`, determinism, coverage, flip the Admission Test records to "admitted", STATUS Done entry, archive this file, tag, re-minimize the fuzz corpus | **STOP** (tag) | corpus only |
 
 Depth limits stay predictions until each step's goldens measure them (255/256/300 under plain and ASan); the R1 recovery path's was measured at 254 (see below).
+
+## Harness note
+
+`parser_dump`'s expression mode (and `parser_parse_expression` itself) parses ONE expression and ignores whatever tokens follow it: `a: 1`, `a b c` and `1 + 2 )))` all dump just the first expression with no error. File and block modes do report leftover tokens (`{ a: 1; }` -> `expected ';' after expression, found ':'`, pinned by `err_colon_in_statement`). Goldens that mean "this must be an error" therefore have to be written in block or file mode, or fail inside the expression. Not changed - the harness is test-only; raise it before changing.
 
 ## Gaps found in the original checklist (all folded into the plan above)
 

@@ -1,0 +1,5 @@
+ERRORS:
+1:4 expected ';' after expression, found ':'
+
+TREE:
+(block@1:1-1:10)

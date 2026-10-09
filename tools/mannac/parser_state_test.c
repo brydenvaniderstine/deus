@@ -26,7 +26,8 @@ static void test_diag_list_and_dedicated_messages(void) {
     assert(strcmp(list.items[1].code, "E0102") == 0);
     assert(strcmp(list.items[1].message, "assignment is a statement; did you mean '=='?") == 0);
     assert(list.items[1].fix != NULL);
-    assert(strcmp(list.items[1].fix->replacement_text, "==") == 0);
+    assert(list.items[1].fix->n_edits == 1);
+    assert(strcmp(list.items[1].fix->edits[0].text, "==") == 0);
     assert(list.items[1].expected && strcmp(list.items[1].expected, "'{'") == 0);
     assert(list.items[1].found && strcmp(list.items[1].found, "'='") == 0);
 

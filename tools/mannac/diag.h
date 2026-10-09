@@ -9,14 +9,23 @@
  * something genuinely needs one, not preemptively. */
 typedef enum { DIAG_ERROR } DiagSeverity;
 
+/* One edit of a fix: replace the text at `span` with `text`. A zero-width
+ * span (start == end) is a pure insertion at that position. */
+typedef struct {
+    Span        span;
+    const char *text;
+} DiagEdit;
+
 /* One machine-applicable fix suggestion (error JSON schema, docs/M2_PLAN.md
- * §7 item 4) - replace the text at edit_span with replacement_text. Most
- * diagnostics have none; the two dedicated messages do. At most one fix
- * per diagnostic for now - nothing yet needs more. */
+ * §7 item 4: a fix carries an `edits` array) - one to MAX_FIX_EDITS edits
+ * applied together. Most diagnostics have no fix. At most one fix per
+ * diagnostic for now. E0108 is the only two-edit fix (the `(` and `)` of its
+ * parenthesization); the rest have one. */
+#define MAX_FIX_EDITS 2
 typedef struct {
     const char *title;
-    Span        edit_span;
-    const char *replacement_text;
+    int         n_edits;
+    DiagEdit    edits[MAX_FIX_EDITS];
 } DiagFix;
 
 typedef struct {
@@ -47,6 +56,13 @@ void diag_add(Arena *a, DiagList *list, Diagnostic d);
  * second comparison/equality operator is seen after one has already been
  * parsed. */
 Diagnostic diag_chained_comparison(Span second_operator_span);
+
+/* E0108: "comparison and equality can't be mixed without parentheses; use (a < b) == c".
+ * Reported at the second operator. The fix is two zero-width inserts that
+ * parenthesize the comparison-class (<, <=, >, >=) pair - `(` at the start of
+ * `pair_left` (the pair's left operand), `)` at the end of `pair_right` (its
+ * right operand) - so no source text is needed, only spans. */
+Diagnostic diag_mixed_comparison(Arena *a, Span second_operator_span, Span pair_left, Span pair_right);
 
 /* "assignment is a statement; did you mean '=='?" - raised when a
  * condition is followed by '=' where its terminator was expected.

@@ -96,9 +96,9 @@ static const char *token_describe(Arena *a, Token t) {
  *
  *   expression     ::= logic_or ;
  *   logic_or       ::= logic_and { '||' logic_and } ;
- *   logic_and      ::= equality { '&&' equality } ;
- *   equality       ::= comparison [ ('=='|'!=') comparison ] ;
- *   comparison     ::= bitor [ ('<'|'>'|'<='|'>=') bitor ] ;
+ *   logic_and      ::= relational { '&&' relational } ;
+ *   relational     ::= bitor [ rel_op bitor ] ;   (one comparison/equality op per operand)
+ *   rel_op         ::= '<' | '>' | '<=' | '>=' | '==' | '!=' ;
  *   bitor          ::= bitxor { '|' bitxor } ;
  *   bitxor         ::= bitand { '^' bitand } ;
  *   bitand         ::= shift { '&' shift } ;
@@ -162,7 +162,7 @@ static const char *token_describe(Arena *a, Token t) {
  * Depth bound: only parse_expression, parse_unary's self-recursive prefix
  * case, parse_type (self-recursive: array/slice element types nest),
  * parse_block, and parse_if_stmt (self-recursive: the else-if chain)
- * carry depth_enter/depth_exit - not the 10 fixed-pipeline binary-
+ * carry depth_enter/depth_exit - not the 9 fixed-pipeline binary-
  * operator levels between logic_or and multiplicative (parsing a plain
  * "a" always walks all 10, a constant cost independent of input, so
  * instrumenting them individually would only inflate the counter without
@@ -278,8 +278,7 @@ static const char *token_describe(Arena *a, Token t) {
 static Expr *parse_expression(Parser *p);
 static Expr *parse_logic_or(Parser *p, Expr *given_lhs);
 static Expr *parse_logic_and(Parser *p, Expr *given_lhs);
-static Expr *parse_equality(Parser *p, Expr *given_lhs);
-static Expr *parse_comparison(Parser *p, Expr *given_lhs);
+static Expr *parse_relational(Parser *p, Expr *given_lhs);
 static Expr *parse_bitor(Parser *p, Expr *given_lhs);
 static Expr *parse_bitxor(Parser *p, Expr *given_lhs);
 static Expr *parse_bitand(Parser *p, Expr *given_lhs);
@@ -344,8 +343,7 @@ static Expr *parse_expr_tail(Parser *p, Expr *lhs) {
     lhs = parse_bitand(p, lhs);         if (!lhs) return NULL;
     lhs = parse_bitxor(p, lhs);         if (!lhs) return NULL;
     lhs = parse_bitor(p, lhs);          if (!lhs) return NULL;
-    lhs = parse_comparison(p, lhs);     if (!lhs) return NULL;
-    lhs = parse_equality(p, lhs);       if (!lhs) return NULL;
+    lhs = parse_relational(p, lhs);     if (!lhs) return NULL;
     lhs = parse_logic_and(p, lhs);      if (!lhs) return NULL;
     lhs = parse_logic_or(p, lhs);       if (!lhs) return NULL;
     return lhs;
@@ -364,74 +362,92 @@ static Expr *parse_logic_or(Parser *p, Expr *given_lhs) {
 }
 
 static Expr *parse_logic_and(Parser *p, Expr *given_lhs) {
-    Expr *lhs = given_lhs ? given_lhs : parse_equality(p, NULL);
+    Expr *lhs = given_lhs ? given_lhs : parse_relational(p, NULL);
     if (!lhs) return NULL;
     while (p->cur.kind == TOK_AND) {
         advance(p);
-        Expr *rhs = parse_equality(p, NULL);
+        Expr *rhs = parse_relational(p, NULL);
         if (!rhs) return NULL;
         lhs = expr_binary(p->ps->arena, span_merge(lhs->span, rhs->span), BINOP_AND, lhs, rhs);
     }
     return lhs;
 }
 
-/* Non-associative (docs/M2_PLAN.md): comparison/equality each consume AT
- * MOST ONE of their own operator, then check whether the token right
- * after is itself comparison/equality-level - if so, that's unparseable
- * chaining ("a < b < c", "a == b == c", "a < b == c", ...), and gets the
- * dedicated diagnostic right here rather than a confusing generic error
- * from whatever construct happens to be one level up. comparison()'s own
- * check only looks at its OWN 4 operators: a trailing '=='/'!=' after a
- * successfully-parsed comparison is NOT a violation there - it's
- * equality() legitimately about to wrap that comparison as its own LHS
- * (e.g. "a < b == c" is the ordinary, unambiguous "(a<b) == c"). equality()
- * itself checks the full 6-operator set, since nothing above equality
- * understands any of them - a trailing one there has nowhere left to go
- * but a dedicated error. */
+/* relational ::= bitor [ rel_op bitor ] ; - ONE level for all six of
+ * < > <= >= == != (#4 step 5; it replaces the former two levels, equality
+ * over comparison). Non-associative: at most ONE comparison/equality
+ * operator per operand of && / || (every expression is such an operand).
+ * After the first operator and its right operand, a second operator is an
+ * error, and which one depends on the classes (comparison: < > <= >=;
+ * equality: == !=):
+ *   - same class  (`a < b < c`, `a == b != c`): E0101, no fix-it - the
+ *     natural rewrite `a < b && b < c` evaluates `b` twice;
+ *   - different   (`a < b == c`, `a == b < c`): E0108, with a fix-it that
+ *     parenthesizes the comparison-class pair (the meaning the old two-level
+ *     grammar gave it): two zero-width inserts, `(` before the pair's left
+ *     operand and `)` after its right one. Only spans are needed, never
+ *     source text. For `a == b < c` the pair is (b, c), so c is parsed
+ *     before reporting just to learn where `)` goes.
+ * One diagnostic per operand: the error returns NULL and statement-level
+ * recovery takes over, exactly as for E0101. Parenthesized operands re-enter
+ * `expression`, so `(a < b) == c` is two operands' worth of single operators
+ * and valid; a parenthesized operand's span includes its parens (Phase A
+ * #7), so the `(` insert lands before them. */
 static bool is_comparison_op(TokenKind k) {
     return k == TOK_LT || k == TOK_GT || k == TOK_LE || k == TOK_GE;
 }
 
+static bool is_equality_op(TokenKind k) {
+    return k == TOK_EQ || k == TOK_NE;
+}
+
 static bool is_comparison_or_equality_op(TokenKind k) {
-    return is_comparison_op(k) || k == TOK_EQ || k == TOK_NE;
+    return is_comparison_op(k) || is_equality_op(k);
 }
 
-static Expr *parse_equality(Parser *p, Expr *given_lhs) {
-    Expr *lhs = given_lhs ? given_lhs : parse_comparison(p, NULL);
-    if (!lhs) return NULL;
-    if (p->cur.kind == TOK_EQ || p->cur.kind == TOK_NE) {
-        BinOp op = p->cur.kind == TOK_EQ ? BINOP_EQ : BINOP_NE;
-        advance(p);
-        Expr *rhs = parse_comparison(p, NULL);
-        if (!rhs) return NULL;
-        lhs = expr_binary(p->ps->arena, span_merge(lhs->span, rhs->span), op, lhs, rhs);
-        if (is_comparison_or_equality_op(p->cur.kind)) {
-            parser_error(p->ps, diag_chained_comparison(token_span(p->cur)));
-            return NULL;
-        }
+static BinOp relational_binop(TokenKind k) {
+    switch (k) {
+        case TOK_LT: return BINOP_LT;
+        case TOK_GT: return BINOP_GT;
+        case TOK_LE: return BINOP_LE;
+        case TOK_GE: return BINOP_GE;
+        case TOK_EQ: return BINOP_EQ;
+        default:     return BINOP_NE; /* TOK_NE */
     }
-    return lhs;
 }
 
-static Expr *parse_comparison(Parser *p, Expr *given_lhs) {
+static Expr *parse_relational(Parser *p, Expr *given_lhs) {
     Expr *lhs = given_lhs ? given_lhs : parse_bitor(p, NULL);
     if (!lhs) return NULL;
-    if (is_comparison_op(p->cur.kind)) {
-        BinOp op;
-        switch (p->cur.kind) {
-            case TOK_LT: op = BINOP_LT; break;
-            case TOK_GT: op = BINOP_GT; break;
-            case TOK_LE: op = BINOP_LE; break;
-            default:     op = BINOP_GE; break; /* TOK_GE */
-        }
-        advance(p);
-        Expr *rhs = parse_bitor(p, NULL);
-        if (!rhs) return NULL;
-        lhs = expr_binary(p->ps->arena, span_merge(lhs->span, rhs->span), op, lhs, rhs);
-        if (is_comparison_op(p->cur.kind)) {
-            parser_error(p->ps, diag_chained_comparison(token_span(p->cur)));
+    if (!is_comparison_or_equality_op(p->cur.kind)) {
+        return lhs;
+    }
+    TokenKind first_op = p->cur.kind;
+    Span first_left = lhs->span;
+    advance(p);
+    Expr *rhs = parse_bitor(p, NULL);
+    if (!rhs) return NULL;
+    Span first_right = rhs->span;
+    lhs = expr_binary(p->ps->arena, span_merge(lhs->span, rhs->span), relational_binop(first_op), lhs, rhs);
+
+    if (is_comparison_or_equality_op(p->cur.kind)) {
+        Token second = p->cur;
+        if (is_equality_op(first_op) == is_equality_op(second.kind)) {
+            parser_error(p->ps, diag_chained_comparison(token_span(second)));
             return NULL;
         }
+        Span pair_left = first_left, pair_right = first_right; /* comparison op came first */
+        if (is_equality_op(first_op)) {
+            /* equality first, comparison second: the pair to parenthesize
+             * is (first right operand, the comparison's right operand) */
+            advance(p);
+            Expr *third = parse_bitor(p, NULL);
+            if (!third) return NULL;
+            pair_left = first_right;
+            pair_right = third->span;
+        }
+        parser_error(p->ps, diag_mixed_comparison(p->ps->arena, token_span(second), pair_left, pair_right));
+        return NULL;
     }
     return lhs;
 }

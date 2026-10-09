@@ -1,22 +1,22 @@
-(binary@1:1-1:27 ||
+(binary@1:1-1:29 ||
   (ident@1:1-1:2 a)
-  (binary@1:4-1:27 &&
+  (binary@1:4-1:29 &&
     (ident@1:4-1:5 b)
-    (binary@1:7-1:27 ==
+    (binary@1:7-1:29 ==
       (ident@1:7-1:8 c)
-      (binary@1:10-1:27 <
-        (ident@1:10-1:11 d)
-        (binary@1:12-1:27 |
-          (ident@1:12-1:13 e)
-          (binary@1:14-1:27 ^
-            (ident@1:14-1:15 f)
-            (binary@1:16-1:27 &
-              (ident@1:16-1:17 g)
-              (binary@1:18-1:27 <<
-                (ident@1:18-1:19 h)
-                (binary@1:21-1:27 +
-                  (ident@1:21-1:22 i)
-                  (binary@1:23-1:27 *
-                    (ident@1:23-1:24 j)
-                    (unary@1:25-1:27 -
-                      (ident@1:26-1:27 k))))))))))))
+      (binary@1:10-1:29 |
+        (binary@1:10-1:15 <
+          (ident@1:11-1:12 d)
+          (ident@1:13-1:14 e))
+        (binary@1:16-1:29 ^
+          (ident@1:16-1:17 f)
+          (binary@1:18-1:29 &
+            (ident@1:18-1:19 g)
+            (binary@1:20-1:29 <<
+              (ident@1:20-1:21 h)
+              (binary@1:23-1:29 +
+                (ident@1:23-1:24 i)
+                (binary@1:25-1:29 *
+                  (ident@1:25-1:26 j)
+                  (unary@1:27-1:29 -
+                    (ident@1:28-1:29 k)))))))))))

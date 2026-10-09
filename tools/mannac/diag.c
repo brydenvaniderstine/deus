@@ -33,11 +33,38 @@ Diagnostic diag_chained_comparison(Span second_operator_span) {
     return d;
 }
 
+Diagnostic diag_mixed_comparison(Arena *a, Span second_operator_span, Span pair_left, Span pair_right) {
+    DiagFix *fix = arena_alloc(a, sizeof(DiagFix), alignof(DiagFix));
+    fix->title = "add parentheses";
+    fix->n_edits = 2;
+    fix->edits[0].span.start_line = pair_left.start_line;
+    fix->edits[0].span.start_col = pair_left.start_col;
+    fix->edits[0].span.end_line = pair_left.start_line;
+    fix->edits[0].span.end_col = pair_left.start_col;
+    fix->edits[0].text = "(";
+    fix->edits[1].span.start_line = pair_right.end_line;
+    fix->edits[1].span.start_col = pair_right.end_col;
+    fix->edits[1].span.end_line = pair_right.end_line;
+    fix->edits[1].span.end_col = pair_right.end_col;
+    fix->edits[1].text = ")";
+
+    Diagnostic d = {0};
+    d.code = "E0108";
+    d.severity = DIAG_ERROR;
+    d.message = "comparison and equality can't be mixed without parentheses; use (a < b) == c";
+    d.span = second_operator_span;
+    d.expected = NULL;
+    d.found = NULL;
+    d.fix = fix;
+    return d;
+}
+
 Diagnostic diag_assignment_as_condition(Arena *a, Span equals_span, const char *expected) {
     DiagFix *fix = arena_alloc(a, sizeof(DiagFix), alignof(DiagFix));
     fix->title = "use comparison";
-    fix->edit_span = equals_span;
-    fix->replacement_text = "==";
+    fix->n_edits = 1;
+    fix->edits[0].span = equals_span;
+    fix->edits[0].text = "==";
 
     Diagnostic d = {0};
     d.code = "E0102";
@@ -106,8 +133,9 @@ Diagnostic diag_missing_version_header(Arena *a, Span found_span) {
 
     DiagFix *fix = arena_alloc(a, sizeof(DiagFix), alignof(DiagFix));
     fix->title = "add version header";
-    fix->edit_span = insert_at_start;
-    fix->replacement_text = "manna v0;\n";
+    fix->n_edits = 1;
+    fix->edits[0].span = insert_at_start;
+    fix->edits[0].text = "manna v0;\n";
 
     Diagnostic d = {0};
     d.code = "E0107";
