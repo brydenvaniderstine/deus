@@ -42,13 +42,22 @@ A standing discipline, not a marketing claim: every item below is either somethi
 
 ### Claims we can already demonstrate
 
-- **Memory safety via bounds-checked slices.** `arr[a..b]` carries its own bounds; the verifier proves accesses in range where it can and traps at runtime where it can't (docs/M2_PLAN.md).
-- **No undefined behavior.** Every Manna program has exactly one meaning, fails to compile, or traps — by design (docs/MANNA_PRINCIPLES.md principle 4), not by convention.
-- **Overflow traps, no silent wraparound.** Verified this session for both decimal and hex literals at the exact `2^64-1` boundary (`tests/lexer/err_overflow.mn`).
-- **W^X + NX enforced on the kernel image.** `.text` is R+X, `.rodata` is R+NX, `.data`/`.bss` is RW+NX, `EFER.NXE` set before the CR3 load, `CR0.WP` set after — verified via three deliberate-fault regression tests (`make test-wx`), each producing the exact predicted `#PF` error code.
-- **No CR3 reloads.** One CR3, loaded once, for the lifetime of the kernel (`kernel/arch/x86/paging.c`) — zero TLB flushes from context switching, by construction, not by tuning.
+Each bullet names the file or command that backs it. Last re-verified 2026-10-08 (r1 Phase C): `make test-wx` run, the greps below run, the parser/lexer goldens run via `make test-lexer`/`make test-parser`.
 
-Every one of these has a file, a test, or a log line backing it in this repo right now. That's the bar for staying in this list.
+- **W^X + NX on the higher-half kernel-image mapping.** Per-section flags are set in `kernel/arch/x86/paging.c:199-201` (`.text` R+X, `.rodata` R+NX, `.data`/`.bss` RW+NX), with `EFER.NXE` enabled before the CR3 load and `CR0.WP` after - the serial log shows `[paging] EFER.NXE enabled`, then `CR3 loaded`, then `CR0.WP enabled`, in that order. `make test-wx` runs three deliberate violations and each takes the predicted `#PF`: writing `.text` -> error code `0x3`; executing `.data` -> `0x11`; executing `.text` through the identity alias -> `0x11`. **What the tests do not cover:** `.rodata` and `.bss` specifically, and - a real hole, tracked in `CLAUDE.md`'s open risks - the same physical bytes stay read/write/exec-capable through the 1 GiB identity/HHDM aliases, so W^X is enforced on the kernel-image alias only. `make test-wx` is run by hand; CI builds the kernel (`make all`) but does not run it.
+- **One CR3 load, ever.** `kernel/arch/x86/paging.c:212` is the only call to `load_cr3`, and `paging.c:78` the only `mov ... %cr3` in `kernel/`; there is no `invlpg`/`invpcid` anywhere in `kernel/` (checked by grep, 2026-10-08). The evidence is source inspection, not a runtime counter, and the one boot-time CR3 load itself flushes the TLB once. Context switches (`switch.S`) save and restore registers only.
+- **Out-of-range numeric literals are rejected at lex time, never wrapped.** `tests/lexer/err_overflow.mn` (decimal 2^64, hex `0x10000000000000000`, boundary `0xFFFFFFFFFFFFFFFF` accepted), golden `err_overflow.tokens`, run by `make test-lexer`. This is about literals only - not runtime arithmetic (below).
+- **Two classic C traps are parse errors with a dedicated message.** `a < b < c` -> E0101 (`tests/parser/err_chained_same_cmp.mn`, `err_chained_same_eq.mn`, `err_chained_cross_cmp.mn`); `if x = 5 {` / `while x = 5 {` / a `for` condition `i = 5` -> E0102 with a `==` fix-it built in `tools/mannac/diag.c` (`err_if_assign_condition.mn`, `err_while_assign_condition.mn`, `err_recovery_for_cond_assignment.mn`). Run by `make test-parser`.
+
+### Designed, not yet implemented
+
+These were listed above as demonstrable before r1 Phase C; none has a test or a running implementation today, so they are design intent, not results. Each moves back up only with a cited test.
+
+- **Bounds-checked slices (`arr[a..b]`).** The slice *syntax* parses (`tests/parser/block_let_slice_type.mn`), but nothing checks a bound: the checks live in the typed IR, static verifier and Wasm backend (`docs/M2_PLAN.md` §3), none of which exists yet.
+- **No undefined behavior.** A principle (`docs/MANNA_PRINCIPLES.md` principle 4), not a property of anything running: there is no semantics beyond parsing to be defined or undefined.
+- **Runtime overflow traps (no silent wraparound in arithmetic).** Specified (`docs/M2_PLAN.md` §2); needs IR and backend. Only the literal-range check above exists.
+
+The bar for the first list is a file, a test, or a log line in this repo right now. The second list is not a claim and must not be quoted as one.
 
 ### Metrics to benchmark against Linux (identical QEMU config, both sides)
 
