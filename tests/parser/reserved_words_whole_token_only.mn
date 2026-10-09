@@ -1,0 +1,10 @@
+manna v0;
+fn f() {
+    let u8x = 1;
+    let i64_val = 2;
+    let booleans = 3;
+    let unit_count = 4;
+    let bool_ = 5;
+    let U8 = 6;
+}
+struct Bool { unit_count: u8, }

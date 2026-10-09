@@ -1,0 +1,19 @@
+ERRORS:
+2:15 expected type, found 'unit'
+3:18 expected type, found 'unit'
+4:17 expected type, found 'unit'
+5:10 expected type, found 'unit'
+6:13 expected type, found 'unit'
+7:11 expected type, found 'unit'
+8:18 expected type, found 'unit'
+9:23 expected type, found 'unit'
+
+TREE:
+(function_decl@8:1-8:29 l1
+  (params)
+  (return_type unit)
+  (block@8:9-8:29))
+(function_decl@9:1-9:34 l2
+  (params)
+  (return_type unit)
+  (block@9:9-9:34))

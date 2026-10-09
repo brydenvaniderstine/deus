@@ -11,9 +11,13 @@ typedef enum {
     TOK_IDENT,
     TOK_NUMBER,
 
-    /* Keywords. Built-in type names (u8, bool, ...) are NOT keywords here -
-     * they lex as plain TOK_IDENT and are resolved by the typed-IR builder,
-     * so the lexer doesn't need to know the full type list. */
+    /* Keywords. The ten primitive type names below (u8..i64, bool, unit)
+     * ARE keywords (docs/M2_PLAN.md \"Reserved words\", #4 step 1): whole-
+     * token matches only, so `u8x` or `bool_` stay TOK_IDENT. They are
+     * reserved so `u64(x)` is syntactically a conversion, never a call,
+     * and so no identifier position can ever hold one. They used to lex as
+     * plain TOK_IDENT and be resolved by the typed-IR builder; that is no
+     * longer true. `unit` is reserved but is not a writable type. */
     TOK_KW_FN,
     TOK_KW_LET,
     TOK_KW_IF,
@@ -27,6 +31,9 @@ typedef enum {
     TOK_KW_BREAK,
     TOK_KW_CONTINUE,
     TOK_KW_MANNA,     /* the 'manna v0;' file-header keyword (docs/M2_PLAN.md) */
+    TOK_KW_U8, TOK_KW_U16, TOK_KW_U32, TOK_KW_U64,
+    TOK_KW_I8, TOK_KW_I16, TOK_KW_I32, TOK_KW_I64,
+    TOK_KW_BOOL, TOK_KW_UNIT,
 
     /* Punctuation */
     TOK_LPAREN, TOK_RPAREN,

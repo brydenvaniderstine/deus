@@ -1,0 +1,13 @@
+ERRORS:
+2:6 expected parameter name, found 'u8'
+3:6 expected parameter name, found 'u16'
+4:6 expected parameter name, found 'u32'
+5:6 expected parameter name, found 'u64'
+6:6 expected parameter name, found 'i8'
+7:6 expected parameter name, found 'i16'
+8:6 expected parameter name, found 'i32'
+9:6 expected parameter name, found 'i64'
+10:6 expected parameter name, found 'bool'
+11:6 expected parameter name, found 'unit'
+
+TREE:

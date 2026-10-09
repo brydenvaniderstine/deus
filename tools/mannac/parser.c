@@ -130,7 +130,9 @@ static const char *token_describe(Arena *a, Token t) {
  *   continue_stmt  ::= 'continue' ';' ;
  *   return_stmt    ::= 'return' [ expression ] ';' ;
  *   expr_stmt      ::= expression ';' ;
- *   type           ::= IDENT | '[' INTEGER ']' type | '[' ']' type ;
+ *   type           ::= PRIM_TYPE | IDENT | '[' INTEGER ']' type | '[' ']' type ;
+ *   PRIM_TYPE      ::= 'u8' | 'u16' | 'u32' | 'u64' | 'i8' | 'i16' | 'i32'
+ *                    | 'i64' | 'bool' ;   (keywords; `unit` is reserved but NOT here)
  *
  *   translation_unit  ::= version_decl { top_level_item } ;
  *   version_decl      ::= 'manna' IDENT ';' ;
@@ -680,7 +682,17 @@ static Expr *parse_postfix(Parser *p) {
     return base;
 }
 
-/* type ::= IDENT | '[' INTEGER ']' type | '[' ']' type ;
+static bool is_prim_type_keyword(TokenKind k) {
+    return k == TOK_KW_U8 || k == TOK_KW_U16 || k == TOK_KW_U32 || k == TOK_KW_U64 ||
+           k == TOK_KW_I8 || k == TOK_KW_I16 || k == TOK_KW_I32 || k == TOK_KW_I64 ||
+           k == TOK_KW_BOOL;
+}
+
+/* type ::= PRIM_TYPE | IDENT | '[' INTEGER ']' type | '[' ']' type ;
+ * A primitive type keyword builds the same TypeIdent node an IDENT used to
+ * (the name is the keyword's text), so the dump is unchanged. `unit` is a
+ * keyword but not a type: it falls through to the generic "expected type"
+ * error like any other non-type token.
  * Self-recursive (array/slice element types nest), same character as
  * unary's self-recursion - its own depth_enter/depth_exit lives directly
  * at this function, not relied on from anywhere else, since this cycle
@@ -716,7 +728,7 @@ static Type *parse_type(Parser *p) {
             parser_error(p->ps, diag_expected(p->ps->arena, token_span(p->cur), "array size or ']'",
                                                token_describe(p->ps->arena, p->cur), NULL));
         }
-    } else if (p->cur.kind == TOK_IDENT) {
+    } else if (p->cur.kind == TOK_IDENT || is_prim_type_keyword(p->cur.kind)) {
         Token t = p->cur;
         advance(p);
         result = type_ident(p->ps->arena, token_span(t), t.lexeme, t.lexeme_len);

@@ -21,7 +21,7 @@ The verifier does the safety work either way, so Rust's main advantage isn't dec
 
 No feature creep. v0 needs exactly enough to express the loop-counter-injected, pointer-verified kernel functions M1's C code already represents — nothing more:
 
-- **Types:** `u8`/`u16`/`u32`/`u64`, `i8..i64`, `bool`, fixed-size arrays, structs (fixed layout, no tagged unions/variants yet). No generics, no traits, no interfaces. **`u8`..`u64`, `i8`..`i64`, `bool`, and `unit` are reserved words** (r1 Phase B; specified, not yet implemented - see §4 "Reserved words, constructors, and conversions"): they lex as keywords, never as identifiers, so `u64(x)` is a conversion *syntactically*, telling it apart from a call needs no name resolution. Struct values are built with `Point(x: 1, y: 2)`, array values with `[1, 2, 3]` or `[v; N]`, integer conversions are explicit `u64(x)`; there is no implicit conversion anywhere (principle 2).
+- **Types:** `u8`/`u16`/`u32`/`u64`, `i8..i64`, `bool`, fixed-size arrays, structs (fixed layout, no tagged unions/variants yet). No generics, no traits, no interfaces. **`u8`..`u64`, `i8`..`i64`, `bool`, and `unit` are reserved words** (implemented in #4 step 1; the constructors and conversions below are still specified only - see §4 "Reserved words, constructors, and conversions"): they lex as keywords, never as identifiers, so `u64(x)` is a conversion *syntactically*, telling it apart from a call needs no name resolution. Struct values are built with `Point(x: 1, y: 2)`, array values with `[1, 2, 3]` or `[v; N]`, integer conversions are explicit `u64(x)`; there is no implicit conversion anywhere (principle 2).
 - **Functions:** named functions, fixed arity, no overloading, no closures, no varargs.
 - **Loops:** `for` (C-style three-clause) and `while` only. No `foreach`/iterators — those need a trait/protocol system v0 excludes.
 - **Safe pointers:** a single pointer kind, bounds-carrying (pointer + length, not a bare address) for anything outside `[kernel_hook]`. Raw/bare pointers don't exist in v0 source — they're an IR-level concept the verifier permits only inside verified `[kernel_hook]` regions.
@@ -117,7 +117,7 @@ source (.mn)
 - **Block comments (`/* */`) do not nest**, matching C: the first closing delimiter ends the comment regardless of any opening delimiter seen since the outermost one. Tested explicitly (`tests/lexer/nested_comment.mn`) rather than left as incidental behavior.
 - **Numeric literals that don't fit in 64 bits are a lex error** (`ERROR_NUMBER_OVERFLOW`), not a silent wraparound - checked for both decimal and hex literals, including at the exact `2^64-1` boundary.
 - **Tabs count as 1 column**, not expanded to a tab-stop width. Simplest option consistent with "no feature creep"; revisit only if a real need for aligned-error-column tooling appears.
-- **Ten more reserved words (r1 Phase B - specified, NOT yet implemented; `lexer.c`'s keyword table is unchanged until the post-r1 #4 step):** `u8`, `u16`, `u32`, `u64`, `i8`, `i16`, `i32`, `i64`, `bool`, `unit`. Each becomes its own `TOK_KW_*` kind, exactly like `fn`/`let`/`true` already are (`keyword_kind` in `lexer.c`), so an identifier position can never hold one: `let u8 = 1;`, `fn bool()`, a field called `unit`, and an attribute `[u8]` are all errors (generic E0105, "expected identifier, found 'u8'" - see "Diagnostics added by r1 Phase B" for why that is a documented exception, not a gap). Consequence for existing goldens, to be handled in the #4 step, not now: `tests/lexer/basic.mn` (its `basic.tokens` golden prints `u32` etc. as `IDENT` today) changes token kinds; the 22 `tests/parser/*.mn` files using these names as types are expected to keep byte-identical `.ast` dumps, since types render inline as bare text (§4, golden format) - that expectation is itself something the #4 step must verify, not assume.
+- **Ten more reserved words (implemented, #4 step 1):** `u8`, `u16`, `u32`, `u64`, `i8`, `i16`, `i32`, `i64`, `bool`, `unit`. Each becomes its own `TOK_KW_*` kind, exactly like `fn`/`let`/`true` already are (`keyword_kind` in `lexer.c`), so an identifier position can never hold one: `let u8 = 1;`, `fn bool()`, a field called `unit`, and an attribute `[u8]` are all errors (generic E0105, "expected identifier, found 'u8'" - see "Diagnostics added by r1 Phase B" for why that is a documented exception, not a gap). Matching is on the whole token: `u8x`, `i64_val`, `booleans`, `unit_count`, `bool_`, `U8` and `Unit` stay `IDENT` (`tests/lexer/keywords_types.mn`). Consequences, verified in step 1: `tests/lexer/basic.tokens` changed in exactly 8 lines, each `IDENT u32`-style to `KW_U32`-style and nothing else; all 201 pre-existing parser goldens, including every type-using one, stayed byte-identical because types render inline as bare text (§4, golden format).
 
 ## 4. Parser grammar (v0, approved)
 
@@ -150,14 +150,14 @@ function_decl     ::= { attribute } 'fn' IDENT '(' [ param_list ] ')' [ '->' typ
 param_list        ::= param { ',' param } ;
 param             ::= IDENT ':' type ;
 
-type              ::= PRIM_TYPE                          (* r1-B: new *)
+type              ::= PRIM_TYPE                          (* implemented, #4 step 1 *)
                     | IDENT
                     | '[' INTEGER ']' type   (* fixed-size array *)
                     | '[' ']' type           (* safe slice *)
                     ;
 PRIM_TYPE         ::= 'u8' | 'u16' | 'u32' | 'u64' | 'i8' | 'i16' | 'i32' | 'i64' | 'bool' ;
-  (* r1-B (specified, not yet implemented): these nine are keyword tokens,
-     no longer IDENT. `unit` is reserved too but is deliberately NOT in
+  (* Implemented (#4 step 1): these nine are keyword tokens, no longer IDENT;
+     `parse_type` builds the same TypeIdent node from them as from an IDENT. `unit` is reserved too but is deliberately NOT in
      PRIM_TYPE - it is not writable as a type. The two '[' alternatives
      share a prefix; `parse_type` already implements the left-factored
      form ('[' then branch on INTEGER vs ']'), which is the actual LL(1)

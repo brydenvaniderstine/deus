@@ -1,0 +1,17 @@
+ERRORS:
+3:9 expected identifier after 'let', found 'u8'
+4:9 expected identifier after 'let', found 'u16'
+5:9 expected identifier after 'let', found 'u32'
+6:9 expected identifier after 'let', found 'u64'
+7:9 expected identifier after 'let', found 'i8'
+8:9 expected identifier after 'let', found 'i16'
+9:9 expected identifier after 'let', found 'i32'
+10:9 expected identifier after 'let', found 'i64'
+11:9 expected identifier after 'let', found 'bool'
+12:9 expected identifier after 'let', found 'unit'
+
+TREE:
+(function_decl@2:1-13:2 f
+  (params)
+  (return_type unit)
+  (block@2:8-13:2))

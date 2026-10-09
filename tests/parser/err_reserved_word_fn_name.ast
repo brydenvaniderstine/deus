@@ -1,0 +1,13 @@
+ERRORS:
+2:4 expected identifier after 'fn', found 'u8'
+3:4 expected identifier after 'fn', found 'u16'
+4:4 expected identifier after 'fn', found 'u32'
+5:4 expected identifier after 'fn', found 'u64'
+6:4 expected identifier after 'fn', found 'i8'
+7:4 expected identifier after 'fn', found 'i16'
+8:4 expected identifier after 'fn', found 'i32'
+9:4 expected identifier after 'fn', found 'i64'
+10:4 expected identifier after 'fn', found 'bool'
+11:4 expected identifier after 'fn', found 'unit'
+
+TREE:

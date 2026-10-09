@@ -1,0 +1,13 @@
+ERRORS:
+2:12 expected field name, found 'u8'
+3:12 expected field name, found 'u16'
+4:12 expected field name, found 'u32'
+5:12 expected field name, found 'u64'
+6:12 expected field name, found 'i8'
+7:12 expected field name, found 'i16'
+8:12 expected field name, found 'i32'
+9:12 expected field name, found 'i64'
+10:12 expected field name, found 'bool'
+11:12 expected field name, found 'unit'
+
+TREE:

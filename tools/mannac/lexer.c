@@ -108,6 +108,9 @@ static TokenKind keyword_kind(const char *s, size_t len) {
         {"true", TOK_KW_TRUE}, {"false", TOK_KW_FALSE},
         {"break", TOK_KW_BREAK}, {"continue", TOK_KW_CONTINUE},
         {"manna", TOK_KW_MANNA},
+        {"u8", TOK_KW_U8}, {"u16", TOK_KW_U16}, {"u32", TOK_KW_U32}, {"u64", TOK_KW_U64},
+        {"i8", TOK_KW_I8}, {"i16", TOK_KW_I16}, {"i32", TOK_KW_I32}, {"i64", TOK_KW_I64},
+        {"bool", TOK_KW_BOOL}, {"unit", TOK_KW_UNIT},
     };
     for (size_t i = 0; i < sizeof(kws) / sizeof(kws[0]); i++) {
         size_t wlen = strlen(kws[i].word);
@@ -282,6 +285,16 @@ const char *token_kind_name(TokenKind kind) {
         case TOK_KW_BREAK: return "KW_BREAK";
         case TOK_KW_CONTINUE: return "KW_CONTINUE";
         case TOK_KW_MANNA: return "KW_MANNA";
+        case TOK_KW_U8: return "KW_U8";
+        case TOK_KW_U16: return "KW_U16";
+        case TOK_KW_U32: return "KW_U32";
+        case TOK_KW_U64: return "KW_U64";
+        case TOK_KW_I8: return "KW_I8";
+        case TOK_KW_I16: return "KW_I16";
+        case TOK_KW_I32: return "KW_I32";
+        case TOK_KW_I64: return "KW_I64";
+        case TOK_KW_BOOL: return "KW_BOOL";
+        case TOK_KW_UNIT: return "KW_UNIT";
         case TOK_LPAREN: return "LPAREN";
         case TOK_RPAREN: return "RPAREN";
         case TOK_LBRACE: return "LBRACE";

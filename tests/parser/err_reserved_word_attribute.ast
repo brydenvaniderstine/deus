@@ -1,0 +1,53 @@
+ERRORS:
+2:2 expected attribute name after '[', found 'u8'
+3:2 expected attribute name after '[', found 'u16'
+4:2 expected attribute name after '[', found 'u32'
+5:2 expected attribute name after '[', found 'u64'
+6:2 expected attribute name after '[', found 'i8'
+7:2 expected attribute name after '[', found 'i16'
+8:2 expected attribute name after '[', found 'i32'
+9:2 expected attribute name after '[', found 'i64'
+10:2 expected attribute name after '[', found 'bool'
+11:2 expected attribute name after '[', found 'unit'
+
+TREE:
+(function_decl@2:6-2:15 f
+  (params)
+  (return_type unit)
+  (block@2:13-2:15))
+(function_decl@3:7-3:16 f
+  (params)
+  (return_type unit)
+  (block@3:14-3:16))
+(function_decl@4:7-4:16 f
+  (params)
+  (return_type unit)
+  (block@4:14-4:16))
+(function_decl@5:7-5:16 f
+  (params)
+  (return_type unit)
+  (block@5:14-5:16))
+(function_decl@6:6-6:15 f
+  (params)
+  (return_type unit)
+  (block@6:13-6:15))
+(function_decl@7:7-7:16 f
+  (params)
+  (return_type unit)
+  (block@7:14-7:16))
+(function_decl@8:7-8:16 f
+  (params)
+  (return_type unit)
+  (block@8:14-8:16))
+(function_decl@9:7-9:16 f
+  (params)
+  (return_type unit)
+  (block@9:14-9:16))
+(function_decl@10:8-10:17 f
+  (params)
+  (return_type unit)
+  (block@10:15-10:17))
+(function_decl@11:8-11:17 f
+  (params)
+  (return_type unit)
+  (block@11:15-11:17))

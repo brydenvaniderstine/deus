@@ -1,0 +1,11 @@
+manna v0;
+fn f(u8: u8) {}
+fn f(u16: u8) {}
+fn f(u32: u8) {}
+fn f(u64: u8) {}
+fn f(i8: u8) {}
+fn f(i16: u8) {}
+fn f(i32: u8) {}
+fn f(i64: u8) {}
+fn f(bool: u8) {}
+fn f(unit: u8) {}

@@ -1,0 +1,13 @@
+ERRORS:
+2:8 expected identifier after 'struct', found 'u8'
+3:8 expected identifier after 'struct', found 'u16'
+4:8 expected identifier after 'struct', found 'u32'
+5:8 expected identifier after 'struct', found 'u64'
+6:8 expected identifier after 'struct', found 'i8'
+7:8 expected identifier after 'struct', found 'i16'
+8:8 expected identifier after 'struct', found 'i32'
+9:8 expected identifier after 'struct', found 'i64'
+10:8 expected identifier after 'struct', found 'bool'
+11:8 expected identifier after 'struct', found 'unit'
+
+TREE:
