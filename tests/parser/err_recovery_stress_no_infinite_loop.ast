@@ -1,4 +1,10 @@
 ERRORS:
 2:2 expected attribute name after '[', found '['
+2:13 expected identifier after 'fn', found 'fn'
+2:16 expected identifier after 'fn', found 'fn'
+2:19 expected identifier after 'fn', found 'struct'
+2:26 expected identifier after 'struct', found 'struct'
+2:33 expected identifier after 'struct', found 'struct'
+2:39 expected identifier after 'struct', found ';'
 
 TREE:

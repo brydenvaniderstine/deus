@@ -1013,49 +1013,74 @@ static bool is_in_any_active_sync_set(Parser *p) {
     return false;
 }
 
-static bool is_open_bracket(TokenKind k) {
-    return k == TOK_LBRACE || k == TOK_LPAREN || k == TOK_LBRACKET;
+/* Tokens that can never appear inside a well-formed expression, so seeing
+ * one proves any '(' or '[' opened earlier in this skip was never closed.
+ * The grammar guarantees it (the same reasoning parse_if_stmt's header
+ * recovery already relies on - "the grammar guarantees headers never
+ * contain '{'"): no `primary` alternative - a literal, a call, a
+ * parenthesized expression, and the r1-B conversion / array / repeat
+ * forms - contains '{', '}', 'fn', 'struct', or any statement-start
+ * keyword (is_statement_start_keyword: "a statement can't legally start
+ * with any of them"). */
+static bool resets_bracket_mask(TokenKind k) {
+    return k == TOK_LBRACE || k == TOK_RBRACE || k == TOK_KW_FN || k == TOK_KW_STRUCT ||
+           is_statement_start_keyword(k);
 }
 
-static bool is_close_bracket(TokenKind k) {
-    return k == TOK_RBRACE || k == TOK_RPAREN || k == TOK_RBRACKET;
-}
-
-/* The one shared skip, tracking bracket depth exactly as Step 10 found
- * necessary for '{'/'}' alone - an inner closer opened during THIS skip
- * must not be mistaken for an active level's own closer, only a depth-0
- * occurrence counts - now extended to '('/')' and '['/']' too, as one
- * combined depth rather than three separate ones: the only thing this
- * depth gates is "is a ';' encountered here structurally INSIDE some
- * still-open bracketing, or free-standing at the top of whatever's being
- * skipped" - a stray ';' inside an unclosed call's argument list or
- * (post-r1) an array-repeat literal "[v; N]" is never a real statement
- * boundary either way, so which bracket KIND is open doesn't matter, only
- * whether at least one still is. Depth tracking is unconditional (every
- * opener/closer adjusts it regardless of which level, if any, ends up
- * owning the eventual stop), not gated on which specific tokens happen to
- * be in the active sets. Idempotent by construction: if cur is already at
- * a sync point when called, this is a no-op (zero tokens) - which is
- * exactly what makes it safe for every level along an unwind path to call
- * this same function without re-skipping past where an inner level's
- * call already stopped. */
+/* The one shared skip. Two independent depths, because they gate
+ * different things:
+ *
+ *  - brace_depth ('{'/'}') hides EVERYTHING inside a skipped brace
+ *    region: an inner closer opened during THIS skip must not be mistaken
+ *    for an active level's own closer (Step 10). A failing '{' itself
+ *    counts as an opener - skipping a stray `{ ... }` has to get past its
+ *    matching '}'.
+ *  - paren_depth ('(' '[' ')' ']', combined) masks ONLY ';': a stray ';'
+ *    inside an unclosed call's argument list or an array-repeat literal
+ *    "[v; N]" is never a real statement boundary. It does NOT mask '}',
+ *    'fn', 'struct', '{' or a statement keyword - and any of those resets
+ *    it to 0 (resets_bracket_mask above) - so an unmatched '(' or '[' can
+ *    only ever hide a ';', never the rest of the file. (An earlier version
+ *    used one combined depth for all three bracket kinds; a lone '(' or
+ *    '[' then swallowed every following declaration - external audit of
+ *    da9f01c, R2-R5.) The failing token itself never counts as a '(' or
+ *    '[' opener: it is the mistake, not a bracket to skip past.
+ *
+ * Accepted limitation (docs/M2_PLAN.md "Known limitations"): this only
+ * sees brackets the skip itself passes over. If the parser already
+ * consumed the opener and the error is inside it, `g(1 +; 3)`'s ';' is
+ * the failing token, a sync point already, so the skip is a no-op there.
+ * Idempotent by construction: if cur is already at a sync point when
+ * called, this is a no-op (zero tokens) - which is exactly what makes it
+ * safe for every level along an unwind path to call this same function
+ * without re-skipping past where an inner level's call already stopped. */
 static void sync_skip(Parser *p) {
     if (is_in_any_active_sync_set(p)) {
         return;
     }
-    int depth = is_open_bracket(p->cur.kind) ? 1 : 0;
+    int brace_depth = (p->cur.kind == TOK_LBRACE) ? 1 : 0;
+    int paren_depth = 0;
     advance(p); /* guaranteed progress: cur is not already a sync point */
     for (;;) {
-        if (p->cur.kind == TOK_EOF) {
+        TokenKind k = p->cur.kind;
+        if (k == TOK_EOF) {
             return; /* universal hard stop, owned by nobody specifically */
         }
-        if (depth == 0 && is_in_any_active_sync_set(p)) {
+        if (resets_bracket_mask(k)) {
+            paren_depth = 0;
+        }
+        if (brace_depth == 0 && !(k == TOK_SEMI && paren_depth > 0) &&
+            is_in_any_active_sync_set(p)) {
             return;
         }
-        if (is_open_bracket(p->cur.kind)) {
-            depth++;
-        } else if (is_close_bracket(p->cur.kind) && depth > 0) {
-            depth--;
+        if (k == TOK_LBRACE) {
+            brace_depth++;
+        } else if (k == TOK_RBRACE && brace_depth > 0) {
+            brace_depth--;
+        } else if (k == TOK_LPAREN || k == TOK_LBRACKET) {
+            paren_depth++;
+        } else if ((k == TOK_RPAREN || k == TOK_RBRACKET) && paren_depth > 0) {
+            paren_depth--;
         }
         advance(p);
     }

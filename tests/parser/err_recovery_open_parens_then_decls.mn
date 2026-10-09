@@ -1,0 +1,6 @@
+manna v0;
+fn f() {
+    let a = ) ((;
+}
+fn g() {}
+struct S { x: u8, }
