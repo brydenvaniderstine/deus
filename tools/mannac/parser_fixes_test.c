@@ -304,6 +304,58 @@ static void test_unclosed_block_report_resets_between_parses(void) {
     printf("PASS: unclosed-block report - once per token, and the memory resets at parse entry\n");
 }
 
+/* External audit of v0, finding 2: arena exhaustion longjmp'd with nothing
+ * recorded - empty ERRORS, no tree. It now records E0110 (no fix-it) first.
+ * Both shapes the audit used (a 300,000-element array literal and a flat
+ * 300,000-argument call, ~900 KB each, against the real 16 MiB cap), plus a
+ * small arena so the same path is also exercised cheaply. The input is
+ * generated here, not committed. */
+static char *gen_list_input(const char *prefix, const char *open, const char *close, size_t n, size_t *out_len) {
+    size_t cap = strlen(prefix) + strlen(open) + strlen(close) + n * 3 + 64;
+    char *buf = malloc(cap);
+    size_t len = (size_t)snprintf(buf, cap, "%s%s", prefix, open);
+    for (size_t i = 0; i < n; i++) {
+        len += (size_t)snprintf(buf + len, cap - len, i ? ", 0" : "0");
+    }
+    len += (size_t)snprintf(buf + len, cap - len, "%s", close);
+    *out_len = len;
+    return buf;
+}
+
+static void check_e0110(const char *src, size_t len, size_t arena_size, const char *what) {
+    ParserState ps;
+    parser_state_init(&ps, arena_size);
+    Lexer lx;
+    lexer_init(&lx, src, len);
+    NodeList items;
+    if (setjmp(ps.fatal_target) == 0) {
+        parser_parse_file(&ps, &lx, &items);
+        fprintf(stderr, "FAIL: %s: expected the arena to run out\n", what);
+        exit(1);
+    }
+    assert(ps.diags.len == 1);
+    const Diagnostic *d = &ps.diags.items[0];
+    assert(strcmp(d->code, "E0110") == 0);
+    assert(strcmp(d->message, "input too large: the compiler's memory limit was exceeded") == 0);
+    assert(d->fix == NULL && d->expected == NULL && d->found == NULL);
+    assert(d->span.start_line >= 1 && d->span.start_col >= 1);
+    parser_state_destroy(&ps);
+}
+
+static void test_arena_exhaustion_reports_e0110(void) {
+    size_t len;
+    char *big_array = gen_list_input("manna v0;\nfn f() {\n    let a = ", "[", "];\n}\n", 300000, &len);
+    check_e0110(big_array, len, 16 * 1024 * 1024, "300,000-element array literal");
+    free(big_array);
+    char *big_call = gen_list_input("manna v0;\nfn f() {\n    g(", "", ");\n}\n", 300000, &len);
+    check_e0110(big_call, len, 16 * 1024 * 1024, "flat 300,000-argument call");
+    free(big_call);
+    char *small = gen_list_input("manna v0;\nfn f() {\n    let a = ", "[", "];\n}\n", 20000, &len);
+    check_e0110(small, len, 256 * 1024, "20,000-element array against a 256 KiB arena");
+    free(small);
+    printf("PASS: arena exhaustion records exactly one E0110 (array, flat call, small arena), no fix-it\n");
+}
+
 /* E0102's JSON `expected` field named '{' at every call site, but a `for`
  * header's condition clause is terminated by ';', not '{' (known inaccuracy
  * recorded in docs/error_codes.md since r1 Phase C; message, span and the
@@ -464,6 +516,7 @@ int main(void) {
     test_state_reset_error_count_between_parses();
     test_sync_counters_reset_at_parse_entry();
     test_unclosed_block_report_resets_between_parses();
+    test_arena_exhaustion_reports_e0110();
     test_e0102_expected_field_per_site();
     test_e0108_fix_positions();
     test_e0109_fix_positions();

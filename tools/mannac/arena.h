@@ -68,6 +68,15 @@ void   arena_destroy(Arena *a);
  * it never returns at all. */
 void arena_set_overflow_target(Arena *a, jmp_buf *target);
 
+/* Optional: run `hook(ctx)` once, just before the overflow longjmp, so the
+ * caller can record WHY it is about to unwind (an overflow otherwise leaves
+ * no trace - no diagnostic, an empty tree). `reserve` bytes at the end of
+ * the arena are held back from ordinary allocations and become available
+ * only to the hook, so it has room to allocate what it needs (a diagnostic
+ * and its list growth). If the hook itself overflows, the longjmp happens
+ * without calling it again. With no hook registered nothing changes. */
+void arena_set_overflow_hook(Arena *a, void (*hook)(void *ctx), void *ctx, size_t reserve);
+
 void  *arena_alloc(Arena *a, size_t size, size_t align);
 size_t arena_used(const Arena *a);
 

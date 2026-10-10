@@ -15,6 +15,8 @@ typedef struct {
 
 static void advance(Parser *p) {
     p->cur = lexer_next(p->lx);
+    p->ps->progress_line = p->cur.line;
+    p->ps->progress_col = p->cur.col;
 }
 
 /* Exposed (not static) so parser_fixes_test.c can verify the multi-line

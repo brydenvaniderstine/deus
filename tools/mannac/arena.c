@@ -8,6 +8,10 @@ struct Arena {
     size_t         max_size;
     size_t         used;
     jmp_buf       *overflow_target;
+    void         (*overflow_hook)(void *);
+    void          *hook_ctx;
+    size_t         reserve;    /* bytes held back for the hook */
+    int            in_hook;
 };
 
 static size_t align_up(size_t offset, size_t align) {
@@ -28,6 +32,10 @@ Arena *arena_create(size_t max_size) {
     a->max_size = max_size;
     a->used = 0;
     a->overflow_target = NULL;
+    a->overflow_hook = NULL;
+    a->hook_ctx = NULL;
+    a->reserve = 0;
+    a->in_hook = 0;
     return a;
 }
 
@@ -40,12 +48,24 @@ void arena_set_overflow_target(Arena *a, jmp_buf *target) {
     a->overflow_target = target;
 }
 
+void arena_set_overflow_hook(Arena *a, void (*hook)(void *ctx), void *ctx, size_t reserve) {
+    a->overflow_hook = hook;
+    a->hook_ctx = ctx;
+    a->reserve = reserve < a->max_size ? reserve : 0;
+}
+
 void *arena_alloc(Arena *a, size_t size, size_t align) {
     size_t offset = align_up(a->used, align);
+    size_t limit = a->max_size - a->reserve;
 
     /* Checked without computing offset + size directly, so a pathological
      * (e.g. fuzzer-supplied) `size` can't wrap size_t and falsely pass. */
-    if (offset > a->max_size || size > a->max_size - offset) {
+    if (offset > limit || size > limit - offset) {
+        if (a->overflow_hook && !a->in_hook) {
+            a->in_hook = 1;
+            a->reserve = 0; /* the hook may use the reserved tail */
+            a->overflow_hook(a->hook_ctx);
+        }
         if (a->overflow_target) {
             longjmp(*a->overflow_target, 1); /* never returns */
         }

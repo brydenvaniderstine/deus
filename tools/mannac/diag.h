@@ -92,6 +92,13 @@ Diagnostic diag_max_depth_exceeded(Span span);
  * cascading noise on badly malformed input, not a precision mechanism. */
 Diagnostic diag_too_many_errors(Span span);
 
+/* E0110: "input too large: the compiler's memory limit was exceeded" - the
+ * arena's hard cap was hit (parser_state.c registers this via
+ * arena_set_overflow_hook, so the unwind that follows is never silent).
+ * Reported at the last token the parser had read. No fix-it: the remedy
+ * (a smaller input) is not an edit at a place. */
+Diagnostic diag_input_too_large(Span span);
+
 /* Generic "expected X, found Y" - every parse error that isn't one of the
  * two dedicated messages above goes through this one constructor, so the
  * message format (docs/M2_PLAN.md's own golden-file example: "expected

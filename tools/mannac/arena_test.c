@@ -89,6 +89,57 @@ static void test_no_allocation_after_cap(void) {
     exit(1);
 }
 
+/* Overflow hook (E0110 support): it runs once before the longjmp, may
+ * allocate from the reserved tail, and ordinary allocations cannot touch
+ * that tail. */
+static int hook_calls = 0;
+static void *hook_block = NULL;
+static void hook_allocates(void *ctx) {
+    Arena *a = ctx;
+    hook_calls++;
+    hook_block = arena_alloc(a, 24, 8); /* only fits in the reserve */
+}
+
+static void test_hook_runs_once_and_uses_reserve(void) {
+    Arena *a = arena_create(128);
+    jmp_buf env;
+    if (setjmp(env) != 0) {
+        assert(hook_calls == 1);
+        assert(hook_block != NULL);
+        printf("PASS: overflow hook runs once, before the longjmp, and can allocate from the reserve\n");
+        arena_destroy(a);
+        return;
+    }
+    arena_set_overflow_target(a, &env);
+    arena_set_overflow_hook(a, hook_allocates, a, 32);
+    arena_alloc(a, 90, 1);          /* 90 <= 128 - 32: fits */
+    arena_alloc(a, 10, 1);          /* 100 > 96: would fit the 128 cap, but not without the reserve */
+    fprintf(stderr, "FAIL: the reserve was handed to an ordinary allocation\n");
+    exit(1);
+}
+
+static int rec_calls = 0;
+static void hook_overflows_too(void *ctx) {
+    rec_calls++;
+    arena_alloc((Arena *)ctx, 1000, 1); /* far beyond the cap, from inside the hook */
+}
+
+static void test_hook_overflow_does_not_recurse(void) {
+    Arena *a = arena_create(128);
+    jmp_buf env;
+    if (setjmp(env) != 0) {
+        assert(rec_calls == 1);
+        printf("PASS: an overflow inside the hook unwinds without calling it again\n");
+        arena_destroy(a);
+        return;
+    }
+    arena_set_overflow_target(a, &env);
+    arena_set_overflow_hook(a, hook_overflows_too, a, 32);
+    arena_alloc(a, 200, 1);
+    fprintf(stderr, "FAIL: unreachable\n");
+    exit(1);
+}
+
 /* Invoked as a separate process (see the Makefile's test-arena target):
  * overflowing with no overflow target registered at all must abort(),
  * not silently continue or longjmp to garbage. Run out-of-process
@@ -127,6 +178,8 @@ int main(int argc, char **argv) {
     test_alignment();
     test_cap_hit();
     test_no_allocation_after_cap();
+    test_hook_runs_once_and_uses_reserve();
+    test_hook_overflow_does_not_recurse();
     printf("ALL PASS\n");
     return 0;
 }

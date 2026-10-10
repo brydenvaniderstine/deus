@@ -131,6 +131,18 @@ Diagnostic diag_too_many_errors(Span span) {
     return d;
 }
 
+Diagnostic diag_input_too_large(Span span) {
+    Diagnostic d = {0};
+    d.code = "E0110";
+    d.severity = DIAG_ERROR;
+    d.message = "input too large: the compiler's memory limit was exceeded";
+    d.span = span;
+    d.expected = NULL;
+    d.found = NULL;
+    d.fix = NULL;
+    return d;
+}
+
 Diagnostic diag_expected(Arena *a, Span span, const char *expected, const char *found, const char *context) {
     Diagnostic d = {0};
     d.code = "E0105";

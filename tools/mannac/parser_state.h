@@ -18,7 +18,9 @@
  * depth bound, and the too-many-errors cap below. All three longjmp here
  * with a diagnostic already recorded in `diags` - the catch site just
  * reports `diags` and stops, the same way regardless of which of the
- * three fired. */
+ * three fired. (The arena's E0110 is recorded by an overflow hook, from a
+ * reserved tail of the arena, since an exhausted arena has no room for it
+ * otherwise; before that hook existed the arena case recorded nothing.) */
 /* Step 10b: Wirth-style follow-set error recovery. Each syntactic level
  * that owns a resume point (docs/M2_PLAN.md's "Error recovery" table)
  * increments its own counter on entry and decrements it on exit - a
@@ -82,6 +84,11 @@ typedef struct {
      * diagnostic; only the innermost reports (parse_block, parser.c). */
     int      unclosed_line;
     int      unclosed_col;
+    /* Where the parser has read to (line, col of the last token fetched):
+     * the location E0110 reports if the arena runs out. 1:1 until a token
+     * is read. */
+    int      progress_line;
+    int      progress_col;
 } ParserState;
 
 /* Creates the arena (arena_max_size) and registers fatal_target with it.
