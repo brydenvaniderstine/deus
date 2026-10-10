@@ -1,0 +1,5 @@
+ERRORS:
+1:5 expected end of input, found ')'
+
+TREE:
+(ident@1:1-1:4 a)

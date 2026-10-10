@@ -50,7 +50,7 @@ Depth limits stay predictions until each step's goldens measure them (255/256/30
 
 ## Harness note
 
-`parser_dump`'s expression mode (and `parser_parse_expression` itself) parses ONE expression and ignores whatever tokens follow it: `a: 1`, `a b c` and `1 + 2 )))` all dump just the first expression with no error. File and block modes do report leftover tokens (`{ a: 1; }` -> `expected ';' after expression, found ':'`, pinned by `err_colon_in_statement`). Goldens that mean "this must be an error" therefore have to be written in block or file mode, or fail inside the expression. Not changed - the harness is test-only; raise it before changing.
+`parser_parse_expression` itself parses ONE expression and stops; it does not say what follows. The expression-mode harness in `parser_main.c` used to ignore everything after it (`a: 1`, `a b c`, `1 + 2 )))` dumped just the first expression with no error), so an expression-mode golden only ever checked a prefix. **Fixed (harness only, API unchanged):** it now re-lexes to the first token at or after the expression's end and reports anything but EOF as `expected end of input, found X` (E0105). Running every existing golden through the fixed harness changed **none** of the 128 expression-mode outputs, so no golden was only checking a prefix; seven new goldens pin the behavior (`err_expr_leftover_*`, `expr_no_leftover_trailing_whitespace`). **Still open, not fixed:** block mode has the same gap - `{ a; } b`, `{ a; } }` and `{ a; } {` all dump the first block with no error. File mode is fine (it loops to EOF). Raise it before changing.
 
 ## Gaps found in the original checklist (all folded into the plan above)
 

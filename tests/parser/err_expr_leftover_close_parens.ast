@@ -1,0 +1,7 @@
+ERRORS:
+1:7 expected end of input, found ')'
+
+TREE:
+(binary@1:1-1:6 +
+  (number@1:1-1:2 1)
+  (number@1:5-1:6 2))

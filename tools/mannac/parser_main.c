@@ -104,6 +104,30 @@ int main(int argc, char **argv) {
         s = parser_parse_block(&ps, &lx);
     } else {
         e = parser_parse_expression(&ps, &lx);
+        /* parser_parse_expression parses ONE expression and stops; it does
+         * not say what follows it. In expression mode the harness must,
+         * or a golden like `a: 1` or `1 + 2 )))` only checks a prefix and
+         * "passes" while ignoring the rest. Re-lex from the start and take
+         * the first token at or after the expression's end (end column is
+         * exclusive, and a parenthesized expression's span includes its
+         * parens); anything but EOF is leftover input. Harness only: the
+         * parser API is unchanged. */
+        if (e != NULL) {
+            Lexer scan;
+            lexer_init(&scan, src, len);
+            Token t;
+            do {
+                t = lexer_next(&scan);
+            } while (t.kind != TOK_EOF &&
+                     (t.line < e->span.end_line ||
+                      (t.line == e->span.end_line && t.col < e->span.end_col)));
+            if (t.kind != TOK_EOF) {
+                const char *found = (t.kind >= TOK_ERROR_BAD_CHAR && t.error_msg)
+                                        ? t.error_msg
+                                        : arena_sprintf(ps.arena, "'%.*s'", (int)t.lexeme_len, t.lexeme);
+                diag_add(ps.arena, &ps.diags, diag_expected(ps.arena, token_span(t), "end of input", found, NULL));
+            }
+        }
     }
 
     if (ps.diags.len > 0) {
