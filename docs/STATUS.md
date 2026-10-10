@@ -8,6 +8,8 @@ Updated at every tag (`docs/README.md`'s consistency check runs at the same time
 
 **Active work: none in flight - the external audit of the #4 parser step is back and its findings are fixed locally (commits `ea8b01e`..`3fcb38d`, not yet pushed), waiting on the go-ahead to push and to tag.** Brief and kit: `docs/history/v0-audit-brief.md`. Findings fixed: #0 (ours), 1-6 of the audit (see the Done entry below). Tag `m2-parser-v0` only after you say so (all 42 grammar productions have goldens, so not `m2-parser-r2`; condition and table: `docs/history/PARSER_STEP4.md`). The next engineering step is the typed IR stage, not yet scoped.
 
+**Decision (Bryden, v0 audit fixes): a block ends at a stray `fn`/`struct`.** The statements before it are kept and the enclosing function stays in the tree; the token goes to the top level; statements after a genuinely nested `fn g() {}` get their own top-level diagnostics rather than being attributed to the function. Accepted as the design, not a stopgap.
+
 **Post-audit finding #0 (author-found): FIXED** in `ea8b01e`. A stray `fn`/`struct` inside a function body used to drop the enclosing function; the block now ends there, keeps its statements, and the token goes to the top level (one diagnostic, `expected '}' to close block, found 'fn'`). A genuinely nested `fn g() {}` is read the same way, as a missing `}`; code after it inside the intended body gets its own top-level error. Goldens `err_recovery_stray_{fn,struct}_*` (7).
 
 ## Done
