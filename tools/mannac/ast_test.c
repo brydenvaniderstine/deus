@@ -1,3 +1,9 @@
+/* fmemopen is POSIX.1-2008, not ISO C: under glibc with -std=c11 nothing
+ * declares it unless this is defined before the first include (clang: a
+ * compile error; gcc: an implicit declaration returning int, which truncates
+ * the FILE * and crashes). macOS declares it regardless, which is why this
+ * went unnoticed. */
+#define _POSIX_C_SOURCE 200809L
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
