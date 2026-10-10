@@ -1,0 +1,9 @@
+manna v0;
+[u8] fn f() {}
+[u16] fn f() {}
+[u32] fn f() {}
+[u64] fn f() {i8] fn fi16] fn f() {}
+[i32] fn f() {}
+[i64] fn f() {}
+[bool] fn f() {}
+[unit] fn f() {}

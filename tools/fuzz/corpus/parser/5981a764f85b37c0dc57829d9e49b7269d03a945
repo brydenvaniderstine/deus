@@ -1,6 +1,0 @@
-manna v0;
-fn f() {
-  0;
-    fn g() {}
-    let= 1;
-}

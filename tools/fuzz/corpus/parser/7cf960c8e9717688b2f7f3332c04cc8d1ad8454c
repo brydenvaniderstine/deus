@@ -1,5 +1,0 @@
-manna v0;
-fn f() {
-    if x = 6 { a; } else
- @   b;
-}

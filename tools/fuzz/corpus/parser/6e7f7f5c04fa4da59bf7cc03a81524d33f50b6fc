@@ -1,0 +1,5 @@
+manna v0;
+struct A { a: unit, }
+struct B { b: [4]unit, }
+struct C { c: []unit, }
+fn p unfn

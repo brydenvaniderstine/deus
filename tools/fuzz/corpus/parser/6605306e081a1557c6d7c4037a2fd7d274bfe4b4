@@ -1,0 +1,4 @@
+manna v0;
+Z0;
+struct Pnt {
+    x: u3/*{ 1*+a2 }
