@@ -36,7 +36,8 @@ static void test_diag_list_and_dedicated_messages(void) {
 }
 
 static void test_depth_bound(void) {
-    ParserState ps;
+    /* static: read after the longjmp (C11 7.13.2.1; see parser_main.c). */
+    static ParserState ps;
     parser_state_init(&ps, 1 << 20);
 
     if (setjmp(ps.fatal_target) != 0) {
@@ -66,7 +67,8 @@ static void test_depth_bound(void) {
 }
 
 static void test_error_cap(void) {
-    ParserState ps;
+    /* static: read after the longjmp (C11 7.13.2.1; see parser_main.c). */
+    static ParserState ps;
     parser_state_init(&ps, 1 << 20);
 
     if (setjmp(ps.fatal_target) != 0) {
@@ -88,17 +90,36 @@ static void test_error_cap(void) {
 static void test_arena_overflow_shares_fatal_target(void) {
     /* Proves the unification: a ParserState's arena overflow routes
      * through the SAME fatal_target as depth/error-cap above, not a
-     * separate mechanism a caller would need to handle differently. */
-    ParserState ps;
-    parser_state_init(&ps, 64); /* tiny cap, same as arena_test.c's cap test */
+     * separate mechanism a caller would need to handle differently - and
+     * since the v0 audit fix (finding 2) it leaves E0110 behind, like the
+     * other two. */
+    static ParserState ps; /* read after the longjmp (C11 7.13.2.1) */
+    parser_state_init(&ps, 64 * 1024); /* reserve = a quarter: room for the diagnostic */
 
     if (setjmp(ps.fatal_target) != 0) {
-        /* No diagnostic expected here - arena.c itself doesn't know how
-         * to construct one (it has no Diagnostic type dependency, by
-         * design - see arena.h). That's the parser layer's job once
-         * real allocation call sites exist in Step 4; this test only
-         * confirms the longjmp lands at the shared target at all. */
-        printf("PASS: arena overflow longjmps to the same ParserState.fatal_target\n");
+        assert(ps.diags.len == 1);
+        assert(strcmp(ps.diags.items[0].code, "E0110") == 0);
+        printf("PASS: arena overflow longjmps to the same ParserState.fatal_target, leaving E0110\n");
+        parser_state_destroy(&ps);
+        return;
+    }
+
+    arena_alloc(ps.arena, 100 * 1024, 1); /* exceeds the 64 KiB cap */
+    fprintf(stderr, "FAIL: arena_alloc did not longjmp on overflow\n");
+    exit(1);
+}
+
+static void test_arena_overflow_too_small_for_diagnostic(void) {
+    /* An arena too small to hold even the E0110 diagnostic (its reserved
+     * tail is a quarter of 64 bytes): the hook itself overflows, and the
+     * unwind still reaches fatal_target - nothing recorded, no crash, no
+     * second call of the hook. */
+    static ParserState ps;
+    parser_state_init(&ps, 64);
+
+    if (setjmp(ps.fatal_target) != 0) {
+        assert(ps.diags.len == 0);
+        printf("PASS: arena too small for the diagnostic still unwinds cleanly to fatal_target\n");
         parser_state_destroy(&ps);
         return;
     }
@@ -113,6 +134,7 @@ int main(void) {
     test_depth_bound();
     test_error_cap();
     test_arena_overflow_shares_fatal_target();
+    test_arena_overflow_too_small_for_diagnostic();
     printf("ALL PASS\n");
     return 0;
 }

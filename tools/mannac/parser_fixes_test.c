@@ -175,7 +175,9 @@ static void test_state_reset_after_fatal_longjmp(void) {
     for (int i = 0; i < LEVELS; i++) deep[n++] = ')';
     n += (size_t)snprintf(deep + n, sizeof deep - n, ";\n}\n");
 
-    ParserState ps;
+    /* static: read after the longjmp (C11 7.13.2.1: an automatic non-volatile
+     * object changed after setjmp is indeterminate there; see parser_main.c). */
+    static ParserState ps;
     parser_state_init(&ps, 1 << 22);
     Lexer lx1;
     lexer_init(&lx1, deep, n);
@@ -243,7 +245,9 @@ static void test_sync_counters_reset_at_parse_entry(void) {
     for (int i = 0; i < LEVELS; i++) deep[n++] = ')';
     n += (size_t)snprintf(deep + n, sizeof deep - n, ";\n}\n");
 
-    ParserState ps;
+    /* static: read after the longjmp (C11 7.13.2.1: an automatic non-volatile
+     * object changed after setjmp is indeterminate there; see parser_main.c). */
+    static ParserState ps;
     parser_state_init(&ps, 1 << 22);
     Lexer lx1;
     lexer_init(&lx1, deep, n);
@@ -324,7 +328,9 @@ static char *gen_list_input(const char *prefix, const char *open, const char *cl
 }
 
 static void check_e0110(const char *src, size_t len, size_t arena_size, const char *what) {
-    ParserState ps;
+    /* static: read after the longjmp (C11 7.13.2.1: an automatic non-volatile
+     * object changed after setjmp is indeterminate there; see parser_main.c). */
+    static ParserState ps;
     parser_state_init(&ps, arena_size);
     Lexer lx;
     lexer_init(&lx, src, len);

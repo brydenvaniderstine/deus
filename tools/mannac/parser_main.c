@@ -79,7 +79,12 @@ int main(int argc, char **argv) {
     size_t len;
     char *src = read_file(argv[1], &len);
 
-    ParserState ps;
+    /* static: ps is modified after setjmp and read again after the longjmp
+     * (the fatal path prints ps.diags). C11 7.13.2.1 makes such an
+     * automatic, non-volatile object indeterminate; static storage is not
+     * covered by that rule, and unlike `volatile` needs no casts at every
+     * call that takes a ParserState *. */
+    static ParserState ps;
     parser_state_init(&ps, 16 * 1024 * 1024);
     if (setjmp(ps.fatal_target) != 0) {
         printf("ERRORS:\n");
