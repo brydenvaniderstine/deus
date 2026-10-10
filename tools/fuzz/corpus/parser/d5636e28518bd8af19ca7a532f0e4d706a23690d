@@ -1,0 +1,22 @@
+manna v0;
+struct S { u8: u8, }
+struct S { u16: u8, }
+manna v0;
+struct S { u8: u8, }
+struct S { u16: u8, }
+struct S { u32: u8, }
+struct S { u64: u8, }
+struct S { i8: u8, }
+struct S { i16: u8, }
+strt S { bool: u8, }
+strua v0;
+struct S { u8: u8, }
+struct S { u16: u8, }
+manna v0;
+struct S { u8: u8, }
+struct S { u16: u8, }
+struct S { u32: u8, }
+struct S { u64: u8, }
+struct S { i8: u8, }
+struct S { i16: u8,  bool: u8, }
+struct Sct S { unit: u8, }

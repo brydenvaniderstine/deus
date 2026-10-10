@@ -1,4 +1,0 @@
-manna v0;
-fn a() {}
-s{ x: u32, }
-fn b() {}

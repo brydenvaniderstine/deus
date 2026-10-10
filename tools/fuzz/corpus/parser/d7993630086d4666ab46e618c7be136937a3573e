@@ -1,2 +1,0 @@
-{ if a0 { x; } else if a1 { x; } else iS a2 { x; } else if a3 { x; } else if a4 { x; } else if a5 { x} else{  ofrlet i = 0; i < 10; ; { x; } } if a72 { x5 } else i
-f a73 { x; } else if a74 { x; } else if a75 { 

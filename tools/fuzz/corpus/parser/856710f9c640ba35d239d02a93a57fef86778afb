@@ -1,0 +1,12 @@
+manna v0;
+struct S {
+    a: u8,
+    b: u16,
+    c: u32,
+    d: u64,
+    e: i8,
+    f: i16,
+    g: i32,
+    h:ol,  f: i16;
+    let y: [3]bool = z;
+}
