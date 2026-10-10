@@ -1373,8 +1373,17 @@ static void recover_else_branch(Parser *p) {
      * branch, then set it again: whatever the branch did, the dropped `if`
      * as a whole did recover past a body. */
     p->ps->recovered_past_body = false;
-    (void)((p->cur.kind == TOK_KW_IF) ? parse_if_stmt(p) : parse_block(p));
-    p->ps->recovered_past_body = true;
+    Stmt *branch = (p->cur.kind == TOK_KW_IF) ? parse_if_stmt(p) : parse_block(p);
+    /* Set it again only if the branch really ended past a body: it parsed
+     * (non-NULL), or a nested header recovery inside it already set the flag
+     * itself. A branch that failed outright (`else ;`, `else if y = ;`)
+     * leaves cur at the point of failure, exactly like any failed statement,
+     * so the enclosing block must be allowed to sync from there (fixes-audit
+     * finding 3: setting it unconditionally let `;` be parsed as a
+     * statement - a second diagnostic from one mistake). */
+    if (branch != NULL) {
+        p->ps->recovered_past_body = true;
+    }
 }
 
 /* if_stmt ::= 'if' expression block [ 'else' ( if_stmt | block ) ] ;

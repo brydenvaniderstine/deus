@@ -65,7 +65,8 @@
  * Set, then read and cleared (never left true across a loop iteration)
  * by the one call site that consumes it - see parse_block in parser.c.
  * recover_else_branch clears it while the dropped `if`'s else branch parses
- * (so the branch's own blocks cannot consume it) and sets it again after. */
+ * (so the branch's own blocks cannot consume it) and sets it again after only
+ * if the branch ended past a body (it parsed, or a nested recovery set it). */
 typedef struct {
     Arena   *arena;
     DiagList diags;
