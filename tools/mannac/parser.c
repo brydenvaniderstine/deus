@@ -1665,6 +1665,8 @@ static Stmt *parse_block(Parser *p) {
                  * the unclosed block is not reported a second time (one
                  * mistake, one diagnostic - the Step 10b rule). */
                 unclosed_already_reported = true;
+                p->ps->unclosed_line = p->cur.line; /* enclosing blocks see the same token: */
+                p->ps->unclosed_col = p->cur.col;   /* they must not report it either */
                 break;
             }
             /* Owned by neither this statement nor this block - propagate
