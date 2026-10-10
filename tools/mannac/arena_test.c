@@ -140,6 +140,39 @@ static void test_hook_overflow_does_not_recurse(void) {
     exit(1);
 }
 
+static int rearm_calls = 0;
+static void hook_counts(void *ctx) {
+    (void)ctx;
+    rearm_calls++;
+}
+
+static void test_hook_rearm(void) {
+    Arena *a = arena_create(128);
+    static jmp_buf env;
+    arena_set_overflow_target(a, &env);
+    arena_set_overflow_hook(a, hook_counts, NULL, 32);
+    for (int round = 1; round <= 3; round++) {
+        if (round == 2 || round == 3) {
+            arena_rearm_overflow_hook(a);
+        }
+        if (setjmp(env) == 0) {
+            arena_alloc(a, 1000, 1);
+            fprintf(stderr, "FAIL: unreachable\n");
+            exit(1);
+        }
+        assert(rearm_calls == round); /* fired once per arming, not once ever */
+    }
+    /* without a re-arm the next overflow does not call the hook again */
+    if (setjmp(env) == 0) {
+        arena_alloc(a, 1000, 1);
+        fprintf(stderr, "FAIL: unreachable\n");
+        exit(1);
+    }
+    assert(rearm_calls == 3);
+    arena_destroy(a);
+    printf("PASS: a re-armed overflow hook fires again; an unarmed one does not\n");
+}
+
 /* Invoked as a separate process (see the Makefile's test-arena target):
  * overflowing with no overflow target registered at all must abort(),
  * not silently continue or longjmp to garbage. Run out-of-process
@@ -180,6 +213,7 @@ int main(int argc, char **argv) {
     test_no_allocation_after_cap();
     test_hook_runs_once_and_uses_reserve();
     test_hook_overflow_does_not_recurse();
+    test_hook_rearm();
     printf("ALL PASS\n");
     return 0;
 }

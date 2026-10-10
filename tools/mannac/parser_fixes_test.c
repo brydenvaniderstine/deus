@@ -396,6 +396,38 @@ static void test_harness_mode_routing(void) {
     printf("PASS: harness mode routing - attribute prefixes are file mode, other '[' inputs are expressions\n");
 }
 
+/* Fixes-audit finding 4: the overflow hook runs once (in_hook) and releases
+ * the reserved tail (reserve = 0), and nothing re-armed either, so a
+ * ParserState REUSED after one overflow recorded no E0110 the second time -
+ * the unwind was silent again. Every parse entry re-arms the hook now
+ * (parser_state_reset_for_parse). The arena itself stays exhausted; what is
+ * pinned is that the second overflow is reported like the first. */
+static void test_e0110_rearmed_on_state_reuse(void) {
+    size_t len;
+    char *src = gen_list_input("manna v0;\nfn f() {\n    let a = ", "[", "];\n}\n", 20000, &len);
+    static ParserState ps; /* read after the longjmp (C11 7.13.2.1) */
+    parser_state_init(&ps, 256 * 1024);
+    for (int round = 1; round <= 3; round++) {
+        Lexer lx;
+        lexer_init(&lx, src, len);
+        NodeList items;
+        if (setjmp(ps.fatal_target) == 0) {
+            parser_parse_file(&ps, &lx, &items);
+            fprintf(stderr, "FAIL: round %d: expected the arena to run out\n", round);
+            exit(1);
+        }
+        if (ps.diags.len != (size_t)round) {
+            fprintf(stderr, "FAIL: round %d: %zu diagnostics, want %d (E0110 not recorded again)\n",
+                    round, ps.diags.len, round);
+            exit(1);
+        }
+        assert(strcmp(ps.diags.items[round - 1].code, "E0110") == 0);
+    }
+    parser_state_destroy(&ps);
+    free(src);
+    printf("PASS: E0110 is recorded on every overflow of a reused ParserState (3 rounds)\n");
+}
+
 /* E0102's JSON `expected` field named '{' at every call site, but a `for`
  * header's condition clause is terminated by ';', not '{' (known inaccuracy
  * recorded in docs/error_codes.md since r1 Phase C; message, span and the
@@ -557,6 +589,7 @@ int main(void) {
     test_sync_counters_reset_at_parse_entry();
     test_unclosed_block_report_resets_between_parses();
     test_arena_exhaustion_reports_e0110();
+    test_e0110_rearmed_on_state_reuse();
     test_harness_mode_routing();
     test_e0102_expected_field_per_site();
     test_e0108_fix_positions();

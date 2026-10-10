@@ -16,6 +16,7 @@ void parser_state_reset_for_parse(ParserState *ps) {
     ps->unclosed_col = 0;
     ps->progress_line = 1;
     ps->progress_col = 1;
+    arena_rearm_overflow_hook(ps->arena); /* E0110 again if this parse overflows too */
     parser_state_reset_sync(ps);
 }
 

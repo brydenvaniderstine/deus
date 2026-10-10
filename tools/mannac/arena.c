@@ -10,7 +10,8 @@ struct Arena {
     jmp_buf       *overflow_target;
     void         (*overflow_hook)(void *);
     void          *hook_ctx;
-    size_t         reserve;    /* bytes held back for the hook */
+    size_t         reserve;    /* bytes held back for the hook (0 while it runs) */
+    size_t         reserve_cfg; /* the configured reserve, restored by a re-arm */
     int            in_hook;
 };
 
@@ -35,6 +36,7 @@ Arena *arena_create(size_t max_size) {
     a->overflow_hook = NULL;
     a->hook_ctx = NULL;
     a->reserve = 0;
+    a->reserve_cfg = 0;
     a->in_hook = 0;
     return a;
 }
@@ -52,6 +54,13 @@ void arena_set_overflow_hook(Arena *a, void (*hook)(void *ctx), void *ctx, size_
     a->overflow_hook = hook;
     a->hook_ctx = ctx;
     a->reserve = reserve < a->max_size ? reserve : 0;
+    a->reserve_cfg = a->reserve;
+    a->in_hook = 0;
+}
+
+void arena_rearm_overflow_hook(Arena *a) {
+    a->reserve = a->reserve_cfg;
+    a->in_hook = 0;
 }
 
 void *arena_alloc(Arena *a, size_t size, size_t align) {

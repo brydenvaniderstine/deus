@@ -77,6 +77,14 @@ void arena_set_overflow_target(Arena *a, jmp_buf *target);
  * without calling it again. With no hook registered nothing changes. */
 void arena_set_overflow_hook(Arena *a, void (*hook)(void *ctx), void *ctx, size_t reserve);
 
+/* Re-arms the hook after it has fired: the hook runs once per arming and
+ * releases the reserved tail while it runs, so a caller that reuses the
+ * arena after an overflow longjmp (parser_state_reset_for_parse does, at
+ * every parse entry) must call this or the next overflow is silent again.
+ * The arena itself is not reset: whatever it already holds stays, and the
+ * tail is whatever the earlier hooks left of it. No effect without a hook. */
+void arena_rearm_overflow_hook(Arena *a);
+
 void  *arena_alloc(Arena *a, size_t size, size_t align);
 size_t arena_used(const Arena *a);
 
