@@ -1,0 +1,2 @@
+{ a; } // trailing comment
+/* and a block one */

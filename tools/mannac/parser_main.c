@@ -58,6 +58,31 @@ static bool starts_with_attribute(Lexer *lx, Token first) {
     return t.kind == TOK_KW_FN && first.kind == TOK_LBRACKET;
 }
 
+/* parser_parse_expression and parser_parse_block parse ONE construct and
+ * stop; neither says what follows it. In those two harness modes the harness
+ * must, or a golden like `a: 1`, `1 + 2 )))` or `{ a; } b` only checks a
+ * prefix and "passes" while ignoring the rest. Re-lex from the start and take
+ * the first token at or after the construct's end (end column is exclusive,
+ * and a parenthesized expression's span includes its parens); anything but
+ * EOF is leftover input: E0105 "expected end of input, found X". Harness
+ * only: the parser API is unchanged. File mode needs none of this - it
+ * loops to EOF, so a stray token there is already an error of its own. */
+static void report_leftover_input(ParserState *ps, const char *src, size_t len, Span end) {
+    Lexer scan;
+    lexer_init(&scan, src, len);
+    Token t;
+    do {
+        t = lexer_next(&scan);
+    } while (t.kind != TOK_EOF &&
+             (t.line < end.end_line || (t.line == end.end_line && t.col < end.end_col)));
+    if (t.kind != TOK_EOF) {
+        const char *found = (t.kind >= TOK_ERROR_BAD_CHAR && t.error_msg)
+                                ? t.error_msg
+                                : arena_sprintf(ps->arena, "'%.*s'", (int)t.lexeme_len, t.lexeme);
+        diag_add(ps->arena, &ps->diags, diag_expected(ps->arena, token_span(t), "end of input", found, NULL));
+    }
+}
+
 static void print_diags(const DiagList *diags) {
     for (size_t i = 0; i < diags->len; i++) {
         const Diagnostic *d = &diags->items[i];
@@ -102,31 +127,13 @@ int main(int argc, char **argv) {
         file_ok = parser_parse_file(&ps, &lx, &items);
     } else if (is_block) {
         s = parser_parse_block(&ps, &lx);
+        if (s != NULL) {
+            report_leftover_input(&ps, src, len, s->span); /* same gap as expression mode: `{ a; } b` */
+        }
     } else {
         e = parser_parse_expression(&ps, &lx);
-        /* parser_parse_expression parses ONE expression and stops; it does
-         * not say what follows it. In expression mode the harness must,
-         * or a golden like `a: 1` or `1 + 2 )))` only checks a prefix and
-         * "passes" while ignoring the rest. Re-lex from the start and take
-         * the first token at or after the expression's end (end column is
-         * exclusive, and a parenthesized expression's span includes its
-         * parens); anything but EOF is leftover input. Harness only: the
-         * parser API is unchanged. */
         if (e != NULL) {
-            Lexer scan;
-            lexer_init(&scan, src, len);
-            Token t;
-            do {
-                t = lexer_next(&scan);
-            } while (t.kind != TOK_EOF &&
-                     (t.line < e->span.end_line ||
-                      (t.line == e->span.end_line && t.col < e->span.end_col)));
-            if (t.kind != TOK_EOF) {
-                const char *found = (t.kind >= TOK_ERROR_BAD_CHAR && t.error_msg)
-                                        ? t.error_msg
-                                        : arena_sprintf(ps.arena, "'%.*s'", (int)t.lexeme_len, t.lexeme);
-                diag_add(ps.arena, &ps.diags, diag_expected(ps.arena, token_span(t), "end of input", found, NULL));
-            }
+            report_leftover_input(&ps, src, len, e->span);
         }
     }
 
