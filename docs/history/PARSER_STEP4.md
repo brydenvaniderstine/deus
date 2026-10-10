@@ -1,11 +1,9 @@
 # Parser step #4: constructors, conversions, reserved words (+ the #5/#6 code)
 
 Working document for the post-`m2-parser-r1` parser step - not a permanent owner file
-(`docs/README.md`'s table doesn't list it). Lives until this step is tagged, then moves
-to `docs/history/`. The `docs/STATUS.md` "Active work" line points here.
+(`docs/README.md`'s table doesn't list it). ARCHIVED at the close of the #4 step: this is the working record, not a source of truth.
 
-**Status: NOT STARTED.** Spec is done and approved (r1 Phase B, tag `m2-parser-r1`); this
-step is the implementation. Do not start it without an explicit go.
+**Status: DONE (implementation complete at step 7; awaiting the external audit before the tag).** Archived to `docs/history/` at close-out; the live record is `docs/STATUS.md`.
 
 ## Prerequisite fixes: r1 regressions (do these before step 0)
 
@@ -24,6 +22,59 @@ Consequences for the checklist below:
 - Any step that adds a token which can start a statement, or an expression that can contain a block, must re-check `resets_bracket_mask` in `parser.c`.
 - Golden counts and determinism inputs in the plan are now 201 and 215 (were 187 and 201). The R1 recovery path's depth limit was measured (254 total ifs, same as the direct else-if chain): `depth_elseif_recovered_*`, `docs/M2_PLAN.md` table row "7 (via header recovery)".
 - **Observed, pre-existing (also at `m2-parser`), not a regression and not fixed:** a stray `fn` inside a function body, `fn f() { let x = 1; fn g() {} let y = 2; }`, gives two diagnostics and drops `f` (the `fn` is handed to the top level, by the Step 10b design; compare `err_recovery_missing_rbrace_next_fn_preserved`).
+
+## Tag condition result (step 7)
+
+Condition (decided): before tagging `m2-parser-v0`, list every production in `docs/M2_PLAN.md` §4's grammar and cite a golden that exercises it; if any v0 production is unimplemented, tag `m2-parser-r2` instead and name it.
+
+**Result: all 42 productions in the §4 grammar block are implemented and each has at least one golden, so the tag stays `m2-parser-v0`** (still pending: no tag until the external audit of this step comes back). The list was produced by script from the grammar block as it stands (`^name ::=` lines of the ```ebnf block), not from memory, and each citation was verified two ways: the `.mn`/`.ast` pair exists, and a pattern for the production's node or token appears in that golden's dump (a golden that merely exists is not enough). Output: `productions in grammar: 42  mapped+verified: 42  problems: 0  stale mappings: []`.
+
+| Production | Golden(s) exercising it |
+|---|---|
+| `translation_unit` | `program_basic` |
+| `version_decl` | `program_basic`, `err_missing_version`, `err_wrong_version` |
+| `top_level_item` | `program_struct_function_kernel_hook` |
+| `attribute` | `program_multiple_attributes` |
+| `struct_decl` | `program_struct_array_slice_fields` |
+| `field_decl` | `program_struct_array_slice_fields` |
+| `function_decl` | `program_basic` |
+| `param_list` | `program_param_array_type` |
+| `param` | `program_param_array_type` |
+| `type` | `block_let_typed`, `block_let_array_type`, `block_let_slice_type`, `block_let_nested_array_type` |
+| `PRIM_TYPE` | `prim_types_every_position` |
+| `block` | `block_multi_stmt` |
+| `statement` | `block_multi_stmt` |
+| `let_stmt` | `block_let_basic` |
+| `postfix_stmt` | `stmt_assign_basic`, `stmt_expr_call` |
+| `expr_tail` | `stmt_expr_binary` |
+| `if_stmt` | `stmt_if_elseif_else` |
+| `while_stmt` | `stmt_while_basic` |
+| `for_stmt` | `stmt_for_basic` |
+| `for_step` | `stmt_for_basic` |
+| `break_stmt` | `block_break` |
+| `continue_stmt` | `block_continue` |
+| `return_stmt` | `block_return_value` |
+| `expr_stmt` | `stmt_expr_unary_not` |
+| `expression` | `ident` |
+| `logic_or` | `logic_or` |
+| `logic_and` | `logic_and` |
+| `relational` | `comparison_lt`, `equality_eq` |
+| `rel_op` | `comparison_lt`, `comparison_gt`, `comparison_le`, `comparison_ge`, `equality_eq`, `equality_ne` |
+| `bitor` | `bitor` |
+| `bitxor` | `bitxor` |
+| `bitand` | `bitand` |
+| `shift` | `shift_left`, `shift_right` |
+| `additive` | `additive_add`, `additive_sub` |
+| `multiplicative` | `multiplicative_mul`, `multiplicative_div`, `multiplicative_mod` |
+| `unary` | `unary_not`, `unary_neg`, `unary_bitnot` |
+| `postfix` | `postfix_chain` |
+| `index_or_slice` | `index`, `slice` |
+| `primary` | `number`, `bool_true`, `ident`, `call_with_args`, `convert_basic`, `array_basic`, `repeat_basic`, `paren_group` |
+| `arg_list` | `call_with_args` |
+| `arg` | `namedarg_struct_construction` |
+| `array_body` | `array_basic`, `repeat_basic` |
+
+Notes: `statement` is exercised by every `stmt_*` and `block_*` golden; error paths for each production are the `err_*` goldens (e.g. `err_missing_version`, `err_wrong_version`, `err_struct_*`, `err_for_*`). Several productions are defined by alternatives (`primary`, `type`, `for_stmt`'s init, `if_stmt`'s else-if); each alternative has its own golden in the row or in a sibling (`stmt_for_init_expr`, `stmt_for_init_postfix`, `stmt_if_elseif_else`).
 
 ## Settled decisions (decided, not open)
 

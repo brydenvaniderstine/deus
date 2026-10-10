@@ -121,7 +121,7 @@ source (.mn)
 
 ## 4. Parser grammar (v0, approved)
 
-Recursive-descent, built on the lexer above; implemented in `tools/mannac/parser.c` (tag `m2-parser`). Productions and comments marked **r1-B** below are *specified* in r1 Phase B and not yet implemented - the parser still follows the unmarked text until the #4 parser step.
+Recursive-descent, built on the lexer above; implemented in `tools/mannac/parser.c` (tag `m2-parser`, extended in the #4 parser step). Everything in the grammar block below is implemented; comments marked **r1-B** record that a production was specified in r1 Phase B and built in the #4 step (struct construction, arrays, conversions, reserved words, the relational level, `-> unit`).
 
 ```ebnf
 translation_unit  ::= version_decl { top_level_item } ;
@@ -143,7 +143,7 @@ function_decl     ::= { attribute } 'fn' IDENT '(' [ param_list ] ')' [ '->' typ
      function's own signature, return type included, is never one of
      those bodies.
 
-     r1 Phase B (specified, not yet implemented): writing `-> unit`
+     Implemented (#4 step 6): writing `-> unit`
      explicitly is a dedicated error (E0109) - `unit` is reserved but is
      not a type name anywhere in source; the one way to say "returns
      nothing" is to omit the annotation (principle 1). *)
@@ -170,8 +170,8 @@ statement         ::= let_stmt | if_stmt | while_stmt | for_stmt
                     | postfix_stmt | expr_stmt ;
   (* postfix_stmt and expr_stmt have disjoint FIRST sets - postfix_stmt
      starts with whatever primary/postfix starts with (NUMBER, KW_TRUE,
-     KW_FALSE, IDENT, '('; r1-B adds the nine PRIM_TYPE keywords and
-     '[' - `starts_postfix` in parser.c must grow to match); expr_stmt,
+     KW_FALSE, IDENT, '('; the nine PRIM_TYPE keywords and
+     '[' were added in the #4 step - `starts_postfix` in parser.c grew to match); expr_stmt,
      reached only when none of those applied, starts with a unary prefix
      ('!', '-', '~'). Genuinely LL(1) at this level, unlike the
      assign_stmt/expr_stmt split it replaces. *)
@@ -297,7 +297,7 @@ primary           ::= NUMBER | KW_TRUE | KW_FALSE
 arg_list          ::= arg { ',' arg } ;
 arg               ::= expression [ ':' expression ] ;       (* implemented, #4 step 4: was just `expression` *)
 array_body        ::= expression ( { ',' expression } | ';' NUMBER ) ;
-  (* r1-B (all of the r1-B productions: specified, not yet implemented).
+  (* r1-B (all implemented in the #4 step; the semantic checks named below remain IR-stage).
      - `arg`'s `:` form is struct construction: `Point(x: 1, y: 2)`. The
        parser accepts ANY expression on the left of ':'; that it is a
        bare field name, that the callee is a struct (not a function),
@@ -397,11 +397,11 @@ Expr   = NumberLit(value: u64) | BoolLit(value: bool) | Ident(name)
        | Index(base: Expr, index: Expr)
        | Slice(base: Expr, lo: Expr, hi: Expr)
        | FieldAccess(base: Expr, name)
-       | Convert(target: PrimType, operand: Expr)          (* r1-B: u64(x) *)
-       | ArrayLit(elems: [Expr])                           (* r1-B: [1, 2, 3] *)
-       | ArrayRepeat(value: Expr, count: u64)              (* r1-B: [v; N] *)
+       | Convert(target: PrimType, operand: Expr)          (* #4 step 2: u64(x) *)
+       | ArrayLit(elems: [Expr])                           (* #4 step 3: [1, 2, 3] *)
+       | ArrayRepeat(value: Expr, count: u64)              (* #4 step 3: [v; N] *)
 
-Arg    = Expr | NamedArg(name_expr: Expr, value: Expr)     (* r1-B: x: 1 ; Call.args becomes [Arg] *)
+Arg    = Expr | NamedArg(name_expr: Expr, value: Expr)     (* #4 step 4: x: 1 ; Call.args holds Arg nodes *)
 ```
 `Call` also represents struct construction (`Point(x: 1, y: 2)`) - the parser can't tell the two apart, and the IR stage retags a `Call` whose callee resolves to a struct. `NamedArg.name_expr` is an arbitrary `Expr` at parse time for the same reason (§4 grammar comment): "is a bare field name" is an IR check. `PrimType` is the nine `PRIM_TYPE` keywords; whether `Type` gains a `TypePrim` node or keeps `TypeIdent` holding the keyword text is the #4 step's call, since either renders identically (below).
 
@@ -428,7 +428,7 @@ This dump format is the **planned** canonical machine interchange form (principl
 
 - **`Field`/`Param` carry spans**, same as every other node (corrected above - the abstract shorthand omits one, the real type doesn't).
 - **An absent `-> type` renders as `(return_type)`** (implemented, #4 step 6), explicit, never omitted - matching "stated, not inferred" (§2). The word `unit` no longer appears because `unit` is reserved and cannot be written in source (E0109), so a dump containing `(return_type unit)` is not a valid interchange form and a reader of it must reject it (principle 11). **This was a dump-format change, done in step 6:** 35 goldens contained `(return_type unit)` by then (14 when Phase B was written), `ast.c` and `ast_test.c` changed, and a script proved that reverting `(return_type)` to `(return_type unit)` in the new output reproduces 34 of the 35 old files byte for byte (the 35th, `err_unit_type_positions`, also gained E0109).
-- **r1-B expression nodes:** `(array@span e1 e2 ...)` (implemented, #4 step 3), `(array_repeat@span N value)` (implemented, #4 step 3 - **the count renders in the header, before the one child, like a unary's operator or a convert's target; Phase B had written `value N`, which doesn't fit the dump's convention of scalar attributes in the header**), `(convert@span u64 operand)` (implemented, #4 step 2; the target renders as bare inline text, like types), and a named call argument (implemented, #4 step 4) renders as `(named_arg@span name_expr value)` inline among the call's other args. Plain positional args keep rendering bare, as now.
+- **Expression nodes added in the #4 step:** `(array@span e1 e2 ...)` (implemented, #4 step 3), `(array_repeat@span N value)` (implemented, #4 step 3 - **the count renders in the header, before the one child, like a unary's operator or a convert's target; Phase B had written `value N`, which doesn't fit the dump's convention of scalar attributes in the header**), `(convert@span u64 operand)` (implemented, #4 step 2; the target renders as bare inline text, like types), and a named call argument (implemented, #4 step 4) renders as `(named_arg@span name_expr value)` inline among the call's other args. Plain positional args keep rendering bare, as now.
 - **A typed `let` renders as `name:type`**; an inferred (no explicit type) `let` renders as a bare `name`, with no placeholder standing in for the absent type.
 - **Types render inline as compact text** wherever they appear - `u32`, `[4]u32`, `[]u32` - never as their own nested `(type_ident ...)`/`(type_array ...)` S-expression. This is why `u32` appears bare in the example above rather than wrapped.
 - **Calls render as `(call@span name arg1 arg2 ...)`**, args inline with no separate `args` wrapper - unlike `params`/`fields`, which do get one, since those group a named, typed thing (`Field`) rather than bare expressions.
@@ -487,7 +487,7 @@ Also: `sync_skip` tracks `'('`/`')'` and `'['`/`']'` depth so that a `';'` insid
 
 ### Reserved words, constructors, and conversions (r1 Phase B)
 
-**Status: specification only.** Nothing in this subsection is implemented. `lexer.c`, `parser.c`, `ast.c` and every golden are unchanged until the post-r1 "#4 parser step" (`docs/PARSER_STEP4.md`), which also carries the #5 and #6 code (the new `&&`/`||` comparison error, the `-> unit` error, and the `(return_type)` dump change) - that deferral was decided at the start of Phase B. Every claim below that names a number or a behavior of code that doesn't exist yet is labeled **specified** or **predicted**, never **proven**; per CLAUDE.md's "proof over reasoning" lesson, the #4 step must prove each one with a built binary before this text is allowed to say otherwise.
+**Status: implemented (the #4 parser step, steps 1-6).** This subsection began as the Phase B specification and is kept as the design record; every parser-side item below is built, its goldens are named in §8, and the depth figures are measured (see the table). What remains unbuilt is IR-stage work (the semantic checks listed under "Diagnostics added by r1 Phase B"). Where a sentence below still says "specified" or "predicted" about the parser, the proof table and §8 are authoritative.
 
 #### LL(1) re-verification
 
@@ -539,9 +539,9 @@ One diagnostic, `g` preserved - but `[y]` was claimed as `g`'s attribute. That i
 
 #### New recursion cycles and their counted functions
 
-Rule (`parser.c`'s INVARIANT): every cycle must pass through at least one depth-counted function. r1-B adds **two** cycles and **extends one**; none needs a new hook, because each re-enters `parse_expression`, which is already counted. The "Succeeds"/"Fails" columns are **predictions** until the #4 step builds them:
+Rule (`parser.c`'s INVARIANT): every cycle must pass through at least one depth-counted function. r1-B adds **two** cycles and **extends one**; none needs a new hook, because each re-enters `parse_expression`, which is already counted. The "Succeeds"/"Fails" columns were predictions when Phase B wrote them and are now **measured** (bisected 1..300 with real builds, plain == ASan; `parser.c`'s INVARIANT comment counts nine back-edges):
 
-| # | Cycle | Counted by | Construct example | Predicted succeeds | Predicted fails | Goldens required |
+| # | Cycle | Counted by | Construct example | Succeeds (measured) | Fails (measured) | Goldens |
 |---|---|---|---|---|---|---|
 | 9 | `primary -> array_body -> expression` (covers list elements *and* the repeat literal's value; `N` is a `NUMBER` leaf) | `parse_expression` | `[[[...x...]]]` and `[[[x; 1]; 1]; 1]` | **255, measured (#4 step 3), for both forms** | **256 and 300, measured** | `depth_array_*`, `depth_repeat_*` (plain + ASan) |
 | 10 | `primary -> PRIM_TYPE '(' expression ')'` | `parse_expression` | `u8(u8(u8(...x...)))` | **255, measured (#4 step 2)** | **256 and 300, measured** | `depth_conv_*` (plain + ASan) |
@@ -551,7 +551,7 @@ Not cycles: `PRIM_TYPE` inside `type` is a leaf, so cycle 5 (`type -> type`) is 
 
 #### Diagnostics added by r1 Phase B
 
-Registered in `docs/error_codes.md` now (marked "specified, not yet emitted"); the codes are reserved forever from this commit on:
+Registered in `docs/error_codes.md` (both now emitted: E0108 since #4 step 5, E0109 since step 6); the codes are reserved forever:
 
 | Code | Message (exact) | Fires | Fix hint |
 |---|---|---|---|
@@ -631,28 +631,34 @@ Per `docs/MANNA_PRINCIPLES.md` Part 4 — recorded here so the implementation bl
 
 ## 8. Feature Admission Test records
 
-The five-item test is `docs/MANNA_PRINCIPLES.md`'s "Feature Admission Test". One record per language change that went through it; r1 Phase B (#4, #5, #6) is the first batch. **Item 2 requires golden tests, which can't exist for spec-only changes, so every record below is **"pending admission (goldens due in #4 step)"**: the spec is accepted, and the feature is not allowed to merge until the #4 step lands the goldens listed.** A record can only be upgraded to "admitted" by that step, which also closes the item in `docs/PARSER_STEP4.md`'s checklist.
+The five-item test is `docs/MANNA_PRINCIPLES.md`'s "Feature Admission Test". One record per language change that went through it; r1 Phase B (#4, #5, #6) is the first batch. Item 2 requires golden tests, which can't exist for spec-only changes, so each record was written as "pending admission (goldens due in #4 step)". **At the close of the #4 parser step (step 7), all three are ADMITTED:** every golden the record required exists, passes in plain and ASan builds, and is named below (the planned names in the Phase B text were adjusted where the real ones differ). A record is only upgraded to "admitted" with its goldens cited; the status line at the head of each record says so.
 
 ### #4 - struct construction, array literals, conversions, reserved primitive names
 
+**Status: ADMITTED (step 7).**
+
 1. **Principles / locked decisions:** no violation found. Supports principle 2 (conversions are explicit; no zero-initialized or partially-initialized aggregates), 3 (a constructor names every field at the point of use), 5 (LL(1) re-verified, §4), 9 (`u64(x)` is a word-led form, not a cast symbol or `as`), 6 (diagnostics registered). §7 items 1-8 are untouched; item 2 (naming) is what keeps `Point(...)` and `f(...)` visually distinct. One tension recorded under item 5 below.
-2. **Spec entry / goldens / errors:** spec = §2, §4 grammar + "Reserved words, constructors, and conversions". Errors = generic E0105 sites documented as exceptions (no dedicated message adds information); IR-stage checks listed without codes, none shipping. **Goldens: not yet written.** Required in the #4 step, plain + ASan: one per decision row of the LL(1) table (including the `[`-adjacency cases), `depth_array_*`/`depth_repeat_*`/`depth_conv_*`/`depth_namedarg_*` pairs at the predicted 255/256 and 300, `repeat_zero` (`[v; 0]` parses, dumps as an `array_repeat` node with count 0) and `repeat_one_nonlist` (`[v; 1]` parses), each documented exception, the `[IDENT]`-before-`fn` misfire and repeat-literal-skip cases from §4 "Recovery" as regression goldens, the `lexer` `basic.tokens` update, and a re-diff showing the 22 type-using parser goldens unchanged.
+2. **Spec entry / goldens / errors:** spec = §2, §4 grammar + "Reserved words, constructors, and conversions". Errors = generic E0105 sites documented as exceptions (no dedicated message adds information); IR-stage checks listed without codes, none shipping. **Goldens: all written and passing** (plain + ASan, `make test-parser`): reserved words - `tests/lexer/keywords_types` (whole-token matching), `err_reserved_word_{let_name,fn_name,param_name,field_name,struct_name,attribute}`, `err_unit_type_positions`, `prim_types_every_position`, `reserved_words_whole_token_only`, with all 22 type-using parser goldens byte-identical and `tests/lexer/basic.tokens` changed in exactly the 8 `IDENT`->`KW_*` lines; conversions - `convert_*` (basic, nested, every type, `bool(x)`/`u8(true)` parse, as statement, as assignment target) and `err_convert_*` (`u8()`, `u8(a, b)`, bare `u8`, `u8(x)(y)`, `unit(x)`, unclosed); arrays - `array_*`, `repeat_{basic,zero,one,hex,nested_value,of_conversion}`, `err_array_*`, `err_repeat_*`; construction - `namedarg_*` (struct construction, mixed, non-name left side, nested, array/conversion values), `err_namedarg_*`; the `'['` peek - `peek_*`; recovery regressions - `err_recovery_array_shaped_attribute` (the `[IDENT] fn` misfire), `err_recovery_semi_in_bracket_not_boundary` and `err_recovery_repeat_in_bracket_cascade` (the repeat-literal skip cases), `err_recovery_array_unclosed_then_{let,rbrace,fn}`, `attribute_vs_array_toplevel`; depth, **measured not predicted** - `depth_conv_*`, `depth_array_*`, `depth_repeat_*`, `depth_namedarg_*` (255 ok / 256 and 300 fail each).
 3. **Scope:** v0. §2 already puts fixed-size arrays and structs in v0 ("driver and microkernel task formatting need them now") but defined no way to write a value of either, and with no implicit conversions (principle 2) mixed-width integer code cannot be written at all without explicit conversion. These complete v0's type story; no v1 feature is pulled forward.
 4. **Machine cost (Wasm MVP, per construct; exact instruction sequences get recorded when the backend lowers each one, §3):** struct construction = one store per field into a stack/linear-memory slot, no allocation (no heap in v0), O(fields). Array literal = one store per element, O(N). `[v; N]` = `N` is a compile-time `NUMBER`, so a statically-known O(N) store loop, **lowered as a counted loop, not `memory.fill`** (bulk-memory is outside the MVP target, §2) and so subject to loop-counter injection like any loop. Conversion (**specified**; the exact sequences are fixed when the backend is written, and assume the backend keeps sub-32-bit values normalized in an `i32`, a backend decision): value-preserving widening is zero or one instruction (`u8`->`u32` and `i8`->`i32` are free; `u32`->`u64` is `i64.extend_i32_u`, `i32`->`i64` is `i64.extend_i32_s`). Anything that can fail is **a compare-and-trap**: the operand is duplicated through one scratch local (`local.tee`), tested, and a forward `if` branches to `unreachable` - roughly 4 instructions for a sign test (`i32`->`u32`, `u32`->`i32`, signed->wider-unsigned) and 5-7 for a range test (`u32`->`u8`; `i32`->`i8` as one biased unsigned compare), plus the extend when widening too; 64-bit forms use the `i64` equivalents at the same count. Per conversion site: O(1), one extra local, one never-taken forward branch, no loop, no call, no memory access; the trap itself is Wasm's `unreachable`, the same mechanism overflow traps use. The verifier may drop the check where it proves the value in range. The native backend's cost (compare plus a conditional jump to a trap stub) is recorded when that backend is written, not here. The v0 maximum array size is an IR-stage limit, not specified here.
 5. **Second way to say the same thing?** Struct construction is the *only* way to create a struct value (`let` always requires an initializer, so declare-then-assign-fields doesn't exist). Conversion has exactly one spelling (no `as`, no implicit form; `bool`<->integer is not a conversion in v0, so `bool(x)` is rejected in favor of `x != 0` and `u8(b)` has no spelling at all). **Overlap closed by a formatter rule, not accepted as a tension:** `[0, 0, 0]` and `[0; 3]` mean the same, so the canonical form is fixed by `manna fmt` (§7 item 6; principle 1: "the official formatter defines the layout... the same meaning always produces the same text"). **Formatter requirement (recorded here; `fmt` is unbuilt, so this binds it when it's written):** (a) an array literal of length >= 2 whose elements are all the *same literal token* - same token kind and same lexeme, so `[0, 0, 0]` and `[true, true]` qualify while `[0, 0x0]` and `[x, x]` do not - is rewritten to `[v; N]` (`[0, 0, 0]` -> `[0; 3]`); (b) a repeat literal with `N == 1` is rewritten to the list form (`[v; 1]` -> `[v]`), which the user's rule (a) leaves otherwise as a second spelling of `[v]` - flagged as an addition to confirm; (c) every other array literal is left as written. After (a)-(c) each value has exactly one canonical text. This is a formatter requirement only: both forms stay legal *input* to the parser, and the compiler treats them identically.
 
 ### #5 - at most one comparison/equality operator per `&&`/`||` operand
 
+**Status: ADMITTED (step 7).**
+
 1. **Principles / locked decisions:** principles 1 (parentheses are the one way to combine them), 2, 5, 6; extends Part 3's "Chained comparisons" and "C operator-precedence traps" rows. No locked decision touched. **It does reverse currently-accepted, golden-tested behavior** (`a<b==c`, `a==b<c`), which is not a locked decision but is called out in the grammar comment and must be confirmed.
-2. **Spec / goldens / errors:** spec = §4 `relational` + comment; E0108 registered with an applicable fix. **Goldens, #4 step:** `err_mixed_cmp_eq_lhs`/`_rhs` (the two existing `comparison_wrapped_by_equality_*` inputs, moved from valid to error), a parenthesized-valid pair `(a<b)==c` / `a==(b<c)`, an `&&`-embedded case, and a check that `err_chained_cross_cmp` (`a<b>c`, same class) still yields E0101 unchanged.
+2. **Spec / goldens / errors:** spec = §4 `relational` + comment; E0108 registered with an applicable fix. **Goldens: all written and passing:** the two flipped goldens kept their names, `comparison_wrapped_by_equality_{lhs,rhs}` (valid -> E0108), plus `err_mixed_*` (`ge_ne`, `three_ops`, `eq_lt_eq`, `in_and_operand`, `statement`, `two_statements`, `assign_rhs`, `if_condition`, `for_step`, `for_cond`, `return`, `call_arg`, `second_operand_unparseable`, `full_chain`), the valid pair `relational_parenthesized_{lhs,rhs}`, `relational_{in_logical_operands,each_operand_one,bitand_equality,unary_not}`, the E0101 side `err_chained_{same_cmp,same_eq,cross_cmp,eq_ne,le_gt}` (unchanged messages), and the E0108 fix-it positions pinned in `parser_fixes_test.c`. One unanticipated consequence: `full_chain_smoke` had its input parenthesized (`c==(d<e)`) so it still walks every precedence level.
 3. **Scope:** v0; a parser-level restriction on existing operators.
 4. **Machine cost:** none - compile-time only, no runtime construct added or changed.
 5. **Second way?** It removes one: `a < b == c` and `(a < b) == c` meant the same thing; now only the second is writable.
 
 ### #6 - reserve `unit`; `-> unit` is an error; absent return type dumps as `(return_type)`
 
+**Status: ADMITTED (step 7).**
+
 1. **Principles / locked decisions:** principle 1 (omitting the annotation is the single way to say "returns nothing"), 15 (signatures fully typed - absence is already the stated, not inferred, form per §2), 11 (the interchange form must have one rendering per meaning), 6. No locked decision touched.
-2. **Spec / goldens / errors:** spec = §2, §4 `function_decl` comment, golden-format bullet; E0109 registered with an applicable fix. **Goldens, #4 step:** `err_return_unit` (+ fix-it), `unit` as a name and in other type positions (the documented E0105 exceptions), and regeneration of the 14 `(return_type unit)` goldens with every other golden re-diffed to be byte-identical.
+2. **Spec / goldens / errors:** spec = §2, §4 `function_decl` comment, golden-format bullet; E0109 registered with an applicable fix. **Goldens: all written and passing:** `err_return_unit{,_newline,_comment,_line_comment,_body_also_has_error,_between_valid_fns}` (E0109, the function stays in the tree), `err_return_unit_{array_element,then_bracket,missing_body}` (stay E0105), `return_type_absent`, `unit` in every other position in `err_unit_type_positions` and `err_reserved_word_*`, the E0109 fix-it forms pinned in `parser_fixes_test.c`, and the dump change proven by script: of the 35 goldens containing `(return_type unit)`, 34 reproduce byte for byte when `(return_type)` is reverted (the 35th, `err_unit_type_positions`, also gained E0109); every other golden byte-identical.
 3. **Scope:** v0.
 4. **Machine cost:** none - no runtime construct.
 5. **Second way?** It removes one: `fn f() {}` and `fn f() -> unit {}` can no longer both be written.
