@@ -18,7 +18,7 @@
  * input is simpler than three separate harnesses, and the dispatch
  * itself is pure and deterministic given the bytes, so there's nothing
  * lost by sharing one entry point. setjmp/longjmp mirrors parser_main.c's
- * own fatal-path handling exactly: all three "abandon this input"
+ * fatal path (without the printing): all three "abandon this input"
  * escapes (arena cap, depth cap, error cap) are expected outcomes, not
  * crashes - only an actual trap/ASan/UBSan report, a hang, or (with
  * MANNA_FUZZ_TRACE_LAST_RESORT, see parser.c) reaching the top-level

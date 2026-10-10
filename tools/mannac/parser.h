@@ -38,7 +38,7 @@ Span token_span(Token t);
 /* Parses one '{' statement* '}' block. `statement` recognizes every
  * alternative as of Step 7 (let/if/while/for/return/break/continue/
  * postfix_stmt/expr_stmt) - anything else in statement position is a
- * clean "expected statement, found X" (E0105), not a crash or a
+ * clean "expected expression, found X" (E0105), not a crash or a
  * silently-accepted no-op. As of Step 10b, a malformed statement doesn't
  * abort the whole block: it's dropped (no placeholder node) and parsing
  * resumes at the next token owned by any currently-active recovery level

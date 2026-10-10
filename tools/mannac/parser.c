@@ -210,23 +210,29 @@ static const char *token_describe(Arena *a, Token t) {
  *      Counted by: parse_if_stmt's own hook - this is exactly why it
  *      needs one, the same reasoning as parse_unary and parse_type.
  *   8. primary -> expression (the PRIM_TYPE '(' expression ')' conversion,
- *      "u8(u8(u8(x)))") - added in #4 step 2; "cycle 10" in docs/M2_PLAN.md's
- *      depth table, whose numbering counts that table's rows, not this list.
+ *      "u8(u8(u8(x)))") - added in #4 step 2. Back-edge 8 here is row 10 of
+ *      docs/M2_PLAN.md's depth table.
  *      Counted by: parse_expression's hook, same as cycles 2-4.
  *   9. primary -> array_body -> expression (array literal elements and the
  *      repeat literal's value, "[[[x]]]", "[[[x; 1]; 1]; 1]") - added in #4
- *      step 3; "cycle 9" in docs/M2_PLAN.md's depth table (that numbering
- *      counts the table's rows, so this list's items 8 and 9 are the
- *      table's cycles 10 and 9). The repeat count is a NUMBER leaf.
+ *      step 3. Back-edge 9 here is row 9 of the plan's depth table. The
+ *      repeat count is a NUMBER leaf.
  *      Counted by: parse_expression's hook, same as cycles 2-4.
  *
- * Error recovery realizes cycles 6 and 7 a second way, and is NOT an
- * eighth cycle: handle_header_failure -> parse_block (the recovered
+ * (This list numbers back-edges in the order they were added; the plan's
+ * table numbers its own rows, and only the two entries above differ - the
+ * conversion was added before the array literal here, but the table lists
+ * the array literal first. Wherever a comment below cites "row N" it means
+ * the table; "back-edge N" means this list.)
+ *
+ * Error recovery realizes cycles 6 and 7 a second way, and is NOT another
+ * back-edge: handle_header_failure -> parse_block (the recovered
  * body), and, since the R1 fix, parse_if_stmt -> handle_header_failure ->
  * recover_else_branch -> parse_if_stmt / parse_block (the recovered else
  * chain). Each passes through the same counted function as the direct
  * path (parse_block / parse_if_stmt - the latter hooks on entry, before
- * any recovery runs), so recovery adds no back-edge to the list above. Measured, not predicted:
+ * any recovery runs), so recovery adds no back-edge to the list above.
+ * Measured, not predicted:
  * a failed `if` header followed by a valid else-if chain caps at 254
  * total `if`s (255 and 300 fail with E0103), identical to the direct
  * chain - tests/parser/depth_elseif_recovered_*.
@@ -684,8 +690,8 @@ static Expr *parse_primary(Parser *p) {
         case TOK_LBRACKET: {
             /* '[' array_body ']' : array_body ::= expression
              * ( { ',' expression } | ';' NUMBER ). Both forms re-enter
-             * parse_expression (counted) - depth cycle 9 in
-             * docs/M2_PLAN.md's table. No trailing comma, and `[]` is an
+             * parse_expression (counted) - back-edge 9
+             * (row 9 of docs/M2_PLAN.md's depth table). No trailing comma, and `[]` is an
              * error (no element to infer a type from): both fall out of
              * parse_expression failing on ']'. N in `[v; N]` is a NUMBER
              * token, not an expression (v0 has no constant evaluation), so
@@ -750,8 +756,8 @@ static Expr *parse_primary(Parser *p) {
              * IDENT) it never takes an arg_list: `u8()` and `u8(a, b)` are
              * syntax errors here. Which conversions are legal (bool <-> int
              * is not) is an IR-stage decision, so `bool(x)` and `u8(true)`
-             * parse. Re-enters parse_expression (counted) - depth cycle 10
-             * in docs/M2_PLAN.md's table. */
+             * parse. Re-enters parse_expression (counted) - back-edge 8
+             * (row 10 of docs/M2_PLAN.md's depth table). */
             advance(p);
             if (p->cur.kind != TOK_LPAREN) {
                 parser_error(p->ps, diag_expected(p->ps->arena, token_span(p->cur), "'('",
