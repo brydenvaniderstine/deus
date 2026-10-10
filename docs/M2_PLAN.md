@@ -261,7 +261,7 @@ rel_op            ::= '<' | '>' | '<=' | '>=' | '==' | '!=' ;
      E0108, with a parenthesizing fix-it. Parenthesized operands are
      fine (`(a < b) == c`): '(' re-enters `expression`, so each paren
      group is its own operand. BEHAVIOR CHANGE (done in step 5):
-     `tests/parser/comparison_wrapped_by_equality_{lhs,rhs}` (`a<b==c`,
+     `tests/parser/err_mixed_cmp_eq_{lhs,rhs}` (`a<b==c`, formerly `comparison_wrapped_by_equality_*`,
      `a==b<c`) used to parse and are now E0108 error goldens, and
      `full_chain_smoke` (its input contained `c==d<e`) had its input
      parenthesized to `c==(d<e)` so it still walks the whole precedence
@@ -508,7 +508,7 @@ Also: `sync_skip` tracks `'('`/`')'` and `'['`/`']'` depth so that a `';'` insid
 | 9 | `relational ::= bitor [ rel_op bitor ]` | a `rel_op` token or not | `rel_op ∉ FOLLOW(relational)`. The follow-up "another `rel_op` right after?" is a deterministic error production on the next token (E0101 same class / E0108 mixed class), not a second parse path. |
 | 10 | `'->' type` | `KW_UNIT` after `'->'` | `KW_UNIT ∉ FIRST(type)`, so it can never be a valid start; the dedicated E0109 is an error production on that single token. |
 
-**Honest scope of this claim:** it is a hand argument over the productions (the repo has no FIRST/FOLLOW generator), so it is exactly as strong as the table above. The mechanical evidence has to come from the #4 step: one golden per decision row above (including the rows-6 and -8 adjacency cases, e.g. a statement beginning `[1, 2][0] = 3;` right after an `if` block), plus the fuzz run with the last-resort trap build described under "Recovery" below.
+**Honest scope of this claim:** it is a hand argument over the productions (the repo has no FIRST/FOLLOW generator), so it is exactly as strong as the table above. The mechanical evidence has to come from the #4 step: one golden per decision row above (including the rows-6 and -8 adjacency cases, e.g. a statement beginning `[1, 2][0] = 3;` right after an `if` block - `tests/parser/array_statement_after_if_block`), plus the fuzz run with the last-resort trap build described under "Recovery" below.
 
 #### Recovery: `'['` in `primary`'s FIRST set
 
@@ -650,7 +650,7 @@ The five-item test is `docs/MANNA_PRINCIPLES.md`'s "Feature Admission Test". One
 **Status: ADMITTED (step 7).**
 
 1. **Principles / locked decisions:** principles 1 (parentheses are the one way to combine them), 2, 5, 6; extends Part 3's "Chained comparisons" and "C operator-precedence traps" rows. No locked decision touched. **It does reverse currently-accepted, golden-tested behavior** (`a<b==c`, `a==b<c`), which is not a locked decision but is called out in the grammar comment and must be confirmed.
-2. **Spec / goldens / errors:** spec = §4 `relational` + comment; E0108 registered with an applicable fix. **Goldens: all written and passing:** the two flipped goldens kept their names, `comparison_wrapped_by_equality_{lhs,rhs}` (valid -> E0108), plus `err_mixed_*` (`ge_ne`, `three_ops`, `eq_lt_eq`, `in_and_operand`, `statement`, `two_statements`, `assign_rhs`, `if_condition`, `for_step`, `for_cond`, `return`, `call_arg`, `second_operand_unparseable`, `full_chain`), the valid pair `relational_parenthesized_{lhs,rhs}`, `relational_{in_logical_operands,each_operand_one,bitand_equality,unary_not}`, the E0101 side `err_chained_{same_cmp,same_eq,cross_cmp,eq_ne,le_gt}` (unchanged messages), and the E0108 fix-it positions pinned in `parser_fixes_test.c`. One unanticipated consequence: `full_chain_smoke` had its input parenthesized (`c==(d<e)`) so it still walks every precedence level.
+2. **Spec / goldens / errors:** spec = §4 `relational` + comment; E0108 registered with an applicable fix. **Goldens: all written and passing:** the two flipped goldens, now `err_mixed_cmp_eq_{lhs,rhs}` (valid -> E0108; they kept their old `comparison_wrapped_by_equality_*` names until the v0 audit fixes renamed them), plus `err_mixed_*` (`ge_ne`, `three_ops`, `eq_lt_eq`, `in_and_operand`, `statement`, `two_statements`, `assign_rhs`, `if_condition`, `for_step`, `for_cond`, `return`, `call_arg`, `second_operand_unparseable`, `full_chain`), the valid pair `relational_parenthesized_{lhs,rhs}`, `relational_{in_logical_operands,each_operand_one,bitand_equality,unary_not}`, the E0101 side `err_chained_{same_cmp,same_eq,cross_cmp,eq_ne,le_gt}` (unchanged messages), and the E0108 fix-it positions pinned in `parser_fixes_test.c`. One unanticipated consequence: `full_chain_smoke` had its input parenthesized (`c==(d<e)`) so it still walks every precedence level.
 3. **Scope:** v0; a parser-level restriction on existing operators.
 4. **Machine cost:** none - compile-time only, no runtime construct added or changed.
 5. **Second way?** It removes one: `a < b == c` and `(a < b) == c` meant the same thing; now only the second is writable.
