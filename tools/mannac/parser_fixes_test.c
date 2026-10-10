@@ -327,7 +327,12 @@ static char *gen_list_input(const char *prefix, const char *open, const char *cl
     return buf;
 }
 
-static void check_e0110(const char *src, size_t len, size_t arena_size, const char *what) {
+/* want_line/want_col: where E0110 must point - the last token the parser had
+ * read when the arena ran out (fixes-audit finding 5: only "some position"
+ * was asserted before). These are exact for this arena size and these node
+ * sizes (LP64); a change to either is a deliberate re-pin, not noise. */
+static void check_e0110(const char *src, size_t len, size_t arena_size, int want_line, int want_col,
+                        const char *what) {
     /* static: read after the longjmp (C11 7.13.2.1: an automatic non-volatile
      * object changed after setjmp is indeterminate there; see parser_main.c). */
     static ParserState ps;
@@ -345,20 +350,25 @@ static void check_e0110(const char *src, size_t len, size_t arena_size, const ch
     assert(strcmp(d->code, "E0110") == 0);
     assert(strcmp(d->message, "input too large: the compiler's memory limit was exceeded") == 0);
     assert(d->fix == NULL && d->expected == NULL && d->found == NULL);
-    assert(d->span.start_line >= 1 && d->span.start_col >= 1);
+    if (d->span.start_line != want_line || d->span.start_col != want_col) {
+        fprintf(stderr, "FAIL: %s: E0110 at %d:%d, want %d:%d\n", what, d->span.start_line, d->span.start_col,
+                want_line, want_col);
+        exit(1);
+    }
+    assert(d->span.end_line == d->span.start_line && d->span.end_col == d->span.start_col); /* a point, not a range */
     parser_state_destroy(&ps);
 }
 
 static void test_arena_exhaustion_reports_e0110(void) {
     size_t len;
     char *big_array = gen_list_input("manna v0;\nfn f() {\n    let a = ", "[", "];\n}\n", 300000, &len);
-    check_e0110(big_array, len, 16 * 1024 * 1024, "300,000-element array literal");
+    check_e0110(big_array, len, 16 * 1024 * 1024, 3, 673221, "300,000-element array literal");
     free(big_array);
     char *big_call = gen_list_input("manna v0;\nfn f() {\n    g(", "", ");\n}\n", 300000, &len);
-    check_e0110(big_call, len, 16 * 1024 * 1024, "flat 300,000-argument call");
+    check_e0110(big_call, len, 16 * 1024 * 1024, 3, 673214, "flat 300,000-argument call");
     free(big_call);
     char *small = gen_list_input("manna v0;\nfn f() {\n    let a = ", "[", "];\n}\n", 20000, &len);
-    check_e0110(small, len, 256 * 1024, "20,000-element array against a 256 KiB arena");
+    check_e0110(small, len, 256 * 1024, 3, 7038, "20,000-element array against a 256 KiB arena");
     free(small);
     printf("PASS: arena exhaustion records exactly one E0110 (array, flat call, small arena), no fix-it\n");
 }
