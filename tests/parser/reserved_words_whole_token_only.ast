@@ -1,6 +1,6 @@
 (function_decl@2:1-9:2 f
   (params)
-  (return_type unit)
+  (return_type)
   (block@2:8-9:2
     (let_stmt@3:5-3:17 u8x
       (number@3:15-3:16 1))

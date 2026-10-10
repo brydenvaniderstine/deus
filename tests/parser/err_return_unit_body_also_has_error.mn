@@ -1,0 +1,5 @@
+manna v0;
+fn f() -> unit {
+    let = 1;
+    let b = 2;
+}

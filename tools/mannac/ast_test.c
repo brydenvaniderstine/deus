@@ -139,7 +139,7 @@ static void test_struct_and_attributed_function(void) {
         "  (params\n"
         "    (param@24:13-24:21 addr u64)\n"
         "    (param@24:24-24:30 val u8))\n"
-        "  (return_type unit)\n"
+        "  (return_type)\n"
         "  (block@24:33-24:47\n"
         "    (let_stmt@24:35-24:45 x\n"
         "      (number@24:43-24:44 1))))";

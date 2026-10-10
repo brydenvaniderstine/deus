@@ -15,6 +15,6 @@
         (ident@9:16-9:17 b)))))
 (function_decl@12:1-14:2 greet
   (params)
-  (return_type unit)
+  (return_type)
   (block@12:12-14:2
     (return_stmt@13:5-13:12)))

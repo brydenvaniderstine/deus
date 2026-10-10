@@ -1,0 +1,8 @@
+ERRORS:
+2:8 '-> unit' is not written; omit the return type
+
+TREE:
+(function_decl@2:1-4:2 f
+  (params)
+  (return_type)
+  (block@3:10-4:2))

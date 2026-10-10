@@ -59,6 +59,36 @@ Diagnostic diag_mixed_comparison(Arena *a, Span second_operator_span, Span pair_
     return d;
 }
 
+Diagnostic diag_return_unit(Arena *a, Span arrow, Span unit, bool blanks_only_between) {
+    DiagFix *fix = arena_alloc(a, sizeof(DiagFix), alignof(DiagFix));
+    fix->title = "remove the return type";
+    if (blanks_only_between) {
+        fix->n_edits = 1;
+        fix->edits[0].span = arrow;
+        fix->edits[0].span.end_line = unit.end_line;
+        fix->edits[0].span.end_col = unit.end_col;
+        fix->edits[0].text = "";
+    } else {
+        fix->n_edits = 2;
+        fix->edits[0].span = arrow;
+        fix->edits[0].text = "";
+        fix->edits[1].span = unit;
+        fix->edits[1].text = "";
+    }
+
+    Diagnostic d = {0};
+    d.code = "E0109";
+    d.severity = DIAG_ERROR;
+    d.message = "'-> unit' is not written; omit the return type";
+    d.span = arrow;
+    d.span.end_line = unit.end_line;
+    d.span.end_col = unit.end_col;
+    d.expected = NULL;
+    d.found = NULL;
+    d.fix = fix;
+    return d;
+}
+
 Diagnostic diag_assignment_as_condition(Arena *a, Span equals_span, const char *expected) {
     DiagFix *fix = arena_alloc(a, sizeof(DiagFix), alignof(DiagFix));
     fix->title = "use comparison";

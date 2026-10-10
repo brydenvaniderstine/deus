@@ -1,0 +1,11 @@
+ERRORS:
+2:8 '-> unit' is not written; omit the return type
+3:9 expected identifier after 'let', found '='
+
+TREE:
+(function_decl@2:1-5:2 f
+  (params)
+  (return_type)
+  (block@2:16-5:2
+    (let_stmt@4:5-4:15 b
+      (number@4:13-4:14 2))))

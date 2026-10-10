@@ -4,9 +4,9 @@ ERRORS:
 TREE:
 (function_decl@2:1-2:10 a
   (params)
-  (return_type unit)
+  (return_type)
   (block@2:8-2:10))
 (function_decl@4:1-4:10 b
   (params)
-  (return_type unit)
+  (return_type)
   (block@4:8-4:10))

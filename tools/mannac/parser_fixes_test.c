@@ -362,6 +362,63 @@ static void test_e0108_fix_positions(void) {
     printf("PASS: E0108 - fix-it is two zero-width inserts at the exact pair boundaries (incl. parenthesized and multi-line operands)\n");
 }
 
+/* E0109's fix-it (#4 step 6). `-> unit {` on one line with only blanks
+ * between deletes exactly the text "-> unit" with ONE edit; a newline or a
+ * comment between makes it TWO edits (the `->` token, the `unit` token) so
+ * the comment / line break survives. Positions are line:col (end exclusive)
+ * in a file whose line 1 is the version header. The function must STAY in
+ * the tree with no return type. */
+static void check_return_unit_fix(const char *body, int n_edits, int a_l, int a_c1, int a_c2,
+                                  int u_l, int u_c1, int u_c2) {
+    char src[256];
+    snprintf(src, sizeof src, "manna v0;\n%s", body);
+    ParserState ps;
+    parser_state_init(&ps, 1 << 20);
+    if (setjmp(ps.fatal_target) != 0) {
+        fprintf(stderr, "FAIL: unexpected fatal longjmp\n");
+        exit(1);
+    }
+    Lexer lx;
+    lexer_init(&lx, src, strlen(src));
+    NodeList items;
+    bool ok = parser_parse_file(&ps, &lx, &items);
+    assert(ok);
+    assert(ps.diags.len == 1 && strcmp(ps.diags.items[0].code, "E0109") == 0);
+    assert(items.len == 1); /* the function stays in the tree */
+    assert(((Decl *)items.items[0])->as.function_decl.return_type == NULL);
+    const Diagnostic *d = &ps.diags.items[0];
+    assert(d->span.start_line == a_l && d->span.start_col == a_c1);
+    assert(d->span.end_line == u_l && d->span.end_col == u_c2);
+    const DiagFix *f = d->fix;
+    assert(f != NULL && f->n_edits == n_edits);
+    for (int i = 0; i < n_edits; i++) assert(strcmp(f->edits[i].text, "") == 0); /* pure deletions */
+    if (n_edits == 1) {
+        assert(f->edits[0].span.start_line == a_l && f->edits[0].span.start_col == a_c1);
+        assert(f->edits[0].span.end_line == u_l && f->edits[0].span.end_col == u_c2);
+    } else {
+        assert(f->edits[0].span.start_line == a_l && f->edits[0].span.start_col == a_c1);
+        assert(f->edits[0].span.end_line == a_l && f->edits[0].span.end_col == a_c2);
+        assert(f->edits[1].span.start_line == u_l && f->edits[1].span.start_col == u_c1);
+        assert(f->edits[1].span.end_line == u_l && f->edits[1].span.end_col == u_c2);
+    }
+    parser_state_destroy(&ps);
+}
+
+static void test_e0109_fix_positions(void) {
+    /* "-> unit" is cols 8..14 of line 2: one edit deleting exactly that text */
+    check_return_unit_fix("fn f() -> unit { }\n", 1, 2, 8, 10, 2, 11, 15);
+    /* several blanks / a tab between: still one edit, still exactly arrow..unit */
+    check_return_unit_fix("fn f() ->   unit { }\n", 1, 2, 8, 10, 2, 13, 17);
+    check_return_unit_fix("fn f() ->\tunit { }\n", 1, 2, 8, 10, 2, 11, 15);
+    /* a newline between: two edits, `->` and `unit` separately */
+    check_return_unit_fix("fn f() ->\n    unit { }\n", 2, 2, 8, 10, 3, 5, 9);
+    /* a block comment between: two edits, the comment is left alone */
+    check_return_unit_fix("fn f() -> /* c */ unit { }\n", 2, 2, 8, 10, 2, 19, 23);
+    /* a line comment + newline between */
+    check_return_unit_fix("fn f() -> // c\n    unit { }\n", 2, 2, 8, 10, 3, 5, 9);
+    printf("PASS: E0109 - fix-it deletes exactly \"-> unit\" (one edit), or the two tokens when a newline/comment sits between; the function stays in the tree\n");
+}
+
 int main(void) {
     test_token_span_single_line_unchanged();
     test_token_span_multiline_unterminated_comment();
@@ -374,6 +431,7 @@ int main(void) {
     test_sync_counters_reset_at_parse_entry();
     test_e0102_expected_field_per_site();
     test_e0108_fix_positions();
+    test_e0109_fix_positions();
     printf("ALL PASS\n");
     return 0;
 }

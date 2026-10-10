@@ -607,7 +607,11 @@ void decl_print(FILE *out, const Decl *d) {
                 type_print_inline(out, d->as.function_decl.return_type);
                 fprintf(out, ")");
             } else {
-                fprintf(out, "(return_type unit)");
+                /* Absent '-> type' = returns nothing. `unit` is a reserved word
+                 * that cannot be written (E0109), so the word never appears:
+                 * a dump containing `(return_type unit)` is not a valid
+                 * interchange form (docs/M2_PLAN.md golden-format section). */
+                fprintf(out, "(return_type)");
             }
             nl_indent(out, 1);
             stmt_print(out, d->as.function_decl.body, 1);

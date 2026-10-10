@@ -4,16 +4,20 @@ ERRORS:
 4:17 expected type, found 'unit'
 5:10 expected type, found 'unit'
 6:13 expected type, found 'unit'
-7:11 expected type, found 'unit'
+7:8 '-> unit' is not written; omit the return type
 8:18 expected type, found 'unit'
 9:23 expected type, found 'unit'
 
 TREE:
+(function_decl@7:1-7:18 r
+  (params)
+  (return_type)
+  (block@7:16-7:18))
 (function_decl@8:1-8:29 l1
   (params)
-  (return_type unit)
+  (return_type)
   (block@8:9-8:29))
 (function_decl@9:1-9:34 l2
   (params)
-  (return_type unit)
+  (return_type)
   (block@9:9-9:34))

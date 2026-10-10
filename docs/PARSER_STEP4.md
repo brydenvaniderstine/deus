@@ -43,7 +43,7 @@ Every step also updates the `parser.c` header grammar comment (a copy of the gra
 | 3 | **DONE, committed locally, awaiting review.** Array literal and `[v; N]` (depth cycle 9) **and** the `parser_main.c` mode-peek fix | **STOP** (grammar, recovery-adjacent) | `array_*`, `repeat_*` (incl. `repeat_zero`, `repeat_one`), the `[1 +; 3]` cascade pin, the `[IDENT] fn` misfire golden, `depth_array_*`/`depth_repeat_*` |
 | 4 | **DONE, committed locally, awaiting review.** Named args `Point(x: 1)` (cycle 3 extended), `EXPR_NAMED_ARG` | **STOP** (grammar) | `namedarg_*`, `depth_namedarg_*` |
 | 5 | **DONE, committed locally, awaiting review.** `relational` merge + E0108 (flip the two `comparison_wrapped_by_equality_*` goldens); `DiagFix` grows from one edit to a short edit list (two inserts) | **STOP** (grammar + golden flip) | the M2_PLAN E0101/E0108 table, `(a<b)==c`, `&&`-embedded; both inserts pinned in `parser_fixes_test.c` |
-| 6 | E0109 `-> unit` + the `(return_type)` dump change | **STOP** (re-baseline) | re-baseline the 14 `(return_type unit)` goldens; `err_return_unit` |
+| 6 | **DONE, committed locally, awaiting review.** E0109 `-> unit` + the `(return_type)` dump change | **STOP** (re-baseline) | re-baseline the 14 `(return_type unit)` goldens; `err_return_unit` |
 | 7 | Proof and close-out: fuzz both targets with `MANNA_FUZZ_TRACE_LAST_RESORT`, determinism, coverage, flip the Admission Test records to "admitted", STATUS Done entry, archive this file, tag, re-minimize the fuzz corpus | **STOP** (tag) | corpus only |
 
 Depth limits stay predictions until each step's goldens measure them (255/256/300 under plain and ASan); the R1 recovery path's was measured at 254 (see below).

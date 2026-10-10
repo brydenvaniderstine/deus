@@ -1853,6 +1853,13 @@ static bool parse_param_list(Parser *p, NodeList *out_params) {
  * "inside a function body" contexts principle 15 permits inference in.
  * No depth hook of its own: the only recursion here is the body, which
  * is a block (already counted). */
+/* One-token lookahead past the current token, on a throwaway copy of the
+ * lexer (a plain value struct - see lexer.h): is the NEXT token '{'? */
+static bool token_after_is_lbrace(Parser *p) {
+    Lexer peek_lx = *p->lx;
+    return lexer_next(&peek_lx).kind == TOK_LBRACE;
+}
+
 static Decl *parse_function_decl(Parser *p) {
     Span start = token_span(p->cur); /* first attribute's '[', or 'fn' if none */
 
@@ -1902,9 +1909,27 @@ static Decl *parse_function_decl(Parser *p) {
 
     Type *return_type = NULL;
     if (p->cur.kind == TOK_ARROW) {
+        Token arrow = p->cur;
         advance(p);
-        return_type = parse_type(p);
-        if (!return_type) return NULL;
+        if (p->cur.kind == TOK_KW_UNIT && token_after_is_lbrace(p)) {
+            /* `-> unit {`: E0109 (dedicated; "omit the return type"). The
+             * function STAYS in the tree: the annotation is dropped (absent
+             * return type) and the body is parsed normally, so errors in it
+             * still surface. Only this exact shape - `-> [3]unit` and
+             * `-> unit[...]` are not "writing unit as the return type" and
+             * stay the generic "expected type" (E0105) from parse_type. */
+            Token unit = p->cur;
+            const char *gap_start = arrow.lexeme + arrow.lexeme_len;
+            bool blanks = arrow.line == unit.line;
+            for (const char *c = gap_start; blanks && c < unit.lexeme; c++) {
+                if (*c != ' ' && *c != '\t') blanks = false;
+            }
+            parser_error(p->ps, diag_return_unit(p->ps->arena, token_span(arrow), token_span(unit), blanks));
+            advance(p); /* consume 'unit'; return_type stays NULL */
+        } else {
+            return_type = parse_type(p);
+            if (!return_type) return NULL;
+        }
     }
 
     Stmt *body = parse_block(p);

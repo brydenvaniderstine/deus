@@ -4,5 +4,5 @@ ERRORS:
 TREE:
 (function_decl@1:13-1:24 foo
   (params)
-  (return_type unit)
+  (return_type)
   (block@1:22-1:24))

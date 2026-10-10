@@ -64,6 +64,16 @@ Diagnostic diag_chained_comparison(Span second_operator_span);
  * right operand) - so no source text is needed, only spans. */
 Diagnostic diag_mixed_comparison(Arena *a, Span second_operator_span, Span pair_left, Span pair_right);
 
+/* E0109: "'-> unit' is not written; omit the return type". `unit` is reserved
+ * but is not a type; "returns nothing" is spelled by omitting the annotation.
+ * Reported over the whole `-> unit` (arrow start to unit end). The fix deletes
+ * it: when `->` and `unit` sit on one line with only blanks between, ONE edit
+ * deletes exactly the text "-> unit" (arrow start to unit end); otherwise
+ * (a newline or a comment between) TWO edits delete the `->` token and the
+ * `unit` token separately, so a comment or line break between them is kept,
+ * never silently destroyed. */
+Diagnostic diag_return_unit(Arena *a, Span arrow, Span unit, bool blanks_only_between);
+
 /* "assignment is a statement; did you mean '=='?" - raised when a
  * condition is followed by '=' where its terminator was expected.
  * `expected` names that terminator for the JSON `expected` field: "'{'"

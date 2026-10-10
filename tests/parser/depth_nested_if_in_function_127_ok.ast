@@ -1,6 +1,6 @@
 (function_decl@2:1-2:1157 f
   (params)
-  (return_type unit)
+  (return_type)
   (block@2:8-2:1157
     (if_stmt@2:10-2:1155
       (ident@2:13-2:14 a)

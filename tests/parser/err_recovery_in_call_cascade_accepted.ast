@@ -5,5 +5,5 @@ ERRORS:
 TREE:
 (function_decl@2:1-4:2 f
   (params)
-  (return_type unit)
+  (return_type)
   (block@2:8-4:2))

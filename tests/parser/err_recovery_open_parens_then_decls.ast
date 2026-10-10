@@ -4,11 +4,11 @@ ERRORS:
 TREE:
 (function_decl@2:1-4:2 f
   (params)
-  (return_type unit)
+  (return_type)
   (block@2:8-4:2))
 (function_decl@5:1-5:10 g
   (params)
-  (return_type unit)
+  (return_type)
   (block@5:8-5:10))
 (struct_decl@6:1-6:20 S
   (fields

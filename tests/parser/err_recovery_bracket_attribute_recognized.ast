@@ -5,5 +5,5 @@ TREE:
 (function_decl@3:1-4:10 g
   (attributes kernel_hook)
   (params)
-  (return_type unit)
+  (return_type)
   (block@4:8-4:10))
