@@ -1,0 +1,6 @@
+manna v0;
+fn f() {
+    let x = 1;
+    struct S { a: u8, }
+    let y = 2;
+}

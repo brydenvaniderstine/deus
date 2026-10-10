@@ -270,6 +270,40 @@ static void test_sync_counters_reset_at_parse_entry(void) {
     printf("PASS: parse entry - sync_* counters and recovered_past_body are 0 after a parse that followed an abandoned one\n");
 }
 
+/* Post-audit finding #0: an unclosed block that meets `fn`/`struct` reports
+ * once per token, not once per enclosing block (ParserState remembers the
+ * position of the last report). That memory is per-parse state: parsing the
+ * SAME stray-fn text a second time with the same ParserState must report
+ * the unclosed block again, not treat it as a repeat of the first parse's. */
+static void test_unclosed_block_report_resets_between_parses(void) {
+    const char *bad = "manna v0;\nfn f() {\n    let x = 1;\nfn g() {}\n";
+    ParserState ps;
+    parser_state_init(&ps, 1 << 20);
+    if (setjmp(ps.fatal_target) != 0) {
+        fprintf(stderr, "FAIL: unexpected fatal longjmp\n");
+        exit(1);
+    }
+    for (int round = 1; round <= 2; round++) {
+        Lexer lx;
+        lexer_init(&lx, bad, strlen(bad));
+        NodeList items;
+        parser_parse_file(&ps, &lx, &items);
+        assert(items.len == 2); /* f kept (partial) and g */
+        assert(ps.diags.len == (size_t)round);
+        assert(strcmp(ps.diags.items[round - 1].code, "E0105") == 0);
+        assert(ps.diags.items[round - 1].span.start_line == 4);
+    }
+    assert(ps.unclosed_line == 4 && ps.unclosed_col == 1); /* precondition of the reset below */
+    const char *ok = "manna v0;\nfn h() {}\n";
+    Lexer lx;
+    lexer_init(&lx, ok, strlen(ok));
+    NodeList items;
+    assert(parser_parse_file(&ps, &lx, &items));
+    assert(ps.unclosed_line == 0 && ps.unclosed_col == 0);
+    parser_state_destroy(&ps);
+    printf("PASS: unclosed-block report - once per token, and the memory resets at parse entry\n");
+}
+
 /* E0102's JSON `expected` field named '{' at every call site, but a `for`
  * header's condition clause is terminated by ';', not '{' (known inaccuracy
  * recorded in docs/error_codes.md since r1 Phase C; message, span and the
@@ -429,6 +463,7 @@ int main(void) {
     test_state_reset_after_fatal_longjmp();
     test_state_reset_error_count_between_parses();
     test_sync_counters_reset_at_parse_entry();
+    test_unclosed_block_report_resets_between_parses();
     test_e0102_expected_field_per_site();
     test_e0108_fix_positions();
     test_e0109_fix_positions();

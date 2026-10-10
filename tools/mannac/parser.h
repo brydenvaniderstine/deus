@@ -47,7 +47,9 @@ Span token_span(Token t);
  * sync_recover_block in parser.c, and docs/M2_PLAN.md's "Error recovery"
  * table. This function still returns NULL if the block's own
  * delimiters are unrecoverably missing (no opening '{', or EOF reached
- * before the closing '}') - recovering from a missing/mismatched
+ * before the closing '}'). A `fn`/`struct` where a statement or '}' was
+ * expected, with a top level above the block, ends the block instead: the
+ * statements so far are kept and the token is left for the top level - recovering from a missing/mismatched
  * delimiter itself is a different problem than recovering from bad
  * content between two well-placed ones, and isn't handled here. */
 Stmt *parser_parse_block(ParserState *ps, Lexer *lx);

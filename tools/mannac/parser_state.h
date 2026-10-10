@@ -74,6 +74,12 @@ typedef struct {
     int      sync_header;
     int      sync_for_header;
     bool     recovered_past_body;
+    /* Position (line, col) of the `fn`/`struct` token at which a block was
+     * last reported unclosed ("expected '}' to close block"), 0 when none.
+     * Every enclosing block sees the same token and would repeat the same
+     * diagnostic; only the innermost reports (parse_block, parser.c). */
+    int      unclosed_line;
+    int      unclosed_col;
 } ParserState;
 
 /* Creates the arena (arena_max_size) and registers fatal_target with it.

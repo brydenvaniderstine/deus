@@ -2,6 +2,10 @@ ERRORS:
 4:1 expected ']' after array elements, found 'fn'
 
 TREE:
+(function_decl@2:1-2:9 f
+  (params)
+  (return_type)
+  (block@2:8-2:9))
 (function_decl@4:1-4:10 g
   (params)
   (return_type)

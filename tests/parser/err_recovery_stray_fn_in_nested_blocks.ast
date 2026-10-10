@@ -1,0 +1,20 @@
+ERRORS:
+6:9 expected '}' to close block, found 'fn'
+7:5 expected struct or function declaration, found '}'
+
+TREE:
+(function_decl@2:1-5:19 f
+  (params)
+  (return_type)
+  (block@2:8-5:19
+    (let_stmt@3:5-3:15 x
+      (number@3:13-3:14 1))
+    (if_stmt@4:5-5:19
+      (ident@4:8-4:9 a)
+      (block@4:10-5:19
+        (let_stmt@5:9-5:19 y
+          (number@5:17-5:18 2))))))
+(function_decl@6:9-6:18 g
+  (params)
+  (return_type)
+  (block@6:16-6:18))

@@ -2,6 +2,10 @@ ERRORS:
 3:8 expected expression, found '='
 
 TREE:
+(function_decl@2:1-2:13 outer
+  (params)
+  (return_type)
+  (block@2:12-2:13))
 (function_decl@4:1-4:10 y
   (params)
   (return_type)

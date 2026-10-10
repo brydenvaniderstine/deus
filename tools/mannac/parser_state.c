@@ -12,6 +12,8 @@ void parser_state_reset_sync(ParserState *ps) {
 void parser_state_reset_for_parse(ParserState *ps) {
     ps->depth = 0;
     ps->error_count = 0;
+    ps->unclosed_line = 0;
+    ps->unclosed_col = 0;
     parser_state_reset_sync(ps);
 }
 

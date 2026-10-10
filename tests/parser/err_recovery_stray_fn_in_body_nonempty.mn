@@ -1,0 +1,6 @@
+manna v0;
+fn f() {
+    let x = 1;
+    fn g() { let z = 3; }
+    let y = 2;
+}

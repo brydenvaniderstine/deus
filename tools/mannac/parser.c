@@ -1546,6 +1546,22 @@ static Stmt *parse_statement(Parser *p) {
     }
 }
 
+/* True when the current token is `fn` or `struct` AND a top-level level is
+ * active to take it. Neither can appear inside a block (v0 has no nested
+ * functions or structs), so seeing one means the block is unclosed - a
+ * missing '}' is by far the likeliest cause, and the declaration belongs to
+ * the top level either way. parse_block treats it as the implicit end of
+ * the block: one diagnostic, the statements parsed so far are kept, and the
+ * token is left for the top level (previously the block returned NULL, which
+ * dropped the whole enclosing function - post-audit finding #0). Gated on
+ * sync_top_level like the rest of recovery: a block parsed on its own
+ * (parser_parse_block, no top level above it) has nobody to hand the token
+ * to, so there it stays an ordinary bad statement. */
+static bool at_top_level_start(const Parser *p) {
+    return p->ps->sync_top_level > 0 &&
+           (p->cur.kind == TOK_KW_FN || p->cur.kind == TOK_KW_STRUCT);
+}
+
 /* block ::= '{' { statement } '}' ;
  * Carries its own depth_enter/depth_exit - added proactively in Step 6,
  * before any cycle closed through it (none of let/return/break/continue
@@ -1589,7 +1605,8 @@ static Stmt *parse_block(Parser *p) {
 
     NodeList stmts;
     node_list_init(&stmts);
-    while (p->cur.kind != TOK_RBRACE && p->cur.kind != TOK_EOF) {
+    bool unclosed_already_reported = false;
+    while (p->cur.kind != TOK_RBRACE && p->cur.kind != TOK_EOF && !at_top_level_start(p)) {
         Stmt *s = parse_statement(p);
         if (!s) {
             if (p->ps->recovered_past_body) {
@@ -1621,6 +1638,15 @@ static Stmt *parse_block(Parser *p) {
                  * failure). The while condition below will see it. */
                 break;
             }
+            if (at_top_level_start(p)) {
+                /* A skip landed on `fn`/`struct`: end the block here and
+                 * keep the statements parsed so far. This statement's own
+                 * error is already reported, and it is what led here, so
+                 * the unclosed block is not reported a second time (one
+                 * mistake, one diagnostic - the Step 10b rule). */
+                unclosed_already_reported = true;
+                break;
+            }
             /* Owned by neither this statement nor this block - propagate
              * without consuming, trusting an outer level (another block,
              * a header, or the top level) to recognize it once control
@@ -1636,8 +1662,25 @@ static Stmt *parse_block(Parser *p) {
     p->ps->sync_block--;
 
     if (p->cur.kind != TOK_RBRACE) {
-        parser_error(p->ps, diag_expected(p->ps->arena, token_span(p->cur), "'}'",
-                                           token_describe(p->ps->arena, p->cur), "to close block"));
+        bool repeat = at_top_level_start(p) && p->ps->unclosed_line == p->cur.line &&
+                      p->ps->unclosed_col == p->cur.col;
+        if (!unclosed_already_reported && !repeat) {
+            if (at_top_level_start(p)) {
+                p->ps->unclosed_line = p->cur.line;
+                p->ps->unclosed_col = p->cur.col;
+            }
+            parser_error(p->ps, diag_expected(p->ps->arena, token_span(p->cur), "'}'",
+                                               token_describe(p->ps->arena, p->cur), "to close block"));
+        }
+        if (at_top_level_start(p)) {
+            /* Keep what was parsed: the block ends at its last statement
+             * (or at the '{' if it has none). The `fn`/`struct` is left
+             * for the top level. */
+            Span end = stmts.len > 0 ? ((const Stmt *)stmts.items[stmts.len - 1])->span : token_span(lbrace);
+            Stmt *partial = stmt_block(p->ps->arena, span_merge(token_span(lbrace), end), stmts);
+            depth_exit(p->ps);
+            return partial;
+        }
         depth_exit(p->ps);
         return NULL;
     }
