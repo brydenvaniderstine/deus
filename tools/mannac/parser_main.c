@@ -4,6 +4,7 @@
 #include "arena.h"
 #include "ast.h"
 #include "diag.h"
+#include "harness_mode.h"
 #include "lexer.h"
 #include "parser.h"
 #include "parser_state.h"
@@ -14,14 +15,10 @@
  * the lexer - never built into anything a user runs directly.
  *
  * Parses an expression, a block, or a whole file, picked by a one-token
- * peek: 'manna'/'struct'/'fn'/'[' means a whole file (Step 8 - these four
- * are the only ways a translation_unit or a top_level_item can start, so
- * this also correctly routes a file that's missing its version_decl -
- * e.g. starting directly with 'struct' - into parser_parse_file, where
- * the missing-version check actually lives); '{' means a block (Step 6-7:
- * every statement kind); anything else means an expression (Steps 4-5).
- * No existing block/expression golden test starts with any of the four
- * file-mode tokens, so this doesn't disturb them. */
+ * peek (harness_mode.h, shared with the fuzz target): 'manna'/'struct'/
+ * 'fn' or an attribute prefix means a whole file (Step 8); '{' means a
+ * block (Step 6-7: every statement kind); anything else, including an
+ * array-literal '[', means an expression (Steps 4-5). */
 
 static char *read_file(const char *path, size_t *out_len) {
     FILE *f = fopen(path, "rb");
@@ -39,23 +36,6 @@ static char *read_file(const char *path, size_t *out_len) {
     fclose(f);
     *out_len = (size_t)size;
     return buf;
-}
-
-/* '[' starts either an attribute (whole-file mode) or an array literal
- * (expression mode) - since #4 step 3 it can no longer imply a file by
- * itself. A file-level '[' is one or more `[ IDENT ]` groups followed by
- * 'fn' (the shape parse_function_decl's attribute loop accepts), so look
- * past as many groups as there are; anything else is an expression. Uses
- * the caller's lexer copy (a plain value struct, advanced here), `first`
- * being the already-read '['. */
-static bool starts_with_attribute(Lexer *lx, Token first) {
-    Token t = first;
-    while (t.kind == TOK_LBRACKET) {
-        if (lexer_next(lx).kind != TOK_IDENT) return false;
-        if (lexer_next(lx).kind != TOK_RBRACKET) return false;
-        t = lexer_next(lx);
-    }
-    return t.kind == TOK_KW_FN && first.kind == TOK_LBRACKET;
 }
 
 /* parser_parse_expression and parser_parse_block parse ONE construct and
@@ -110,12 +90,9 @@ int main(int argc, char **argv) {
         return 0;
     }
 
-    Lexer peek_lx;
-    lexer_init(&peek_lx, src, len);
-    Token first = lexer_next(&peek_lx);
-    bool is_file = (first.kind == TOK_KW_MANNA || first.kind == TOK_KW_STRUCT ||
-                    first.kind == TOK_KW_FN || starts_with_attribute(&peek_lx, first));
-    bool is_block = !is_file && first.kind == TOK_LBRACE;
+    HarnessMode mode = harness_pick_mode(src, len); /* shared with fuzz_parser.c */
+    bool is_file = (mode == HARNESS_MODE_FILE);
+    bool is_block = (mode == HARNESS_MODE_BLOCK);
 
     Lexer lx;
     lexer_init(&lx, src, len);

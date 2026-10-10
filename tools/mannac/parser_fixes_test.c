@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include "harness_mode.h"
 #include "parser.h"
 
 /* Fresh-eyes audit triage (Phase A), covered here rather than as golden
@@ -356,6 +357,39 @@ static void test_arena_exhaustion_reports_e0110(void) {
     printf("PASS: arena exhaustion records exactly one E0110 (array, flat call, small arena), no fix-it\n");
 }
 
+/* External audit of v0, finding 4: the fuzz target had its own copy of the
+ * mode peek and sent every '['-leading input to file mode. Both harnesses
+ * now call harness_pick_mode (harness_mode.h); this pins its decisions,
+ * the '[' ones in particular. */
+static void test_harness_mode_routing(void) {
+    struct { const char *src; HarnessMode want; } cases[] = {
+        {"manna v0;\nfn f() {}\n", HARNESS_MODE_FILE},
+        {"fn f() {}", HARNESS_MODE_FILE},
+        {"struct S { a: u8, }", HARNESS_MODE_FILE},
+        {"[inline] fn f() {}", HARNESS_MODE_FILE},
+        {"[a][b] fn f() {}", HARNESS_MODE_FILE},
+        {"{ a; }", HARNESS_MODE_BLOCK},
+        {"[1, 2][0]", HARNESS_MODE_EXPRESSION},
+        {"[1, 2, 3]", HARNESS_MODE_EXPRESSION},
+        {"[v; 4]", HARNESS_MODE_EXPRESSION},
+        {"[a]", HARNESS_MODE_EXPRESSION},
+        {"[a][b]", HARNESS_MODE_EXPRESSION},
+        {"[a] [b] c", HARNESS_MODE_EXPRESSION},
+        {"[", HARNESS_MODE_EXPRESSION},
+        {"a[1]", HARNESS_MODE_EXPRESSION},
+        {"u8(x)", HARNESS_MODE_EXPRESSION},
+        {"", HARNESS_MODE_EXPRESSION},
+    };
+    for (size_t i = 0; i < sizeof cases / sizeof cases[0]; i++) {
+        HarnessMode got = harness_pick_mode(cases[i].src, strlen(cases[i].src));
+        if (got != cases[i].want) {
+            fprintf(stderr, "FAIL: mode for \"%s\": got %d, want %d\n", cases[i].src, (int)got, (int)cases[i].want);
+            exit(1);
+        }
+    }
+    printf("PASS: harness mode routing - attribute prefixes are file mode, other '[' inputs are expressions\n");
+}
+
 /* E0102's JSON `expected` field named '{' at every call site, but a `for`
  * header's condition clause is terminated by ';', not '{' (known inaccuracy
  * recorded in docs/error_codes.md since r1 Phase C; message, span and the
@@ -517,6 +551,7 @@ int main(void) {
     test_sync_counters_reset_at_parse_entry();
     test_unclosed_block_report_resets_between_parses();
     test_arena_exhaustion_reports_e0110();
+    test_harness_mode_routing();
     test_e0102_expected_field_per_site();
     test_e0108_fix_positions();
     test_e0109_fix_positions();

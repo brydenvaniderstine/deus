@@ -4,13 +4,17 @@
 #include "arena.h"
 #include "ast.h"
 #include "diag.h"
+#include "harness_mode.h"
 #include "lexer.h"
 #include "parser.h"
 #include "parser_state.h"
 
 /* libFuzzer entry point (Step 12, docs/M2_PLAN.md). Same one-token-peek
  * mode dispatch as tools/mannac/parser_main.c's golden-test harness
- * (whole file / block / expression) - fuzzing all three through one
+ * (whole file / block / expression) - literally the same code now
+ * (harness_mode.h); it used to be a hand-copied peek that routed every
+ * '['-leading input to file mode, so array literals at the start of an
+ * input were never fuzzed as expressions. Fuzzing all three through one
  * input is simpler than three separate harnesses, and the dispatch
  * itself is pure and deterministic given the bytes, so there's nothing
  * lost by sharing one entry point. setjmp/longjmp mirrors parser_main.c's
@@ -31,12 +35,9 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
 
     const char *src = (const char *)data;
 
-    Lexer peek_lx;
-    lexer_init(&peek_lx, src, size);
-    Token first = lexer_next(&peek_lx);
-    bool is_file = (first.kind == TOK_KW_MANNA || first.kind == TOK_KW_STRUCT ||
-                    first.kind == TOK_KW_FN || first.kind == TOK_LBRACKET);
-    bool is_block = !is_file && first.kind == TOK_LBRACE;
+    HarnessMode mode = harness_pick_mode(src, size);
+    bool is_file = (mode == HARNESS_MODE_FILE);
+    bool is_block = (mode == HARNESS_MODE_BLOCK);
 
     Lexer lx;
     lexer_init(&lx, src, size);
