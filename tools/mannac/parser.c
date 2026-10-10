@@ -1565,8 +1565,10 @@ static Stmt *parse_statement(Parser *p) {
     }
 }
 
-/* True when the current token is `fn` or `struct` AND a top-level level is
- * active to take it. Neither can appear inside a block (v0 has no nested
+/* True when the current token starts a top-level item - the very predicate
+ * the recovery sets use (is_top_level_resume_token: `fn`, `struct`, or an
+ * attribute shape `'[' IDENT ']' 'fn'`) - AND a top-level level is active to
+ * take it. None of these can appear inside a block (v0 has no nested
  * functions or structs), so seeing one means the block is unclosed - a
  * missing '}' is by far the likeliest cause, and the declaration belongs to
  * the top level either way. parse_block treats it as the implicit end of
@@ -1576,9 +1578,8 @@ static Stmt *parse_statement(Parser *p) {
  * sync_top_level like the rest of recovery: a block parsed on its own
  * (parser_parse_block, no top level above it) has nobody to hand the token
  * to, so there it stays an ordinary bad statement. */
-static bool at_top_level_start(const Parser *p) {
-    return p->ps->sync_top_level > 0 &&
-           (p->cur.kind == TOK_KW_FN || p->cur.kind == TOK_KW_STRUCT);
+static bool at_top_level_start(Parser *p) {
+    return p->ps->sync_top_level > 0 && is_top_level_resume_token(p);
 }
 
 /* block ::= '{' { statement } '}' ;
