@@ -1,7 +1,0 @@
-manna v0;
-struct Point {
-    x: u32,
-}
-
-[kernel_hook]fn aurn;
-}
