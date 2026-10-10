@@ -1,0 +1,11 @@
+ERRORS:
+3:10 assignment is a statement; did you mean '=='?
+3:33 assignment is a statement; did you mean '=='?
+
+TREE:
+(function_decl@2:1-5:2 f
+  (params)
+  (return_type)
+  (block@2:8-5:2
+    (expr_stmt@4:5-4:7
+      (ident@4:5-4:6 e))))

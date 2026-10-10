@@ -61,7 +61,9 @@
  * immediately, matched the first time only by chance - see the fixed
  * for-init cascade's own commit for the general shape of this hazard).
  * Set, then read and cleared (never left true across a loop iteration)
- * by the one call site that consumes it - see parse_block in parser.c. */
+ * by the one call site that consumes it - see parse_block in parser.c.
+ * recover_else_branch clears it while the dropped `if`'s else branch parses
+ * (so the branch's own blocks cannot consume it) and sets it again after. */
 typedef struct {
     Arena   *arena;
     DiagList diags;

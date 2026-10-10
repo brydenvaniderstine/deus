@@ -1355,7 +1355,18 @@ static void recover_else_branch(Parser *p) {
         return;
     }
     advance(p);
+    /* The flag means "the CURRENT statement's recovery already parsed a
+     * body"; it must not be visible to the else branch's own parse. Left
+     * set, the first statement failure inside the branch (`else { b d; }`)
+     * made the branch's parse_block consume it, skipping its own sync (so
+     * `b );` cascaded into a second diagnostic) and leaving it cleared for
+     * the enclosing block, which then re-synced and dropped the next valid
+     * statement (external audit of v0, finding 1). Clear it for the
+     * branch, then set it again: whatever the branch did, the dropped `if`
+     * as a whole did recover past a body. */
+    p->ps->recovered_past_body = false;
     (void)((p->cur.kind == TOK_KW_IF) ? parse_if_stmt(p) : parse_block(p));
+    p->ps->recovered_past_body = true;
 }
 
 /* if_stmt ::= 'if' expression block [ 'else' ( if_stmt | block ) ] ;
