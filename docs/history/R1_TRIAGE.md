@@ -34,7 +34,7 @@ memory - re-read this file's verbatim section against current repo state first.*
   evaluated exactly once for any N (M2_PLAN §4 grammar comment).
 - **Phase C (docs): DONE** (`cf54db5`..`e5137cd` plus this archive commit; CI green, run 37868443968).
 - **#4 parser implementation + the #5/#6 code, and every deferred item:** MOVED to
-  `docs/PARSER_STEP4.md` (the live working doc for that step). Nothing about #4 work is tracked here any more.
+  `docs/history/PARSER_STEP4.md` (the live working doc for that step). Nothing about #4 work is tracked here any more.
 
 ## Phase C #11: fix-hint candidates that need code (PENDING DECISION - not Phase C docs)
 

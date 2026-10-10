@@ -8,6 +8,8 @@ Updated at every tag (`docs/README.md`'s consistency check runs at the same time
 
 **Active work: none in flight - waiting on an external fresh-eyes audit of the #4 parser step** (brief and reproduce kit: `docs/history/v0-audit-brief.md`). After it comes back: fix what it finds, then tag `m2-parser-v0` (all 42 grammar productions have goldens, so not `m2-parser-r2`; condition and table: `docs/history/PARSER_STEP4.md`). The next engineering step is the typed IR stage, not yet scoped.
 
+**Post-audit finding #0 (author-found, to fix with goldens before the `m2-parser-v0` tag; no code yet, the audit pack stays frozen until the audit is back):** a stray `fn` inside a function body drops the enclosing function. `fn f() { let x = 1; fn g() {} let y = 2; }` gives two diagnostics (`4:5 expected expression, found 'fn'`; `5:5 expected struct or function declaration, found 'let'`), `g` is handed to the top level and `f` is absent from the tree (same with a non-empty `g`; a following `fn h() {}` is kept). Plain and ASan output are identical. Pre-existing since `m2-parser` (Step 10b design), recorded as "not fixed" in `docs/history/PARSER_STEP4.md`, never accepted; it has no golden today. Fix criteria: one diagnostic at the stray `fn`, `f` kept in the tree with its other statements, a golden pair for each of the three inputs, plain + ASan.
+
 ## Done
 
 - **M1** (tag `m1-boot`): Limine boot, GDT/IDT, 3-way paging (1 GiB identity/HHDM + 4 KiB kernel-image alias), PIT-calibrated LAPIC preemption, W^X+NX enforced and regression-tested (`make test-wx`). All Milestone 1 acceptance criteria verified against real `serial.log`/`qemu.log` output.
