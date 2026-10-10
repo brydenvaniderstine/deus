@@ -31,6 +31,8 @@ Consequences for the checklist below:
 - **Tag name: `m2-parser-v0`** (not the earlier suggestion `m2-parser-4`). **Condition (decided): before tagging, list every production in `docs/M2_PLAN.md` §4's grammar and cite, for each, a golden that exercises it. If any v0 production is unimplemented, tag `m2-parser-r2` instead and name it.** The list-with-citations is a step 7 deliverable, produced from the grammar block as it stands at that point (not from memory).
 - **Depth cycles keep the names 9 (array literal / `[v; N]`) and 10 (conversion)**, from the rows of the M2_PLAN depth table (row 8 is the confirmed-absent one). They are *added* in the order conversion (step 2) then array (step 3), so the `parser.c` INVARIANT comment's back-edge count goes seven -> eight -> nine, while the cycle names stay 9 and 10. Named args extend cycle 3 and add none.
 
+- **E0109's fix-it has two forms (decided, accepted in review):** ONE edit deleting exactly `-> unit` when the arrow and `unit` share a line with only blanks between; TWO edits (the `->` token, the `unit` token) when a newline or a comment sits between, so the comment is preserved. E0109 fires only for `-> unit` followed by `{`; `-> [3]unit` and `-> unit[3]` stay the generic E0105.
+
 ## Approved step plan (one commit per step, each green on its own)
 
 Every step also updates the `parser.c` header grammar comment (a copy of the grammar), flips the `r1-B ... not yet implemented` / "Specified, not yet emitted" markers for its own piece in M2_PLAN.md and `error_codes.md`, and is pushed with its CI run watched to green. STOP steps end with a report and wait for approval.
