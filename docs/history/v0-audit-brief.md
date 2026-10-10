@@ -41,7 +41,7 @@ def bundle(paths,out):
             b=open(p,'rb').read(); nl=b.endswith(b'\n') or not b
             f.write(("===== FILE: %s%s =====\n"%(p,"" if nl else " (no trailing newline)")).encode()+b+(b"" if nl else b"\n"))
 bundle(sorted('tools/mannac/'+x for x in os.listdir('tools/mannac')), D+'/code_bundle.txt')
-ch={l.split('\t')[1] for l in subprocess.check_output(['git','diff','--name-status','m2-parser-r1','HEAD','--','tests']).decode().strip().split('\n') if l}
+ch={l.split('\t')[1] for l in subprocess.check_output(['git','diff','--no-renames','--name-status','m2-parser-r1','HEAD','--','tests']).decode().strip().split('\n') if l}
 ch |= {f[:-4]+'.mn' for f in ch if f.endswith('.ast')} | {f[:-7]+'.mn' for f in ch if f.endswith('.tokens')}
 bundle(sorted(x for x in ch if os.path.exists(x)), D+'/tests_bundle.txt')
 PY
@@ -50,6 +50,8 @@ cp docs/error_codes.md $D/
 awk '/^## 4\. Parser grammar/{p=1} /^## 5\. Test strategy/{p=0} p' docs/M2_PLAN.md > $D/M2_PLAN_s4.md
 # BUILD.txt: see the copy kept with the pack (split + build + run, verified byte-exact)
 ```
+
+(Recipe hardening, made when the final pack was regenerated after the audit fixes: the changed-tests list now uses `--no-renames`. With rename detection a renamed golden is listed under its OLD name only, which no longer exists, so its new name - and its input - can silently drop out of `tests_bundle.txt`. For this exact range (`m2-parser-r1..HEAD`) the result is identical either way, 396 files, because the renamed goldens' `.ast` files were rewritten in #4 step 5 and so appear as plain additions, which pull in their `.mn`; the fixes-only pack range (`581e4d4..HEAD`) is where it mattered. The counts in this brief (20 files, 358 test files, 346 goldens, run 38075342100) describe the pack as first built; the regenerated pack's `BUILD.txt` carries its own.)
 
 ## 3. Reproduce step (auditor)
 
