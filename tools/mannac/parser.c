@@ -321,7 +321,7 @@ static bool  parse_version_decl(Parser *p);
 static Decl *parse_top_level_item(Parser *p);
 static Decl *parse_struct_decl(Parser *p);
 static Field *parse_field_decl(Parser *p);
-static bool  parse_attribute(Parser *p, const char **out_name);
+static bool  parse_attribute(Parser *p, Attribute **out_attr);
 static Param *parse_param(Parser *p);
 static bool  parse_param_list(Parser *p, NodeList *out_params);
 static Decl *parse_function_decl(Parser *p);
@@ -643,7 +643,7 @@ static Expr *parse_primary(Parser *p) {
                         Token rparen = p->cur;
                         advance(p);
                         result = expr_call(p->ps->arena, span_merge(token_span(t), token_span(rparen)),
-                                            t.lexeme, t.lexeme_len, args);
+                                            token_span(t), t.lexeme, t.lexeme_len, args);
                     } else {
                         parser_error(p->ps, diag_expected(p->ps->arena, token_span(p->cur), "')'",
                                                            token_describe(p->ps->arena, p->cur), "after arguments"));
@@ -778,7 +778,7 @@ static Expr *parse_primary(Parser *p) {
             Token rparen = p->cur;
             advance(p);
             result = expr_convert(p->ps->arena, span_merge(token_span(t), token_span(rparen)),
-                                  t.lexeme, t.lexeme_len, operand);
+                                  token_span(t), t.lexeme, t.lexeme_len, operand);
             break;
         }
 
@@ -808,7 +808,7 @@ static Expr *parse_postfix(Parser *p) {
             Token name = p->cur;
             advance(p);
             base = expr_field_access(p->ps->arena, span_merge(base->span, token_span(name)),
-                                      base, name.lexeme, name.lexeme_len);
+                                      base, token_span(name), name.lexeme, name.lexeme_len);
         } else if (p->cur.kind == TOK_LBRACKET) {
             advance(p);
             Expr *lo, *hi;
@@ -936,7 +936,7 @@ static Stmt *parse_let_stmt(Parser *p) {
     advance(p);
 
     return stmt_let(p->ps->arena, span_merge(token_span(let_tok), token_span(semi)),
-                     name.lexeme, name.lexeme_len, type, init);
+                     token_span(name), name.lexeme, name.lexeme_len, type, init);
 }
 
 /* return_stmt ::= 'return' [ expression ] ';' ; */
@@ -1809,7 +1809,8 @@ static Field *parse_field_decl(Parser *p) {
     Token comma = p->cur;
     advance(p);
 
-    return field_new(p->ps->arena, span_merge(token_span(name), token_span(comma)), name.lexeme, name.lexeme_len, type);
+    return field_new(p->ps->arena, span_merge(token_span(name), token_span(comma)), token_span(name),
+                      name.lexeme, name.lexeme_len, type);
 }
 
 /* struct_decl ::= 'struct' IDENT '{' { field_decl } '}' ;
@@ -1852,13 +1853,14 @@ static Decl *parse_struct_decl(Parser *p) {
     advance(p);
 
     return decl_struct(p->ps->arena, span_merge(token_span(struct_tok), token_span(rbrace)),
-                        name.lexeme, name.lexeme_len, fields);
+                        token_span(name), name.lexeme, name.lexeme_len, fields);
 }
 
 /* attribute ::= '[' IDENT ']' ; - the parser accepts any identifier here;
  * whether it names a recognized attribute (e.g. "kernel_hook") is an
  * IR-stage check (docs/M2_PLAN.md S7 item 8), not implemented here. */
-static bool parse_attribute(Parser *p, const char **out_name) {
+static bool parse_attribute(Parser *p, Attribute **out_attr) {
+    Token lbracket = p->cur;
     advance(p); /* consume '[' */
 
     if (p->cur.kind != TOK_IDENT) {
@@ -1874,9 +1876,11 @@ static bool parse_attribute(Parser *p, const char **out_name) {
                                            token_describe(p->ps->arena, p->cur), "after attribute name"));
         return false;
     }
+    Token rbracket = p->cur;
     advance(p);
 
-    *out_name = arena_sprintf(p->ps->arena, "%.*s", (int)name.lexeme_len, name.lexeme);
+    *out_attr = attribute_new(p->ps->arena, span_merge(token_span(lbracket), token_span(rbracket)),
+                              token_span(name), name.lexeme, name.lexeme_len);
     return true;
 }
 
@@ -1900,7 +1904,8 @@ static Param *parse_param(Parser *p) {
     Type *type = parse_type(p);
     if (!type) return NULL;
 
-    return field_new(p->ps->arena, span_merge(token_span(name), type->span), name.lexeme, name.lexeme_len, type);
+    return field_new(p->ps->arena, span_merge(token_span(name), type->span), token_span(name),
+                      name.lexeme, name.lexeme_len, type);
 }
 
 /* param_list ::= param { ',' param } ; - comma-SEPARATED, not self-
@@ -1940,9 +1945,9 @@ static Decl *parse_function_decl(Parser *p) {
     NodeList attributes;
     node_list_init(&attributes);
     while (p->cur.kind == TOK_LBRACKET) {
-        const char *attr_name;
-        if (!parse_attribute(p, &attr_name)) return NULL;
-        node_list_push(p->ps->arena, &attributes, (void *)attr_name);
+        Attribute *attr;
+        if (!parse_attribute(p, &attr)) return NULL;
+        node_list_push(p->ps->arena, &attributes, attr);
     }
 
     if (p->cur.kind != TOK_KW_FN) {
@@ -2010,7 +2015,7 @@ static Decl *parse_function_decl(Parser *p) {
     if (!body) return NULL;
 
     return decl_function(p->ps->arena, span_merge(start, body->span), attributes,
-                          name.lexeme, name.lexeme_len, params, return_type, body);
+                          token_span(name), name.lexeme, name.lexeme_len, params, return_type, body);
 }
 
 /* top_level_item ::= struct_decl | function_decl ;

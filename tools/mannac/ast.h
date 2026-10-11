@@ -64,13 +64,26 @@ typedef struct {
                         * one ("(param@2:8-2:17 a u32)") - following the
                         * blanket "every node records a span" rule and
                         * the concrete example over the abstract shorthand. */
+    Span        name_span; /* the name token alone (the typed-IR stage points
+                            * its naming/duplicate diagnostics here) */
     const char *name;
     Type       *type;
 } Field; /* also used for function parameters - same shape */
 
 typedef Field Param;
 
-Field *field_new(Arena *a, Span span, const char *name, size_t name_len, Type *type);
+Field *field_new(Arena *a, Span span, Span name_span, const char *name, size_t name_len, Type *type);
+
+/* One `[ IDENT ]` attribute on a function. `span` covers the brackets,
+ * `name_span` just the identifier (what an unknown-attribute diagnostic
+ * points at); `span` is what a duplicate-attribute fix would delete. */
+typedef struct {
+    Span        span;
+    Span        name_span;
+    const char *name; /* arena-owned, NUL-terminated */
+} Attribute;
+
+Attribute *attribute_new(Arena *a, Span span, Span name_span, const char *name, size_t name_len);
 
 typedef enum { DECL_STRUCT, DECL_FUNCTION } DeclKind;
 
@@ -79,11 +92,13 @@ struct Decl {
     Span     span;
     union {
         struct {
+            Span        name_span;
             const char *name;
             NodeList    fields;   /* Field* */
         } struct_decl;
         struct {
-            NodeList    attributes; /* const char* - e.g. "kernel_hook" */
+            NodeList    attributes; /* Attribute* - e.g. name "kernel_hook" */
+            Span        name_span;
             const char *name;
             NodeList    params;     /* Param* */
             Type       *return_type; /* NULL = unit (no '-> type' present) */
@@ -92,8 +107,8 @@ struct Decl {
     } as;
 };
 
-Decl *decl_struct(Arena *a, Span span, const char *name, size_t name_len, NodeList fields);
-Decl *decl_function(Arena *a, Span span, NodeList attributes, const char *name, size_t name_len,
+Decl *decl_struct(Arena *a, Span span, Span name_span, const char *name, size_t name_len, NodeList fields);
+Decl *decl_function(Arena *a, Span span, NodeList attributes, Span name_span, const char *name, size_t name_len,
                      NodeList params, Type *return_type, Stmt *body);
 
 /* ---- Expressions ---- */
@@ -135,11 +150,11 @@ struct Expr {
         struct { const char *name; } ident;
         struct { UnOp op; Expr *operand; } unary;
         struct { BinOp op; Expr *lhs; Expr *rhs; } binary;
-        struct { const char *name; NodeList args; } call;      /* args: Expr* */
+        struct { Span name_span; const char *name; NodeList args; } call; /* args: Expr*; name_span: the callee identifier */
         struct { Expr *base; Expr *index; } index;
         struct { Expr *base; Expr *lo; Expr *hi; } slice;
-        struct { Expr *base; const char *name; } field_access;
-        struct { const char *target; Expr *operand; } convert; /* target: the type keyword's text */
+        struct { Expr *base; Span name_span; const char *name; } field_access; /* name_span: the field identifier */
+        struct { Span target_span; const char *target; Expr *operand; } convert; /* target: the type keyword's text; target_span: that keyword */
         struct { NodeList elems; } array;                      /* elems: Expr*, at least one */
         struct { Expr *value; uint64_t count; } array_repeat;  /* count: the NUMBER token's value */
         struct { Expr *name; Expr *value; } named_arg;         /* only ever an element of a call's args */
@@ -151,13 +166,13 @@ Expr *expr_bool(Arena *a, Span span, bool value);
 Expr *expr_ident(Arena *a, Span span, const char *name, size_t name_len);
 Expr *expr_unary(Arena *a, Span span, UnOp op, Expr *operand);
 Expr *expr_binary(Arena *a, Span span, BinOp op, Expr *lhs, Expr *rhs);
-Expr *expr_call(Arena *a, Span span, const char *name, size_t name_len, NodeList args);
+Expr *expr_call(Arena *a, Span span, Span name_span, const char *name, size_t name_len, NodeList args);
 Expr *expr_index(Arena *a, Span span, Expr *base, Expr *index);
 Expr *expr_slice(Arena *a, Span span, Expr *base, Expr *lo, Expr *hi);
-Expr *expr_field_access(Arena *a, Span span, Expr *base, const char *name, size_t name_len);
+Expr *expr_field_access(Arena *a, Span span, Expr *base, Span name_span, const char *name, size_t name_len);
 /* `target` is the primitive type keyword's text ("u64"); the parser accepts any
  * of the nine PRIM_TYPE keywords, the IR stage decides which conversions are legal. */
-Expr *expr_convert(Arena *a, Span span, const char *target, size_t target_len, Expr *operand);
+Expr *expr_convert(Arena *a, Span span, Span target_span, const char *target, size_t target_len, Expr *operand);
 Expr *expr_array(Arena *a, Span span, NodeList elems);
 Expr *expr_array_repeat(Arena *a, Span span, Expr *value, uint64_t count);
 /* `name` is ANY expression at parse time (the grammar is `expression ':'
@@ -176,7 +191,7 @@ struct Stmt {
     StmtKind kind;
     Span     span;
     union {
-        struct { const char *name; Type *type; Expr *init; } let_stmt; /* type may be NULL (inferred) */
+        struct { Span name_span; const char *name; Type *type; Expr *init; } let_stmt; /* type may be NULL (inferred) */
         struct { Expr *target; Expr *value; } assign_stmt;
         struct { Expr *cond; Stmt *then_branch; Stmt *else_branch; } if_stmt; /* else_branch: NULL, an if-Stmt, or a block-Stmt */
         struct { Expr *cond; Stmt *body; } while_stmt;   /* body: block-Stmt */
@@ -187,7 +202,7 @@ struct Stmt {
     } as;
 };
 
-Stmt *stmt_let(Arena *a, Span span, const char *name, size_t name_len, Type *type, Expr *init);
+Stmt *stmt_let(Arena *a, Span span, Span name_span, const char *name, size_t name_len, Type *type, Expr *init);
 Stmt *stmt_assign(Arena *a, Span span, Expr *target, Expr *value);
 Stmt *stmt_if(Arena *a, Span span, Expr *cond, Stmt *then_branch, Stmt *else_branch);
 Stmt *stmt_while(Arena *a, Span span, Expr *cond, Stmt *body);

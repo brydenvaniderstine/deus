@@ -61,29 +61,40 @@ Type *type_slice(Arena *a, Span span, Type *elem) {
     return t;
 }
 
-Field *field_new(Arena *a, Span span, const char *name, size_t name_len, Type *type) {
+Field *field_new(Arena *a, Span span, Span name_span, const char *name, size_t name_len, Type *type) {
     Field *f = arena_alloc(a, sizeof(Field), alignof(Field));
     f->span = span;
+    f->name_span = name_span;
     f->name = arena_strndup(a, name, name_len);
     f->type = type;
     return f;
 }
 
-Decl *decl_struct(Arena *a, Span span, const char *name, size_t name_len, NodeList fields) {
+Attribute *attribute_new(Arena *a, Span span, Span name_span, const char *name, size_t name_len) {
+    Attribute *at = arena_alloc(a, sizeof(Attribute), alignof(Attribute));
+    at->span = span;
+    at->name_span = name_span;
+    at->name = arena_strndup(a, name, name_len);
+    return at;
+}
+
+Decl *decl_struct(Arena *a, Span span, Span name_span, const char *name, size_t name_len, NodeList fields) {
     Decl *d = arena_alloc(a, sizeof(Decl), alignof(Decl));
     d->kind = DECL_STRUCT;
     d->span = span;
+    d->as.struct_decl.name_span = name_span;
     d->as.struct_decl.name = arena_strndup(a, name, name_len);
     d->as.struct_decl.fields = fields;
     return d;
 }
 
-Decl *decl_function(Arena *a, Span span, NodeList attributes, const char *name, size_t name_len,
+Decl *decl_function(Arena *a, Span span, NodeList attributes, Span name_span, const char *name, size_t name_len,
                      NodeList params, Type *return_type, Stmt *body) {
     Decl *d = arena_alloc(a, sizeof(Decl), alignof(Decl));
     d->kind = DECL_FUNCTION;
     d->span = span;
     d->as.function_decl.attributes = attributes;
+    d->as.function_decl.name_span = name_span;
     d->as.function_decl.name = arena_strndup(a, name, name_len);
     d->as.function_decl.params = params;
     d->as.function_decl.return_type = return_type;
@@ -139,21 +150,23 @@ Expr *expr_binary(Arena *a, Span span, BinOp op, Expr *lhs, Expr *rhs) {
     return e;
 }
 
-Expr *expr_call(Arena *a, Span span, const char *name, size_t name_len, NodeList args) {
+Expr *expr_call(Arena *a, Span span, Span name_span, const char *name, size_t name_len, NodeList args) {
     Expr *e = arena_alloc(a, sizeof(Expr), alignof(Expr));
     e->kind = EXPR_CALL;
     e->span = span;
     e->parenthesized = false;
+    e->as.call.name_span = name_span;
     e->as.call.name = arena_strndup(a, name, name_len);
     e->as.call.args = args;
     return e;
 }
 
-Expr *expr_convert(Arena *a, Span span, const char *target, size_t target_len, Expr *operand) {
+Expr *expr_convert(Arena *a, Span span, Span target_span, const char *target, size_t target_len, Expr *operand) {
     Expr *e = arena_alloc(a, sizeof(Expr), alignof(Expr));
     e->kind = EXPR_CONVERT;
     e->span = span;
     e->parenthesized = false;
+    e->as.convert.target_span = target_span;
     e->as.convert.target = arena_strndup(a, target, target_len);
     e->as.convert.operand = operand;
     return e;
@@ -209,20 +222,22 @@ Expr *expr_slice(Arena *a, Span span, Expr *base, Expr *lo, Expr *hi) {
     return e;
 }
 
-Expr *expr_field_access(Arena *a, Span span, Expr *base, const char *name, size_t name_len) {
+Expr *expr_field_access(Arena *a, Span span, Expr *base, Span name_span, const char *name, size_t name_len) {
     Expr *e = arena_alloc(a, sizeof(Expr), alignof(Expr));
     e->kind = EXPR_FIELD_ACCESS;
     e->span = span;
     e->parenthesized = false;
     e->as.field_access.base = base;
+    e->as.field_access.name_span = name_span;
     e->as.field_access.name = arena_strndup(a, name, name_len);
     return e;
 }
 
-Stmt *stmt_let(Arena *a, Span span, const char *name, size_t name_len, Type *type, Expr *init) {
+Stmt *stmt_let(Arena *a, Span span, Span name_span, const char *name, size_t name_len, Type *type, Expr *init) {
     Stmt *s = arena_alloc(a, sizeof(Stmt), alignof(Stmt));
     s->kind = STMT_LET;
     s->span = span;
+    s->as.let_stmt.name_span = name_span;
     s->as.let_stmt.name = arena_strndup(a, name, name_len);
     s->as.let_stmt.type = type;
     s->as.let_stmt.init = init;
@@ -590,7 +605,7 @@ void decl_print(FILE *out, const Decl *d) {
                 nl_indent(out, 1);
                 fprintf(out, "(attributes");
                 for (size_t i = 0; i < d->as.function_decl.attributes.len; i++) {
-                    fprintf(out, " %s", (const char *)d->as.function_decl.attributes.items[i]);
+                    fprintf(out, " %s", ((const Attribute *)d->as.function_decl.attributes.items[i])->name);
                 }
                 fprintf(out, ")");
             }

@@ -362,13 +362,13 @@ static void check_e0110(const char *src, size_t len, size_t arena_size, int want
 static void test_arena_exhaustion_reports_e0110(void) {
     size_t len;
     char *big_array = gen_list_input("manna v0;\nfn f() {\n    let a = ", "[", "];\n}\n", 300000, &len);
-    check_e0110(big_array, len, 16 * 1024 * 1024, 3, 673221, "300,000-element array literal");
+    check_e0110(big_array, len, 16 * 1024 * 1024, 3, 523620, "300,000-element array literal");
     free(big_array);
     char *big_call = gen_list_input("manna v0;\nfn f() {\n    g(", "", ");\n}\n", 300000, &len);
-    check_e0110(big_call, len, 16 * 1024 * 1024, 3, 673214, "flat 300,000-argument call");
+    check_e0110(big_call, len, 16 * 1024 * 1024, 3, 523613, "flat 300,000-argument call");
     free(big_call);
     char *small = gen_list_input("manna v0;\nfn f() {\n    let a = ", "[", "];\n}\n", 20000, &len);
-    check_e0110(small, len, 256 * 1024, 3, 7038, "20,000-element array against a 256 KiB arena");
+    check_e0110(small, len, 256 * 1024, 3, 6159, "20,000-element array against a 256 KiB arena");
     free(small);
     printf("PASS: arena exhaustion records exactly one E0110 (array, flat call, small arena), no fix-it\n");
 }
@@ -587,6 +587,115 @@ static void test_e0109_fix_positions(void) {
     printf("PASS: E0109 - fix-it deletes exactly \"-> unit\" (one edit), or the two tokens when a newline/comment sits between; the function stays in the tree\n");
 }
 
+
+/* ---- typed-IR step 2a: name spans -------------------------------------
+ * The dump prints none of these, so goldens can't pin them; each is pinned
+ * here to exact line:col (end column exclusive). A span that merely
+ * "looks right" is the failure this guards against: the typed-IR stage
+ * points its diagnostics (unknown function/attribute, naming violations,
+ * duplicate names) at these, per principle 6. */
+static void expect_span(const char *what, Span got, int l1, int c1, int l2, int c2) {
+    if (got.start_line != l1 || got.start_col != c1 || got.end_line != l2 || got.end_col != c2) {
+        fprintf(stderr, "FAIL: %s: got %d:%d-%d:%d, want %d:%d-%d:%d\n", what, got.start_line,
+                got.start_col, got.end_line, got.end_col, l1, c1, l2, c2);
+        exit(1);
+    }
+}
+
+static NodeList parse_clean_file(ParserState *ps, const char *src) {
+    parser_state_init(ps, 1 << 20);
+    if (setjmp(ps->fatal_target) != 0) {
+        fprintf(stderr, "FAIL: unexpected fatal longjmp\n");
+        exit(1);
+    }
+    Lexer lx;
+    lexer_init(&lx, src, strlen(src));
+    NodeList items;
+    bool ok = parser_parse_file(ps, &lx, &items);
+    if (!ok || ps->diags.len != 0) {
+        fprintf(stderr, "FAIL: name-span fixture did not parse cleanly (%zu diagnostics)\n", ps->diags.len);
+        exit(1);
+    }
+    return items;
+}
+
+static void test_name_spans(void) {
+    const char *src =
+        "manna v0;\n"                      /* 1 */
+        "struct Pt {\n"                    /* 2 */
+        "    x: u32,\n"                    /* 3 */
+        "}\n"                              /* 4 */
+        "[kernel_hook]\n"                  /* 5 */
+        "[a] fn go(p: u8) {\n"             /* 6 */
+        "    let v = u64(p);\n"            /* 7 */
+        "    let w = g(v).x;\n"            /* 8 */
+        "    let z = (g(v)).x;\n"          /* 9 */
+        "}\n";                             /* 10 */
+    ParserState ps;
+    NodeList items = parse_clean_file(&ps, src);
+    assert(items.len == 2);
+
+    const Decl *st = items.items[0];
+    expect_span("struct name", st->as.struct_decl.name_span, 2, 8, 2, 10);
+    const Field *x = st->as.struct_decl.fields.items[0];
+    expect_span("struct field name", x->name_span, 3, 5, 3, 6);
+    expect_span("struct field whole span unchanged", x->span, 3, 5, 3, 12);
+
+    const Decl *fn = items.items[1];
+    assert(fn->as.function_decl.attributes.len == 2);
+    const Attribute *a0 = fn->as.function_decl.attributes.items[0];
+    const Attribute *a1 = fn->as.function_decl.attributes.items[1];
+    assert(strcmp(a0->name, "kernel_hook") == 0 && strcmp(a1->name, "a") == 0);
+    expect_span("attribute 0 span (brackets)", a0->span, 5, 1, 5, 14);
+    expect_span("attribute 0 name_span", a0->name_span, 5, 2, 5, 13);
+    expect_span("attribute 1 span (brackets)", a1->span, 6, 1, 6, 4);
+    expect_span("attribute 1 name_span", a1->name_span, 6, 2, 6, 3);
+    expect_span("function name", fn->as.function_decl.name_span, 6, 8, 6, 10);
+    expect_span("function whole span starts at first attribute", (Span){fn->span.start_line, fn->span.start_col, 5, 14}, 5, 1, 5, 14);
+    const Param *prm = fn->as.function_decl.params.items[0];
+    expect_span("parameter name", prm->name_span, 6, 11, 6, 12);
+
+    const Stmt *body = fn->as.function_decl.body;
+    const Stmt *let_v = body->as.block.stmts.items[0];
+    const Stmt *let_w = body->as.block.stmts.items[1];
+    const Stmt *let_z = body->as.block.stmts.items[2];
+    expect_span("let name", let_v->as.let_stmt.name_span, 7, 9, 7, 10);
+    const Expr *conv = let_v->as.let_stmt.init;
+    assert(conv->kind == EXPR_CONVERT);
+    expect_span("conversion target keyword", conv->as.convert.target_span, 7, 13, 7, 16);
+
+    const Expr *fa = let_w->as.let_stmt.init;
+    assert(fa->kind == EXPR_FIELD_ACCESS);
+    expect_span("field-access field name", fa->as.field_access.name_span, 8, 18, 8, 19);
+    const Expr *call = fa->as.field_access.base;
+    assert(call->kind == EXPR_CALL);
+    expect_span("callee name", call->as.call.name_span, 8, 13, 8, 14);
+    expect_span("call whole span", call->span, 8, 13, 8, 17);
+
+    /* A parenthesized call: parse_primary widens the call's span to include
+     * the parens, so the callee does NOT start at span.start any more. The
+     * name_span must still be the identifier alone. */
+    const Expr *fa2 = let_z->as.let_stmt.init;
+    const Expr *call2 = fa2->as.field_access.base;
+    assert(call2->kind == EXPR_CALL && call2->parenthesized);
+    expect_span("parenthesized call: span widened to the parens", call2->span, 9, 13, 9, 19);
+    expect_span("parenthesized call: callee name_span is the identifier", call2->as.call.name_span, 9, 14, 9, 15);
+    expect_span("field name after a parenthesized base", fa2->as.field_access.name_span, 9, 20, 9, 21);
+    parser_state_destroy(&ps);
+
+    /* A multi-line attribute: span covers both brackets across lines. */
+    const char *src2 = "manna v0;\n[\n  kernel_hook\n]\nfn f() {}\n";
+    ParserState ps2;
+    NodeList items2 = parse_clean_file(&ps2, src2);
+    const Decl *f2 = items2.items[0];
+    const Attribute *at = f2->as.function_decl.attributes.items[0];
+    expect_span("multi-line attribute span", at->span, 2, 1, 4, 2);
+    expect_span("multi-line attribute name_span", at->name_span, 3, 3, 3, 14);
+    expect_span("function name after a multi-line attribute", f2->as.function_decl.name_span, 5, 4, 5, 5);
+    parser_state_destroy(&ps2);
+    printf("PASS: name spans - every new span field pinned to exact line:col\n");
+}
+
 int main(void) {
     test_token_span_single_line_unchanged();
     test_token_span_multiline_unterminated_comment();
@@ -604,6 +713,7 @@ int main(void) {
     test_e0102_expected_field_per_site();
     test_e0108_fix_positions();
     test_e0109_fix_positions();
+    test_name_spans();
     printf("ALL PASS\n");
     return 0;
 }

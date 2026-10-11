@@ -24,10 +24,10 @@ static void test_basic_function_matches_spec(void) {
     Arena *a = arena_create(1 << 20);
 
     Type *type_a = type_ident(a, mk(2, 14, 2, 17), "u32", 3);
-    Field *param_a = field_new(a, mk(2, 8, 2, 17), "a", 1, type_a);
+    Field *param_a = field_new(a, mk(2, 8, 2, 17), mk(2, 8, 2, 9), "a", 1, type_a);
 
     Type *type_b = type_ident(a, mk(2, 25, 2, 28), "u32", 3);
-    Field *param_b = field_new(a, mk(2, 19, 2, 28), "b", 1, type_b);
+    Field *param_b = field_new(a, mk(2, 19, 2, 28), mk(2, 19, 2, 20), "b", 1, type_b);
 
     NodeList params;
     node_list_init(&params);
@@ -49,7 +49,7 @@ static void test_basic_function_matches_spec(void) {
     NodeList attributes;
     node_list_init(&attributes);
 
-    Decl *fn = decl_function(a, mk(2, 1, 5, 1), attributes, "add", 3, params, return_type, block);
+    Decl *fn = decl_function(a, mk(2, 1, 5, 1), attributes, mk(2, 4, 2, 7), "add", 3, params, return_type, block);
 
     char buf[4096];
     FILE *mem = fmemopen(buf, sizeof(buf), "w");
@@ -85,16 +85,16 @@ static void test_struct_and_attributed_function(void) {
     Arena *a = arena_create(1 << 20);
 
     Type *u8 = type_ident(a, mk(25, 18, 25, 20), "u8", 2);
-    Field *field_a = field_new(a, mk(25, 15, 25, 20), "a", 1, u8);
+    Field *field_a = field_new(a, mk(25, 15, 25, 20), mk(25, 15, 25, 16), "a", 1, u8);
     Type *u16 = type_ident(a, mk(25, 25, 25, 28), "u16", 3);
-    Field *field_b = field_new(a, mk(25, 22, 25, 28), "b", 1, u16);
+    Field *field_b = field_new(a, mk(25, 22, 25, 28), mk(25, 22, 25, 23), "b", 1, u16);
 
     NodeList fields;
     node_list_init(&fields);
     node_list_push(a, &fields, field_a);
     node_list_push(a, &fields, field_b);
 
-    Decl *st = decl_struct(a, mk(25, 5, 25, 32), "Foo", 3, fields);
+    Decl *st = decl_struct(a, mk(25, 5, 25, 32), mk(25, 12, 25, 15), "Foo", 3, fields);
 
     char buf[4096];
     FILE *mem = fmemopen(buf, sizeof(buf), "w");
@@ -115,25 +115,25 @@ static void test_struct_and_attributed_function(void) {
     /* [kernel_hook] fn raw_poke(addr: u64, val: u8) { let x = 1; } */
     NodeList attrs;
     node_list_init(&attrs);
-    node_list_push(a, &attrs, (void *)"kernel_hook");
+    node_list_push(a, &attrs, attribute_new(a, mk(23, 1, 23, 14), mk(23, 2, 23, 13), "kernel_hook", 11));
 
     Type *u64 = type_ident(a, mk(24, 18, 24, 21), "u64", 3);
-    Field *p_addr = field_new(a, mk(24, 13, 24, 21), "addr", 4, u64);
+    Field *p_addr = field_new(a, mk(24, 13, 24, 21), mk(24, 13, 24, 17), "addr", 4, u64);
     Type *u8b = type_ident(a, mk(24, 28, 24, 30), "u8", 2);
-    Field *p_val = field_new(a, mk(24, 24, 24, 30), "val", 3, u8b);
+    Field *p_val = field_new(a, mk(24, 24, 24, 30), mk(24, 24, 24, 27), "val", 3, u8b);
     NodeList params2;
     node_list_init(&params2);
     node_list_push(a, &params2, p_addr);
     node_list_push(a, &params2, p_val);
 
     Expr *one = expr_number(a, mk(24, 43, 24, 44), 1);
-    Stmt *let_x = stmt_let(a, mk(24, 35, 24, 45), "x", 1, NULL, one);
+    Stmt *let_x = stmt_let(a, mk(24, 35, 24, 45), mk(24, 39, 24, 40), "x", 1, NULL, one);
     NodeList body_stmts;
     node_list_init(&body_stmts);
     node_list_push(a, &body_stmts, let_x);
     Stmt *body = stmt_block(a, mk(24, 33, 24, 47), body_stmts);
 
-    Decl *fn2 = decl_function(a, mk(23, 1, 24, 47), attrs, "raw_poke", 8, params2, NULL, body);
+    Decl *fn2 = decl_function(a, mk(23, 1, 24, 47), attrs, mk(24, 4, 24, 12), "raw_poke", 8, params2, NULL, body);
 
     char buf2[4096];
     FILE *mem2 = fmemopen(buf2, sizeof(buf2), "w");
@@ -164,8 +164,8 @@ static void test_struct_and_attributed_function(void) {
 static void test_convert_node_dump(void) {
     Arena *a = arena_create(1 << 20);
     Expr *x = expr_ident(a, mk(1, 5, 1, 6), "x", 1);
-    Expr *inner = expr_convert(a, mk(1, 5, 1, 12), "u32", 3, x);
-    Expr *outer = expr_convert(a, mk(1, 1, 1, 13), "u64", 3, inner);
+    Expr *inner = expr_convert(a, mk(1, 5, 1, 12), mk(1, 5, 1, 8), "u32", 3, x);
+    Expr *outer = expr_convert(a, mk(1, 1, 1, 13), mk(1, 1, 1, 4), "u64", 3, inner);
 
     char buf[1024];
     FILE *mem = fmemopen(buf, sizeof(buf), "w");
