@@ -99,6 +99,15 @@ Diagnostic diag_too_many_errors(Span span);
  * (a smaller input) is not an edit at a place. */
 Diagnostic diag_input_too_large(Span span);
 
+/* E0111: "expression too long: more than N chained operations in one
+ * expression; split it into several statements" (N = MAX_EXPR_HEIGHT) - an
+ * expression tree grew taller than the bound that keeps every later walker
+ * inside the host stack (ast.h, Expr.height). Reported at the token that
+ * follows the node whose construction crossed the limit (the same
+ * convention E0103 uses for its own check). No fix-it: the remedy (several
+ * statements) is not an edit at a place. */
+Diagnostic diag_expr_too_tall(Span span);
+
 /* Generic "expected X, found Y" - every parse error that isn't one of the
  * two dedicated messages above goes through this one constructor, so the
  * message format (docs/M2_PLAN.md's own golden-file example: "expected

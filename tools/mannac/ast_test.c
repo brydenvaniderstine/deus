@@ -4,6 +4,7 @@
  * the FILE * and crashes). macOS declares it regardless, which is why this
  * went unnoticed. */
 #define _POSIX_C_SOURCE 200809L
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -240,7 +241,58 @@ static void test_named_arg_dump(void) {
     arena_destroy(a);
 }
 
+
+/* typed-IR step 2b: Expr.height. The field must sit in existing padding -
+ * sizeof(Expr) was 72 after step 2a (name spans widened the union) and the
+ * E0110 location pins in parser_fixes_test.c depend on it, so adding height
+ * must not move it. The compile-time check is 64-bit only (LP64 layout). */
+#if UINTPTR_MAX == 0xFFFFFFFFFFFFFFFFu
+_Static_assert(sizeof(Expr) == 72, "Expr.height must fit in padding: sizeof(Expr) must stay 72");
+#endif
+
+static void test_expr_height(void) {
+    Arena *a = arena_create(1 << 24);
+    Expr *one = expr_number(a, mk(1, 1, 1, 2), 1);
+    assert(one->height == 1);
+    Expr *id = expr_ident(a, mk(1, 1, 1, 2), "x", 1);
+    assert(id->height == 1 && expr_bool(a, mk(1, 1, 1, 5), true)->height == 1);
+
+    /* 1 + 1 + 1 : left chain, height 3; the tallest child decides. */
+    Expr *sum = expr_binary(a, mk(1, 1, 1, 6), BINOP_ADD, one, one);
+    Expr *sum3 = expr_binary(a, mk(1, 1, 1, 10), BINOP_ADD, sum, one);
+    assert(sum->height == 2 && sum3->height == 3);
+    Expr *wide = expr_binary(a, mk(1, 1, 1, 10), BINOP_ADD, one, sum3); /* rhs taller */
+    assert(wide->height == 4);
+
+    /* every other node kind: 1 + max(children) */
+    assert(expr_unary(a, mk(1, 1, 1, 3), UNOP_NEG, sum3)->height == 4);
+    assert(expr_convert(a, mk(1, 1, 1, 9), mk(1, 1, 1, 4), "u64", 3, sum3)->height == 4);
+    assert(expr_field_access(a, mk(1, 1, 1, 9), sum3, mk(1, 8, 1, 9), "f", 1)->height == 4);
+    assert(expr_index(a, mk(1, 1, 1, 9), one, sum3)->height == 4);
+    assert(expr_slice(a, mk(1, 1, 1, 9), one, sum, sum3)->height == 4);
+    assert(expr_array_repeat(a, mk(1, 1, 1, 9), sum3, 4)->height == 4);
+    assert(expr_named_arg(a, mk(1, 1, 1, 9), id, sum3)->height == 4);
+    NodeList args;
+    node_list_init(&args);
+    assert(expr_call(a, mk(1, 1, 1, 4), mk(1, 1, 1, 2), "f", 1, args)->height == 1 + 0); /* no args: 1 + max() = 1 */
+    node_list_push(a, &args, one);
+    node_list_push(a, &args, sum3);
+    node_list_push(a, &args, sum);
+    assert(expr_call(a, mk(1, 1, 1, 9), mk(1, 1, 1, 2), "f", 1, args)->height == 4);
+    assert(expr_array(a, mk(1, 1, 1, 9), args)->height == 4);
+
+    /* Saturation: a tree built by the constructors WITHOUT the parser's E0111
+     * guard (a future AST reader, a test) must never wrap to a small height.
+     * 70,000 levels built iteratively (no recursion) pins UINT16_MAX. */
+    Expr *tall = one;
+    for (int i = 0; i < 70000; i++) tall = expr_unary(a, mk(1, 1, 1, 2), UNOP_NEG, tall);
+    assert(tall->height == UINT16_MAX);
+    arena_destroy(a);
+    printf("PASS: Expr.height - leaf 1, 1 + tallest child for every node kind, saturates at UINT16_MAX; sizeof(Expr) == %zu\n", sizeof(Expr));
+}
+
 int main(void) {
+    test_expr_height();
     test_named_arg_dump();
     test_array_node_dumps();
     test_convert_node_dump();

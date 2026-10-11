@@ -149,6 +149,13 @@ void parser_state_reset_for_parse(ParserState *ps);
  * That's fine: a fatal longjmp means abandon the whole parse, not resume
  * it, so the exact counter value afterward doesn't matter. */
 void depth_enter(ParserState *ps, Span span);
+
+/* E0111 guard (ast.h MAX_EXPR_HEIGHT): called with every non-leaf expression
+ * right after it is built. If its height exceeds the bound it records
+ * diag_expr_too_tall() at `at` and longjmps to ps->fatal_target - the same
+ * unified escape point as E0103/E0104/E0110 - so heights never exceed
+ * MAX_EXPR_HEIGHT + 1 and the call never returns in that case. */
+void expr_height_check(ParserState *ps, const Expr *e, Span at);
 void depth_exit(ParserState *ps);
 
 /* Records a diagnostic. If this is the MAX_ERRORS'th one, additionally

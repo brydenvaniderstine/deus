@@ -131,6 +131,22 @@ Diagnostic diag_too_many_errors(Span span) {
     return d;
 }
 
+#define MANNA_STR_(x) #x
+#define MANNA_STR(x) MANNA_STR_(x)
+
+Diagnostic diag_expr_too_tall(Span span) {
+    Diagnostic d = {0};
+    d.code = "E0111";
+    d.severity = DIAG_ERROR;
+    d.message = "expression too long: more than " MANNA_STR(MAX_EXPR_HEIGHT)
+                " chained operations in one expression; split it into several statements";
+    d.span = span;
+    d.expected = NULL;
+    d.found = NULL;
+    d.fix = NULL;
+    return d;
+}
+
 Diagnostic diag_input_too_large(Span span) {
     Diagnostic d = {0};
     d.code = "E0110";

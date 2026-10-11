@@ -283,6 +283,15 @@ static const char *token_describe(Arena *a, Token t) {
  * expression, found X" - every level above it just propagates NULL.
  * ---------------------------------------------------------------- */
 
+/* E0111: every non-leaf expression passes through here right after it is built
+ * (ast.h MAX_EXPR_HEIGHT; a chain built by a loop adds a level per iteration
+ * at no depth cost, so this is the only thing bounding tree height). The
+ * location is the token that follows the node, like E0103's. */
+static Expr *guard_height(Parser *p, Expr *e) {
+    expr_height_check(p->ps, e, token_span(p->cur));
+    return e;
+}
+
 static Expr *parse_expression(Parser *p);
 static Expr *parse_logic_or(Parser *p, Expr *given_lhs);
 static Expr *parse_logic_and(Parser *p, Expr *given_lhs);
@@ -364,7 +373,7 @@ static Expr *parse_logic_or(Parser *p, Expr *given_lhs) {
         advance(p);
         Expr *rhs = parse_logic_and(p, NULL);
         if (!rhs) return NULL;
-        lhs = expr_binary(p->ps->arena, span_merge(lhs->span, rhs->span), BINOP_OR, lhs, rhs);
+        lhs = guard_height(p, expr_binary(p->ps->arena, span_merge(lhs->span, rhs->span), BINOP_OR, lhs, rhs));
     }
     return lhs;
 }
@@ -376,7 +385,7 @@ static Expr *parse_logic_and(Parser *p, Expr *given_lhs) {
         advance(p);
         Expr *rhs = parse_relational(p, NULL);
         if (!rhs) return NULL;
-        lhs = expr_binary(p->ps->arena, span_merge(lhs->span, rhs->span), BINOP_AND, lhs, rhs);
+        lhs = guard_height(p, expr_binary(p->ps->arena, span_merge(lhs->span, rhs->span), BINOP_AND, lhs, rhs));
     }
     return lhs;
 }
@@ -436,7 +445,7 @@ static Expr *parse_relational(Parser *p, Expr *given_lhs) {
     Expr *rhs = parse_bitor(p, NULL);
     if (!rhs) return NULL;
     Span first_right = rhs->span;
-    lhs = expr_binary(p->ps->arena, span_merge(lhs->span, rhs->span), relational_binop(first_op), lhs, rhs);
+    lhs = guard_height(p, expr_binary(p->ps->arena, span_merge(lhs->span, rhs->span), relational_binop(first_op), lhs, rhs));
 
     if (is_comparison_or_equality_op(p->cur.kind)) {
         Token second = p->cur;
@@ -467,7 +476,7 @@ static Expr *parse_bitor(Parser *p, Expr *given_lhs) {
         advance(p);
         Expr *rhs = parse_bitxor(p, NULL);
         if (!rhs) return NULL;
-        lhs = expr_binary(p->ps->arena, span_merge(lhs->span, rhs->span), BINOP_BITOR, lhs, rhs);
+        lhs = guard_height(p, expr_binary(p->ps->arena, span_merge(lhs->span, rhs->span), BINOP_BITOR, lhs, rhs));
     }
     return lhs;
 }
@@ -479,7 +488,7 @@ static Expr *parse_bitxor(Parser *p, Expr *given_lhs) {
         advance(p);
         Expr *rhs = parse_bitand(p, NULL);
         if (!rhs) return NULL;
-        lhs = expr_binary(p->ps->arena, span_merge(lhs->span, rhs->span), BINOP_BITXOR, lhs, rhs);
+        lhs = guard_height(p, expr_binary(p->ps->arena, span_merge(lhs->span, rhs->span), BINOP_BITXOR, lhs, rhs));
     }
     return lhs;
 }
@@ -491,7 +500,7 @@ static Expr *parse_bitand(Parser *p, Expr *given_lhs) {
         advance(p);
         Expr *rhs = parse_shift(p, NULL);
         if (!rhs) return NULL;
-        lhs = expr_binary(p->ps->arena, span_merge(lhs->span, rhs->span), BINOP_BITAND, lhs, rhs);
+        lhs = guard_height(p, expr_binary(p->ps->arena, span_merge(lhs->span, rhs->span), BINOP_BITAND, lhs, rhs));
     }
     return lhs;
 }
@@ -504,7 +513,7 @@ static Expr *parse_shift(Parser *p, Expr *given_lhs) {
         advance(p);
         Expr *rhs = parse_additive(p, NULL);
         if (!rhs) return NULL;
-        lhs = expr_binary(p->ps->arena, span_merge(lhs->span, rhs->span), op, lhs, rhs);
+        lhs = guard_height(p, expr_binary(p->ps->arena, span_merge(lhs->span, rhs->span), op, lhs, rhs));
     }
     return lhs;
 }
@@ -517,7 +526,7 @@ static Expr *parse_additive(Parser *p, Expr *given_lhs) {
         advance(p);
         Expr *rhs = parse_multiplicative(p, NULL);
         if (!rhs) return NULL;
-        lhs = expr_binary(p->ps->arena, span_merge(lhs->span, rhs->span), op, lhs, rhs);
+        lhs = guard_height(p, expr_binary(p->ps->arena, span_merge(lhs->span, rhs->span), op, lhs, rhs));
     }
     return lhs;
 }
@@ -530,7 +539,7 @@ static Expr *parse_multiplicative(Parser *p, Expr *given_lhs) {
         advance(p);
         Expr *rhs = parse_unary(p);
         if (!rhs) return NULL;
-        lhs = expr_binary(p->ps->arena, span_merge(lhs->span, rhs->span), op, lhs, rhs);
+        lhs = guard_height(p, expr_binary(p->ps->arena, span_merge(lhs->span, rhs->span), op, lhs, rhs));
     }
     return lhs;
 }
@@ -552,7 +561,7 @@ static Expr *parse_unary(Parser *p) {
         depth_exit(p->ps);
         return NULL;
     }
-    Expr *result = expr_unary(p->ps->arena, span_merge(token_span(op_tok), operand->span), op, operand);
+    Expr *result = guard_height(p, expr_unary(p->ps->arena, span_merge(token_span(op_tok), operand->span), op, operand));
     depth_exit(p->ps);
     return result;
 }
@@ -577,7 +586,7 @@ static bool parse_arg_list(Parser *p, NodeList *out_args) {
             if (!value) {
                 return false;
             }
-            arg = expr_named_arg(p->ps->arena, span_merge(arg->span, value->span), arg, value);
+            arg = guard_height(p, expr_named_arg(p->ps->arena, span_merge(arg->span, value->span), arg, value));
         }
         node_list_push(p->ps->arena, out_args, arg);
         if (p->cur.kind == TOK_COMMA) {
@@ -642,8 +651,8 @@ static Expr *parse_primary(Parser *p) {
                     if (p->cur.kind == TOK_RPAREN) {
                         Token rparen = p->cur;
                         advance(p);
-                        result = expr_call(p->ps->arena, span_merge(token_span(t), token_span(rparen)),
-                                            token_span(t), t.lexeme, t.lexeme_len, args);
+                        result = guard_height(p, expr_call(p->ps->arena, span_merge(token_span(t), token_span(rparen)),
+                                                           token_span(t), t.lexeme, t.lexeme_len, args));
                     } else {
                         parser_error(p->ps, diag_expected(p->ps->arena, token_span(p->cur), "')'",
                                                            token_describe(p->ps->arena, p->cur), "after arguments"));
@@ -718,7 +727,7 @@ static Expr *parse_primary(Parser *p) {
                 }
                 Token rb = p->cur;
                 advance(p);
-                result = expr_array_repeat(p->ps->arena, span_merge(token_span(t), token_span(rb)), first, count);
+                result = guard_height(p, expr_array_repeat(p->ps->arena, span_merge(token_span(t), token_span(rb)), first, count));
                 break;
             }
             NodeList elems;
@@ -744,7 +753,7 @@ static Expr *parse_primary(Parser *p) {
             }
             Token rb = p->cur;
             advance(p);
-            result = expr_array(p->ps->arena, span_merge(token_span(t), token_span(rb)), elems);
+            result = guard_height(p, expr_array(p->ps->arena, span_merge(token_span(t), token_span(rb)), elems));
             break;
         }
 
@@ -777,8 +786,8 @@ static Expr *parse_primary(Parser *p) {
             }
             Token rparen = p->cur;
             advance(p);
-            result = expr_convert(p->ps->arena, span_merge(token_span(t), token_span(rparen)),
-                                  token_span(t), t.lexeme, t.lexeme_len, operand);
+            result = guard_height(p, expr_convert(p->ps->arena, span_merge(token_span(t), token_span(rparen)),
+                                                  token_span(t), t.lexeme, t.lexeme_len, operand));
             break;
         }
 
@@ -807,8 +816,8 @@ static Expr *parse_postfix(Parser *p) {
             }
             Token name = p->cur;
             advance(p);
-            base = expr_field_access(p->ps->arena, span_merge(base->span, token_span(name)),
-                                      base, token_span(name), name.lexeme, name.lexeme_len);
+            base = guard_height(p, expr_field_access(p->ps->arena, span_merge(base->span, token_span(name)),
+                                                     base, token_span(name), name.lexeme, name.lexeme_len));
         } else if (p->cur.kind == TOK_LBRACKET) {
             advance(p);
             Expr *lo, *hi;
@@ -823,8 +832,8 @@ static Expr *parse_postfix(Parser *p) {
             Token rbracket = p->cur;
             advance(p);
             Span full = span_merge(base->span, token_span(rbracket));
-            base = hi ? expr_slice(p->ps->arena, full, base, lo, hi)
-                      : expr_index(p->ps->arena, full, base, lo);
+            base = guard_height(p, hi ? expr_slice(p->ps->arena, full, base, lo, hi)
+                                      : expr_index(p->ps->arena, full, base, lo));
         } else {
             break;
         }

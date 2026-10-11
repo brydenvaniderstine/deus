@@ -52,7 +52,7 @@ QEMU_FLAGS   := -machine q35 -m 8G -cpu qemu64,+apic,+pdpe1gb \
                 -serial file:serial.log -monitor stdio -no-reboot \
                 -d int,cpu_reset -D qemu.log
 
-.PHONY: all image run debug clean limine stage-esp test-wx test-lexer test-lexer-asan test-arena test-arena-asan test-ast test-ast-asan test-parser-state test-parser-state-asan test-parser-fixes test-parser-fixes-asan test-parser test-parser-asan test-determinism coverage fuzz fuzz-lexer fuzz-parser
+.PHONY: all image run debug clean limine stage-esp test-wx test-lexer test-lexer-asan test-arena test-arena-asan test-ast test-ast-asan test-parser-state test-parser-state-asan test-parser-fixes test-parser-fixes-asan test-parser test-parser-asan test-determinism coverage fuzz fuzz-lexer fuzz-parser measure-height
 
 all: $(KERNEL_ELF)
 
@@ -218,12 +218,13 @@ PARSER_FIXES_TEST_SRCS := tools/mannac/arena.c tools/mannac/ast.c tools/mannac/d
 test-parser-fixes:
 	@mkdir -p $(PARSER_FIXES_TEST_DIR)
 	clang -std=c11 -Wall -Wextra -O2 -g -o $(PARSER_FIXES_TEST_DIR)/parser_fixes_test $(PARSER_FIXES_TEST_SRCS)
-	$(PARSER_FIXES_TEST_DIR)/parser_fixes_test
+	@# explicit 8 MB stack: the E0111 tests claim "survives an 8 MB stack" (docs/M2_PLAN.md, Input contract)
+	sh -c 'ulimit -s 8192 && $(PARSER_FIXES_TEST_DIR)/parser_fixes_test'
 
 test-parser-fixes-asan:
 	@mkdir -p $(PARSER_FIXES_TEST_DIR)
 	clang -std=c11 -Wall -Wextra -g -fsanitize=address,undefined -o $(PARSER_FIXES_TEST_DIR)/parser_fixes_test-asan $(PARSER_FIXES_TEST_SRCS)
-	$(PARSER_FIXES_TEST_DIR)/parser_fixes_test-asan
+	sh -c 'ulimit -s 8192 && $(PARSER_FIXES_TEST_DIR)/parser_fixes_test-asan'
 
 # Parser golden tests (plain + ASan/UBSan) - docs/M2_PLAN.md's "Golden test
 # format for ASTs". parser_dump is a test-only harness (tools/mannac/
@@ -313,3 +314,9 @@ fuzz-parser:
 
 clean:
 	rm -rf $(BUILD) $(IMAGE) serial.log qemu.log
+
+# Typed-IR step 2b: where does the AST printer fail on an 8 MB stack, per chain
+# shape, plain and ASan (the measurement behind MAX_EXPR_HEIGHT, ast.h). Runs
+# for ~1-2 minutes; deliberately NOT part of `test-*`/CI.
+measure-height:
+	./tools/measure_expr_height.sh

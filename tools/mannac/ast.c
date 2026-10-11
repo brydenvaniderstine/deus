@@ -102,11 +102,21 @@ Decl *decl_function(Arena *a, Span span, NodeList attributes, Span name_span, co
     return d;
 }
 
+/* Height helpers (ast.h, Expr.height): 1 + the tallest child, saturating. */
+static uint16_t h_max(uint16_t a, uint16_t b) { return a > b ? a : b; }
+static uint16_t h_above(uint16_t m) { return m == UINT16_MAX ? UINT16_MAX : (uint16_t)(m + 1); }
+static uint16_t h_list(const NodeList *l) {
+    uint16_t m = 0;
+    for (size_t i = 0; i < l->len; i++) m = h_max(m, ((const Expr *)l->items[i])->height);
+    return m;
+}
+
 Expr *expr_number(Arena *a, Span span, uint64_t value) {
     Expr *e = arena_alloc(a, sizeof(Expr), alignof(Expr));
     e->kind = EXPR_NUMBER;
     e->span = span;
     e->parenthesized = false;
+    e->height = 1;
     e->as.number.value = value;
     return e;
 }
@@ -116,6 +126,7 @@ Expr *expr_bool(Arena *a, Span span, bool value) {
     e->kind = EXPR_BOOL;
     e->span = span;
     e->parenthesized = false;
+    e->height = 1;
     e->as.boolean.value = value;
     return e;
 }
@@ -125,6 +136,7 @@ Expr *expr_ident(Arena *a, Span span, const char *name, size_t name_len) {
     e->kind = EXPR_IDENT;
     e->span = span;
     e->parenthesized = false;
+    e->height = 1;
     e->as.ident.name = arena_strndup(a, name, name_len);
     return e;
 }
@@ -134,6 +146,7 @@ Expr *expr_unary(Arena *a, Span span, UnOp op, Expr *operand) {
     e->kind = EXPR_UNARY;
     e->span = span;
     e->parenthesized = false;
+    e->height = h_above(operand->height);
     e->as.unary.op = op;
     e->as.unary.operand = operand;
     return e;
@@ -144,6 +157,7 @@ Expr *expr_binary(Arena *a, Span span, BinOp op, Expr *lhs, Expr *rhs) {
     e->kind = EXPR_BINARY;
     e->span = span;
     e->parenthesized = false;
+    e->height = h_above(h_max(lhs->height, rhs->height));
     e->as.binary.op = op;
     e->as.binary.lhs = lhs;
     e->as.binary.rhs = rhs;
@@ -155,6 +169,7 @@ Expr *expr_call(Arena *a, Span span, Span name_span, const char *name, size_t na
     e->kind = EXPR_CALL;
     e->span = span;
     e->parenthesized = false;
+    e->height = h_above(h_list(&args));
     e->as.call.name_span = name_span;
     e->as.call.name = arena_strndup(a, name, name_len);
     e->as.call.args = args;
@@ -166,6 +181,7 @@ Expr *expr_convert(Arena *a, Span span, Span target_span, const char *target, si
     e->kind = EXPR_CONVERT;
     e->span = span;
     e->parenthesized = false;
+    e->height = h_above(operand->height);
     e->as.convert.target_span = target_span;
     e->as.convert.target = arena_strndup(a, target, target_len);
     e->as.convert.operand = operand;
@@ -177,6 +193,7 @@ Expr *expr_array(Arena *a, Span span, NodeList elems) {
     e->kind = EXPR_ARRAY;
     e->span = span;
     e->parenthesized = false;
+    e->height = h_above(h_list(&elems));
     e->as.array.elems = elems;
     return e;
 }
@@ -186,6 +203,7 @@ Expr *expr_array_repeat(Arena *a, Span span, Expr *value, uint64_t count) {
     e->kind = EXPR_ARRAY_REPEAT;
     e->span = span;
     e->parenthesized = false;
+    e->height = h_above(value->height);
     e->as.array_repeat.value = value;
     e->as.array_repeat.count = count;
     return e;
@@ -196,6 +214,7 @@ Expr *expr_named_arg(Arena *a, Span span, Expr *name, Expr *value) {
     e->kind = EXPR_NAMED_ARG;
     e->span = span;
     e->parenthesized = false;
+    e->height = h_above(h_max(name->height, value->height));
     e->as.named_arg.name = name;
     e->as.named_arg.value = value;
     return e;
@@ -206,6 +225,7 @@ Expr *expr_index(Arena *a, Span span, Expr *base, Expr *index) {
     e->kind = EXPR_INDEX;
     e->span = span;
     e->parenthesized = false;
+    e->height = h_above(h_max(base->height, index->height));
     e->as.index.base = base;
     e->as.index.index = index;
     return e;
@@ -216,6 +236,7 @@ Expr *expr_slice(Arena *a, Span span, Expr *base, Expr *lo, Expr *hi) {
     e->kind = EXPR_SLICE;
     e->span = span;
     e->parenthesized = false;
+    e->height = h_above(h_max(base->height, h_max(lo->height, hi->height)));
     e->as.slice.base = base;
     e->as.slice.lo = lo;
     e->as.slice.hi = hi;
@@ -227,6 +248,7 @@ Expr *expr_field_access(Arena *a, Span span, Expr *base, Span name_span, const c
     e->kind = EXPR_FIELD_ACCESS;
     e->span = span;
     e->parenthesized = false;
+    e->height = h_above(base->height);
     e->as.field_access.base = base;
     e->as.field_access.name_span = name_span;
     e->as.field_access.name = arena_strndup(a, name, name_len);

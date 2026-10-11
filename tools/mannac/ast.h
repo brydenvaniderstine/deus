@@ -132,6 +132,32 @@ typedef enum {
     BINOP_AND, BINOP_OR,
 } BinOp;
 
+/* Upper bound on the height of any expression tree the PARSER builds (E0111;
+ * docs/M2_PLAN.md "Typed IR (stage 3)" -> "Input contract"). Height counts
+ * nodes along the longest root-to-leaf path (a leaf is 1; parentheses add
+ * nothing, there is no Paren node), so it is exactly the host-stack recursion
+ * depth any walker over the tree needs: the nesting-depth bound counts
+ * recursion CYCLES, but left-associative binary chains and postfix chains are
+ * built by loops, so without this bound a flat input makes a tree as tall as
+ * it is long (docs/STATUS.md "Known issues"). Later stages ASSERT this bound,
+ * they do not enforce one of their own.
+ *
+ * 512 is the MEASURED choice (tools/measure_expr_height.sh, table in
+ * M2_PLAN.md next to E0111): the rule was N = largest power of two <=
+ * (smallest tree height the AST printer survives under ASan+UBSan on an
+ * 8 MB stack) / 8, floor 512. That height is 3,225, giving 403, so the floor
+ * applies; 512 is also the smallest value that keeps every existing golden
+ * valid (tallest: 511, depth_namedarg_255_ok). The effective margin is
+ * 3,225 / 512 = 6.3x. IR step 3 must re-prove it with the real IR builder.
+ * A -DMANNA_MAX_EXPR_HEIGHT=n override exists for MEASUREMENT builds only
+ * (it disables the bound so the script can find where walkers fail). */
+#ifdef MANNA_MAX_EXPR_HEIGHT
+#define MAX_EXPR_HEIGHT MANNA_MAX_EXPR_HEIGHT
+#else
+#define MAX_EXPR_HEIGHT 512
+#endif
+_Static_assert(MAX_EXPR_HEIGHT < UINT16_MAX, "Expr.height is a uint16_t");
+
 struct Expr {
     ExprKind kind;
     Span     span;
@@ -144,6 +170,11 @@ struct Expr {
      * grammar deliberately doesn't have). Set (and the span widened to
      * include the parens) in parse_primary's '(' case - see parser.c. */
     bool     parenthesized;
+    /* Height of the tree rooted here (leaf = 1), computed by the constructors
+     * from the children; saturates at UINT16_MAX instead of wrapping so a
+     * tree built without the parser's E0111 guard can never look short. Not
+     * printed by the dump. Sits in padding: sizeof(Expr) is unchanged. */
+    uint16_t height;
     union {
         struct { uint64_t value; } number;
         struct { bool value; } boolean;

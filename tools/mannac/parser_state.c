@@ -53,6 +53,13 @@ void depth_enter(ParserState *ps, Span span) {
     }
 }
 
+void expr_height_check(ParserState *ps, const Expr *e, Span at) {
+    if (e->height > MAX_EXPR_HEIGHT) {
+        diag_add(ps->arena, &ps->diags, diag_expr_too_tall(at));
+        longjmp(ps->fatal_target, 1);
+    }
+}
+
 void depth_exit(ParserState *ps) {
     ps->depth--;
 }

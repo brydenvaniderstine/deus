@@ -588,6 +588,7 @@ static void test_e0109_fix_positions(void) {
 }
 
 
+
 /* ---- typed-IR step 2a: name spans -------------------------------------
  * The dump prints none of these, so goldens can't pin them; each is pinned
  * here to exact line:col (end column exclusive). A span that merely
@@ -696,6 +697,219 @@ static void test_name_spans(void) {
     printf("PASS: name spans - every new span field pinned to exact line:col\n");
 }
 
+/* ---- typed-IR step 2b: the tree-height bound (E0111) -------------------
+ * The FAIL side of the boundary is goldens (tests/parser/height_*_fail: 513
+ * and far beyond). The ACCEPTED side lives here instead of as goldens: the
+ * dump of a height-512 tree is ~N^2 bytes (indentation per level), ~1 MB
+ * each, which does not belong in the repo. Each case builds a tree at the
+ * largest height its shape can reach under MAX_EXPR_HEIGHT, asserts the
+ * parse is clean and the root height is exactly that, then walks it with the
+ * real AST printer into /dev/null - the walker the bound exists to protect.
+ * The Makefile runs this test under `ulimit -s 8192`, so "survives" means
+ * "survives an 8 MB stack", including in the ASan build. */
+static unsigned h_max(unsigned a, unsigned b) { return a > b ? a : b; }
+static unsigned eh(const Expr *e) { return e ? e->height : 0; }
+static unsigned sh(const Stmt *s) {
+    if (!s) return 0;
+    unsigned m = 0;
+    switch (s->kind) {
+        case STMT_LET: return eh(s->as.let_stmt.init);
+        case STMT_IF: return h_max(eh(s->as.if_stmt.cond), h_max(sh(s->as.if_stmt.then_branch), sh(s->as.if_stmt.else_branch)));
+        case STMT_BLOCK:
+            for (size_t i = 0; i < s->as.block.stmts.len; i++) m = h_max(m, sh(s->as.block.stmts.items[i]));
+            return m;
+        default: return 0;
+    }
+}
+
+static char *rep_str(const char *unit, size_t n) {
+    size_t u = strlen(unit);
+    char *out = malloc(u * n + 1);
+    for (size_t i = 0; i < n; i++) memcpy(out + i * u, unit, u);
+    out[u * n] = '\0';
+    return out;
+}
+
+static char *cat3(const char *a, const char *b, const char *c) {
+    char *out = malloc(strlen(a) + strlen(b) + strlen(c) + 1);
+    strcpy(out, a); strcat(out, b); strcat(out, c);
+    return out;
+}
+
+static void check_accepted_at(const char *what, const char *src, unsigned want_height) {
+    ParserState ps;
+    NodeList items = parse_clean_file(&ps, src);
+    const Decl *fn = items.items[0];
+    unsigned got = sh(fn->as.function_decl.body);
+    if (got != want_height) {
+        fprintf(stderr, "FAIL: %s: root height %u, want %u\n", what, got, want_height);
+        exit(1);
+    }
+    FILE *sink = fopen("/dev/null", "w");
+    assert(sink);
+    for (size_t i = 0; i < items.len; i++) decl_print(sink, items.items[i]); /* must not overflow the stack */
+    fclose(sink);
+    parser_state_destroy(&ps);
+}
+
+static void test_height_bound_accepted_side(void) {
+    assert(MAX_EXPR_HEIGHT == 512); /* the numbers below are relative to it */
+    const char *pre = "manna v0;\nfn f() { let x = ";
+    const char *post = "; }\n";
+    char *t, *src;
+
+    {   char *e = cat3("1", (t = rep_str("+1", 511)), ""); free(t);
+        src = cat3(pre, e, post); free(e);
+        check_accepted_at("binary chain, height 512", src, 512); free(src); }
+    {   char *e = cat3("a", (t = rep_str("+b*c", 510)), ""); free(t);
+        src = cat3(pre, e, post); free(e);
+        check_accepted_at("mixed-precedence chain, height 512", src, 512); free(src); }
+    {   char *e = cat3("a", (t = rep_str(".f", 511)), ""); free(t);
+        src = cat3(pre, e, post); free(e);
+        check_accepted_at("field chain, height 512", src, 512); free(src); }
+    {   char *e = cat3("a", (t = rep_str("[0]", 511)), ""); free(t);
+        src = cat3(pre, e, post); free(e);
+        check_accepted_at("index chain, height 512", src, 512); free(src); }
+    {   /* two nodes per repetition, so the largest reachable height is odd: 511 */
+        char *e = cat3("a", (t = rep_str(".f[0]", 255)), ""); free(t);
+        src = cat3(pre, e, post); free(e);
+        check_accepted_at("mixed postfix chain, height 511 (the largest odd height)", src, 511); free(src); }
+    {   char *open = rep_str("f(", 200), *close = rep_str(")", 200), *adds = rep_str("+1", 311);
+        char *inner = cat3("1", adds, ""); char *mid = cat3(open, inner, close);
+        src = cat3(pre, mid, post);
+        check_accepted_at("chain inside 200 nested calls, height 512 (total height counts, not just the chain)", src, 512);
+        free(open); free(close); free(adds); free(inner); free(mid); free(src); }
+    {   /* statement nesting adds nothing: 120 nested ifs around a height-512 chain */
+        char *ifs = rep_str("if a {\n", 120), *closes = rep_str("}\n", 120), *adds = rep_str("+1", 511);
+        size_t n = strlen("manna v0;\nfn f() {\n") + strlen(ifs) + strlen("let x = 1;\n") + strlen(adds) + strlen(closes) + 4;
+        char *buf = malloc(n + 16);
+        snprintf(buf, n + 16, "manna v0;\nfn f() {\n%slet x = 1%s;\n%s}\n", ifs, adds, closes);
+        check_accepted_at("chain inside 120 nested ifs, height 512", buf, 512);
+        free(ifs); free(closes); free(adds); free(buf); }
+    printf("PASS: E0111 - a tree of height %d is accepted in every shape and the real printer walks it (8 MB stack)\n", MAX_EXPR_HEIGHT);
+}
+
+static void test_height_bound_fatal_and_reuse(void) {
+    /* One past the bound: exactly one diagnostic, E0111, severity error, no
+     * fix and no expected/found; the file is abandoned (fatal, like E0103);
+     * and the ParserState parses the next valid file cleanly (per-parse
+     * state resets, the R6 lesson). */
+    static ParserState ps;
+    parser_state_init(&ps, 1 << 22);
+    char *chain = rep_str("+1", 512);
+    char *e = cat3("1", chain, ""); free(chain);
+    char *bad = cat3("manna v0;\nfn f() { let x = ", e, "; }\n"); free(e);
+    NodeList items;
+    Lexer lx;
+    if (setjmp(ps.fatal_target) == 0) {
+        lexer_init(&lx, bad, strlen(bad));
+        parser_parse_file(&ps, &lx, &items);
+        fprintf(stderr, "FAIL: a height-513 tree did not trigger the fatal escape\n");
+        exit(1);
+    }
+    assert(ps.diags.len == 1);
+    const Diagnostic *d = &ps.diags.items[0];
+    assert(strcmp(d->code, "E0111") == 0 && d->severity == DIAG_ERROR);
+    assert(d->fix == NULL && d->expected == NULL && d->found == NULL);
+    assert(strstr(d->message, "more than 512 chained operations") != NULL);
+    assert(d->span.start_line == 2 && d->span.start_col == 1043);
+
+    const char *good = "manna v0;\nfn g() { let y = 1 + 2; }\n";
+    lexer_init(&lx, good, strlen(good));
+    if (setjmp(ps.fatal_target) != 0) { fprintf(stderr, "FAIL: valid file after E0111 hit a fatal\n"); exit(1); }
+    assert(parser_parse_file(&ps, &lx, &items));
+    /* diags is the caller-owned accumulated list and is deliberately not
+     * cleared between parses (parser_state.h): the valid file must add NOTHING
+     * to it, i.e. the one E0111 from the first parse is still the only entry. */
+    assert(ps.diags.len == 1);
+    assert(strcmp(ps.diags.items[0].code, "E0111") == 0);
+    assert(items.len == 1);
+    parser_state_destroy(&ps);
+    free(bad);
+    printf("PASS: E0111 - fatal with exactly one diagnostic (no fix), position pinned, state reusable afterwards\n");
+}
+
+
+/* Every guard_height() site in parser.c must be live: a removed guard would
+ * silently let that construct build an over-tall tree, and the shape goldens
+ * only exercise some sites. Each case wraps a chain C of height exactly 512
+ * (the bound) in ONE more node of the construct under test, so that node is
+ * the first to cross it: E0111 is expected, at the pinned column (the token
+ * after the offending node completes - or, for a named argument, the ')' that
+ * follows it, which is what tells its guard apart from the enclosing call's).
+ * The control wraps a chain one shorter, so the wrapper is at height 512 and
+ * the file parses clean. */
+typedef struct { const char *name; const char *before; const char *after; int extra_for_control; } GuardCase;
+
+static void test_height_guard_every_site(void) {
+    /* before + "(" + C + ")" + after is the expression. */
+    static const GuardCase cases[] = {
+        {"binary ||",        "",       " || 1",      0},
+        {"binary &&",        "",       " && 1",      0},
+        {"relational <",     "",       " < 1",       0},
+        {"binary |",         "",       " | 1",       0},
+        {"binary ^",         "",       " ^ 1",       0},
+        {"binary &",         "",       " & 1",       0},
+        {"shift <<",         "",       " << 1",      0},
+        {"additive +",       "",       " + 1",       0},
+        {"multiplicative *", "",       " * 1",       0},
+        {"unary -",          "-",      "",           0},
+        {"named argument",   "f(a: ",  ")",          1}, /* the call above it adds a level too */
+        {"call",             "f(",     ")",          0},
+        {"array repeat",     "[",      "; 3]",       0},
+        {"array literal",    "[",      ", 1]",       0},
+        {"conversion",       "u8(",    ")",          0},
+        {"field access",     "",       ".f",         0},
+        {"index",            "a[",     "]",          0},
+        {"slice",            "a[",     "..1]",       0},
+    };
+    const char *pre = "manna v0;\nfn f() { let x = ";
+    const int expr_col = (int)strlen("fn f() { let x = ") + 1; /* column where the expression starts */
+    for (size_t i = 0; i < sizeof cases / sizeof cases[0]; i++) {
+        const GuardCase *c = &cases[i];
+        for (int control = 0; control < 2; control++) {
+            /* C = 1 + k x "+1" has height k + 1; fail: 512 (k = 511); control: one less per level the
+             * wrapper chain adds (named arg: 2 levels, so 510 -> 509 adds). */
+            int k = control ? 510 - c->extra_for_control : 511;
+            char *adds = rep_str("+1", (size_t)k);
+            size_t n = strlen(pre) + strlen(c->before) + strlen(adds) + strlen(c->after) + 64;
+            char *src = malloc(n);
+            snprintf(src, n, "%s%s(1%s)%s; }\n", pre, c->before, adds, c->after);
+            ParserState ps;
+            parser_state_init(&ps, 1 << 22);
+            Lexer lx;
+            NodeList items;
+            bool fatal = false;
+            if (setjmp(ps.fatal_target) != 0) {
+                fatal = true;
+            } else {
+                lexer_init(&lx, src, strlen(src));
+                parser_parse_file(&ps, &lx, &items);
+            }
+            if (control) {
+                if (fatal || ps.diags.len != 0) {
+                    fprintf(stderr, "FAIL: guard control (%s): a tree at height %d was rejected\n", c->name, MAX_EXPR_HEIGHT);
+                    exit(1);
+                }
+            } else {
+                int want_col = expr_col + (int)(strlen(c->before) + 2 + 1 + strlen(adds) + strlen(c->after));
+                if (c->extra_for_control) want_col -= 1; /* named arg: the ')' that closes the call */
+                if (!fatal || ps.diags.len != 1 || strcmp(ps.diags.items[0].code, "E0111") != 0 ||
+                    ps.diags.items[0].span.start_line != 2 || ps.diags.items[0].span.start_col != want_col) {
+                    fprintf(stderr, "FAIL: guard site (%s): want one E0111 at 2:%d, got %zu diag(s)%s", c->name, want_col,
+                            ps.diags.len, ps.diags.len ? "" : "\n");
+                    if (ps.diags.len) fprintf(stderr, " first %s at %d:%d\n", ps.diags.items[0].code,
+                                              ps.diags.items[0].span.start_line, ps.diags.items[0].span.start_col);
+                    exit(1);
+                }
+            }
+            parser_state_destroy(&ps);
+            free(adds);
+            free(src);
+        }
+    }
+    printf("PASS: E0111 - every guard site (9 binary levels, unary, named arg, call, repeat, array, conversion, field, index, slice) trips at the bound, at its pinned column, and passes one level lower\n");
+}
 int main(void) {
     test_token_span_single_line_unchanged();
     test_token_span_multiline_unterminated_comment();
@@ -714,6 +928,9 @@ int main(void) {
     test_e0108_fix_positions();
     test_e0109_fix_positions();
     test_name_spans();
+    test_height_bound_accepted_side();
+    test_height_bound_fatal_and_reuse();
+    test_height_guard_every_site();
     printf("ALL PASS\n");
     return 0;
 }
