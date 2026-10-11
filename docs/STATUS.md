@@ -12,6 +12,10 @@ Updated at every tag (`docs/README.md`'s consistency check runs at the same time
 
 **Post-audit finding #0 (author-found): FIXED** in `ea8b01e`. A stray `fn`/`struct` inside a function body used to drop the enclosing function; the block now ends there, keeps its statements, and the token goes to the top level (one diagnostic, `expected '}' to close block, found 'fn'`). A genuinely nested `fn g() {}` is read the same way, as a missing `}`; code after it inside the intended body gets its own top-level error. Goldens `err_recovery_stray_{fn,struct}_*` (7).
 
+## Known issues in `m2-parser-v0`
+
+- **Tree height is not bounded by the nesting-depth bound, and `expr_print` (the AST dump) overflows the host stack on a tall tree.** The depth bound counts recursion *cycles*; left-associative binary chains (`1+1+1+...`) and postfix chains (`a.f.f.f...`, `a[0][0]...`) are built by loops, so a flat input makes a tree as tall as it is long, at no depth cost. Measured on `c6a4cf0` with `parser_dump` built from the Makefile's sources, one `let x = <chain>;` in a function, default 8 MB stack: 20,000 terms (all three shapes) overflows the stack in `expr_print` under ASan+UBSan; the plain `-O2` build survived 100,000 terms; the same ASan binary passes with a 64 MB stack; 200,000 terms gives E0110 (arena cap), no tree. The parser itself is unaffected (it builds these trees iteratively); the only bound on height is the 16 MiB arena. So `docs/M2_PLAN.md` §4's "never a host-stack overflow" holds for the parser and not for anything that walks its output. Separately, the dump's output grows quadratically with chain length (indentation per level; ~20 GB at 100,000 terms). No golden or fuzz run has hit this. **Planned fix:** a tree-height bound in the parser (a new E01xx code), the first step after the typed-IR plan is approved; not implemented yet.
+
 ## Done
 
 - **M1** (tag `m1-boot`): Limine boot, GDT/IDT, 3-way paging (1 GiB identity/HHDM + 4 KiB kernel-image alias), PIT-calibrated LAPIC preemption, W^X+NX enforced and regression-tested (`make test-wx`). All Milestone 1 acceptance criteria verified against real `serial.log`/`qemu.log` output.
