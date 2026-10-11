@@ -15,7 +15,7 @@ One owner file per topic. Everything else **links** to the owner, never duplicat
 
 ## Consistency check (run at every tag)
 
-Before tagging, re-read `docs/STATUS.md` against the actual repo state (`git log`, `git tag -l`, what's actually implemented) and `docs/README.md`'s own table against what files actually exist, and report any contradiction found - a doc claiming something that isn't true anymore, two docs disagreeing with each other, or a doc listed here that no longer exists (or vice versa).
+Before tagging, re-read `docs/STATUS.md` against the actual repo state (`git log`, `git tag -l`, what's actually implemented) and `docs/README.md`'s own table against what files actually exist, and report any contradiction found - a doc claiming something that isn't true anymore, two docs disagreeing with each other, or a doc listed here that no longer exists (or vice versa). While `docs/TYPED_IR.md` exists, also check `docs/M2_PLAN.md`'s "Typed IR (stage 3)" subsection against it and against `tools/mannac/ir*.c`: every rule marked "specified, not implemented" must flip when its step lands, every `E02xx` in the working file's table must match `docs/error_codes.md` for the codes already emitted, and each §8 record #7-#15 must say whether its goldens exist.
 
 ## Fuzzing (`make fuzz`)
 

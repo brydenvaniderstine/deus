@@ -2,7 +2,7 @@
 
 Working document for the typed IR builder / type checker - not a permanent owner file (`docs/README.md`'s table doesn't list it). Same role `PARSER_STEP4.md` had for the #4 parser step: a checklist and a record, **not the spec**. Step 1 below promotes the settled rules into `docs/M2_PLAN.md` (the owner of language and pipeline design); this file then links to it instead of duplicating it. Archived to `docs/history/` at close-out.
 
-**Status: STEP 0 - PLAN ONLY. No code written. Reviewed; the section 8 questions are DECIDED 2026-10-11 (recorded there). Awaiting approval to commit.** Written at HEAD `c6a4cf0`; `m2-parser-v0` is on `12f1d3d` (checked: `git rev-parse`). Everything marked **[Qn]** refers to a question in section 8 (all decided; the marker now points at the decision); everything marked **[Fn]** is an ambiguity or contradiction in the existing docs, section 9.
+**Status: STEP 0 COMMITTED (`549860b`); STEP 1 (spec promotion) in review. No code written. Reviewed; the section 8 questions are DECIDED 2026-10-11 (recorded there). Awaiting approval to commit.** Written at HEAD `c6a4cf0`; `m2-parser-v0` is on `12f1d3d` (checked: `git rev-parse`). Everything marked **[Qn]** refers to a question in section 8 (all decided; the marker now points at the decision); everything marked **[Fn]** is an ambiguity or contradiction in the existing docs, section 9.
 
 ## 1. What the IR is for, and what it is not
 
@@ -74,109 +74,11 @@ Conclusions: (1) the **parser** is fine - it builds these trees iteratively (the
 
 ## 3. IR data shape **[Q13]**
 
-**Proposal: a new, separate, structured (tree) typed IR - not annotations on the AST, not SSA/CFG.**
-
-- *Separate from the AST* because (a) §4 says the IR stage "retags a `Call` whose callee resolves to a struct", i.e. mutates the tree, which conflicts with the AST staying the pristine, validated artifact that an external-AST path must re-enter **[F7]**; (b) the resolved form (slots instead of names, struct-construction nodes instead of calls, typed constants) is a different shape, and having the types *in* the nodes lets later stages rely on them without a side table.
-- *Tree, structured control flow* because the Wasm backend's target is structured (`block`/`loop`/`br`), loop-counter injection (§3) is "more typed IR" and wants to find `for`/`while` nodes, and the verifier walks it. A native backend can build a CFG from the tree later (principle 13 keeps the IR target-neutral); building one now would be the "second hard problem" (principle 7). `for` stays a `for` (not desugared to `while`) so `continue` keeps meaning "run the step".
-- *Allocation*: its own `Arena` with its own hard cap (so IR size is bounded independently of the parser's and gets its own "too large" code, per the `error_codes.md` E0110 note: "any later stage that adds its own cap gets its own code"). Names are pointers into the AST arena's strings; the AST arena outlives the IR. Documented, not copied.
-
-```
-IrType   interned & canonical per module (pointer equality == type equality):
-         INT{bits 8|16|32|64, signed} | BOOL | UNIT | ARRAY{len:u64, elem} | SLICE{elem} | STRUCT{decl} | ERROR
-         UNIT exists internally (a function with no '-> type' returns it) though it is unwritable.
-         ERROR is the poison type (section 4.1); it never appears in a successfully built module.
-IrStruct { name, fields[{name, type, span}], size, align }        (layout: [Q15, F6])
-IrFunc   { name, id "fn:name" (§7 item 5), kernel_hook:bool, params[IrLocal], ret:IrType, locals[IrLocal], body }
-IrLocal  { slot (declaration order), name, type, span, is_param }
-IrExpr   { kind, type:IrType*, span }, kind one of
-           INT{bits, signed repr}   BOOL   LOCAL{slot}
-           UNARY{NOT|NEG|BITNOT}    BINARY{op}  (arith ops marked trapping; AND/OR marked short-circuit [Q6])
-           CALL{func, args[]}       STRUCT_NEW{struct, values[] in declaration order}
-           FIELD{base, index}       INDEX{base, idx}     SLICE{base, lo, hi}
-           CONVERT{target, operand}   ARRAY{elems[]}     REPEAT{value, count}
-IrStmt   LET{slot, init} | ASSIGN{place, value} | IF | WHILE | FOR{init, cond, step, body}
-         | BREAK | CONTINUE | RETURN{value?} | EXPR | BLOCK
-```
-
-**Guarantees the IR gives later stages (they assert these, they do not re-check):** every expression has a non-`ERROR` type; every name is a slot / function / struct / field index; no `EXPR_NAMED_ARG`, no call-to-struct; every conversion is an explicit `CONVERT` (the IR never contains an implicit one); every integer constant is in range for its type; an `ASSIGN` place is `LOCAL`/`FIELD`/`INDEX` chains only; call arity and argument types match; `break`/`continue` are inside loops; every non-unit function definitely returns **[Q5]**; every type's size is within the limit **[Q15]**; attribute names are known; naming and uniqueness rules hold.
-
-**Backend requirement (Q8, decided): every local lives until its function returns.** Every local - parameters and `let`s alike, including those declared in inner blocks - has storage that lasts until the function returns. A name's *visibility* ends at its block's `}`; its *storage* does not. The Wasm and native backends must not reuse, pop or overwrite an inner block's slot before the function returns (in Wasm: slots allocated per function frame, not per block). Together with the decided rules that slices exist only as parameters and locals (never returned, never a struct field) and that recursion is rejected, a slice of an inner-block array can never outlive the array - even when it is stored in a local declared in an outer block. This is a requirement **on the backends** (and the verifier), not something the IR stage can check or the dump shows; step 1 records it in M2_PLAN §3's backend box.
-
-**Dump format (golden contract).** Same S-expression convention as the AST dump (`tag@span`, scalar header, children; types as bare inline text); the expression's type is the **last header scalar**; locals print as `name #slot`; no pointer, hash order or time ever appears (determinism). IR nodes keep the AST span they came from. Proposed, to be fixed by the first golden in step 3:
-
-```
-(fn@2:1-5:1 fn:add
-  (params (param@2:8-2:17 a #0 u32) (param@2:19-2:28 b #1 u32))
-  (returns u32)
-  (block@2:31-5:1
-    (return@3:5-3:14
-      (binary@3:12-3:17 + u32
-        (local@3:12-3:13 a #0 u32)
-        (local@3:16-3:17 b #1 u32)))))
-```
-
-A function with no return type prints `(returns)`, matching `(return_type)`. A unit-typed *expression* (a call to such a function) prints the type text `unit`; the IR dump is output-only and is not a source interchange form, so principle 11's "unit is unwritable" rule is not violated by it. `i64::MIN` prints `(int@3:5-3:25 -9223372036854775808 i64)`. A buildable-with-errors module produces **no** dump: an erroring check yields `ERRORS:` only (a poisoned tree is not a contract worth pinning).
+**Promoted to `docs/M2_PLAN.md` ("Typed IR (stage 3): decided rules" -> "IR shape") by step 1; that is now the owner, this file no longer repeats it.** Decided: a separate, structured (tree) typed IR with its own arena; the AST is never mutated; `for` stays a `for`; the dump format shown there is the golden contract, fixed by the first golden in step 3.
 
 ## 4. Type rules per v0 production
 
-Cites are to `docs/M2_PLAN.md` unless noted. "Err" is a code from section 5. A rule marked **[Qn]** is a proposal that waits for the answer; nothing below is a decision.
-
-### 4.1 Mechanics that apply everywhere
-
-- **Bidirectional checking.** `check(expr, expected)` and `infer(expr)`. An expected type flows into: integer literals, unary `-` of a literal, parenthesized expressions, array-literal elements, `[v; N]`'s value, and both operands of arithmetic/bitwise operators. It does **not** flow into a conversion's operand (conversion is the explicit act) or from a comparison's `bool` result into its operands; a comparison types its operands against each other. When exactly one operand of a binary operator is an untyped integer literal expression, the other operand's inferred type is its expectation (`0 == x`, `1 + x`, `10 < n`, literal on the left or the right alike); if both are literal expressions and nothing outside supplies a type, it is E0225 (Q1a, no default). Which constructs push an expectation is the riskiest design surface in the stage (it is hand-rolled unification-lite); step 6 is STOP for that reason.
-- **Poisoning, so one mistake gives one error** (the parser's own cascade discipline, applied here). A failed expression gets type `ERROR`, which is compatible with everything and is never reported again; a `let` whose initializer or annotation failed still declares its name (type `ERROR`); a call to an unknown function still checks its arguments for their *own* errors but does not compare arity. Goldens pin each "one error, not two" case.
-- **Error cap**: 20 per file (`MAX_ERRORS` precedent), own code (E0203).
-- **Storage vs. visibility [Q8]**: scoping (below) governs only which *names* are visible; storage for every local lasts until the function returns - a backend requirement, see section 3.
-- **Scopes [Q3]**: function scope holds the parameters; each block opens a scope; a `let`'s binding is visible only *after* its own statement (so `let x = x + 1;` refers to an outer `x` or fails); a `for` init `let` is scoped to the loop.
-- **Namespaces [Q4]**: structs and functions share one top-level namespace, order-independent (forward references fine). Locals are a separate, inner namespace; a call's callee is always looked up in the top-level one (§4: "no indirect calls, no calling an expression's result").
-
-### 4.2 Items
-
-| Production | Rule | Cite | Err |
-|---|---|---|---|
-| `struct_decl` / `field_decl` | Name PascalCase; unique among all top-level names; field names snake_case and unique within the struct; each field type resolves; a struct may not contain itself by value, directly or transitively; zero fields is legal (grammar allows `{ }`). Slice-typed fields: **[Q8]**. | §4 `struct_decl`, §7 items 2/7/8 | E0210 E0211 E0220 E0221 E0280 E0281 |
-| `function_decl` | Name snake_case, unique top-level; each attribute known (only `kernel_hook` in v0) and not repeated; params snake_case and unique; param and return types resolve; absent `-> type` = `unit` (§2 "stated explicitly, never inferred"). `[kernel_hook]` only sets the flag **[Q16, F3]**. | §4 `function_decl`, §2, §7 items 2/7/8 | E0210 E0212 E0214 E0215 E0220 E0280 |
-| `type` | `PRIM_TYPE` -> the integer / `bool` type. `IDENT` -> a struct, else E0220 (a function's name used as a type is also E0220). `[N]T` -> array; `N` is any `u64` including 0 (`[0]T` is a legal zero-length array, §4 `[v; 0]` note) but the type's total size must be within the limit **[Q15]**. `[]T` -> slice. | §4 `type`, §2 | E0220 E0222 |
-
-### 4.3 Statements
-
-| Production | Rule | Cite | Err |
-|---|---|---|---|
-| `let` | `let x: T = e;` -> `check(e, T)`. `let x = e;` -> `x : infer(e)`; an integer literal with no context follows **[Q1]**; `unit` may not be bound (**D1**). Name snake_case. `let` always has an initializer (grammar), so no uninitialized state exists. Every local and parameter is mutable (v0 has no `const`/`mut`, constants are v1 §6). | §4 `let_stmt`, principle 15 | E0223 E0213 E0226 E0280 |
-| assignment (`postfix_stmt`) | Target must be an lvalue: `IDENT`, or `lvalue.field`, or `lvalue[idx]` (base array or slice). Anything else (a call, conversion, array literal, number, slice expression, parenthesized non-lvalue) is E0270. Value is `check(v, type(target))`; types must be equal. Array/struct assignment copies **[Q8]**. | §4 comment on lvalue, R1_TRIAGE #3 | E0270 E0223 |
-| `if` / `while` | Condition `check(c, bool)`; no truthiness (principle 2). `else` branch is a block or an `if`. | §4 | E0223 |
-| `for` | init scoped to the loop; condition `bool`; step is assignment or expression; body block. | §4 | E0223 |
-| `break` / `continue` | Must be lexically inside a `while`/`for` body (the parser accepts them anywhere). | §4 | E0275 |
-| `return` | `return e;` -> `check(e, ret)` and `ret != unit`; `return;` iff `ret == unit`. | §2, §4 | E0276 E0223 |
-| function end | A non-unit function must definitely return **[Q5]**. | principle 4 | E0277 |
-| `expr_stmt` | Any well-typed expression; the value is discarded (no warnings exist, `diag.h`) (**D2**). | §4 | - |
-| `block` | New scope. Unreachable code after `return`/`break` is allowed (**D3**, **[Q5]**). | §4 | - |
-
-### 4.4 Expressions (precedence chain, `unary`, `postfix`, `primary`)
-
-| Production | Rule | Cite | Err |
-|---|---|---|---|
-| `NUMBER` | Typed by the expected integer type, which it must fit (E0224); with no expectation: E0225 (Q1a: no default). The lexer already rejected `> 2^64-1`. | §2 signed-integer item | E0224 E0225 |
-| `-` literal | `UNOP_NEG` directly over an unparenthesized `NUMBER` of magnitude exactly `2^(N-1)` in an `iN` context is `iN::MIN` - the test is `operand.kind == EXPR_NUMBER && !operand.parenthesized && value == 2^(N-1)`. `-(2^63)` (parenthesized) is a plain range error. The spec states this **for `i64` only** **[Q2, F2]**. | §2 and the paragraph after it | E0224 |
-| `-` other | Operand must be a signed integer; unsigned is a type error (named in §2). Overflow (`-iN::MIN`) traps at runtime. | §2 | E0260 |
-| `!` / `~` | `!` on `bool`; `~` on any integer. | principle 2 (derived, not stated) | E0260 |
-| `* / % + -` | Both operands the **same** integer type; result the same type. No implicit conversion (principle 2). Overflow and `/`,`%` by zero trap **[Q6, F9]**. Mismatch offers a fix-it wrapping the operand in the conversion when one is legal (**D4**). | §2 | E0261 E0260 |
-| `& \| ^` | Same integer type -> same type. `bool` operands: **[Q6]**. | §4 | E0261 E0260 |
-| `<< >>` | Count type and out-of-range count semantics: **[Q6, F9]**. | §4 `shift` | E0260 |
-| `< > <= >=` | Same integer type both sides -> `bool`. The parser guarantees at most one comparison/equality per `&&`/`\|\|` operand (E0101/E0108), so no chain reaches us. | §4 `relational` | E0261 E0260 |
-| `== !=` | Same type, integer or `bool` -> `bool`. Struct/array equality is **not** in v0 (hidden O(n) cost, principle 10) **[Q6]**. | §4 | E0261 E0260 |
-| `&& \|\|` | `bool` both -> `bool`. Short-circuit and evaluation order are unspecified **[Q6, F8]**. | §4 | E0260 |
-| `( e )` | Transparent; keeps `parenthesized` for the `i64::MIN` test. | §2 | - |
-| `IDENT` | Resolves to a local/parameter. A function or struct name used as a value is E0231 (no function values, §4). | §4 `primary` | E0230 E0231 |
-| `IDENT ( args )`, function | Callee in the top-level namespace; arity must match; each arg `check(a, param_type)`; positional only (named args to a function: E0234, **[F12]** not stated anywhere). Result type is the return type (may be `unit`; **D1**). Recursion **[Q4]**. | §4 `primary`, "ONLY call form" | E0232 E0233 E0234 E0223 E0235 |
-| `IDENT ( name: v, ... )`, struct | Retagged to `STRUCT_NEW`. Every arg must be `name: value` (E0240, which also covers positional arguments mixed in with named ones), the left side a bare unparenthesized `EXPR_IDENT` (E0241 - `(x): 1` is not bare), a declared field (E0242, the same code field access uses), none repeated (E0244), none missing (E0243), **in declaration order** (E0245, stated twice: §4 arg comment and the §4 to-do list), each value `check(v, field_type)`. A constructor with positional-only args is E0240 (the admission record's "a constructor names every field", §8 #4 item 1). | §4 arg comment, "Diagnostics added by r1 Phase B", §8 #4 | E0240-E0245 E0223 |
-| `.field` | Base is a struct; field exists; type is the field's. (No `.len`: **[Q9]**.) | §4 `postfix` | E0242 E0251 |
-| `[i]` | Base array or slice; index an integer type **[Q7]**; result the element type. Constant out-of-range is the **verifier's**, not ours (§3). | §4 `index_or_slice`, §3 | E0252 E0253 |
-| `[lo..hi]` | Base array or slice; both bounds integer; result `[]T`. Both bounds are mandatory in the grammar (`a[..3]` doesn't exist). | §4 | E0252 E0253 |
-| `PRIM_TYPE ( e )` | Target and operand both **integer** types (`bool` either side is E0265 - "write `x != 0`"; there is no spelling for `u8(b)`); same-type conversion is legal and a no-op (**D5**); the operand is typed on its own, not from the target **[Q1]**. Runtime trap when the value doesn't fit (§4 conversion comment). | §4, §8 #4 | E0265 |
-| `[a, b, c]` | At least one element; all elements one type (the first, or the expected element type, decides); result `[len]T`. | §4 `array_body` | E0223 |
-| `[v; N]` | Result `[N]T`; `v` is evaluated once, even for `N == 0`; total size within the limit **[Q15]**. | §4 `array_body` | E0223 E0222 |
-| array / slice values | `[N]T` and `[]T` are different types; passing an array where a slice is expected is a mismatch (no implicit conversion) **[Q8, Q9]**. | principle 2 | E0223 |
+**Promoted to `docs/M2_PLAN.md` (same subsection: "Names, scopes, items", "Types and literals", "Operators and statements", "Calls and struct construction", "Arrays, slices, storage", "Layout and limits", "Naming conventions") by step 1.** The per-rule error codes stay in section 5 below, the checklist for registering them as each is first emitted.
 
 ## 5. New error codes (proposed numbers, `E02xx` = typed IR per `docs/error_codes.md`)
 
@@ -230,7 +132,7 @@ Naming predicates (§7 item 2 gives only the names of the conventions, not their
 
 **Invariant for every step:** the 365 parser goldens and 15 lexer goldens stay **byte-identical** (a golden that loses diagnostics or nodes is STOP-tier with every removed line listed, per CLAUDE.md "Lessons"). Counts re-checked against `STATUS.md`'s snapshot: `tests/parser/*.mn` = 365, `tests/lexer/*.mn` = 15.
 
-- **Goldens** `tests/ir/*.mn` -> `*.ir`, `make test-ir` / `test-ir-asan`, harness `tools/mannac/ir_main.c` -> `ir_dump` (whole-file mode only; expression/block modes need a symbol context). Output is either the IR dump or `ERRORS:`. **Error lines carry the code** (`3:5 E0223 type mismatch: ...`) - unlike the parser goldens, which print message text only - because 39 codes with generic-looking messages are too easy to mix up silently. One golden per rule row in section 4 (a positive and a negative), at least one per code, plus a no-cascade golden for each poisoning path.
+- **Goldens** `tests/ir/*.mn` -> `*.ir`, `make test-ir` / `test-ir-asan`, harness `tools/mannac/ir_main.c` -> `ir_dump` (whole-file mode only; expression/block modes need a symbol context). Output is either the IR dump or `ERRORS:`. **Error lines carry the code** (`3:5 E0223 type mismatch: ...`) - unlike the parser goldens, which print message text only - because 39 codes with generic-looking messages are too easy to mix up silently. One golden per rule row in M2_PLAN's Typed IR rules (a positive and a negative), at least one per code, plus a no-cascade golden for each poisoning path.
 - **Per-code coverage by script**, not by memory (the method the `m2-parser-v0` tag used for productions): every `E02xx` in `error_codes.md` appears in at least one `.ir` golden, and every code string in the source is registered. The script's output goes in the step report.
 - **Unit tests** `ir_test.c` (plain + ASan, wired into CI): type interning/equality; the snake/Pascal predicates and case converter on a table; literal-range edges at every width (`u8` 255/256, `i8` -128/-129/127/128); the `i64::MIN` matrix (`-9223372036854775808` ok; `-(9223372036854775808)`, `-9223372036854775809`, `9223372036854775808` in `i64`, and `-9223372036854775808` in `u64` all rejected; `-0x8000000000000000` per **[Q2]**) and its generalization to other widths if approved; fix-it edit positions pinned like `parser_fixes_test.c`; the gate refusing a non-empty `DiagList`, including the E0109 file; reuse of an `IrState` after a fatal longjmp (the parser's R6 lesson: all per-run state resets).
 - **Determinism**: extend `make test-determinism` / `tools/run_determinism_test.sh` to the IR goldens (twice plain, once ASan, byte-compared) - what M2_PLAN §5 already promises. Output must never depend on a pointer, hash iteration order or the arena base. Required for diverse double-compiling (§1).
@@ -284,7 +186,7 @@ Ordered by how much of the plan hangs on them. **All sixteen questions were deci
 
 **Q7. Index and slice-bound types.** There is no `usize`, and no implicit conversion. *Recommendation: any integer type; a negative or too-large value is a runtime/verifier out-of-bounds trap, not a type error.* The alternative (`u64` only) forces a `u64(i)` on every `u32` loop counter. **DECIDED 2026-10-11: any integer type.**
 
-**Q8. Arrays by value, and slice lifetimes [F10].** (i) Arrays as values: `let b = a;`, passing, returning and assigning copy `N` elements - a visible copy at the use site, with a known cost (§8 #4 item 4 style), so arguably within principle 10; *recommendation: allow, document the O(N) cost.* (ii) **Slices have no lifetime story in v0**: §6 item 5 says "a slice can't outlive its arena", but v0 has no arenas, and a slice of a local array returned from a function dangles. *Recommendation: `[]T` is allowed as a parameter type and as a local's type only - not as a return type, not as a struct field - until v1 regions exist.* Without something like this the "no undefined behaviour" claim has a hole. **DECIDED 2026-10-11: arrays copy by value, with the O(N) cost documented; `[]T` only as a parameter or local type. **Added requirement:** every local lives until its function returns, including locals declared in inner blocks, so a slice of an inner-block array cannot dangle - recorded in section 3 as a backend requirement.**
+**Q8. Arrays by value, and slice lifetimes [F10].** (i) Arrays as values: `let b = a;`, passing, returning and assigning copy `N` elements - a visible copy at the use site, with a known cost (§8 #4 item 4 style), so arguably within principle 10; *recommendation: allow, document the O(N) cost.* (ii) **Slices have no lifetime story in v0**: §6 item 5 says "a slice can't outlive its arena", but v0 has no arenas, and a slice of a local array returned from a function dangles. *Recommendation: `[]T` is allowed as a parameter type and as a local's type only - not as a return type, not as a struct field - until v1 regions exist.* Without something like this the "no undefined behaviour" claim has a hole. **DECIDED 2026-10-11: arrays copy by value, with the O(N) cost documented; `[]T` only as a parameter or local type (amended at the step 1 review: no return type or struct field may contain a slice at any depth, and a slice's element type may not contain a slice - M2_PLAN "Arrays, slices, storage"). **Added requirement:** every local lives until its function returns, including locals declared in inner blocks, so a slice of an inner-block array cannot dangle - recorded in section 3 as a backend requirement.**
 
 **Q9. Reading a length [F11].** Nothing in v0 can produce `len(x)` or `x.len` (principle 18 names `len` as a stdlib convention, but v0 has no stdlib or builtins). A `[]T` parameter therefore can't be iterated to its end, and an array can't be turned into a slice except by writing its length literally (`a[0..4]`). That is a language addition and needs its own Admission Test; *this plan does not include it.* Do you want it raised as a separate item before the IR step 12? **DECIDED 2026-10-11: yes. `len` is raised as its own Admission Test item (step 1) and must be decided before step 12. It is not part of this plan's scope.**
 
@@ -312,7 +214,9 @@ Ordered by how much of the plan hangs on them. **All sixteen questions were deci
 - **D7.** IR goldens print error codes (section 6); parser goldens are untouched.
 - **D8.** Zero-field structs and zero-parameter functions are legal (the grammar allows both); `Empty()` constructs.
 
-## 9. Spec ambiguities and contradictions found (flagged, not resolved)
+## 9. Spec ambiguities and contradictions found
+
+Step 1 settles or restates every flag below in `docs/M2_PLAN.md` ("Typed IR (stage 3)" -> "Flags raised while planning, and where each is settled"): F1, F2, F4-F10, F12, F13 resolved; F3, F14 restated; F11 restated and open (Admission item #15). The text below is the original finding.
 
 Each cites where; none was silently settled in the sections above - the ones I had to take a position on to write section 4 are the **[Qn]** items.
 

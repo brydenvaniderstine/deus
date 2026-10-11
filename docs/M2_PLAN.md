@@ -25,12 +25,14 @@ No feature creep. v0 needs exactly enough to express the loop-counter-injected, 
 - **Functions:** named functions, fixed arity, no overloading, no closures, no varargs.
 - **Loops:** `for` (C-style three-clause) and `while` only. No `foreach`/iterators — those need a trait/protocol system v0 excludes.
 - **Safe pointers:** a single pointer kind, bounds-carrying (pointer + length, not a bare address) for anything outside `[kernel_hook]`. Raw/bare pointers don't exist in v0 source — they're an IR-level concept the verifier permits only inside verified `[kernel_hook]` regions.
-- **`[kernel_hook]` attribute:** marks a function as allowed raw pointer arithmetic and hardware intrinsics (port I/O, `cpuid`, MSR access — the exact primitives `kernel/arch/x86/*.c` already uses). Everything else in a `[kernel_hook]` function is still typed-IR-checked; it's an escape hatch from the safe-pointer rule only, not from the pipeline.
+- **`[kernel_hook]` attribute:** marks a function as allowed raw pointer arithmetic and hardware intrinsics (port I/O, `cpuid`, MSR access — the exact primitives `kernel/arch/x86/*.c` already uses). Everything else in a `[kernel_hook]` function is still typed-IR-checked; it's an escape hatch from the safe-pointer rule only, not from the pipeline. **v0 reading (decided 2026-10-11):** the v0 grammar and AST have no pointer type, dereference or intrinsic syntax, so nothing a `[kernel_hook]` function can say differs from any other function; in v0 the attribute is a flag the IR carries and whose spelling it validates (any other attribute is an error), with no call restriction. Raw pointer arithmetic and intrinsics arrive with the syntax to express them (not v0). The Wasm backend still rejects every `[kernel_hook]` function (§3). See "Typed IR (stage 3): decided rules".
 - **Explicitly excluded from v0:** generics, traits/interfaces, closures, exceptions/unwinding, operator overloading, modules/namespaces, dynamic dispatch, heap allocation, strings.
 - **Wasm backend target (v0): Wasm MVP only** — no threads, no SIMD, no GC proposal features. (Already noted inline in the pipeline-stages diagram below; restated here as an explicit scope decision, not just an implementation detail of one pipeline box.)
-- **Signed integers, overflow, and the negative-min literal:** `i8`/`i16`/`i32`/`i64` are first-class alongside `u8`-`u64` (already listed above). Unary `-` applied to an unsigned-typed operand is a type error, caught in the typed-IR stage — the parser has no type information yet, so it parses identically to the signed case; rejection happens one stage later. All arithmetic overflow, signed and unsigned, **traps at runtime** — no silent wraparound, no undefined behavior, in either direction. The most-negative `i64` literal (`-9223372036854775808`) needs special handling in the typed-IR stage specifically: the lexer only ever produces unsigned-magnitude `NUMBER` tokens, so `9223372036854775808` (2^63) lexes fine as an in-range `u64` value with no lexer-level overflow (confirmed: well under `2^64-1`); the IR stage must recognize negation applied directly to a literal of magnitude exactly `2^63` in an `i64` context as meaning `i64::MIN` — not validate the unsigned magnitude as a standalone `i64` first (which would wrongly fail, since positive `i64` only reaches `2^63-1`) and negate second.
+- **Signed integers, overflow, and the negative-min literal:** `i8`/`i16`/`i32`/`i64` are first-class alongside `u8`-`u64` (already listed above). Unary `-` applied to an unsigned-typed operand is a type error, caught in the typed-IR stage — the parser has no type information yet, so it parses identically to the signed case; rejection happens one stage later. All arithmetic overflow, signed and unsigned, **traps at runtime** — no silent wraparound, no undefined behavior, in either direction. The most-negative `i64` literal (`-9223372036854775808`) needs special handling in the typed-IR stage specifically: the lexer only ever produces unsigned-magnitude `NUMBER` tokens, so `9223372036854775808` (2^63) lexes fine as an in-range `u64` value with no lexer-level overflow (confirmed: well under `2^64-1`); the IR stage must recognize negation applied directly to a literal of magnitude exactly `2^63` in an `i64` context as meaning `i64::MIN` (**generalized, decided 2026-10-11, to every signed width:** magnitude exactly `2^(N-1)` directly negated in an `iN` context is `iN::MIN` for N in 8, 16, 32, 64, so `-128` is a valid `i8`) — not validate the unsigned magnitude as a standalone `i64` first (which would wrongly fail, since positive `i64` only reaches `2^63-1`) and negate second.
 
-  **"Directly negated" means exactly that - no parens in between.** `-9223372036854775808` is `i64::MIN`; `-(9223372036854775808)` is a plain overflow error, since the magnitude goes through a parenthesized sub-expression rather than being the unary minus's immediate, literal operand (there's no principled way to call the parenthesized form `i64::MIN` too without the same reasoning eventually applying to arbitrarily-indirect forms like `-((9223372036854775808))`, which should obviously still be rejected). The parser (fresh-eyes audit, r1) already carries the exact mechanism the IR stage needs for this, since there's no dedicated Paren AST node to hang a "was this parenthesized" fact on otherwise: `Expr.parenthesized` (`ast.h`) is set, and the node's span widened to include the parens, by `parse_primary`'s `'('` case (`parser.c`) - mutated in place on whatever expression came back from inside the parens, idempotently correct through nested parens too (`((42))` ends up `parenthesized == true` with a span covering both pairs). The IR stage's exact test is: `expr.kind == EXPR_UNARY && expr.op == UNOP_NEG && expr.operand.kind == EXPR_NUMBER && !expr.operand.parenthesized && expr.operand.value == 9223372036854775808`. Verified directly (`tools/mannac/parser_fixes_test.c`, not a golden test - the flag has no S-expression dump syntax of its own) for both the bare and parenthesized forms, including the exact widened span in the parenthesized case.
+  **"Directly negated" means exactly that - no parens in between.** `-9223372036854775808` is `i64::MIN`; `-(9223372036854775808)` is a plain overflow error, since the magnitude goes through a parenthesized sub-expression rather than being the unary minus's immediate, literal operand (there's no principled way to call the parenthesized form `i64::MIN` too without the same reasoning eventually applying to arbitrarily-indirect forms like `-((9223372036854775808))`, which should obviously still be rejected). The parser (fresh-eyes audit, r1) already carries the exact mechanism the IR stage needs for this, since there's no dedicated Paren AST node to hang a "was this parenthesized" fact on otherwise: `Expr.parenthesized` (`ast.h`) is set, and the node's span widened to include the parens, by `parse_primary`'s `'('` case (`parser.c`) - mutated in place on whatever expression came back from inside the parens, idempotently correct through nested parens too (`((42))` ends up `parenthesized == true` with a span covering both pairs). The IR stage's exact test, written with the real `Expr` fields (`ast.h`; for an `iN` context, `2^(N-1)` below is `9223372036854775808` when N is 64): `e->kind == EXPR_UNARY && e->as.unary.op == UNOP_NEG && e->as.unary.operand->kind == EXPR_NUMBER && !e->as.unary.operand->parenthesized && e->as.unary.operand->as.number.value == 2^(N-1)`. Verified directly (`tools/mannac/parser_fixes_test.c`, not a golden test - the flag has no S-expression dump syntax of its own) for both the bare and parenthesized forms, including the exact widened span in the parenthesized case.
+
+- **Integer literal typing (decided 2026-10-11): no default type.** A literal takes the integer type its context expects, which it must fit, or the type of its sibling operand (`0 == x`, `1 + x`, `10 < n`); with no type from anywhere (`let i = 0;`, `0 == 1`, a conversion's bare-literal operand) it is a compile error asking for an annotation. Literal suffixes were considered and not adopted. Details: "Typed IR (stage 3): decided rules".
 
 **Self-hosting requires v1 features (strings, heap). Structs moved to v0.** Structs are in v0 (see Types, above) — driver and microkernel task formatting need them now, not at some later self-hosting milestone. What v0 still doesn't have, and what self-hosting `mannac` itself in Manna still needs, is a heap allocator (for AST nodes and other dynamic structures) and strings (for identifiers, source text, diagnostics). Until v1 adds those, self-hosting isn't attempted — v0's C bootstrap compiler is the only `mannac` that exists, by design.
 
@@ -52,6 +54,7 @@ source (.mn)
 ├─────────────────┤
 │ Typed IR builder    │  AST -> typed IR; resolves names, checks types,
 │                   │  rejects anything outside the v0 spec
+│                   │  (decided rules: "Typed IR (stage 3)", §4)
 ├─────────────────┤
 │ Loop-counter        │  <-- HERE, BEFORE the verifier, not after.
 │ injection           │  Every loop in the typed IR gets an instrumented
@@ -105,6 +108,12 @@ source (.mn)
 │                   │  lowers to is the natural place that cost
 │                   │  becomes concrete and checkable, not a separate
 │                   │  retroactive pass.
+│                   │  Backend requirement (Typed IR rules, §4):
+│                   │  every local lives until its function
+│                   │  returns, inner-block locals included -
+│                   │  never reuse or pop an inner block's slot
+│                   │  early, or a slice of an inner-block array
+│                   │  could dangle.
 └─────────────────┘
           │
           ▼
@@ -325,9 +334,13 @@ array_body        ::= expression ( { ',' expression } | ';' NUMBER ) ;
        exactly one operand (not an `arg_list`). Semantics (IR/backend,
        recorded here so the parser step doesn't re-decide them): the
        result is `x` itself when the value fits the target type and a
-       runtime TRAP when it doesn't - covering narrowing (`u8(300)`) and
-       a sign change (`u32(-1)`) uniformly, per "all arithmetic overflow
-       traps" (§2). Conversions are between integer types only, and
+       runtime TRAP when it doesn't - covering narrowing (`u8(big)` with
+       `let big: i32 = 300;`) and a sign change (`u32(neg)` with
+       `let neg: i32 = -1;`) uniformly, per "all arithmetic overflow
+       traps" (§2). The operand needs a type of its own - a conversion
+       supplies none and integer literals have no default (§2) - so the
+       former spellings `u8(300)` and `u32(-1)` are compile errors now,
+       not traps. Conversions are between integer types only, and
        **bool <-> integer conversion is not allowed in v0, in either
        direction**: `bool(x)` and `u8(b)` (for a `bool` `b`) both parse -
        `bool` is a PRIM_TYPE - and the IR stage rejects both. Write
@@ -345,7 +358,7 @@ array_body        ::= expression ( { ',' expression } | ';' NUMBER ) ;
 
 ### Universal nesting-depth bound
 
-One shared counter, max **256 depth units** — not 256 levels of any particular construct. Each recursive production that can genuinely recurse (not every parse function; see `tools/mannac/parser.c`'s own "INVARIANT" comment for the precise rule: every recursion *cycle* must pass through at least one counted function) costs 1 unit per level. A single construct - nested parens, a `unary` self-recursion chain (`!!!!!!...x`), nested index/slice (`a[a[a[...]]]`), nested calls (`f(f(f(...)))`), or nested array types (`[1][1][1]...T`) - costs exactly 1 unit per level, so **255 levels of any one of them parses successfully; 256 is the first to cleanly fail** with the same parse error ("maximum nesting depth (256 units) exceeded"), never a host-stack overflow. The 255-not-256 figure is because the innermost operand itself also costs 1 unit (255 wrapping levels + 1 innermost = 256, the exact cap). Mixed constructs cost more per level - e.g. `!(!(!(...)))` costs 2 units per level (1 from `unary`'s own recursion, 1 from the paren re-entering the full expression grammar), capping at **127 levels**, not 255. Empirically proven for expressions in `tests/parser/depth_*` (parens/unary/index/calls at 255 vs. 256 and 300, mixed nesting at 127 vs. 128 and 300, all under both plain and ASan builds, zero crashes) - not just asserted from reading the code.
+One shared counter, max **256 depth units** — not 256 levels of any particular construct. Each recursive production that can genuinely recurse (not every parse function; see `tools/mannac/parser.c`'s own "INVARIANT" comment for the precise rule: every recursion *cycle* must pass through at least one counted function) costs 1 unit per level. A single construct - nested parens, a `unary` self-recursion chain (`!!!!!!...x`), nested index/slice (`a[a[a[...]]]`), nested calls (`f(f(f(...)))`), or nested array types (`[1][1][1]...T`) - costs exactly 1 unit per level, so **255 levels of any one of them parses successfully; 256 is the first to cleanly fail** with the same parse error ("maximum nesting depth (256 units) exceeded"), never a host-stack overflow **in the parser**. (Restated 2026-10-11; the bound below counts recursion *cycles*, not tree height: left-associative and postfix chains are built by loops, so a flat 20,000-term input makes a 20,000-level tree and anything that walks it, such as the AST dump, can overflow the host stack - measured, `docs/STATUS.md` "Known issues". A parser-side height bound, proposed E0111, is specified in "Typed IR (stage 3)" and **not implemented** until step 2 of `docs/TYPED_IR.md`.) The 255-not-256 figure is because the innermost operand itself also costs 1 unit (255 wrapping levels + 1 innermost = 256, the exact cap). Mixed constructs cost more per level - e.g. `!(!(!(...)))` costs 2 units per level (1 from `unary`'s own recursion, 1 from the paren re-entering the full expression grammar), capping at **127 levels**, not 255. Empirically proven for expressions in `tests/parser/depth_*` (parens/unary/index/calls at 255 vs. 256 and 300, mixed nesting at 127 vs. 128 and 300, all under both plain and ASan builds, zero crashes) - not just asserted from reading the code.
 
 **The 256-unit budget is shared with whatever already-counted construct encloses the one being measured - it is not a fresh 256 every time, and effective limits shrink with context, not just with the construct's own per-level cost.** A single construct's 255-level figure above assumes it's the *only* counted thing on the path (true for a bare top-level expression). Once it sits inside another counted construct, that construct's own hook has already spent some of the 256 before the inner one gets to use any of it. Worked example, from Step 6: a nested array type (`[1][1][1]...u32`, `parse_type`'s own 1-unit-per-level self-recursion, same mechanism as `unary`) costs exactly 255 levels **in isolation**, but a `let` statement's type annotation only ever appears inside a `block`, and `parse_block` carries its own hook (spent once, for the block itself, before any statement - let alone that statement's type annotation - is parsed). So the same array-type nesting, measured the way it actually occurs (`{ let x: [1][1]...u32 = 1; }`), caps at **254 levels, not 255** - one less, exactly the one unit `parse_block` already spent. Empirically proven in `tests/parser/depth_type_*` (254 vs. 255 and 300, plain and ASan, zero crashes). Nested blocks got the same treatment once `if`/`while`/`for` (Step 7) actually created block-within-block nesting, confirming the pattern again with two further worked examples, each costing a *different* amount per level depending on exactly which counted functions are open simultaneously at that level - not a single universal "nested block" number: real nesting via a block (`if a { if a { ... } }`, each level opening both `parse_block`'s hook and `parse_if_stmt`'s own) caps at **127 levels**, while an "else if" chain (`if a {} else if b {} else if c {} ...`, a self-recursion on `parse_if_stmt` alone that never touches `parse_block` at all for the chain links themselves) caps at **254 levels** - one less than the pure 255 because the deepest link's own `{ ... }` body still briefly opens one more counted frame before the chain's own depth can unwind. Empirically proven in `tests/parser/depth_nested_if_*` and `depth_elseif_*` (both boundaries, plus 300 for a clear margin, plain and ASan, zero crashes).
 
@@ -403,7 +416,7 @@ Expr   = NumberLit(value: u64) | BoolLit(value: bool) | Ident(name)
 
 Arg    = Expr | NamedArg(name_expr: Expr, value: Expr)     (* #4 step 4: x: 1 ; Call.args holds Arg nodes *)
 ```
-`Call` also represents struct construction (`Point(x: 1, y: 2)`) - the parser can't tell the two apart, and the IR stage retags a `Call` whose callee resolves to a struct. `NamedArg.name_expr` is an arbitrary `Expr` at parse time for the same reason (§4 grammar comment): "is a bare field name" is an IR check. `PrimType` is the nine `PRIM_TYPE` keywords; whether `Type` gains a `TypePrim` node or keeps `TypeIdent` holding the keyword text is the #4 step's call, since either renders identically (below).
+`Call` also represents struct construction (`Point(x: 1, y: 2)`) - the parser can't tell the two apart, and the IR stage builds a `STRUCT_NEW` node for a `Call` whose callee resolves to a struct (the AST itself is never mutated; "Typed IR (stage 3)"). `NamedArg.name_expr` is an arbitrary `Expr` at parse time for the same reason (§4 grammar comment): "is a bare field name" is an IR check. `PrimType` is the nine `PRIM_TYPE` keywords; whether `Type` gains a `TypePrim` node or keeps `TypeIdent` holding the keyword text is the #4 step's call, since either renders identically (below).
 
 There is no `Assign` `Expr` variant — assignment lives only in `Stmt`, as `AssignStmt`.
 
@@ -580,17 +593,162 @@ Registered in `docs/error_codes.md` (both now emitted: E0108 since #4 step 5, E0
 - `[]` - `expected expression, found ']'`; `[v; X]` with `X` not a `NUMBER` - `expected array repeat count (integer), found ...`;
 - conversion arity and shape: `u8()` - `expected expression, found ')'`; `u8(a, b)` - `expected ')' after conversion operand, found ','`; a bare `u8` in expression position - `expected '(' after 'u8', found ...`.
 
-**IR-stage diagnostics are specified here only as a to-do, with no codes yet.** The `E02xx` range is assigned when the IR stage starts; none ship in r1, so "no diagnostic ships unregistered" holds. They are: callee is not a struct / left of `':'` is not a bare field name; a field missing, repeated, unknown, or out of declaration order; named and positional arguments mixed in one call; array-literal element-type mismatch (a repeat count of 0 is legal, not an error); any conversion with a non-integer type on either side (`bool(x)` and `u8(b)` alike); an assignment target that isn't an lvalue (lvalue validity, `docs/history/R1_TRIAGE.md` #3); maximum array size.
+**IR-stage diagnostics** (struct-construction field checks, array-literal element types, conversion legality, lvalue validity, maximum type size, ...) are specified in "Typed IR (stage 3): decided rules" below. The `E02xx` numbers are assigned in `docs/error_codes.md` in the commit that first emits each; none ship yet, so "no diagnostic ships unregistered" still holds.
+
+### Typed IR (stage 3): decided rules
+
+**Status: specified (decided by the reviewer, 2026-10-11), not implemented.** This subsection is the owner of the typed IR stage's semantics; `docs/TYPED_IR.md` is its working checklist (steps, proposed error-code numbers, test plan) and links here rather than repeating it. Every rule below is a pending-admission record in §8 (#7-#15) until its goldens exist. Error codes are `E02xx` (`docs/error_codes.md`); each is assigned a number in the commit that first emits it, never earlier. Where a rule says "error" without a code, the number is not fixed yet.
+
+#### What the stage is for, and not for
+
+For: resolving every name and type; deciding what the parser left open (struct construction vs. call, conversion legality, lvalue validity, literal typing, the negative-minimum literal); the checks the parser handed over (naming conventions, unknown attributes, duplicate names, §7 items 7-8); and producing a form the next stages consume without re-checking (loop-counter injection, the verifier, the Wasm backend, `manna check --json`). Target-neutral (principle 13) and deterministic (principle 12).
+
+Not for: bounds proofs (a literal `a[9]` on a `[4]u8` is the **verifier's** to reject, not this stage's), loop-counter injection, runtime trap insertion (the IR records which operations trap; the backends lower them), constant folding or any optimization (typing a literal and folding a directly-negated `2^(N-1)` into `iN::MIN` are representation, not optimization), SSA/CFG construction, machine-cost documentation (§3 backend box), any ingestion path for an externally written AST (which goes through the parser's validation and then this stage, never around either), and the `manna` CLI.
+
+#### Input contract
+
+- **Gate.** The IR runs only on a parse that reported **zero** diagnostics (`ParserState.diags` empty). The tree alone cannot show a parse was clean: an E0109 file yields a tree identical to a clean one, a recovered statement leaves no placeholder (a later use of a name it would have declared would be a bogus "unknown name"), and E0106/E0107/E0103/E0104/E0110 yield no usable tree. The gate is a quality policy, not a safety dependency: the IR must still not crash on any tree the parser can produce, and the fuzz target runs it ungated to prove that (§5).
+- **What a clean parse guarantees** (asserted in debug builds, never a user diagnostic): items are `DECL_STRUCT`/`DECL_FUNCTION` in source order; a function body is a block; `if`/`while`/`for` bodies are blocks; a `for` init is a let/assign/expr statement and its step an assign or expr statement; `EXPR_NAMED_ARG` appears only as a direct element of a call's args and its value is never itself a named arg; an array literal has at least one element; `convert.target` is one of the nine primitive keywords; `unit` never appears; `TYPE_IDENT` holds either a primitive keyword's text or a user identifier (the two cannot collide, primitives being reserved); numbers are unsigned magnitudes (negatives are `UNOP_NEG` over a number); every node has a start-and-end span.
+- **What it does not guarantee**: names are unresolved; duplicates, unknown attributes and any identifier casing (`_x`, `fooBar`, `X`) arrive unchanged; an assignment target is only postfix-shaped, not an lvalue (`1 = 2;`, `f(x) = 3;`, `u8(x) = 1;`, `[1, 2][0] = 3;`, `(a + b) = 1;` all parse); `break`/`continue` outside a loop, `return` shape, missing returns, literal ranges, array sizes, struct recursion and conversion legality are all unchecked.
+- **Spans.** Today the AST has no span for a call's callee name, a field access's field name, a conversion's target keyword, a `let`'s name, a declaration/field/parameter name, or an individual attribute. The typed-IR plan's step 2 adds them (decided 2026-10-11), so diagnostics point at the thing, per principle 6. Until then they can only point at the enclosing node.
+- **Tree height** is bounded by a new parser diagnostic (proposed E0111, "expression nested too deeply", specified here, **not implemented** until step 2; the limit N is measured under ASan at 8 MB with margin, then approved). The IR carries no bound of its own; it asserts the parser's.
+
+#### IR shape
+
+A new, separate, structured (tree) typed IR with its own arena and hard cap (its own "too large" code, per `error_codes.md`'s E0110 note); not annotations on the AST, not SSA/CFG. **The AST is never mutated**: where the AST note above says the IR "retags" a `Call`, the IR builds a new `STRUCT_NEW` node. `for` stays a `for` (not desugared to `while`), so `continue` keeps meaning "run the step". Names are pointers into the AST arena's strings; the AST arena outlives the IR.
+
+```
+IrType   interned & canonical per module (pointer equality == type equality):
+         INT{bits 8|16|32|64, signed} | BOOL | UNIT | ARRAY{len:u64, elem} | SLICE{elem} | STRUCT{decl} | ERROR
+         UNIT exists internally (a function with no '-> type' returns it) though it is unwritable.
+         ERROR is the poison type; it never appears in a successfully built module.
+IrStruct { name, fields[{name, type, span}], size, align }
+IrFunc   { name, id "fn:name" (§7 item 5), kernel_hook:bool, params[IrLocal], ret:IrType, locals[IrLocal], body }
+IrLocal  { slot (declaration order), name, type, span, is_param }
+IrExpr   { kind, type:IrType*, span }, kind one of
+           INT   BOOL   LOCAL{slot}
+           UNARY{NOT|NEG|BITNOT}    BINARY{op}  (arithmetic ops marked trapping; AND/OR marked short-circuit)
+           CALL{func, args[]}       STRUCT_NEW{struct, values[] in declaration order}
+           FIELD{base, index}       INDEX{base, idx}     SLICE{base, lo, hi}
+           CONVERT{target, operand}   ARRAY{elems[]}     REPEAT{value, count}
+IrStmt   LET{slot, init} | ASSIGN{place, value} | IF | WHILE | FOR{init, cond, step, body}
+         | BREAK | CONTINUE | RETURN{value?} | EXPR | BLOCK
+```
+
+**Guarantees to later stages (they assert these, they do not re-check):** every expression has a non-`ERROR` type; every name is a slot / function / struct / field index; no `EXPR_NAMED_ARG`, no call-to-struct; every conversion is an explicit `CONVERT` (the IR never contains an implicit one); every integer constant is in range for its type; an `ASSIGN` place is a `LOCAL`/`FIELD`/`INDEX` chain only; call arity and argument types match; `break`/`continue` are inside loops; every non-unit function definitely returns; every type's size is within the limit; attribute names are known; naming and uniqueness rules hold.
+
+**Dump format (golden contract, fixed by the first golden).** The AST dump's S-expression convention (`tag@span`, scalar header, children; types as bare inline text); an expression's type is the **last header scalar**; locals print as `name #slot`; no pointer, hash order or time ever appears (determinism); IR nodes keep the span of the AST node they came from.
+
+```
+(fn@2:1-5:1 fn:add
+  (params (param@2:8-2:17 a #0 u32) (param@2:19-2:28 b #1 u32))
+  (returns u32)
+  (block@2:31-5:1
+    (return@3:5-3:14
+      (binary@3:12-3:17 + u32
+        (local@3:12-3:13 a #0 u32)
+        (local@3:16-3:17 b #1 u32)))))
+```
+
+A function with no return type prints `(returns)`, matching `(return_type)`. A unit-typed *expression* (a call to such a function) prints the type text `unit`; the IR dump is output-only, not a source interchange form, so principle 11's "unit is unwritable" is not violated. `i64::MIN` prints `(int@3:5-3:25 -9223372036854775808 i64)`. A module that had errors produces **no** dump: an erroring check yields `ERRORS:` only. IR error lines carry the code (`3:5 E0223 type mismatch: ...`), unlike the parser goldens, which print message text only.
+
+#### Names, scopes, items
+
+- **Namespaces.** Structs and functions share one top-level namespace; declaration order is irrelevant (forward references are legal). Locals are a separate, inner namespace. A call's callee is always looked up in the top-level one (§4: "no indirect calls, no calling an expression's result"). A function or struct name used as a value is an error.
+- **Scopes; no shadowing.** Parameters live in the function scope; each block opens a scope; a `let`'s binding is visible only *after* its own statement (so `let x = x + 1;` refers to an outer `x` or fails); a `for` init `let` is scoped to the loop. **Redeclaring a name that is already visible anywhere in the function - the same block or an enclosing one, parameters included - is an error** (a name means one thing within a function: principle 3).
+- **Storage lives to function end.** Scoping governs which *names* are visible, not storage: see "Arrays, slices, storage" below.
+- **No recursion.** Direct and mutual recursion are rejected (a call-graph cycle check). Rationale (this plan's, not a principle's): loop-counter injection (§3) makes every loop observable, and recursion is a loop with no counter; unbounded stack use is also the opposite of principle 10. This is a restriction, not a feature.
+- **Struct declarations.** PascalCase name, unique among all top-level names; field names snake_case and unique within the struct; every field type resolves; a struct may not contain itself by value, directly or transitively; zero fields is legal (the grammar allows `{ }`, and `Empty()` constructs it). A field whose type contains a slice at any depth (`[]T`, `[1][]u8`, ...) is an error (see "Arrays, slices, storage").
+- **Function declarations.** snake_case name, unique among top-level names; each attribute known and not repeated; parameters snake_case and unique; parameter and return types resolve; an absent `-> type` means `unit` (§2). A return type that contains a slice at any depth (`[]T`, `[2][]u8`, ...) is an error. Zero parameters is legal.
+- **Types.** A primitive keyword is its integer or `bool` type; an `IDENT` names a struct, else error (a function's name used as a type too); `[N]T` is an array, `N` any `u64` including 0 (`[0]T` is legal, §4), subject to the size limit; `[]T` is a slice, and **a slice's element type may not contain a slice** (`[][]u8` is an error in every position, parameters included).
+- **Attributes.** The only v0 attribute is `kernel_hook`. An unknown attribute is an error, and it supersedes the naming check (one mistake, one error: `[KernelHook]` is reported as unknown, not also as mis-cased). `[kernel_hook]` is a flag the IR carries; see "`[kernel_hook]` in v0".
+
+#### Types and literals
+
+- **Bidirectional checking.** `check(expr, expected)` and `infer(expr)`. An expected type flows into integer literals, unary `-` of a literal, parenthesized expressions, array-literal elements, `[v; N]`'s value, and both operands of arithmetic/bitwise operators. It does **not** flow into a conversion's operand (conversion is the explicit act), nor from a comparison's `bool` result into its operands.
+- **Integer literals have no default type.** An **untyped literal expression** is a `NUMBER`; unary `-` over an untyped literal expression; a parenthesized untyped literal expression; or a binary arithmetic or bitwise operation whose operands are **all** untyped literal expressions. (A comparison is not one: it yields `bool`. A conversion is not one: it is typed by its target.) Such an expression is typed by an expected integer type, which every literal in it must fit, or by its sibling operand: when exactly one operand of a binary operator is an untyped literal expression, the other operand's inferred type is its expectation, and it flows into the **whole group** (`0 == x`, `1 + x`, `10 < n`, left or right alike; `1 + 2 + x` types as `x`'s type, so each of `1` and `2` is checked against it, and so does `x + (1 + 2)`). With no type from anywhere - `let i = 0;`, `0 == 1`, a conversion's bare-literal operand - it is an error ("cannot infer the type of this integer literal; annotate it"). Literal suffixes were considered and are **not** adopted. Consequence: `for let i: u32 = 0; ...` needs the annotation.
+- **The negative-minimum literal, at every signed width** (§2): `UNOP_NEG` directly over an unparenthesized `NUMBER` of magnitude exactly `2^(N-1)` in an `iN` context is `iN::MIN`, for N in 8, 16, 32, 64. `-(2^(N-1))` (parenthesized) and any larger magnitude are plain range errors. A literal that does not fit its type is an error.
+- **Poisoning, so one mistake gives one error.** A failed expression gets type `ERROR`, which is compatible with everything and never reported again; a `let` whose initializer or annotation failed still declares its name (type `ERROR`); a call to an unknown function still checks its arguments for their own errors but does not compare arity. Errors are capped at 20 per file (the parser's `MAX_ERRORS` precedent), with their own "too many errors" code.
+- **`let`.** `let x: T = e;` checks `e` against `T`; `let x = e;` gives `x` the type of `e`. A `unit` value cannot be bound, passed or operated on; it can only be an expression statement. `let` always has an initializer (grammar), so no uninitialized state exists. Every local and parameter is mutable (v0 has no `const`/`mut`; constants are v1, §6).
+- **Conversions.** `PRIM_TYPE ( e )`: target and operand must both be **integer** types; `bool` on either side is an error ("write `x != 0`"; there is no spelling for `u8(b)`); a same-type conversion is legal, a no-op, and kept in the IR; the operand is typed on its own, never from the target; it traps at runtime when the value does not fit (§4 conversion comment).
+
+#### Operators and statements
+
+| Production | Rule |
+|---|---|
+| unary `-` | Operand a signed integer (unsigned is an error, §2). `-iN::MIN` traps at runtime. |
+| `!` / `~` | `!` on `bool`; `~` on any integer. |
+| `* / % + -` | Both operands the **same** integer type; result that type. Overflow traps (§2); `/` and `%` by zero **trap**. A type mismatch carries a fix-it wrapping the operand in the legal integer conversion, as two zero-width inserts (the E0108 mechanism, no source text needed). |
+| `& \| ^` | Same integer type -> same type. `bool` operands are **rejected** (`&&`/`\|\|` are the boolean operators; one way to write it). |
+| `<< >>` | Count has the **same integer type** as the left operand; a count >= the bit width **traps** (it is not "arithmetic overflow" as §2 words it). |
+| `< > <= >=` | Same integer type both sides -> `bool`. The parser already guarantees at most one comparison/equality per `&&`/`\|\|` operand (E0101/E0108). |
+| `== !=` | Same type, integer or `bool` only -> `bool`. Struct and array equality are not in v0 (hidden O(n) cost, principle 10). |
+| `&& \|\|` | `bool` both -> `bool`; **short-circuit**. |
+| evaluation order | **Strictly left to right** for operands and call arguments (principle 4: exactly one meaning). |
+| `if` / `while` / `for` | Condition is `bool`; no truthiness (principle 2). |
+| `break` / `continue` | Must be lexically inside a `while`/`for` body (the parser accepts them anywhere). |
+| `return` | `return e;` requires a non-unit function and `e` of its return type; `return;` only in a unit function. |
+| missing return | A non-unit function must **definitely return**, structurally: its body ends in `return`, or in an `if`/`else` whose two branches both definitely return. Loops never count (`while true { return 1; }` still needs a trailing `return`). Unreachable code after `return`/`break`/`continue` is **allowed** (v0 has no warnings, `diag.h`). |
+| expression statement | Any well-typed expression; the value may be discarded. |
+| assignment | The target must be an lvalue: `IDENT`, `lvalue.field`, or `lvalue[idx]` (base array or slice). Anything else (a call, conversion, array literal, number, slice expression, parenthesized non-lvalue) is an error. The value is `check(v, type(target))`; types must be equal. |
+
+#### Calls and struct construction
+
+- **Function calls** are positional only; arity and each argument's exact type must match. Named arguments to a function are an error.
+- **Struct construction** (`IDENT ( ... )` whose callee is a struct) builds a `STRUCT_NEW`. Every argument must be `name: value` - positional arguments, alone or mixed with named ones, are an error ("a constructor names every field", §8 #4 item 1). The left side must be a bare, unparenthesized `EXPR_IDENT` (`(x): 1` is not bare). The name must be a declared field, given exactly once, **in declaration order**, and each value is checked against the field's type. Evaluation order is the written order, which is the declaration order.
+- **Field access** needs a struct base and a declared field; a field-less type or an unknown field is an error (the same "no such field" code construction uses). Neither `x.len` nor any other pseudo-field exists in v0.
+
+#### Arrays, slices, storage
+
+- **Arrays are values.** `let b = a;`, passing, returning and assigning copy `N` elements: a visible copy at the use site with a known O(N) cost (principle 10 satisfied by visibility, and documented here). `[N]T` and `[]T` are different types; an array where a slice is expected is a type mismatch (no implicit conversion).
+- **Slices may appear only in parameter and local types, and never nest or escape.** A slice type may be the type of a parameter or of a local. **No return type and no struct field may contain a slice at any depth** (so `[]T`, `[2][]u8` and `[1][]u8` are all rejected there), and **a slice's element type may not contain a slice** (so `[][]u8` is rejected everywhere, as a parameter too). Each rule closes a hole the one before leaves: without the first, a slice of a local array returned from its function (directly, or inside an array) would dangle; without the second, a callee given `out: [][]u8` could store `a[0..4]`, a slice of its own local array, into `out[0]`, where the caller outlives it. (§6 item 5 refers to arenas v0 does not have; until v1 regions exist, this is the rule.)
+- **Indexing and slicing.** `a[i]` requires an array or slice base and an index of **any integer type**; the result is the element type. `a[lo..hi]` requires an array or slice base and integer bounds (both mandatory in the grammar); the result is `[]T`. A negative or too-large value is a runtime/verifier out-of-bounds trap, not a type error. A literal out-of-range index is likewise the verifier's (§3).
+- **Array literals.** At least one element, all one type (the first element, or the expected element type, decides); the result is `[len]T`. `[v; N]` has type `[N]T`; `v` is evaluated exactly once even for `N == 0`.
+- **Backend requirement: every local lives until its function returns.** Every local - parameters and `let`s alike, including those declared in inner blocks - has storage that lasts until the function returns. A name's visibility ends at its block's `}`; its storage does not. The Wasm and native backends (and the verifier's model of them) **must not** reuse, pop or overwrite an inner block's slot before the function returns (in Wasm: slots allocated per function frame, not per block). Together with the rules that slices exist only as parameters and locals and that recursion is rejected, a slice of an inner-block array can never outlive the array, even when it is stored in a local declared in an outer block. The IR stage cannot check this and the dump does not show it; it is a requirement on the backends. Its cost: a frame is the sum of all its locals, with no slot reuse across sibling blocks.
+- **No length operation yet.** Nothing in v0 produces `len(x)` or `x.len`, so a `[]T` parameter cannot be iterated to its end, and an array becomes a slice only by writing its length literally (`a[0..4]`). Whether and how to add one is a separate Admission Test item (#15, **open**), to be decided before the IR's array step.
+
+#### Layout and limits
+
+The IR defines the layout (fixed layout, §2): fields in declaration order, natural alignment per field, trailing padding to the struct's alignment, no reordering. No single type's size may exceed `2^31 - 1` bytes (Wasm MVP memory32 addresses, signed-offset friendly); exceeding it, including by arithmetic overflow while computing it, is an error. `[0]T` has size 0.
+
+#### Naming conventions
+
+The predicates (the lexer admits `_`-led, digit-bearing, mixed-case identifiers, so §7 item 2's names need definitions): `snake_case = [a-z][a-z0-9]*('_'[a-z0-9]+)*` (no leading, trailing or doubled `_`; `_` alone and `_x` are rejected - v0 has no wildcard); `PascalCase = [A-Z][A-Za-z0-9]*` (no `_`; acronym runs such as `HTTPServer` are allowed). Every declaration site is covered (`let`, parameters, fields, structs, functions; attributes via the unknown-attribute rule). A violation carries a fix-it that renames the declaration **and every resolved use**, so the symbol table records each use, and `DiagFix` becomes an arena-allocated edit list (it holds at most 2 edits today, `MAX_FIX_EDITS`, built for E0108). The fix-it is omitted when the converted name would be empty or would collide with an existing name. The test is: apply the fix, re-check, zero errors.
+
+#### `[kernel_hook]` in v0
+
+The v0 grammar and AST have no pointer type, dereference or intrinsic syntax (§2's raw pointers and hardware intrinsics are not expressible), so nothing a `[kernel_hook]` function can say differs from any other function's. In v0 it is a flag the IR carries and whose spelling it validates; the IR imposes no call restriction between hook and non-hook functions (a backend/verifier question, today unanswerable). The Wasm backend still rejects every `[kernel_hook]` function (§3).
+
+#### Flags raised while planning, and where each is settled
+
+| Flag | Settled |
+|---|---|
+| F1 literal typing never specified | **Resolved**: §2 literal-typing bullet; "Types and literals" above. |
+| F2 negative minimum only for `i64`; pseudo-field test | **Resolved**: §2 generalized, test rewritten with the real `Expr` fields. |
+| F3 `[kernel_hook]` describes things v0 cannot express | **Restated**: §2 `[kernel_hook]` bullet and "`[kernel_hook]` in v0" above; the §5 verifier-corpus placeholder says so. |
+| F4 §5 files "a type mismatch" under the verifier | **Resolved**: §5 verifier bullet corrected (type mismatches are typed-IR rejections). |
+| F5 naming fix-it vs. `DiagFix`'s 2-edit cap | **Resolved**: §7 item 7; "Naming conventions" above. |
+| F6 layout and maximum array size unspecified | **Resolved**: "Layout and limits". |
+| F7 "the IR stage retags a `Call`" mutates the AST | **Resolved**: the AST note after the node types; "IR shape". |
+| F8 evaluation order and short-circuit unstated | **Resolved**: "Operators and statements". |
+| F9 division by zero and shift counts not covered by "arithmetic overflow traps" | **Resolved**: same table. |
+| F10 no scoping, shadowing, recursion or slice-lifetime rules | **Resolved**: "Names, scopes, items" and "Arrays, slices, storage". |
+| F11 no way to read a length | **Restated, open**: "No length operation yet"; Admission item #15. |
+| F12 named args to a function / positional struct construction | **Resolved**: "Calls and struct construction". |
+| F13 naming predicates undefined | **Resolved**: "Naming conventions". |
+| F14 "never a host-stack overflow" is true of the parser only | **Restated**: the sentence in "Universal nesting-depth bound" now says so and points at the planned parser bound (E0111). |
 
 ## 5. Test strategy
 
 - **Golden tests per stage:** for each stage, a fixed set of `.mn` inputs with checked-in expected output - token stream for the lexer, AST dump for the parser, typed-IR dump for the IR builder, annotated IR for loop-counter injection, `.wasm` binary (or its `wasm2wat` text form, for diffability) for the backend. Any stage's output changing unexpectedly fails the test; a deliberate change updates the golden file in the same commit as the code change, never silently.
-- **Verifier rejection tests:** a corpus of programs that *must* fail verification - out-of-bounds pointer arithmetic, a `[kernel_hook]`-only operation attempted outside one, a type mismatch - each asserting the specific rejection reason, not just "it failed." Also covers: a `[kernel_hook]` function reaching the Wasm backend must produce exactly the "native backend required" diagnostic, every time. This is also where VISION.md's adversarial-AST test lives once the AI-AST ingestion path exists: same corpus, same verifier, AST-shaped inputs instead of source-shaped ones.
+- **Verifier rejection tests:** a corpus of programs that *must* fail verification - out-of-bounds pointer arithmetic, a `[kernel_hook]`-only operation attempted outside one (none is expressible in v0, see "Typed IR (stage 3)"; kept for when one is) - each asserting the specific rejection reason, not just "it failed." Also covers: a `[kernel_hook]` function reaching the Wasm backend must produce exactly the "native backend required" diagnostic, every time. This is also where VISION.md's adversarial-AST test lives once the AI-AST ingestion path exists: same corpus, same verifier, AST-shaped inputs instead of source-shaped ones. Type mismatches are **not** verifier rejections: they are typed-IR errors (E02xx) and are tested by the IR goldens below.
 - **Wasm execution tests on macOS:** compile a `.mn` program to `.wasm`, run it under `wasmtime`, assert on stdout/return value. Host-side only - unrelated to M3's bare-metal runtime, purely "does the backend emit correct Wasm."
   - **`tools/fetch-wasmtime.sh`:** downloads the official prebuilt `wasmtime-v49.0.2-x86_64-macos.tar.xz` release asset directly from `bytecodealliance/wasmtime`'s GitHub releases (verified this session: Homebrew's formula has zero bottled platforms - it would build from source regardless of OS, and there's no Rust toolchain on this machine either, so that path is avoided entirely). The script verifies the downloaded tarball's checksum against a pinned value before extracting; the extracted `wasmtime` binary is `.gitignore`d, never committed - it's a fetched build tool, not project source.
   - **M3 seed note:** this prebuilt binary unblocks M2's own testing only. M3 needs a Wasm runtime that runs *inside* Deus, which a host CLI binary can't be. WAMR (already named in CLAUDE.md for M3) is the real candidate; a minimal hand-written C interpreter remains a fallback worth prototyping only if WAMR's bare-metal port turns out impractical - not needed to unblock anything in M2.
 - **Determinism test (Step 11, implemented):** `make test-determinism` (`tools/run_determinism_test.sh`) runs every existing lexer and parser golden-test input (the only two stages implemented so far - typed IR and `.wasm` get the same treatment once they exist) through the plain binary twice and byte-compares the two runs, then runs the ASan binary once more and byte-compares that against the plain run too - 215 inputs as of the post-tag recovery fixes (14 lexer + 201 parser; 201 at r1 Phase C, 182 at Step 11), zero drift either way. Required by MANNA_PRINCIPLES.md principle 12 (deterministic builds) and load-bearing for diverse double-compiling (§1): if the C-bootstrap and self-hosted compilers' outputs are ever going to be meaningfully diffed against each other, each one individually producing byte-identical output across repeated runs is the precondition that comparison depends on. This is deliberately a separate check from the golden-file tests themselves (`run_lexer_goldens.sh`/`run_parser_tests.sh`), which only confirm output matches a fixed expected text - this one checks for run-to-run and build-to-build drift directly, independent of whether that output is "correct."
 - **Fuzzing (Step 12, implemented):** `make fuzz`/`fuzz-lexer`/`fuzz-parser` (`tools/fuzz/run_fuzzers.sh`, harnesses at `tools/mannac/fuzz_lexer.c`/`fuzz_parser.c`) - libFuzzer + ASan + UBSan, seeded directly from the existing golden-test inputs (so the parser fuzzer starts mutating from every `err_recovery_*.mn` instead of from nothing). Apple's Xcode clang has no libFuzzer runtime at all; the script uses brew's keg-only llvm instead. Deliberately not in CI - a fixed wall-clock budget, not a pass/fail check. The parser binary is additionally built with `MANNA_FUZZ_TRACE_LAST_RESORT` (compiled out of every other build), which turns reaching `parser_parse_file`'s last-resort single-token-skip backstop (see "Error recovery" above) into an immediate, saved crash - a direct empirical check of the "unreachable under the current grammar" claim, not just reasoning. First run: lexer 2,328,111 execs/181s, parser 480,689 execs/601s, zero crashes/timeouts/sanitizer reports on either target, and the last-resort backstop was never hit. Every crash or timeout found in any run becomes a golden test (minimized, then copied into `tests/lexer`/`tests/parser` with a name describing what broke) - none did this time.
+
+- **Typed IR tests (specified 2026-10-11, not built):** goldens `tests/ir/*.mn` -> `*.ir` (`make test-ir`/`-asan`, a test-only `ir_dump` harness, whole-file mode), printing the IR dump or `ERRORS:` with a code on every line; one golden per rule row above, at least one per code, a no-cascade golden per poisoning path, and a script that proves every `E02xx` in `error_codes.md` has a golden. The same determinism treatment as the other stages. A `fuzz_ir` target (lexer -> parser -> IR) with a compile-flag-only **ungated** mode that runs the IR on whatever tree the parser produced even when it reported errors - the empirical check that the parse-diagnostics gate is policy, not a safety dependency. Parser and lexer goldens stay byte-identical throughout. Plan and step list: `docs/TYPED_IR.md`.
 
 ## 6. v1 roadmap
 
@@ -631,12 +789,12 @@ Per `docs/MANNA_PRINCIPLES.md` Part 4 — recorded here so the implementation bl
    Error codes (`E0xxx`) are stable and documented in a registry. This is why every AST node needs both a start **and end** position, not just a start (the parser grammar's AST node types section, §4, is updated to reflect this — spans are now `start-end`, not just a single point).
 5. **AST IDs are name-based, top-level items only, in v0** — e.g. `fn:parse_expr`, `struct:Token`. Inner-node IDs (for addressing a specific statement or expression inside a function body) are deferred to v1.
 6. **Tooling: one public binary, `manna`**, with subcommands `build`, `check`, `test`, `fmt`, and `doc`. `mannac` (`tools/mannac/`) is the internal source folder and library name only — never a binary a user runs directly.
-7. **Naming-convention enforcement (principle 2 above) lives at the IR stage (E02xx), not the parser (E01xx)** — decided during Step 8, when the question became concrete (struct/function/field/param declarations are the first place names get checked). Consistent with unknown attributes and duplicate names also being IR-stage errors (item 8 below): one semantic-validation pass, not checks scattered across parser and IR, even though naming is purely syntactic and could in principle be checked the moment an IDENT is parsed. Not implemented in Step 8 - the parser accepts any syntactically-valid identifier at a declaration site for now. Requirements for when it is implemented: covers every declaration site (`let`, params, fields, structs, functions, attributes - not just structs/functions), and every violation carries a fix-it hint with the correctly-cased name (same `DiagFix` mechanism E0102 already uses).
+7. **Naming-convention enforcement (principle 2 above) lives at the IR stage (E02xx), not the parser (E01xx)** — decided during Step 8, when the question became concrete (struct/function/field/param declarations are the first place names get checked). Consistent with unknown attributes and duplicate names also being IR-stage errors (item 8 below): one semantic-validation pass, not checks scattered across parser and IR, even though naming is purely syntactic and could in principle be checked the moment an IDENT is parsed. Not implemented in Step 8 - the parser accepts any syntactically-valid identifier at a declaration site for now. Requirements for when it is implemented: covers every declaration site (`let`, params, fields, structs, functions, attributes - not just structs/functions), and every violation carries a fix-it hint with the correctly-cased name (the `DiagFix` mechanism E0102 already uses, extended: a rename is one edit at the declaration plus one per resolved use, so `DiagFix` becomes an arena-allocated edit list - decided 2026-10-11; the casing predicates are under "Typed IR (stage 3)").
 8. **Unknown attributes and duplicate names are IR-stage errors, not parser errors.** The parser accepts any `[IDENT]` attribute list and any declaration name without checking whether the attribute is recognized or the name collides with another declaration - those require a symbol table, which doesn't exist until the IR stage. Not implemented in Step 8.
 
 ## 8. Feature Admission Test records
 
-The five-item test is `docs/MANNA_PRINCIPLES.md`'s "Feature Admission Test". One record per language change that went through it; r1 Phase B (#4, #5, #6) is the first batch. Item 2 requires golden tests, which can't exist for spec-only changes, so each record was written as "pending admission (goldens due in #4 step)". **At the close of the #4 parser step (step 7), all three are ADMITTED:** every golden the record required exists, passes in plain and ASan builds, and is named below (the planned names in the Phase B text were adjusted where the real ones differ). A record is only upgraded to "admitted" with its goldens cited; the status line at the head of each record says so.
+The five-item test is `docs/MANNA_PRINCIPLES.md`'s "Feature Admission Test". One record per language change that went through it; r1 Phase B (#4, #5, #6) is the first batch. Item 2 requires golden tests, which can't exist for spec-only changes, so each record was written as "pending admission (goldens due in #4 step)". **At the close of the #4 parser step (step 7), all three are ADMITTED:** every golden the record required exists, passes in plain and ASan builds, and is named below (the planned names in the Phase B text were adjusted where the real ones differ). A record is only upgraded to "admitted" with its goldens cited; the status line at the head of each record says so. The typed-IR decisions of 2026-10-11 are the second batch, #7-#15 below (all pending admission; #15 open).
 
 ### #4 - struct construction, array literals, conversions, reserved primitive names
 
@@ -667,6 +825,98 @@ The five-item test is `docs/MANNA_PRINCIPLES.md`'s "Feature Admission Test". One
 3. **Scope:** v0.
 4. **Machine cost:** none - no runtime construct.
 5. **Second way?** It removes one: `fn f() {}` and `fn f() -> unit {}` can no longer both be written.
+
+**Second batch: typed IR records (#7-#15).** The second batch, from the typed-IR plan (`docs/TYPED_IR.md`), decided 2026-10-11. Every record is **pending admission**: the spec entry exists ("Typed IR (stage 3): decided rules", §4), the goldens do not - they are due in the IR step named in each record, and a record is upgraded to "admitted" only with its goldens cited. #15 is **open** (not yet decided).
+
+### #7 - integer literals have no default type; the negative-minimum rule at every signed width
+
+**Status: pending admission (goldens due in IR step 6).**
+
+1. **Principles / locked decisions:** supports 2 (no implicit choice of a type) and 4. No locked decision touched; §2's `i64::MIN` paragraph is generalized, not reversed. Cost to readers: `let i = 0;` is an error and `for let i: u32 = 0; ...` needs its annotation; the §4 conversion examples were rewritten.
+2. **Spec / goldens / errors:** spec = §2 literal-typing bullet and the generalized negative-minimum paragraph; "Types and literals". Goldens due: the minimum matrix at all four signed widths (`-128: i8` ok, `-(128)` and `-129` rejected, `-9223372036854775808: i64` ok, `-(9223372036854775808)` rejected, in `u64` rejected), range edges per width, literal-on-the-left (`0 == x`, `1 + x`, `10 < n`) and their mirrors, **literal-only groups (`1 + 2 + x` and `x + (1 + 2)`, both typed as `x`)**, `256 + x` with `x: u8`, `0 == 1`. Errors: literal out of range; cannot infer a literal's type (E02xx, numbers at emission).
+3. **Scope:** v0; completes the existing "no implicit conversion anywhere". Literal suffixes (a lexer/grammar change) were considered and not adopted.
+4. **Machine cost:** none at runtime (compile-time typing only).
+5. **Second way?** Removes one: with no default there is a single way to give a literal a type (context).
+
+### #8 - no shadowing; order-independent top level; no recursion
+
+**Status: pending admission (goldens due in IR steps 4, 7, 10).**
+
+1. **Principles / locked decisions:** principles 3 (a name means one thing within a function), 4, 10. No locked decision touched. The recursion rationale (loop-counter injection makes loops observable; recursion is a loop with no counter) is this plan's reasoning, not a principle.
+2. **Spec / goldens / errors:** spec = "Names, scopes, items". Goldens due: redeclaration in the same block, in an inner block, of a parameter; forward references; direct and mutual recursion. Errors: duplicate declaration; recursion not allowed.
+3. **Scope:** v0; all three are restrictions, no feature is added.
+4. **Machine cost:** none at runtime; rejecting recursion makes stack use a static property of the call graph.
+5. **Second way?** Removes one (an inner `let x` reusing an outer name).
+
+### #9 - operator semantics and index types
+
+**Status: pending admission (goldens due in IR steps 8 and 12).**
+
+1. **Principles / locked decisions:** principles 2, 4 (exactly one meaning: shift counts, division by zero, evaluation order, short-circuit), 10. §2's "all arithmetic overflow traps" is extended to shift counts and zero divisors, not reversed.
+2. **Spec / goldens / errors:** spec = "Operators and statements" and "Arrays, slices, storage" (index types). Goldens due: one positive and one negative per operator row, shifts with mismatched count types, `bool` with `&`/`|`/`^`, `==` on structs/arrays, an index of each integer type. Errors: operator not defined for a type; operand types differ (with its fix-it).
+3. **Scope:** v0.
+4. **Machine cost (specified; exact sequences recorded when the backend lowers each construct, §3):** a shift adds a count compare and a never-taken forward branch to `unreachable`; `&&`/`||` lower to a forward branch; Wasm's integer division already traps on a zero divisor, so `/` and `%` by zero need no extra instruction on that target; an index is a bounds check or a verifier proof (§3).
+5. **Second way?** Removes two: `&`/`|`/`^` on `bool` (the boolean operators are `&&`/`||`) and struct/array equality spelled by hand against a built-in one.
+
+### #10 - arrays by value; slices only in parameter and local types, never nested or escaping; locals live to function end
+
+**Status: pending admission (goldens due in IR steps 4, 5, 7, 12; the storage rule is a backend requirement, verified when the backend lands).**
+
+1. **Principles / locked decisions:** principles 4 (no dangling slice), 10 (an array copy is visible at its use site and costs O(N)), 2. No locked decision touched; §6 item 5's "a slice can't outlive its arena" is made true in v0 by restriction, with no arenas.
+2. **Spec / goldens / errors:** spec = "Arrays, slices, storage". Goldens due: array copy by `=`, by call, by return; a slice as parameter and local (ok); a slice as a return type and as a struct field (rejected); **the three escape cases: return type `[2][]u8`, struct field `[1][]u8`, parameter `[][]u8` (all rejected)**; array-vs-slice mismatch. Errors: type mismatch; slice not allowed here (a return type or field containing a slice at any depth, or a slice of slices). The storage rule has no IR golden; it is a requirement on the backends, listed in the §3 backend box.
+3. **Scope:** v0; restrictions only.
+4. **Machine cost:** an array assignment, argument or return is a copy of `N` elements (O(N), no allocation); a slice is pointer + length, no copy; frames hold every local of the function with no slot reuse across sibling blocks.
+5. **Second way?** None added. Removes the way to return a slice.
+
+### #11 - struct layout and the maximum type size
+
+**Status: pending admission (goldens due in IR step 4).**
+
+1. **Principles / locked decisions:** principles 4, 10; fills in §2's "fixed layout". No locked decision touched.
+2. **Spec / goldens / errors:** spec = "Layout and limits". Goldens due: sizes and alignments of mixed-width structs (observable through the size limit), a type just under and just over `2^31 - 1` bytes, a size computation that overflows `u64`. Error: type too large.
+3. **Scope:** v0.
+4. **Machine cost:** none added; padding bytes are real storage, now specified.
+5. **Second way?** No.
+
+### #12 - naming-convention predicates and rename fix-its
+
+**Status: pending admission (goldens due in IR step 14).**
+
+1. **Principles / locked decisions:** implements §7 item 2 and item 7 (naming as compile errors, each with a fix-it); principle 1 (one canonical spelling), 6. §7 item 7's "same `DiagFix` mechanism" is extended (an edit list), not reversed.
+2. **Spec / goldens / errors:** spec = "Naming conventions". Goldens due: a case-converter table (`fooBar`->`foo_bar`, `HTTPServer`->`http_server`, `X`->`x`, `_x` and `__x`), rename fix-its covering declaration plus every use, collision and empty-result cases omitting the fix. Errors: not snake_case; not PascalCase.
+3. **Scope:** v0.
+4. **Machine cost:** none (compile-time).
+5. **Second way?** Removes the casing choice.
+
+### #13 - call and struct-construction forms
+
+**Status: pending admission (goldens due in IR steps 10 and 11).**
+
+1. **Principles / locked decisions:** principles 1, 2, 3; completes #4 (struct construction), which left two cases unaddressed. No locked decision touched.
+2. **Spec / goldens / errors:** spec = "Calls and struct construction". Goldens due: named arguments to a function, positional and mixed struct construction, a non-bare or parenthesized field name, unknown/missing/repeated/out-of-order fields, field access on a field-less type and on an unknown field. Errors: one per case, the unknown-field code shared by construction and access.
+3. **Scope:** v0.
+4. **Machine cost:** as #4 item 4 (one store per field); arguments evaluate left to right.
+5. **Second way?** Removes two: named arguments for functions, and field order in a construction.
+
+### #14 - a tree-height bound in the parser
+
+**Status: pending admission (goldens due in typed-IR step 2; specified, not implemented).**
+
+1. **Principles / locked decisions:** principles 4 and 12 (a bound the compiler enforces, not a host crash). No locked decision touched. Motivation: the nesting-depth bound counts recursion cycles, but loop-built chains make a tree as tall as the input is long; `expr_print` overflows an 8 MB stack under ASan at 20,000 terms (`docs/STATUS.md`, Known issues).
+2. **Spec / goldens / errors:** spec = "Input contract" above. New parser diagnostic, proposed E0111 "expression nested too deeply", no fix-it (documented exception). Goldens due: per chain shape (binary, field, index, mixed), N-ok / N+1-fail / 300-fail, plain and ASan; `expr_print` on the maximal tree at 8 MB. N is measured with margin and approved before it is written down.
+3. **Scope:** v0; a limit like E0103.
+4. **Machine cost:** none at runtime; one height counter at parse time.
+5. **Second way?** No.
+
+### #15 - a length operation (`len`) - OPEN
+
+**Status: OPEN - not decided, no spec entry. Must be decided before IR step 12 (arrays), which is blocked until then.**
+
+1. **Principles / locked decisions:** principle 18 names `len` as the stdlib convention, but v0 has no stdlib or builtins; the real design question is the first builtin mechanism (function-like `len(x)`, a pseudo-field `x.len`, or none). Not evaluated here.
+2. **Spec / goldens / errors:** none yet.
+3. **Scope:** a language addition; must be argued as v0 scope (item 3 of the test).
+4. **Machine cost:** a slice carries its length (pointer + length, §2), so reading it is O(1); an array's length is a compile-time constant.
+5. **Second way?** Without it an array becomes a slice only by writing its length literally (`a[0..4]`); with it, `a[0..len(a)]` would be a second spelling of the same slice, which the record must address.
 
 ## Working log
 
