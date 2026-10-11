@@ -36,6 +36,30 @@ An LLM-based tool could emit a Manna AST directly for generated code, skipping t
 
 **Validates via:** a sandboxed AST parsing test — hand-construct a deliberately malformed or adversarial AST (the kind a buggy or adversarial generator might produce) and confirm the verifier rejects it exactly as it would reject the equivalent malicious hand-written source. No AST-ingestion path ships until this test exists and passes.
 
+### Agent service on Deus
+
+A user-space Wasm service that runs AI tasks under explicit, capability-limited permissions (Manna declared effects). Model output and fetched web content are untrusted data and can never trigger an action by themselves. The model never runs in the kernel; it is reached off-box (API) or, later, run as a local model. The kernel stays provider-neutral.
+
+**Prerequisites:** M3 (Wasm runtime + IPC), networking, and the Spectre mitigation plan CLAUDE.md requires before networking.
+
+**Validates via:** a demo where a task granted read-only permission attempts a write, is denied, and the denial is logged.
+
+### AI search on Deus
+
+A Deus app built on the agent service: query an external search API, return ranked results plus answers whose every claim links to a source passage, with conflicting sources shown, not hidden. No own web index.
+
+**Prerequisites:** the agent service above has passed its validation.
+
+**Validates via:** a query whose answer cites at least two sources, where every cited link resolves and the quoted passage is present on the page.
+
+### Native browser on Deus
+
+A minimal browser written in Manna, starting with a reading-mode renderer (HTML + basic CSS, no JavaScript), with the agent service as a sidebar. JavaScript, if ever, runs only as sandboxed Wasm-hosted code under LBS. Not a Chromium/WebKit port.
+
+**Prerequisites:** networking, a graphical shell, and the AI search candidate.
+
+**Validates via:** rendering a fixed set of static test pages to match reference screenshots, with fetched page content unable to invoke any agent action without user approval.
+
 ## "Better than Linux" scorecard
 
 A standing discipline, not a marketing claim: every item below is either something we can already point to in this repo, or a target we haven't measured yet. The two categories are never allowed to blur together.
@@ -75,3 +99,7 @@ The bar for the first list is a file, a test, or a log line in this repo right n
 - No commitment to any specific accelerator vendor, IR standard, or cloud provider beyond what's named above as a tracked candidate.
 - No guest-hypervisor work starts before Milestones 1–3 (boot, Manna compiler, Wasm runtime) are stable on bare metal.
 - No AI-AST ingestion path exists yet; nothing in the compiler assumes one.
+- No port of an existing browser engine (Chromium/CEF/WebKit) to Deus: its size, POSIX dependence and JIT conflict with the kernel budget, W^X and the single-address-space design.
+- No English-like or indentation-based Manna syntax: it breaks the brace grammar guarantees the parser relies on (M2_PLAN.md).
+- No LLM call as language syntax (e.g. `ask_model`): model access is a library call behind a declared effect, keeping builds deterministic (MANNA_PRINCIPLES.md principle 12).
+- None of the three candidates above is assumed anywhere in M2-M4.
