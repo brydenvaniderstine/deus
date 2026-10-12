@@ -18,14 +18,15 @@
 # Not part of CI: it runs for minutes. `make measure-height`.
 set -u
 HI="${HI:-30000}"
+CC="${CC:-clang}"   # CC=gcc on Linux; the flags below are common to both
 BUILD="${BUILD:-build/measure}"
 SRC="tools/mannac"
 SRCS="$SRC/arena.c $SRC/ast.c $SRC/diag.c $SRC/parser_state.c $SRC/parser.c $SRC/lexer.c $SRC/height_probe.c"
 mkdir -p "$BUILD"
-clang -std=c11 -O2 -g -DMANNA_MAX_EXPR_HEIGHT=65000 -o "$BUILD/probe" $SRCS || exit 2
-clang -std=c11 -g -fsanitize=address,undefined -DMANNA_MAX_EXPR_HEIGHT=65000 -o "$BUILD/probe-asan" $SRCS || exit 2
+"$CC" -std=c11 -O2 -g -DMANNA_MAX_EXPR_HEIGHT=65000 -o "$BUILD/probe" $SRCS || exit 2
+"$CC" -std=c11 -g -fsanitize=address,undefined -DMANNA_MAX_EXPR_HEIGHT=65000 -o "$BUILD/probe-asan" $SRCS || exit 2
 ulimit -s 8192 || { echo "cannot set an 8 MB stack"; exit 2; }
-echo "stack limit: $(ulimit -s) KB   HI=$HI"
+echo "compiler: $CC ($("$CC" --version 2>&1 | head -1))   stack limit: $(ulimit -s) KB   HI=$HI"
 
 # gen SHAPE L  -> writes $BUILD/in.mn
 gen() {
