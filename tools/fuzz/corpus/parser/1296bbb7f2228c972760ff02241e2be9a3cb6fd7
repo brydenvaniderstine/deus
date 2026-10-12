@@ -1,0 +1,10 @@
+manna v0;
+struct S {
+    a: u4,
+    b: u2,
+   e: i8,
+    f: i16,
+    g: i32,
+    h: i6464,
+    e: i8,z;
+}

@@ -1,0 +1,4 @@
+manna v0;
+fn f() {
+    if{ a; } else {0b; }
+   }

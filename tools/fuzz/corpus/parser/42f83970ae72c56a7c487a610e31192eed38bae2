@@ -1,0 +1,4 @@
+manna v0;
+fn f() -> uni {
+    let a = 1;
+}
