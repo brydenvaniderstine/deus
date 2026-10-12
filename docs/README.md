@@ -11,6 +11,7 @@ One owner file per topic. Everything else **links** to the owner, never duplicat
 | [`docs/error_codes.md`](error_codes.md) | The stable error-code registry (`E0xxx`) for `manna check --json`. |
 | [`docs/STATUS.md`](STATUS.md) | Current milestone, what's done, what's next, and pointers to the open risks tracked elsewhere. Updated at every tag. |
 | [`docs/IDEAS.md`](IDEAS.md) | Dated parking lot for new ideas that haven't been triaged into a milestone yet. |
+| [`docs/REFINEMENT.md`](REFINEMENT.md) | The refinement loop run at every tag: capture ideas to IDEAS.md, review (at most 3 candidates, at most 3 promotions, nothing promoted mid-stage), retro (what went wrong, the rule, where it lives), and the per-tag scorecard. |
 | [`docs/history/`](history/) | Superseded documents, kept for the record. **Never a source of truth** - if something in `docs/history/` and a current owner file disagree, the owner file wins, always. |
 
 ## Consistency check (run at every tag)

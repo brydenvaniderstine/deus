@@ -145,6 +145,7 @@ See `VISION.md` for longer-range cross-platform/cloud-guest goals and R&D candid
   - Every step report includes a plain-English summary: what changed, why, the risk level (low/medium/high), and which tests prove it - not just a diff dump.
   - **Rule: no behavior change without a test.** If a change has no test demonstrating it, that's by itself a reason to treat the step as STOP, not ROUTINE.
 - **At every tag**, list uncovered lines in `lexer.c`, `parser.c` and the typed-IR files `ir*.c` once they exist (`make coverage`); each must be justified as untestable or get a test. No percentage targets. The arena's abort path (`arena_test --no-target-overflow`) runs out-of-process and is expected to show as uncovered.
+- At every tag, run the refinement loop in docs/REFINEMENT.md before starting the next stage.
 
 ## Session start ritual
 

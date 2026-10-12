@@ -1,0 +1,91 @@
+# The refinement loop
+
+How new ideas get into the build, and how each stage teaches the next one. This file owns the loop; `docs/IDEAS.md` is where ideas wait, `docs/MANNA_PRINCIPLES.md` holds the Feature Admission Test they must pass, and `CLAUDE.md` points here. **VISION.md and IDEAS.md are never commitments, and the loop never changes the current stage's scope** (section 5).
+
+The loop runs at every tag, before the next stage starts: **Capture** (any time) -> **Review** -> **Retro** -> **Measure**.
+
+## 1. Capture (any time)
+
+Every idea goes to `docs/IDEAS.md`. Use this template for each new entry:
+
+```
+Title:
+Date:
+Source:                 Bryden | Claude | outside AI | lesson
+Problem it solves:      one line
+Helps humans how / helps AI how:
+Earliest milestone boundary:
+Admission Test status:  not run | pass | fail + which criterion
+Status:                 candidate | promoted | parked | rejected
+```
+
+**Nothing enters the build from IDEAS directly.** An entry becomes work only by being promoted at a tag (section 2).
+
+IDEAS.md entries written before this file existed (up to 2026-10-09) use the older free-form format and are not rewritten.
+
+### Capture log
+
+The first entries recorded under this loop. The entries themselves live in `docs/IDEAS.md` (the headings below are the exact section titles there); this table points at them and does not repeat them.
+
+| Date | Title (section in `docs/IDEAS.md`) | Source | Earliest milestone boundary | Admission Test | Status |
+|---|---|---|---|---|---|
+| 2026-10-11 | Exhaustive `match` on enums | Bryden | v1, with enums | not run | candidate |
+| 2026-10-11 | Required argument labels on multi-parameter calls | Bryden | v1 edition boundary (open tension with P21) | not run | candidate |
+| 2026-10-11 | Wrapping arithmetic builtins | Bryden | v1 stdlib, before kernel code is written in Manna | not run | candidate |
+| 2026-10-11 | Formatting as a check | Bryden | after `manna fmt` exists | not run | candidate |
+| 2026-10-11 | Offline self-describing toolchain | Bryden | tooling, after typed IR | not run | candidate |
+| 2026-10-11 | Change-impact report | Bryden | tooling, after effects + contracts | not run | candidate |
+
+Five rejections were logged the same day under "Considered and rejected" in `docs/IDEAS.md` (distinct integer types, compile-time evaluation, catch-all match arm, expression-bodied functions, string interpolation), each with its reason.
+
+## 2. Review (at each tag)
+
+1. Pick **at most 3** candidates from `docs/IDEAS.md`.
+2. Run the Feature Admission Test (`docs/MANNA_PRINCIPLES.md`) on each.
+3. Decide, for each: **Promote** (into the next stage's plan document), **Park** (stays in IDEAS.md, with the reason), or **Reject** (move it to the rejected log in IDEAS.md with one line of why).
+4. **At most 3 promotions per tag.** **Nothing is promoted mid-stage:** an idea that arrives while a stage is running waits for the next tag, however good it is.
+
+Record the decisions in the plan document of the next stage (promotions) and in IDEAS.md (parks and rejections).
+
+## 3. Retro (at each tag)
+
+A dated section below: **what went wrong this stage, the rule that prevents it, and where that rule now lives** (CLAUDE.md, a test, or CI). A rule that lives nowhere enforceable is stated as such.
+
+### Retro 2026-10-08: parser r1 Phase A, commit `da9f01c`
+
+- **What went wrong.** Phase A re-baselined the golden `tests/parser/err_recovery_stress_no_infinite_loop.ast` from 7 diagnostics to 1 so that it would match a regression in `sync_skip` (a lone unmatched `(` or `[` swallowed every following `}`, `fn` and `struct`). CI stayed green because the golden had been changed to match the output. The regression shipped inside the tag `m2-parser-r1` and was found by an external audit afterwards (`docs/STATUS.md`, r1 entry).
+- **The rule.** *A golden that loses diagnostics or AST nodes is STOP-tier:* the report must list every removed line and why.
+- **Where it lives.** `CLAUDE.md`, section "Lessons", the last bullet ("A golden that loses diagnostics or AST nodes in a commit is STOP-tier ..."), which cites `da9f01c` by name. The golden itself was restored to 7 diagnostics in `e3d6652` and still has 7 (checked by command on 2026-10-12). **No automated check enforces the rule:** it is a review rule, because CI only compares output to the golden and cannot see that the golden was edited to match.
+
+## 4. Measure (at each tag)
+
+Add one row per tag. Fill a cell only with a number from a command run at that tag, name the command, and leave the cell blank otherwise. A blank is information; a guess is not.
+
+| Tag | Date | Goldens (lexer + parser) | Unit tests (PASS lines) | Fuzz, zero crashes | Open known issues | Token-benchmark ratio |
+|---|---|---|---|---|---|---|
+| `m2-parser-v0.1` | 2026-10-12 | 15 + 376 = 391 | `parser_fixes_test` 20, `ast_test` 7, `parser_state_test` 5, `arena_test` 9 = 41 | 601 s + 601 s (479,554 + 439,834 execs), 0 crashes (*) | 0 open in STATUS "Known issues" (1 fixed); 5 accepted limitations in M2_PLAN "Known limitations" | |
+
+(*) Cited from the runs recorded in the `docs/STATUS.md` verification snapshot (`make fuzz-parser DURATION_PARSER=600`, twice, 2026-10-12), not re-run for this commit; every other cell was produced by the commands below at the time of writing.
+
+Commands run for the `m2-parser-v0.1` row (all on a clean tree at `29f0037`+, 2026-10-12):
+
+```
+ls tests/lexer/*.mn  | wc -l                    # 15
+ls tests/parser/*.mn | wc -l                    # 376
+make test-lexer            # 15 PASS / 0 FAIL
+make test-parser           # 376 PASS / 0 FAIL
+make test-determinism      # 391 PASS / 0 FAIL  (= 15 + 376)
+make test-parser-fixes     # 20 PASS / 0 FAIL
+make test-ast              # 7 PASS / 0 FAIL
+make test-parser-state     # 5 PASS / 0 FAIL
+make test-arena            # 9 PASS / 0 FAIL
+awk '/^### Known limitations/{p=1;next} /^### /{p=0} p&&/^- /' docs/M2_PLAN.md | wc -l    # 5
+```
+
+The token-benchmark ratio stays blank until the benchmark in `docs/IDEAS.md` ("Token benchmark suite") exists and has baseline numbers.
+
+## 5. Guardrails
+
+- **`VISION.md` and `docs/IDEAS.md` are never commitments.** A candidate is not planned work until it is promoted at a tag, and not built work until its stage's tests pass.
+- **The loop never changes the current stage's scope.** Review happens between stages, and nothing is promoted mid-stage.
+- **The loop does not weaken the Feature Admission Test.** Promotion means "enters the next stage's plan"; the test's five criteria still have to hold, with goldens, before a language change is admitted.
