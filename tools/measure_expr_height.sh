@@ -83,9 +83,18 @@ for shape in binary mixed_prec field index postfix_mix in_calls in_ifs; do
     case "$LMAX" in *">="*|*diag*) ;; *) [ "$HMAX" -lt "$min_h" ] && min_h=$HMAX ;; esac
 done
 echo
+if [ "$min_h" -eq 999999 ]; then
+    # No shape failed within HI on the ASan build, so there is no limit to
+    # divide: "min_height/8 < 512" would be a made-up STOP. Say what happened.
+    echo "NO LIMIT FOUND: every shape reached HI=$HI under ASan without a crash or a diagnostic."
+    echo "The binding height is therefore > $HI (not measured). N is NOT chosen by this run;"
+    echo "raise HI to find the limit (HI must stay below 65000/2 for the postfix_mix shape,"
+    echo "because the measurement bound is 65000 and that shape's height is 2*HI+1)."
+    exit 3
+fi
 echo "smallest ASan tree height that the printer survives: $min_h"
 n=512; cand=$(( min_h / 8 ))
-if [ "$min_h" -eq 999999 ] || [ "$cand" -lt 512 ]; then
+if [ "$cand" -lt 512 ]; then
     echo "STOP: min_height/8 = $cand < 512 - N is NOT chosen; report instead of lowering the floor."
     exit 1
 fi

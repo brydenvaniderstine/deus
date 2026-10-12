@@ -73,7 +73,14 @@ int main(int argc, char **argv) {
     static ParserState ps; /* static: read after setjmp (C11 7.13.2.1), as parser_main.c */
     parser_state_init(&ps, 16 * 1024 * 1024); /* parser_dump's arena cap */
     if (setjmp(ps.fatal_target) != 0) {
+        /* The fatal escape (E0103/E0104/E0110/E0111). `src` was assigned before
+         * setjmp and never changed since, so it is still valid here (C11
+         * 7.13.2.1). Free it and the arena on this path too: the probe is run
+         * under LSan by the reviewer, where leaking either made every ASan
+         * measurement run fail (it was classed as a crash). */
         printf("diags=%zu first=%s maxh=0\n", ps.diags.len, ps.diags.len ? ps.diags.items[0].code : "-");
+        parser_state_destroy(&ps);
+        free(src);
         return 0;
     }
     HarnessMode mode = harness_pick_mode(src, len);
@@ -109,7 +116,12 @@ int main(int argc, char **argv) {
     fflush(stdout);
     if (have) {
         FILE *sink = fopen("/dev/null", "w");
-        if (!sink) { perror("/dev/null"); return 2; }
+        if (!sink) {
+            perror("/dev/null");
+            parser_state_destroy(&ps);
+            free(src);
+            return 2;
+        }
         if (mode == HARNESS_MODE_FILE) {
             for (size_t i = 0; i < items.len; i++) decl_print(sink, items.items[i]);
         } else if (mode == HARNESS_MODE_BLOCK) {
@@ -120,5 +132,7 @@ int main(int argc, char **argv) {
         fclose(sink);
         printf("printed\n");
     }
+    parser_state_destroy(&ps);
+    free(src);
     return 0;
 }

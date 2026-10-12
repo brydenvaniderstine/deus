@@ -875,7 +875,11 @@ static void test_height_guard_every_site(void) {
             size_t n = strlen(pre) + strlen(c->before) + strlen(adds) + strlen(c->after) + 64;
             char *src = malloc(n);
             snprintf(src, n, "%s%s(1%s)%s; }\n", pre, c->before, adds, c->after);
-            ParserState ps;
+            /* static: ps is modified after setjmp (the parse) and read again after
+             * the longjmp (diags), which C11 7.13.2.1 makes indeterminate for an
+             * automatic non-volatile object; same treatment as parser_main.c and
+             * test_height_bound_fatal_and_reuse above. */
+            static ParserState ps;
             parser_state_init(&ps, 1 << 22);
             Lexer lx;
             NodeList items;
