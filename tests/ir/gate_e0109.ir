@@ -1,0 +1,4 @@
+ERRORS:
+2:8 E0109 '-> unit' is not written; omit the return type
+
+IR: skipped (parse errors)

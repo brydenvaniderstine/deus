@@ -7,6 +7,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include "ir.h"
+#include "lexer.h"
+#include "parser.h"
+#include "parser_state.h"
 
 /* Unit tests for the typed IR (docs/TYPED_IR.md step 3): types and interning,
  * IrState (caps, E0201, E0203, reuse). Grows in 3b (dump, stack) and 3c (gate,
@@ -111,6 +114,32 @@ static void test_table_growth(void) {
     assert(st.composites.count == N);
     ir_state_destroy(&st);
     pass("table growth: 5000 distinct arrays, every pointer stable across rehashes");
+}
+
+/* Rehashing must carry every kind of composite across, not just arrays: slices and
+ * structs interleaved with arrays, enough of each to force several growths. */
+static void test_table_growth_mixed_kinds(void) {
+    static IrState st;
+    ir_state_init(&st, 16 << 20);
+    const IrType *u8 = ir_type_int(&st, 8, false);
+    enum { N = 1500 };
+    static IrStruct decls[N];
+    static const IrType *arr[N], *sl[N], *str[N];
+    for (int i = 0; i < N; i++) {
+        decls[i].name = "S";
+        arr[i] = ir_type_array(&st, (uint64_t)i, u8);
+        sl[i] = ir_type_slice(&st, arr[i]);   /* a distinct elem each time: N distinct slices */
+        str[i] = ir_type_struct(&st, &decls[i]);
+    }
+    assert(st.composites.count == 3 * N);
+    for (int i = 0; i < N; i++) {
+        assert(ir_type_array(&st, (uint64_t)i, u8) == arr[i]);
+        assert(ir_type_slice(&st, arr[i]) == sl[i]);
+        assert(ir_type_struct(&st, &decls[i]) == str[i]);
+    }
+    assert(st.composites.count == 3 * N); /* nothing was duplicated by a rehash */
+    ir_state_destroy(&st);
+    pass("table growth: arrays, slices and structs interleaved, all stable across rehashes");
 }
 
 /* ---- state ---- */
@@ -581,6 +610,158 @@ static void test_stack_shapes(void) {
     }
 }
 
+/* ---- build: the gate, the empty-function skeleton, IR_UNIMPLEMENTED ---- */
+
+/* Parses `src` into the static parser state below (fatal parse errors included:
+ * they leave diagnostics and no usable items, exactly what the gate must see).
+ * Static: modified after setjmp, read after the longjmp. */
+static ParserState g_ps;
+static NodeList g_items;
+
+static void parse_src(const char *src) {
+    parser_state_init(&g_ps, 16 * 1024 * 1024);
+    node_list_init(&g_items);
+    if (setjmp(g_ps.fatal_target) == 0) {
+        Lexer lx;
+        lexer_init(&lx, src, strlen(src));
+        (void)parser_parse_file(&g_ps, &lx, &g_items);
+    }
+}
+
+static void parse_done(void) {
+    parser_state_destroy(&g_ps);
+}
+
+static char *dump_module_of(const IrModule *m) {
+    return capture(dump_m, m);
+}
+
+static void test_gate(void) {
+    static IrState st;
+    ir_state_init(&st, 1 << 20);
+
+    /* the file TYPED_IR.md names: E0109 leaves a tree byte-identical to a clean one */
+    char *long_chain = malloc(64 * 1024);
+    assert(long_chain);
+    char *w = long_chain + sprintf(long_chain, "manna v0;\nfn f() { let x = 1");
+    for (int i = 0; i < MAX_EXPR_HEIGHT; i++) w += sprintf(w, "+1"); /* height 513: E0111, fatal */
+    strcpy(w, "; }\n");
+    const char *cases[] = {
+        "manna v0;\nfn f() -> unit { }\n",              /* E0109, tree intact */
+        "manna v0;\nfn g() { let = 2; }\nfn h() { }\n", /* E0105, a statement dropped with no placeholder */
+        "manna v1;\nfn f() { }\n",                      /* E0106, no items */
+        "fn f() { }\n",                                 /* E0107, no items */
+        long_chain,                                     /* E0111, fatal: no usable tree */
+    };
+    const char *codes[] = {"E0109", "E0105", "E0106", "E0107", "E0111"};
+    for (size_t i = 0; i < sizeof cases / sizeof cases[0]; i++) {
+        parse_src(cases[i]);
+        assert(g_ps.diags.len >= 1 && strcmp(g_ps.diags.items[0].code, codes[i]) == 0);
+        size_t used = arena_used(st.arena);
+        IrModule *m = (IrModule *)0x1;
+        assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_SKIPPED);
+        assert(m == NULL);                       /* nothing downstream can be handed a module */
+        assert(st.diags.len == 0);               /* the gate adds no diagnostics ... */
+        assert(arena_used(st.arena) == used);    /* ... and touches nothing */
+        assert(st.unimplemented == NULL);
+        parse_done();
+    }
+    free(long_chain);
+
+    /* and a clean file passes the gate */
+    parse_src("manna v0;\nfn f() { }\n");
+    assert(g_ps.diags.len == 0);
+    IrModule *m = NULL;
+    assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_BUILT && m != NULL);
+    parse_done();
+    ir_state_destroy(&st);
+    pass("gate: five parse-diagnostic files (E0109, E0105, E0106, E0107, E0111) are refused untouched");
+}
+
+static void test_build_empty_functions(void) {
+    static IrState st;
+    ir_state_init(&st, 1 << 20);
+
+    parse_src("manna v0;\n");
+    IrModule *m = NULL;
+    assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_BUILT);
+    assert(m->structs.len == 0 && m->funcs.len == 0);
+    expect(dump_module_of(m), "");
+    parse_done();
+
+    parse_src("manna v0;\nfn first() { }\nfn second() {\n}\n");
+    assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_BUILT); /* reuse of a built state */
+    assert(m->funcs.len == 2);
+    const IrFunc *f = m->funcs.items[0];
+    assert(strcmp(f->name, "first") == 0 && strcmp(f->id, "fn:first") == 0);
+    assert(!f->kernel_hook && f->n_params == 0 && f->locals.len == 0);
+    assert(f->ret == ir_type_unit(&st));                           /* absent '-> type' is unit */
+    assert(f->body->kind == IR_S_BLOCK && f->body->as.block.stmts.len == 0);
+    assert(f->span.start_line == 2 && f->span.end_col == 15);       /* spans come from the AST */
+    assert(strcmp(((const IrFunc *)m->funcs.items[1])->id, "fn:second") == 0);
+    expect(dump_module_of(m),
+           "(fn@2:1-2:15 fn:first\n  (params)\n  (returns)\n  (block@2:12-2:15))\n"
+           "(fn@3:1-4:2 fn:second\n  (params)\n  (returns)\n  (block@3:13-4:2))\n");
+    parse_done();
+    ir_state_destroy(&st);
+    pass("build: empty module and empty functions (unit return, AST spans, source order)");
+}
+
+/* Fix 2 (review): IR_UNIMPLEMENTED is a status, never a diagnostic and never a dump. */
+static void test_unimplemented(void) {
+    static IrState st;
+    ir_state_init(&st, 1 << 20);
+    static const struct { const char *src, *what; } cases[] = {
+        {"manna v0;\nstruct P { x: u32, }\n", "struct declarations"},
+        {"manna v0;\n[kernel_hook] fn f() { }\n", "attributes"},
+        {"manna v0;\nfn f(a: u8) { }\n", "parameters"},
+        {"manna v0;\nfn f() -> u8 { }\n", "return types"},
+        {"manna v0;\nfn f() { return; }\n", "statements"},
+        {"manna v0;\nfn ok() { }\nfn f() { return; }\n", "statements"}, /* after a buildable function */
+    };
+    for (size_t i = 0; i < sizeof cases / sizeof cases[0]; i++) {
+        parse_src(cases[i].src);
+        assert(g_ps.diags.len == 0);
+        IrModule *m = (IrModule *)0x1;
+        assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_UNIMPLEMENTED);
+        assert(m == NULL && st.diags.len == 0);
+        assert(st.unimplemented && strstr(st.unimplemented, cases[i].what));
+        parse_done();
+    }
+    ir_state_destroy(&st);
+    pass("IR_UNIMPLEMENTED: struct / attribute / parameter / return type / statement, no diagnostic, no module");
+}
+
+static void test_build_e0201_and_reuse(void) {
+    enum { N = 5000 };
+    char *src = malloc((size_t)N * 20 + 32);
+    assert(src);
+    char *w = src + sprintf(src, "manna v0;\n");
+    for (int i = 0; i < N; i++) w += sprintf(w, "fn f%d() { }\n", i);
+
+    static IrState st;
+    ir_state_init(&st, 64 << 10); /* 64 KiB: far fewer than 5000 functions' worth */
+    parse_src(src);
+    assert(g_ps.diags.len == 0 && g_items.len == N);
+    IrModule *m = (IrModule *)0x1;
+    assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_ERRORS);
+    assert(m == NULL && st.diags.len == 1);
+    const Diagnostic *d = &st.diags.items[0];
+    assert(strcmp(d->code, "E0201") == 0);
+    assert(d->span.start_col == 1 && d->span.start_line > 2 && d->span.start_line <= N + 1);
+    /* Pinned (like the parser's G5): the line of the function being built when the cap is hit. */
+    assert(d->span.start_line == 271); /* ~152 bytes a function (block 56, func 88, id) + list growth vs 48 KiB */
+
+    /* The state stays exhausted (the arena is not reset): a second build reports E0201
+     * again - the hook is re-armed, so reuse is never silent (the parser's G4 lesson). */
+    assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_ERRORS);
+    assert(m == NULL && st.diags.len == 2 && strcmp(st.diags.items[1].code, "E0201") == 0);
+    parse_done();
+    ir_state_destroy(&st);
+    free(src);
+    pass("build: arena exhaustion gives E0201 at the declaration being built; reuse reports it again");
+}
+
 int main(int argc, char **argv) {
     setvbuf(stdout, NULL, _IOLBF, 0); /* a hang or abort must not swallow the PASS lines before it */
     if (argc == 2 && strcmp(argv[1], "--stack") == 0) { /* the Makefile's 2 MB (4x) gate */
@@ -597,6 +778,7 @@ int main(int argc, char **argv) {
     test_primitives();
     test_composites();
     test_table_growth();
+    test_table_growth_mixed_kinds();
     test_e0203();
     test_e0201_and_reuse();
     test_reset_primitives();
@@ -604,6 +786,10 @@ int main(int argc, char **argv) {
     test_dump_functions_and_statements();
     test_dump_module_and_determinism();
     test_ast_height_assertion();
+    test_gate();
+    test_build_empty_functions();
+    test_unimplemented();
+    test_build_e0201_and_reuse();
     test_stack_shapes();
     return 0;
 }

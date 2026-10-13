@@ -1,0 +1,4 @@
+ERRORS:
+2:14 E0105 expected identifier after 'let', found '='
+
+IR: skipped (parse errors)

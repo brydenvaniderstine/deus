@@ -18,6 +18,10 @@ LEXER_PLAIN="${1:?usage: run_determinism_test.sh <lexer-plain> <lexer-asan> <par
 LEXER_ASAN="${2:?usage: run_determinism_test.sh <lexer-plain> <lexer-asan> <parser-plain> <parser-asan>}"
 PARSER_PLAIN="${3:?usage: run_determinism_test.sh <lexer-plain> <lexer-asan> <parser-plain> <parser-asan>}"
 PARSER_ASAN="${4:?usage: run_determinism_test.sh <lexer-plain> <lexer-asan> <parser-plain> <parser-asan>}"
+# Optional (typed-IR step 3): the ir_dump binaries, plain and ASan. The IR goldens get the
+# same treatment as the other stages: twice plain, once ASan, all byte-compared.
+IR_PLAIN="${5:-}"
+IR_ASAN="${6:-}"
 
 fail=0
 
@@ -52,5 +56,11 @@ done
 for f in tests/parser/*.mn; do
     check_one "$PARSER_PLAIN" "$PARSER_ASAN" "$f"
 done
+
+if [ -n "$IR_PLAIN" ] && [ -n "$IR_ASAN" ]; then
+    for f in tests/ir/*.mn; do
+        check_one "$IR_PLAIN" "$IR_ASAN" "$f"
+    done
+fi
 
 exit $fail

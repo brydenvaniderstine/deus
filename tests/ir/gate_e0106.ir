@@ -1,0 +1,4 @@
+ERRORS:
+1:7 E0106 unsupported manna version 'v1' (expected 'v0')
+
+IR: skipped (parse errors)

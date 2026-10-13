@@ -30,6 +30,7 @@ static void prims_init(IrState *st) {
 void ir_state_reset_for_build(IrState *st) {
     st->error_count = 0;
     st->progress = (Span){1, 1, 1, 1};
+    st->unimplemented = NULL;
     arena_rearm_overflow_hook(st->arena); /* E0201 again if this build overflows too */
     prims_init(st);
     st->composites.slots = NULL;

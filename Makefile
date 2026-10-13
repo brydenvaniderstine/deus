@@ -52,7 +52,7 @@ QEMU_FLAGS   := -machine q35 -m 8G -cpu qemu64,+apic,+pdpe1gb \
                 -serial file:serial.log -monitor stdio -no-reboot \
                 -d int,cpu_reset -D qemu.log
 
-.PHONY: all image run debug clean limine stage-esp test-wx test-lexer test-lexer-asan test-arena test-arena-asan test-ast test-ast-asan test-parser-state test-parser-state-asan test-parser-fixes test-parser-fixes-asan test-parser test-parser-asan test-determinism test-ir-unit test-ir-unit-asan coverage fuzz fuzz-lexer fuzz-parser measure-height measure-ir-stack
+.PHONY: all image run debug clean limine stage-esp test-wx test-lexer test-lexer-asan test-arena test-arena-asan test-ast test-ast-asan test-parser-state test-parser-state-asan test-parser-fixes test-parser-fixes-asan test-parser test-parser-asan test-determinism test-ir test-ir-asan test-ir-unit test-ir-unit-asan coverage fuzz fuzz-lexer fuzz-parser measure-height measure-ir-stack
 
 all: $(KERNEL_ELF)
 
@@ -259,7 +259,10 @@ test-determinism:
 	clang -std=c11 -Wall -Wextra -g -fsanitize=address,undefined -o $(MANNAC_ASAN_BIN) $(MANNAC_SRCS)
 	clang -std=c11 -Wall -Wextra -O2 -g -o $(PARSER_DUMP_DIR)/parser_dump $(PARSER_DUMP_SRCS)
 	clang -std=c11 -Wall -Wextra -g -fsanitize=address,undefined -o $(PARSER_DUMP_DIR)/parser_dump-asan $(PARSER_DUMP_SRCS)
-	@./tools/run_determinism_test.sh $(MANNAC_BIN) $(MANNAC_ASAN_BIN) $(PARSER_DUMP_DIR)/parser_dump $(PARSER_DUMP_DIR)/parser_dump-asan
+	@mkdir -p $(IR_DUMP_DIR)
+	$(MANNAC_CC) -std=c11 -Wall -Wextra -O2 -g -o $(IR_DUMP_DIR)/ir_dump $(IR_DUMP_SRCS)
+	$(MANNAC_CC) -std=c11 -Wall -Wextra -g -fsanitize=address,undefined -o $(IR_DUMP_DIR)/ir_dump-asan $(IR_DUMP_SRCS)
+	@./tools/run_determinism_test.sh $(MANNAC_BIN) $(MANNAC_ASAN_BIN) $(PARSER_DUMP_DIR)/parser_dump $(PARSER_DUMP_DIR)/parser_dump-asan $(IR_DUMP_DIR)/ir_dump $(IR_DUMP_DIR)/ir_dump-asan
 
 # Typed IR (docs/TYPED_IR.md step 3). The IR targets honor MANNAC_CC so a
 # Linux/gcc reviewer run is `make MANNAC_CC=gcc test-ir-unit-asan` (the older
@@ -270,7 +273,28 @@ test-determinism:
 MANNAC_CC      ?= clang
 IR_TEST_DIR    := $(BUILD)/ir_test
 IR_TEST_SRCS   := tools/mannac/arena.c tools/mannac/ast.c tools/mannac/diag.c \
-                  tools/mannac/ir.c tools/mannac/ir_dump.c tools/mannac/ir_test.c
+                  tools/mannac/ir.c tools/mannac/ir_dump.c tools/mannac/ir_build.c \
+                  tools/mannac/parser_state.c tools/mannac/parser.c tools/mannac/lexer.c \
+                  tools/mannac/ir_test.c
+
+# ir_dump is the test-only golden harness (tools/mannac/ir_main.c), the IR
+# counterpart of parser_dump: tests/ir/*.mn -> *.ir, plus a sweep of every
+# tests/parser input for crashes (tools/run_ir_tests.sh).
+IR_DUMP_DIR  := $(BUILD)/ir_dump
+IR_DUMP_SRCS := tools/mannac/arena.c tools/mannac/ast.c tools/mannac/diag.c \
+                tools/mannac/parser_state.c tools/mannac/parser.c tools/mannac/lexer.c \
+                tools/mannac/ir.c tools/mannac/ir_dump.c tools/mannac/ir_build.c \
+                tools/mannac/ir_main.c
+
+test-ir:
+	@mkdir -p $(IR_DUMP_DIR)
+	$(MANNAC_CC) -std=c11 -Wall -Wextra -O2 -g -o $(IR_DUMP_DIR)/ir_dump $(IR_DUMP_SRCS)
+	@./tools/run_ir_tests.sh $(IR_DUMP_DIR)/ir_dump
+
+test-ir-asan:
+	@mkdir -p $(IR_DUMP_DIR)
+	$(MANNAC_CC) -std=c11 -Wall -Wextra -g -fsanitize=address,undefined -o $(IR_DUMP_DIR)/ir_dump-asan $(IR_DUMP_SRCS)
+	@./tools/run_ir_tests.sh $(IR_DUMP_DIR)/ir_dump-asan
 
 test-ir-unit:
 	@mkdir -p $(IR_TEST_DIR)
@@ -284,7 +308,7 @@ test-ir-unit-asan:
 	sh -c 'ulimit -s 8192 && $(IR_TEST_DIR)/ir_test-asan'
 	sh -c 'ulimit -s 2048 && $(IR_TEST_DIR)/ir_test-asan --stack'
 
-# Per-file coverage for mannac (lexer, arena, ast, diag, parser_state),
+# Per-file coverage for mannac (lexer, arena, ast, diag, parser_state, ir*),
 # via clang's source-based coverage (llvm-profdata/llvm-cov, bundled with
 # Xcode - no brew dependency). Rebuilds each test binary instrumented
 # (-fprofile-instr-generate -fcoverage-mapping), runs it with a per-process
@@ -309,6 +333,10 @@ coverage:
 	LLVM_PROFILE_FILE=$(COVERAGE_DIR)/parser_fixes-%p.profraw $(COVERAGE_DIR)/parser_fixes_test
 	clang -std=c11 -Wall -Wextra -g $(COVERAGE_FLAGS) -o $(COVERAGE_DIR)/parser_dump $(PARSER_DUMP_SRCS)
 	LLVM_PROFILE_FILE=$(COVERAGE_DIR)/parser-%p.profraw ./tools/run_parser_tests.sh $(COVERAGE_DIR)/parser_dump
+	clang -std=c11 -Wall -Wextra -g $(COVERAGE_FLAGS) -o $(COVERAGE_DIR)/ir_test $(IR_TEST_SRCS)
+	LLVM_PROFILE_FILE=$(COVERAGE_DIR)/ir_test-%p.profraw sh -c 'ulimit -s 8192 && $(COVERAGE_DIR)/ir_test'
+	clang -std=c11 -Wall -Wextra -g $(COVERAGE_FLAGS) -o $(COVERAGE_DIR)/ir_dump $(IR_DUMP_SRCS)
+	LLVM_PROFILE_FILE=$(COVERAGE_DIR)/ir-%p.profraw ./tools/run_ir_tests.sh $(COVERAGE_DIR)/ir_dump
 	xcrun llvm-profdata merge -sparse $(COVERAGE_DIR)/*.profraw -o $(COVERAGE_DIR)/merged.profdata
 	xcrun llvm-cov report \
 		$(COVERAGE_DIR)/mannac \
@@ -317,6 +345,8 @@ coverage:
 		-object $(COVERAGE_DIR)/parser_state_test \
 		-object $(COVERAGE_DIR)/parser_fixes_test \
 		-object $(COVERAGE_DIR)/parser_dump \
+		-object $(COVERAGE_DIR)/ir_test \
+		-object $(COVERAGE_DIR)/ir_dump \
 		-instr-profile=$(COVERAGE_DIR)/merged.profdata \
 		-ignore-filename-regex='(_test\.c|main\.c)$$'
 

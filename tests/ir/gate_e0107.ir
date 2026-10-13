@@ -1,0 +1,4 @@
+ERRORS:
+1:1 E0107 missing version header; add 'manna v0;' as the first line
+
+IR: skipped (parse errors)

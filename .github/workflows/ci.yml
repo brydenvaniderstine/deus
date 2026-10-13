@@ -35,6 +35,8 @@ jobs:
       - run: make test-parser-fixes-asan
       - run: make test-parser
       - run: make test-parser-asan
+      - run: make test-ir
+      - run: make test-ir-asan
       - run: make test-ir-unit
       - run: make test-ir-unit-asan
       - run: make test-determinism

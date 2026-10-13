@@ -1,0 +1,8 @@
+(fn@2:1-2:15 fn:first
+  (params)
+  (returns)
+  (block@2:12-2:15))
+(fn@4:1-5:2 fn:second
+  (params)
+  (returns)
+  (block@4:13-5:2))

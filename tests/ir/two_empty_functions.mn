@@ -1,0 +1,5 @@
+manna v0;
+fn first() { }
+
+fn second() {
+}

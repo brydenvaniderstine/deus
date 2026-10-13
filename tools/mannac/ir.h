@@ -85,6 +85,7 @@ typedef struct {
     IrType       prim[IR_N_PRIM];
     IrTypeTable  composites;
     Span         progress;     /* the declaration being built: where E0201 reports */
+    const char  *unimplemented; /* set with IR_UNIMPLEMENTED: the construct step 3 cannot build yet */
 } IrState;
 
 /* An IrState used across a setjmp/longjmp must have static (or otherwise
@@ -97,7 +98,9 @@ void ir_state_destroy(IrState *st);
  * composite table (emptied: STRUCT entries point into an abandoned module).
  * diags is deliberately NOT cleared - it is the accumulated result list, owned
  * by the caller (the parser's reset makes the same choice). The arena is not
- * reset; what it holds stays, bounded by its cap. */
+ * reset; what it holds stays, bounded by its cap - so a state that ended in
+ * E0201 stays exhausted: a build on it reports E0201 again (the hook is
+ * re-armed; it is never silent) until the state is destroyed. */
 void ir_state_reset_for_build(IrState *st);
 
 /* Records a diagnostic. On the IR_MAX_ERRORS'th also records E0203 and
@@ -253,3 +256,22 @@ void ir_dump_struct(FILE *out, const IrStruct *s);
 /* Structs first (declaration order), then functions (declaration order), one
  * form per line, each followed by '\n'. An empty module prints nothing. */
 void ir_dump_module(FILE *out, const IrModule *m);
+
+/* ---- Building ---- */
+
+typedef enum {
+    IR_BUILT,         /* *out is a complete module */
+    IR_SKIPPED,       /* the parse reported diagnostics: the stage did not run (no diagnostics added) */
+    IR_ERRORS,        /* E02xx diagnostics recorded in st->diags; *out is NULL */
+    IR_UNIMPLEMENTED, /* TEMPORARY: the file uses a construct the skeleton cannot build yet
+                       * (st->unimplemented names it). Not a diagnostic and never a golden:
+                       * the harness exits nonzero. Deleted when the last construct lands. */
+} IrStatus;
+
+/* AST -> typed IR. `parse_diags` is the parse's DiagList: the stage refuses to
+ * run on a file with ANY parse diagnostic (docs/M2_PLAN.md "Input contract",
+ * Gate) - a quality policy against cascades from a tree with holes, not a
+ * safety dependency; the builder must still not crash on any tree the parser
+ * can produce. `items` is parser_parse_file's output. *out is NULL unless the
+ * result is IR_BUILT. Owns its setjmp: E0201 and E0203 unwind to it. */
+IrStatus ir_build(IrState *st, const DiagList *parse_diags, const NodeList *items, IrModule **out);
