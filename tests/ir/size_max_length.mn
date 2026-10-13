@@ -1,0 +1,2 @@
+manna v0;
+struct Huge { data: [18446744073709551615]u8, }

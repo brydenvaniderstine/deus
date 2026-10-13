@@ -1,0 +1,4 @@
+manna v0;
+struct A { b: B, c: C, }
+struct B { a: A, }
+struct C { a: A, }

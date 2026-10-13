@@ -1,0 +1,2 @@
+manna v0;
+struct Max { data: [2147483647]u8, }

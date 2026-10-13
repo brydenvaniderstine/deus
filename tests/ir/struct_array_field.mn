@@ -1,0 +1,5 @@
+manna v0;
+struct Buf {
+    len: u8,
+    data: [3]u16,
+}

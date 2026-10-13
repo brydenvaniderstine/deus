@@ -1,0 +1,3 @@
+ERRORS:
+2:8 E0221 struct 'A' contains itself
+3:8 E0221 struct 'B' contains itself

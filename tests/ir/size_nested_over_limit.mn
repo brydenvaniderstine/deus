@@ -1,0 +1,2 @@
+manna v0;
+struct Big { data: [65536][32768]u8, }

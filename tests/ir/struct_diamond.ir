@@ -1,0 +1,9 @@
+(struct@2:1-5:2 Top size=4 align=2
+  (field@3:5-3:16 left Left +0)
+  (field@4:5-4:18 right Right +2))
+(struct@6:1-6:28 Left size=2 align=2
+  (field@6:15-6:26 base Base +0))
+(struct@7:1-7:29 Right size=2 align=2
+  (field@7:16-7:27 base Base +0))
+(struct@8:1-8:24 Base size=2 align=2
+  (field@8:15-8:22 v u16 +0))

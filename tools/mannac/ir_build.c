@@ -50,7 +50,7 @@ IrStatus ir_build(IrState *st, const DiagList *parse_diags, const NodeList *item
     for (size_t i = 0; i < items->len; i++) {
         const Decl *d = items->items[i];
         st->progress = d->span;
-        if (d->kind == DECL_STRUCT) return unimplemented(st, "struct layout (step 4b)");
+        if (d->kind == DECL_STRUCT) continue; /* built by ir_declare_items */
         IrStatus s = build_function(st, d, m);
         if (s != IR_BUILT) return s;
     }

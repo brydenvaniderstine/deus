@@ -1,0 +1,3 @@
+(struct@2:1-5:2 Point size=8 align=4
+  (field@3:5-3:12 x u32 +0)
+  (field@4:5-4:12 y u32 +4))

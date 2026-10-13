@@ -1,0 +1,2 @@
+manna v0;
+struct Node { next: Node, }

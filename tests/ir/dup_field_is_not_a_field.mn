@@ -1,0 +1,2 @@
+manna v0;
+struct A { x: u8, x: A, }

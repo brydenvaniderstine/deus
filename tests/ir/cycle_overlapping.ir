@@ -1,0 +1,2 @@
+ERRORS:
+2:8 E0221 struct 'A' contains itself

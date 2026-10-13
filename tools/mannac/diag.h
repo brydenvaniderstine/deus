@@ -133,6 +133,16 @@ Diagnostic diag_ir_duplicate_field(Arena *a, Span at, const char *field, const c
  * (a function's name used as a type is the same error). */
 Diagnostic diag_ir_unknown_type(Arena *a, Span at, const char *name);
 
+/* E0221: "struct 'S' contains itself" - a containment cycle by value (directly,
+ * through other structs, or through arrays). Once per cycle, at the name of its
+ * lowest-declaration-index member. */
+Diagnostic diag_ir_struct_contains_itself(Arena *a, Span at, const char *name);
+
+/* E0222: "type is too large (size exceeds the limit)" - a type whose size would
+ * exceed 2^31 - 1 bytes (arithmetic overflow while computing it included). At the
+ * array type that overflowed, or the struct's name when the struct as a whole does. */
+Diagnostic diag_ir_type_too_large(Span at);
+
 /* E0227: a slice type where slices are not allowed. Step 4 emits the struct-field
  * wording; later steps add the other placements (return type, a slice's element)
  * under the same code (docs/error_codes.md). */

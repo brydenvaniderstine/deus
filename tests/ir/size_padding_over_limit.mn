@@ -1,0 +1,2 @@
+manna v0;
+struct Padded { a: u64, b: [2147483639]u8, }

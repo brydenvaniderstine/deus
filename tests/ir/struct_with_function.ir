@@ -1,0 +1,6 @@
+(struct@2:1-2:27 Counter size=8 align=8
+  (field@2:18-2:25 n u64 +0))
+(fn@3:1-3:13 fn:run
+  (params)
+  (returns)
+  (block@3:10-3:13))

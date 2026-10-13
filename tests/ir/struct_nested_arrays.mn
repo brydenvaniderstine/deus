@@ -1,0 +1,2 @@
+manna v0;
+struct Grid { cells: [2][3]u8, }

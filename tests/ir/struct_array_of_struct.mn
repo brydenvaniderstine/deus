@@ -1,0 +1,10 @@
+manna v0;
+struct Pixel {
+    r: u8,
+    g: u8,
+    b: u8,
+}
+struct Image {
+    pixels: [4]Pixel,
+    w: u32,
+}

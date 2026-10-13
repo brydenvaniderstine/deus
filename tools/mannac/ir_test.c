@@ -712,7 +712,6 @@ static void test_unimplemented(void) {
     static IrState st;
     ir_state_init(&st, 1 << 20);
     static const struct { const char *src, *what; } cases[] = {
-        {"manna v0;\nstruct P { x: u32, }\n", "struct layout"},
         {"manna v0;\n[kernel_hook] fn f() { }\n", "attributes"},
         {"manna v0;\nfn f(a: u8) { }\n", "parameters"},
         {"manna v0;\nfn f() -> u8 { }\n", "return types"},
@@ -729,7 +728,7 @@ static void test_unimplemented(void) {
         parse_done();
     }
     ir_state_destroy(&st);
-    pass("IR_UNIMPLEMENTED: struct / attribute / parameter / return type / statement, no diagnostic, no module");
+    pass("IR_UNIMPLEMENTED: attribute / parameter / return type / statement, no diagnostic, no module");
 }
 
 static void test_build_e0201_and_reuse(void) {
@@ -815,10 +814,81 @@ static void test_decls_many_names(void) {
     pass("decls: 20000 names resolved through the table; a repeat names the first declaration");
 }
 
+/* ---- structs at scale: nothing recursive over a chain of structs ---- */
+
+/* A chain of 20000 structs, each holding the next (S0 holds S1 holds ...), and a ring
+ * of 20000 (the last holds S0). The containment analysis must be iterative: a
+ * recursive walk 20000 deep overflows the 2 MB stack this runs under in --stack mode
+ * (the Makefile's 4x gate), and the chain is as long as the input allows, not as long
+ * as any bound the parser sets. */
+static void test_struct_chain_and_ring(void) {
+    enum { N = 20000 };
+    char *src = malloc((size_t)N * 48 + 64);
+    assert(src);
+    static IrState st;
+    for (int ring = 0; ring < 2; ring++) {
+        char *w = src + sprintf(src, "manna v0;\n");
+        for (int i = 0; i < N; i++) {
+            if (i + 1 < N) w += sprintf(w, "struct S%d { next: S%d, tag: u8, }\n", i, i + 1);
+            else if (ring) w += sprintf(w, "struct S%d { next: S0, tag: u8, }\n", i);
+            else w += sprintf(w, "struct S%d { v: u32, }\n", i);
+        }
+        ir_state_init(&st, 16 << 20);
+        parse_src(src);
+        assert(g_ps.diags.len == 0 && g_items.len == N);
+        IrModule *m = NULL;
+        if (!ring) {
+            assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_BUILT && m->structs.len == N);
+            /* S(N-1) = 4; each S(i) = its next, then a byte, padded to 4: 4 more each */
+            assert(((const IrStruct *)m->structs.items[N - 1])->size == 4);
+            const IrStruct *s0 = m->structs.items[0];
+            assert(s0->size == 4u * N && s0->align == 4 && s0->fields[1].offset == 4u * (N - 1));
+        } else {
+            assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_ERRORS && m == NULL);
+            assert(st.diags.len == 1 && strcmp(st.diags.items[0].code, "E0221") == 0);
+            assert(strcmp(st.diags.items[0].message, "struct 'S0' contains itself") == 0); /* the lowest index */
+            assert(st.diags.items[0].span.start_line == 2);
+        }
+        parse_done();
+        ir_state_destroy(&st);
+    }
+    free(src);
+    pass("structs: a 20000-long chain lays out (iterative), a 20000-long ring is one E0221");
+}
+
+/* The deepest array nesting the parser accepts in a struct field resolves and lays out. */
+static void test_deepest_array_type(void) {
+    char *src = malloc(4096);
+    assert(src);
+    int accepted = 0;
+    for (int k = 256; k >= 200 && !accepted; k--) {
+        char *w = src + sprintf(src, "manna v0;\nstruct Deep { f: ");
+        for (int i = 0; i < k; i++) w += sprintf(w, "[1]");
+        sprintf(w, "u8, }\n");
+        parse_src(src);
+        if (g_ps.diags.len == 0) {
+            accepted = k;
+            static IrState st;
+            ir_state_init(&st, 4 << 20);
+            IrModule *m = NULL;
+            assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_BUILT);
+            const IrStruct *d = m->structs.items[0];
+            assert(d->size == 1 && d->align == 1 && d->fields[0].type->kind == IR_T_ARRAY);
+            ir_state_destroy(&st);
+        }
+        parse_done();
+    }
+    assert(accepted >= 250 && accepted <= 255);
+    free(src);
+    printf("PASS: arrays nested %d deep (the parser's limit in a field) resolve and lay out\n", accepted);
+}
+
 int main(int argc, char **argv) {
     setvbuf(stdout, NULL, _IOLBF, 0); /* a hang or abort must not swallow the PASS lines before it */
     if (argc == 2 && strcmp(argv[1], "--stack") == 0) { /* the Makefile's 2 MB (4x) gate */
         test_stack_shapes();
+        test_struct_chain_and_ring();
+        test_deepest_array_type();
         return 0;
     }
     if (argc == 3 && strcmp(argv[1], "--shape") == 0) { /* tools/measure_ir_stack.sh */
@@ -845,6 +915,8 @@ int main(int argc, char **argv) {
     test_build_e0201_and_reuse();
     test_e0201_in_name_table();
     test_decls_many_names();
+    test_struct_chain_and_ring();
+    test_deepest_array_type();
     test_stack_shapes();
     return 0;
 }

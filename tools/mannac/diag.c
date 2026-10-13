@@ -204,6 +204,24 @@ Diagnostic diag_ir_unknown_type(Arena *a, Span at, const char *name) {
     return d;
 }
 
+Diagnostic diag_ir_struct_contains_itself(Arena *a, Span at, const char *name) {
+    Diagnostic d = {0};
+    d.code = "E0221";
+    d.severity = DIAG_ERROR;
+    d.message = arena_sprintf(a, "struct '%s' contains itself", name);
+    d.span = at;
+    return d;
+}
+
+Diagnostic diag_ir_type_too_large(Span at) {
+    Diagnostic d = {0};
+    d.code = "E0222";
+    d.severity = DIAG_ERROR;
+    d.message = "type is too large (size exceeds the limit)";
+    d.span = at;
+    return d;
+}
+
 Diagnostic diag_ir_slice_in_field(Span at) {
     Diagnostic d = {0};
     d.code = "E0227";

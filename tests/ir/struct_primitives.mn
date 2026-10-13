@@ -1,0 +1,6 @@
+manna v0;
+struct All {
+    flag: bool,
+    big: i64,
+    small: i8,
+}

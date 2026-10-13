@@ -1,0 +1,2 @@
+(struct@2:1-2:33 Grid size=6 align=1
+  (field@2:15-2:31 cells [2][3]u8 +0))

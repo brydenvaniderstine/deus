@@ -1,0 +1,2 @@
+manna v0;
+struct Two { a: [2147483647]u8, b: u8, }

@@ -1,0 +1,4 @@
+manna v0;
+struct Root { b: B, }
+struct A { b: B, }
+struct B { a: A, }

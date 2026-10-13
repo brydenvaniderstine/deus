@@ -1,0 +1,4 @@
+(struct@2:1-6:2 Z size=16 align=8
+  (field@3:5-3:11 a u8 +0)
+  (field@4:5-4:18 zero [0]u64 +8)
+  (field@5:5-5:11 b u8 +8))

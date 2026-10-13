@@ -1,0 +1,6 @@
+manna v0;
+struct Z {
+    a: u8,
+    zero: [0]u64,
+    b: u8,
+}

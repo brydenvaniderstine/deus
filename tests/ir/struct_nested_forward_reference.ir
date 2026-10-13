@@ -1,0 +1,6 @@
+(struct@2:1-5:2 Line size=16 align=4
+  (field@3:5-3:18 start Point +0)
+  (field@4:5-4:16 end Point +8))
+(struct@6:1-9:2 Point size=8 align=4
+  (field@7:5-7:12 x u32 +0)
+  (field@8:5-8:12 y u32 +4))
