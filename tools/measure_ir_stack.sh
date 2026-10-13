@@ -9,11 +9,15 @@
 # Only a SIGNAL exit (rc > 128) counts as "did not survive this stack". Any other
 # nonzero rc (an assert, a usage error) is a harness/test failure, not a stack
 # result: it is reported as ERROR and aborts, never folded into the bisection
-# (docs/REFINEMENT.md, Retro 2026-10-13 (a)). A SIGABRT (rc 134) is classed as a
-# crash: ASan aborts on stack exhaustion, and since the shape passes at the full
+# (docs/REFINEMENT.md, Retro 2026-10-13 (a)). ASan reports a stack overflow by
+# exiting with status 1 on Linux, indistinguishable from an ordinary failure
+# (the reviewer's run: "asan binary: ERROR (non-signal failure at 32 KB)"), so
+# ASAN_OPTIONS=abort_on_error=1 is exported below: ASan then dies by SIGABRT
+# (rc 134), which is classed as a crash. Since the shape passes at the full
 # stack, a low-stack abort cannot be a test assert.
 # Not part of CI: `make measure-ir-stack`. CC=gcc on Linux.
 set -u
+export ASAN_OPTIONS="${ASAN_OPTIONS:+$ASAN_OPTIONS:}abort_on_error=1"
 CC="${CC:-clang}"
 BUILD="${BUILD:-build/measure_ir}"
 SRC="tools/mannac"
