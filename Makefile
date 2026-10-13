@@ -52,7 +52,7 @@ QEMU_FLAGS   := -machine q35 -m 8G -cpu qemu64,+apic,+pdpe1gb \
                 -serial file:serial.log -monitor stdio -no-reboot \
                 -d int,cpu_reset -D qemu.log
 
-.PHONY: all image run debug clean limine stage-esp test-wx test-lexer test-lexer-asan test-arena test-arena-asan test-ast test-ast-asan test-parser-state test-parser-state-asan test-parser-fixes test-parser-fixes-asan test-parser test-parser-asan test-determinism coverage fuzz fuzz-lexer fuzz-parser measure-height
+.PHONY: all image run debug clean limine stage-esp test-wx test-lexer test-lexer-asan test-arena test-arena-asan test-ast test-ast-asan test-parser-state test-parser-state-asan test-parser-fixes test-parser-fixes-asan test-parser test-parser-asan test-determinism test-ir-unit test-ir-unit-asan coverage fuzz fuzz-lexer fuzz-parser measure-height
 
 all: $(KERNEL_ELF)
 
@@ -260,6 +260,25 @@ test-determinism:
 	clang -std=c11 -Wall -Wextra -O2 -g -o $(PARSER_DUMP_DIR)/parser_dump $(PARSER_DUMP_SRCS)
 	clang -std=c11 -Wall -Wextra -g -fsanitize=address,undefined -o $(PARSER_DUMP_DIR)/parser_dump-asan $(PARSER_DUMP_SRCS)
 	@./tools/run_determinism_test.sh $(MANNAC_BIN) $(MANNAC_ASAN_BIN) $(PARSER_DUMP_DIR)/parser_dump $(PARSER_DUMP_DIR)/parser_dump-asan
+
+# Typed IR (docs/TYPED_IR.md step 3). The IR targets honor MANNAC_CC so a
+# Linux/gcc reviewer run is `make MANNAC_CC=gcc test-ir-unit-asan` (the older
+# targets above hardcode clang and are left as they are). ir_test.c runs under
+# an 8 MB stack, the host default the stack tests are about.
+MANNAC_CC      ?= clang
+IR_TEST_DIR    := $(BUILD)/ir_test
+IR_TEST_SRCS   := tools/mannac/arena.c tools/mannac/ast.c tools/mannac/diag.c \
+                  tools/mannac/ir.c tools/mannac/ir_test.c
+
+test-ir-unit:
+	@mkdir -p $(IR_TEST_DIR)
+	$(MANNAC_CC) -std=c11 -Wall -Wextra -O2 -g -o $(IR_TEST_DIR)/ir_test $(IR_TEST_SRCS)
+	sh -c 'ulimit -s 8192 && $(IR_TEST_DIR)/ir_test'
+
+test-ir-unit-asan:
+	@mkdir -p $(IR_TEST_DIR)
+	$(MANNAC_CC) -std=c11 -Wall -Wextra -g -fsanitize=address,undefined -o $(IR_TEST_DIR)/ir_test-asan $(IR_TEST_SRCS)
+	sh -c 'ulimit -s 8192 && $(IR_TEST_DIR)/ir_test-asan'
 
 # Per-file coverage for mannac (lexer, arena, ast, diag, parser_state),
 # via clang's source-based coverage (llvm-profdata/llvm-cov, bundled with

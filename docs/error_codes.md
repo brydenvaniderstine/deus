@@ -30,4 +30,13 @@ Ranges, reserved by pipeline stage (docs/M2_PLAN.md §3):
 
 **Documented exceptions (r1 Phase B) - generic `E0105`, no dedicated code and no fix hint, by design:** a reserved word (`u8`..`i64`, `bool`, `unit`) where an identifier is required; `unit` in any type position other than after `->` (that one site gets `E0109`); an empty array literal `[]`; a repeat count that isn't an integer literal (`[v; X]`); conversion arity/shape (`u8()`, `u8(a, b)`, a bare `u8` in expression position). Each is a plain expected/found mismatch already fully described by `diag_expected`'s template; a rename or a different construct isn't a single-span mechanical edit. Rationale and exact wordings: docs/M2_PLAN.md "Diagnostics added by r1 Phase B".
 
+## E02xx — Typed IR
+
+`E0202` is deliberately unassigned (it was a dropped proposal, an IR-side tree-height bound; the bound lives in the parser as `E0111`). The number is not reused.
+
+| Code | Message | Meaning | Fix hint |
+|---|---|---|---|
+| `E0201` | `input too large: the type checker's memory limit was exceeded` | **Emitted since typed-IR step 3.** The typed IR's own arena (16 MiB, `IR_ARENA_CAP`) was exhausted; the stage stops and no module is produced. Recorded once, at the start of the declaration being built (1:1 before the first). Separate from E0110, which is the parser's AST arena. Fatal. Hand-written code does not reach it; a generated input can. | None - documented exception: the only remedy is a smaller input (split the file), which is not an edit at a place. |
+| `E0203` | `too many errors, stopping` | **Emitted since typed-IR step 3.** The stage reached `IR_MAX_ERRORS` (20) E02xx errors in one file and stopped (a cascade guard, the same role E0104 plays for the parser). It is the 21st diagnostic, located at the 20th error's span. The count covers E02xx errors only: the stage never runs on a file with parse diagnostics. Fatal. | None - documented exception: fix the earlier errors first; the cap is a cascade guard, so there is nothing to apply. |
+
 IR-stage diagnostics implied by the same spec (struct-construction field checks, array-literal element types, conversion operand/target types, lvalue validity, ...) are specified in `docs/M2_PLAN.md` "Typed IR (stage 3): decided rules"; their `E02xx` numbers are assigned here, in the commit that first emits each (proposals: `docs/TYPED_IR.md` section 5). The parser-side tree-height bound is registered above as `E0111`.

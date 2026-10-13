@@ -159,6 +159,24 @@ Diagnostic diag_input_too_large(Span span) {
     return d;
 }
 
+Diagnostic diag_ir_input_too_large(Span span) {
+    Diagnostic d = {0};
+    d.code = "E0201";
+    d.severity = DIAG_ERROR;
+    d.message = "input too large: the type checker's memory limit was exceeded";
+    d.span = span;
+    return d;
+}
+
+Diagnostic diag_ir_too_many_errors(Span span) {
+    Diagnostic d = {0};
+    d.code = "E0203";
+    d.severity = DIAG_ERROR;
+    d.message = "too many errors, stopping";
+    d.span = span;
+    return d;
+}
+
 Diagnostic diag_expected(Arena *a, Span span, const char *expected, const char *found, const char *context) {
     Diagnostic d = {0};
     d.code = "E0105";

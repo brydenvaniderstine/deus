@@ -108,6 +108,17 @@ Diagnostic diag_input_too_large(Span span);
  * statements) is not an edit at a place. */
 Diagnostic diag_expr_too_tall(Span span);
 
+/* E0201: "input too large: the type checker's memory limit was exceeded" - the
+ * typed-IR arena's hard cap was hit (ir.c registers this via the arena's
+ * overflow hook, so the unwind that follows is never silent). Reported at the
+ * start of the declaration being built. No fix-it, like E0110. */
+Diagnostic diag_ir_input_too_large(Span span);
+
+/* E0203: "too many errors, stopping" - the typed-IR stage reached
+ * IR_MAX_ERRORS (20) in one file (ir.h); a cascade guard like E0104. Reported
+ * at the 20th error's span. No fix-it. */
+Diagnostic diag_ir_too_many_errors(Span span);
+
 /* Generic "expected X, found Y" - every parse error that isn't one of the
  * two dedicated messages above goes through this one constructor, so the
  * message format (docs/M2_PLAN.md's own golden-file example: "expected
