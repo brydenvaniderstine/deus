@@ -82,7 +82,7 @@ Conclusions: (1) the **parser** is fine - it builds these trees iteratively (the
 
 ## 5. New error codes (proposed numbers, `E02xx` = typed IR per `docs/error_codes.md`)
 
-**Rule: a code is registered in `docs/error_codes.md` in the same commit that first emits it, and not before** ("codes are never reused or renumbered", so no speculative reservation, and "no diagnostic ships unregistered" keeps holding). The numbers below are the proposal; the step column says when each lands. 39 codes (E0202, E0246 and E0250 are deliberately unassigned: E0202 was the IR-side height bound, dropped by Q14; E0246 and E0250 merged into E0240 and E0242. Gaps stay, numbers are never reused). One more code lives in the **parser** range: **E0111** `expression too long: more than 512 chained operations in one expression; split it into several statements`, registered in `docs/error_codes.md` by step 2b (wording amended at the step 2 review, N = 512 measured and approved), no fix-it (documented exception: the input must be restructured). Messages follow "errors teach" (principle 6): what was expected, what was found, and a fix hint where a mechanical one exists.
+**Rule: a code is registered in `docs/error_codes.md` in the same commit that first emits it, and not before** ("codes are never reused or renumbered", so no speculative reservation, and "no diagnostic ships unregistered" keeps holding). The numbers below are the proposal; the step column says when each lands. 40 codes counting E0227, added at step 4 (E0202, E0246 and E0250 are deliberately unassigned: E0202 was the IR-side height bound, dropped by Q14; E0246 and E0250 merged into E0240 and E0242. Gaps stay, numbers are never reused). One more code lives in the **parser** range: **E0111** `expression too long: more than 512 chained operations in one expression; split it into several statements`, registered in `docs/error_codes.md` by step 2b (wording amended at the step 2 review, N = 512 measured and approved), no fix-it (documented exception: the input must be restructured). Messages follow "errors teach" (principle 6): what was expected, what was found, and a fix hint where a mechanical one exists.
 
 | Code | Message template | Step | Fix-it |
 |---|---|---|---|
@@ -101,6 +101,7 @@ Conclusions: (1) the **parser** is fine - it builds these trees iteratively (the
 | `E0224` | `integer literal N does not fit in T` | 6 | none |
 | `E0225` | `cannot infer the type of this integer literal; annotate it` **[Q1, only if option (a)]** | 6 | none |
 | `E0226` | `a 'unit' value can't be used here` | 7 | none |
+| `E0227` | `a struct field can't contain a slice type; slices are allowed only as parameter and local types` (struct-field placement emitted at step 4; a slice in a return type and a slice whose element contains a slice, with their own wording, at the steps that emit them) **[added at the step 4 review: M2_PLAN's slice-placement rules had no code]** | 4 | none |
 | `E0230` | `unknown name 'x'` | 7 | none |
 | `E0231` | `'f' is a function/struct, not a value` | 7 | none |
 | `E0232` | `unknown function 'f'` | 10 | none |
