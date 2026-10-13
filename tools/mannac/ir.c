@@ -164,7 +164,8 @@ const IrType *ir_type_struct(IrState *st, const IrStruct *decl) {
     return intern(st, IR_T_STRUCT, 0, decl);
 }
 
-const char *ir_type_text(IrState *st, const IrType *t) {
+/* Text of every non-composite type: static, needs no state. */
+static const char *prim_text(const IrType *t) {
     static const char *const int_names[8] = {"u8", "i8", "u16", "i16", "u32", "i32", "u64", "i64"};
     switch (t->kind) {
         case IR_T_INT: {
@@ -173,13 +174,231 @@ const char *ir_type_text(IrState *st, const IrType *t) {
         }
         case IR_T_BOOL:   return "bool";
         case IR_T_UNIT:   return "unit";
-        case IR_T_ERROR:  return "<error>";
         case IR_T_STRUCT: return t->as.strukt.decl->name;
         case IR_T_ARRAY:
-            return arena_sprintf(st->arena, "[%llu]%s", (unsigned long long)t->as.array.len,
-                                 ir_type_text(st, t->as.array.elem));
         case IR_T_SLICE:
-            return arena_sprintf(st->arena, "[]%s", ir_type_text(st, t->as.slice.elem));
+        case IR_T_ERROR:
+            break;
     }
-    return "<error>"; /* unreachable: every IrTypeKind has a case */
+    return "<error>"; /* IR_T_ERROR (composites never come here) */
+}
+
+const char *ir_type_text(IrState *st, const IrType *t) {
+    if (t->kind == IR_T_ARRAY) {
+        return arena_sprintf(st->arena, "[%llu]%s", (unsigned long long)t->as.array.len,
+                             ir_type_text(st, t->as.array.elem));
+    }
+    if (t->kind == IR_T_SLICE) {
+        return arena_sprintf(st->arena, "[]%s", ir_type_text(st, t->as.slice.elem));
+    }
+    return prim_text(t);
+}
+
+void ir_type_print(FILE *out, const IrType *t) {
+    if (t->kind == IR_T_ARRAY) {
+        fprintf(out, "[%llu]", (unsigned long long)t->as.array.len);
+        ir_type_print(out, t->as.array.elem);
+    } else if (t->kind == IR_T_SLICE) {
+        fputs("[]", out);
+        ir_type_print(out, t->as.slice.elem);
+    } else {
+        fputs(prim_text(t), out);
+    }
+}
+
+bool ir_ast_height_ok(const Expr *e) {
+    return e->height <= MAX_EXPR_HEIGHT;
+}
+
+/* ---- node constructors ---- */
+
+static void *node_alloc(IrState *st, size_t size, size_t align) {
+    void *p = arena_alloc(st->arena, size, align);
+    memset(p, 0, size);
+    return p;
+}
+
+IrLocal *ir_local_new(IrState *st, uint32_t slot, const char *name, const IrType *type, Span span, bool is_param) {
+    IrLocal *l = node_alloc(st, sizeof(IrLocal), alignof(IrLocal));
+    l->slot = slot;
+    l->name = name;
+    l->type = type;
+    l->span = span;
+    l->is_param = is_param;
+    return l;
+}
+
+static IrExpr *new_expr(IrState *st, IrExprKind kind, Span span, const IrType *type) {
+    IrExpr *e = node_alloc(st, sizeof(IrExpr), alignof(IrExpr));
+    e->kind = kind;
+    e->span = span;
+    e->type = type;
+    return e;
+}
+
+IrExpr *ir_expr_int(IrState *st, Span span, const IrType *type, uint64_t bits) {
+    IrExpr *e = new_expr(st, IR_E_INT, span, type);
+    e->as.integer.bits = bits;
+    return e;
+}
+
+IrExpr *ir_expr_bool(IrState *st, Span span, bool value) {
+    IrExpr *e = new_expr(st, IR_E_BOOL, span, ir_type_bool(st));
+    e->as.boolean.value = value;
+    return e;
+}
+
+IrExpr *ir_expr_local(IrState *st, Span span, const IrLocal *local) {
+    IrExpr *e = new_expr(st, IR_E_LOCAL, span, local->type);
+    e->as.local.local = local;
+    return e;
+}
+
+IrExpr *ir_expr_unary(IrState *st, Span span, const IrType *type, UnOp op, IrExpr *operand) {
+    IrExpr *e = new_expr(st, IR_E_UNARY, span, type);
+    e->as.unary.op = op;
+    e->as.unary.operand = operand;
+    return e;
+}
+
+IrExpr *ir_expr_binary(IrState *st, Span span, const IrType *type, BinOp op, IrExpr *lhs, IrExpr *rhs) {
+    IrExpr *e = new_expr(st, IR_E_BINARY, span, type);
+    e->as.binary.op = op;
+    e->as.binary.lhs = lhs;
+    e->as.binary.rhs = rhs;
+    return e;
+}
+
+IrExpr *ir_expr_call(IrState *st, Span span, const IrType *type, const IrFunc *func, NodeList args) {
+    IrExpr *e = new_expr(st, IR_E_CALL, span, type);
+    e->as.call.func = func;
+    e->as.call.args = args;
+    return e;
+}
+
+IrExpr *ir_expr_struct_new(IrState *st, Span span, const IrType *type, NodeList values) {
+    IrExpr *e = new_expr(st, IR_E_STRUCT_NEW, span, type);
+    e->as.struct_new.values = values;
+    return e;
+}
+
+IrExpr *ir_expr_field(IrState *st, Span span, const IrType *type, IrExpr *base, uint32_t index) {
+    IrExpr *e = new_expr(st, IR_E_FIELD, span, type);
+    e->as.field.base = base;
+    e->as.field.index = index;
+    return e;
+}
+
+IrExpr *ir_expr_index(IrState *st, Span span, const IrType *type, IrExpr *base, IrExpr *idx) {
+    IrExpr *e = new_expr(st, IR_E_INDEX, span, type);
+    e->as.index.base = base;
+    e->as.index.idx = idx;
+    return e;
+}
+
+IrExpr *ir_expr_slice(IrState *st, Span span, const IrType *type, IrExpr *base, IrExpr *lo, IrExpr *hi) {
+    IrExpr *e = new_expr(st, IR_E_SLICE, span, type);
+    e->as.slice.base = base;
+    e->as.slice.lo = lo;
+    e->as.slice.hi = hi;
+    return e;
+}
+
+IrExpr *ir_expr_convert(IrState *st, Span span, const IrType *type, IrExpr *operand) {
+    IrExpr *e = new_expr(st, IR_E_CONVERT, span, type);
+    e->as.convert.operand = operand;
+    return e;
+}
+
+IrExpr *ir_expr_array(IrState *st, Span span, const IrType *type, NodeList elems) {
+    IrExpr *e = new_expr(st, IR_E_ARRAY, span, type);
+    e->as.array.elems = elems;
+    return e;
+}
+
+IrExpr *ir_expr_repeat(IrState *st, Span span, const IrType *type, IrExpr *value, uint64_t count) {
+    IrExpr *e = new_expr(st, IR_E_REPEAT, span, type);
+    e->as.repeat.value = value;
+    e->as.repeat.count = count;
+    return e;
+}
+
+static IrStmt *new_stmt(IrState *st, IrStmtKind kind, Span span) {
+    IrStmt *s = node_alloc(st, sizeof(IrStmt), alignof(IrStmt));
+    s->kind = kind;
+    s->span = span;
+    return s;
+}
+
+IrStmt *ir_stmt_let(IrState *st, Span span, const IrLocal *local, IrExpr *init) {
+    IrStmt *s = new_stmt(st, IR_S_LET, span);
+    s->as.let.local = local;
+    s->as.let.init = init;
+    return s;
+}
+
+IrStmt *ir_stmt_assign(IrState *st, Span span, IrExpr *place, IrExpr *value) {
+    IrStmt *s = new_stmt(st, IR_S_ASSIGN, span);
+    s->as.assign.place = place;
+    s->as.assign.value = value;
+    return s;
+}
+
+IrStmt *ir_stmt_if(IrState *st, Span span, IrExpr *cond, IrStmt *then_branch, IrStmt *else_branch) {
+    IrStmt *s = new_stmt(st, IR_S_IF, span);
+    s->as.if_stmt.cond = cond;
+    s->as.if_stmt.then_branch = then_branch;
+    s->as.if_stmt.else_branch = else_branch;
+    return s;
+}
+
+IrStmt *ir_stmt_while(IrState *st, Span span, IrExpr *cond, IrStmt *body) {
+    IrStmt *s = new_stmt(st, IR_S_WHILE, span);
+    s->as.while_stmt.cond = cond;
+    s->as.while_stmt.body = body;
+    return s;
+}
+
+IrStmt *ir_stmt_for(IrState *st, Span span, IrStmt *init, IrExpr *cond, IrStmt *step, IrStmt *body) {
+    IrStmt *s = new_stmt(st, IR_S_FOR, span);
+    s->as.for_stmt.init = init;
+    s->as.for_stmt.cond = cond;
+    s->as.for_stmt.step = step;
+    s->as.for_stmt.body = body;
+    return s;
+}
+
+IrStmt *ir_stmt_break(IrState *st, Span span)    { return new_stmt(st, IR_S_BREAK, span); }
+IrStmt *ir_stmt_continue(IrState *st, Span span) { return new_stmt(st, IR_S_CONTINUE, span); }
+
+IrStmt *ir_stmt_return(IrState *st, Span span, IrExpr *value) {
+    IrStmt *s = new_stmt(st, IR_S_RETURN, span);
+    s->as.ret.value = value;
+    return s;
+}
+
+IrStmt *ir_stmt_expr(IrState *st, Span span, IrExpr *expr) {
+    IrStmt *s = new_stmt(st, IR_S_EXPR, span);
+    s->as.expr.expr = expr;
+    return s;
+}
+
+IrStmt *ir_stmt_block(IrState *st, Span span, NodeList stmts) {
+    IrStmt *s = new_stmt(st, IR_S_BLOCK, span);
+    s->as.block.stmts = stmts;
+    return s;
+}
+
+IrFunc *ir_func_new(IrState *st, Span span, const char *name, bool kernel_hook, NodeList locals,
+                    size_t n_params, const IrType *ret, IrStmt *body) {
+    IrFunc *f = node_alloc(st, sizeof(IrFunc), alignof(IrFunc));
+    f->span = span;
+    f->name = name;
+    f->id = arena_sprintf(st->arena, "fn:%s", name);
+    f->kernel_hook = kernel_hook;
+    f->locals = locals;
+    f->n_params = n_params;
+    f->ret = ret;
+    f->body = body;
+    return f;
 }

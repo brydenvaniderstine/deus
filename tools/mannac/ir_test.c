@@ -227,13 +227,383 @@ static void test_reset_primitives(void) {
     pass("reset: primitive identity preserved (rebuilt in place); composites cleared");
 }
 
-int main(void) {
+/* ---- dump ---- */
+
+/* Runs `dump` into a tmpfile and returns the text (malloc'd; caller frees). */
+static char *capture(void (*dump)(FILE *, const void *), const void *node) {
+    FILE *f = tmpfile();
+    assert(f);
+    dump(f, node);
+    long n = ftell(f);
+    assert(n >= 0);
+    rewind(f);
+    char *buf = malloc((size_t)n + 1);
+    assert(buf);
+    size_t got = fread(buf, 1, (size_t)n, f);
+    assert(got == (size_t)n);
+    buf[n] = 0;
+    fclose(f);
+    return buf;
+}
+
+static void dump_e(FILE *f, const void *n) { ir_dump_expr(f, n, 0); }
+static void dump_s(FILE *f, const void *n) { ir_dump_stmt(f, n, 0); }
+static void dump_f(FILE *f, const void *n) { ir_dump_func(f, n); }
+static void dump_st(FILE *f, const void *n) { ir_dump_struct(f, n); }
+static void dump_m(FILE *f, const void *n) { ir_dump_module(f, n); }
+
+static void expect(char *got, const char *want) {
+    if (strcmp(got, want) != 0) {
+        fprintf(stderr, "dump mismatch\n--- got\n%s\n--- want\n%s\n---\n", got, want);
+        abort();
+    }
+    free(got);
+}
+
+static NodeList list1(IrState *st, void *a) {
+    NodeList l;
+    node_list_init(&l);
+    node_list_push(st->arena, &l, a);
+    return l;
+}
+
+static NodeList list2(IrState *st, void *a, void *b) {
+    NodeList l = list1(st, a);
+    node_list_push(st->arena, &l, b);
+    return l;
+}
+
+static void test_dump_expressions(void) {
+    static IrState st;
+    ir_state_init(&st, 1 << 20);
+    const IrType *u8 = ir_type_int(&st, 8, false), *i8 = ir_type_int(&st, 8, true);
+    const IrType *u32 = ir_type_int(&st, 32, false), *i64t = ir_type_int(&st, 64, true);
+    const IrType *u64t = ir_type_int(&st, 64, false), *bl = ir_type_bool(&st);
+    Span sp = mk(1, 1, 1, 4);
+
+    /* integers print by the TYPE's signedness; i64::MIN and u64::MAX are the edges */
+    expect(capture(dump_e, ir_expr_int(&st, sp, u8, 255)), "(int@1:1-1:4 255 u8)");
+    expect(capture(dump_e, ir_expr_int(&st, sp, i8, (uint64_t)(int64_t)-128)), "(int@1:1-1:4 -128 i8)");
+    expect(capture(dump_e, ir_expr_int(&st, sp, i8, 127)), "(int@1:1-1:4 127 i8)");
+    expect(capture(dump_e, ir_expr_int(&st, sp, i64t, 0x8000000000000000ULL)), "(int@1:1-1:4 -9223372036854775808 i64)");
+    expect(capture(dump_e, ir_expr_int(&st, sp, u64t, 0xFFFFFFFFFFFFFFFFULL)), "(int@1:1-1:4 18446744073709551615 u64)");
+    expect(capture(dump_e, ir_expr_bool(&st, sp, true)), "(bool@1:1-1:4 true bool)");
+    expect(capture(dump_e, ir_expr_bool(&st, sp, false)), "(bool@1:1-1:4 false bool)");
+
+    IrLocal *a = ir_local_new(&st, 0, "a", u32, mk(2, 8, 2, 17), true);
+    IrLocal *b = ir_local_new(&st, 1, "b", u32, mk(2, 19, 2, 28), true);
+    IrExpr *la = ir_expr_local(&st, mk(3, 12, 3, 13), a), *lb = ir_expr_local(&st, mk(3, 16, 3, 17), b);
+    expect(capture(dump_e, la), "(local@3:12-3:13 a #0 u32)");
+
+    expect(capture(dump_e, ir_expr_unary(&st, sp, bl, UNOP_NOT, ir_expr_bool(&st, sp, true))),
+           "(unary@1:1-1:4 ! bool\n  (bool@1:1-1:4 true bool))");
+    expect(capture(dump_e, ir_expr_unary(&st, sp, i8, UNOP_NEG, ir_expr_int(&st, sp, i8, 5))),
+           "(unary@1:1-1:4 - i8\n  (int@1:1-1:4 5 i8))");
+    expect(capture(dump_e, ir_expr_unary(&st, sp, u32, UNOP_BITNOT, la)),
+           "(unary@1:1-1:4 ~ u32\n  (local@3:12-3:13 a #0 u32))");
+
+    /* every operator's spelling, in BinOp order */
+    static const char *const ops[] = {"+", "-", "*", "/", "%", "&", "|", "^", "<<", ">>",
+                                      "<", ">", "<=", ">=", "==", "!=", "&&", "||"};
+    for (int op = BINOP_ADD; op <= BINOP_OR; op++) {
+        char want[160];
+        snprintf(want, sizeof want, "(binary@1:1-1:4 %s u32\n  (local@3:12-3:13 a #0 u32)\n  (local@3:16-3:17 b #1 u32))", ops[op]);
+        expect(capture(dump_e, ir_expr_binary(&st, sp, u32, (BinOp)op, la, lb)), want);
+    }
+
+    /* calls: the id, the type (a unit-typed call prints `unit`), the arguments in order */
+    IrFunc *g = ir_func_new(&st, mk(1, 1, 1, 2), "g", false, list1(&st, a), 1, ir_type_unit(&st), NULL);
+    expect(capture(dump_e, ir_expr_call(&st, sp, ir_type_unit(&st), g, list1(&st, la))),
+           "(call@1:1-1:4 fn:g unit\n  (local@3:12-3:13 a #0 u32))");
+    expect(capture(dump_e, ir_expr_call(&st, sp, u32, g, list2(&st, la, lb))),
+           "(call@1:1-1:4 fn:g u32\n  (local@3:12-3:13 a #0 u32)\n  (local@3:16-3:17 b #1 u32))");
+
+    /* structs, fields */
+    IrStruct pt = {0};
+    IrField fields[2] = {{"x", mk(2, 5, 2, 11), u32, 0}, {"y", mk(3, 5, 3, 11), u32, 4}};
+    pt.name = "Point"; pt.span = mk(1, 1, 4, 2); pt.fields = fields; pt.n_fields = 2; pt.size = 8; pt.align = 4;
+    const IrType *tp = ir_type_struct(&st, &pt);
+    IrLocal *p = ir_local_new(&st, 0, "p", tp, sp, false);
+    IrExpr *lp = ir_expr_local(&st, sp, p);
+    expect(capture(dump_e, ir_expr_struct_new(&st, sp, tp, list2(&st, ir_expr_int(&st, sp, u32, 1), ir_expr_int(&st, sp, u32, 2)))),
+           "(struct_new@1:1-1:4 Point\n  (int@1:1-1:4 1 u32)\n  (int@1:1-1:4 2 u32))");
+    expect(capture(dump_e, ir_expr_field(&st, sp, u32, lp, 1)),
+           "(field@1:1-1:4 y #1 u32\n  (local@1:1-1:4 p #0 Point))");
+    expect(capture(dump_st, &pt),
+           "(struct@1:1-4:2 Point size=8 align=4\n  (field@2:5-2:11 x u32 +0)\n  (field@3:5-3:11 y u32 +4))");
+    IrStruct empty = {0};
+    empty.name = "Empty"; empty.span = mk(1, 1, 1, 15); empty.align = 1;
+    expect(capture(dump_st, &empty), "(struct@1:1-1:15 Empty size=0 align=1)");
+
+    /* arrays, slices, indexing, conversion */
+    const IrType *a3 = ir_type_array(&st, 3, u8), *s8 = ir_type_slice(&st, u8);
+    IrExpr *e1 = ir_expr_int(&st, sp, u8, 1), *e2 = ir_expr_int(&st, sp, u8, 2);
+    expect(capture(dump_e, ir_expr_array(&st, sp, ir_type_array(&st, 2, u8), list2(&st, e1, e2))),
+           "(array@1:1-1:4 [2]u8\n  (int@1:1-1:4 1 u8)\n  (int@1:1-1:4 2 u8))");
+    expect(capture(dump_e, ir_expr_repeat(&st, sp, a3, e1, 3)), "(repeat@1:1-1:4 3 [3]u8\n  (int@1:1-1:4 1 u8))");
+    IrLocal *arr = ir_local_new(&st, 1, "arr", a3, sp, false);
+    IrExpr *larr = ir_expr_local(&st, sp, arr), *i0 = ir_expr_int(&st, sp, u32, 0), *i2 = ir_expr_int(&st, sp, u32, 2);
+    expect(capture(dump_e, ir_expr_index(&st, sp, u8, larr, i0)),
+           "(index@1:1-1:4 u8\n  (local@1:1-1:4 arr #1 [3]u8)\n  (int@1:1-1:4 0 u32))");
+    expect(capture(dump_e, ir_expr_slice(&st, sp, s8, larr, i0, i2)),
+           "(slice@1:1-1:4 []u8\n  (local@1:1-1:4 arr #1 [3]u8)\n  (int@1:1-1:4 0 u32)\n  (int@1:1-1:4 2 u32))");
+    expect(capture(dump_e, ir_expr_convert(&st, sp, u8, la)), "(convert@1:1-1:4 u8\n  (local@3:12-3:13 a #0 u32))");
+
+    ir_state_destroy(&st);
+    pass("dump: every expression kind, every operator, integer edges (i64::MIN, u64::MAX, i8 -128)");
+}
+
+static IrFunc *build_add(IrState *st) {
+    /* M2_PLAN "IR shape", the documented example, byte for byte */
+    const IrType *u32 = ir_type_int(st, 32, false);
+    IrLocal *a = ir_local_new(st, 0, "a", u32, mk(2, 8, 2, 17), true);
+    IrLocal *b = ir_local_new(st, 1, "b", u32, mk(2, 19, 2, 28), true);
+    IrExpr *sum = ir_expr_binary(st, mk(3, 12, 3, 17), u32, BINOP_ADD, ir_expr_local(st, mk(3, 12, 3, 13), a),
+                                 ir_expr_local(st, mk(3, 16, 3, 17), b));
+    IrStmt *ret = ir_stmt_return(st, mk(3, 5, 3, 14), sum);
+    IrStmt *body = ir_stmt_block(st, mk(2, 31, 5, 1), list1(st, ret));
+    return ir_func_new(st, mk(2, 1, 5, 1), "add", false, list2(st, a, b), 2, u32, body);
+}
+
+static const char *const ADD_DUMP =
+    "(fn@2:1-5:1 fn:add\n"
+    "  (params (param@2:8-2:17 a #0 u32) (param@2:19-2:28 b #1 u32))\n"
+    "  (returns u32)\n"
+    "  (block@2:31-5:1\n"
+    "    (return@3:5-3:14\n"
+    "      (binary@3:12-3:17 + u32\n"
+    "        (local@3:12-3:13 a #0 u32)\n"
+    "        (local@3:16-3:17 b #1 u32)))))";
+
+static void test_dump_functions_and_statements(void) {
+    static IrState st;
+    ir_state_init(&st, 1 << 20);
+    expect(capture(dump_f, build_add(&st)), ADD_DUMP);
+
+    /* an empty unit function, and a kernel_hook one */
+    NodeList none;
+    node_list_init(&none);
+    IrStmt *eb = ir_stmt_block(&st, mk(2, 8, 2, 11), none);
+    IrFunc *f = ir_func_new(&st, mk(2, 1, 2, 11), "a", false, none, 0, ir_type_unit(&st), eb);
+    expect(capture(dump_f, f), "(fn@2:1-2:11 fn:a\n  (params)\n  (returns)\n  (block@2:8-2:11))");
+    f->kernel_hook = true;
+    expect(capture(dump_f, f), "(fn@2:1-2:11 fn:a kernel_hook\n  (params)\n  (returns)\n  (block@2:8-2:11))");
+
+    /* every statement kind */
+    const IrType *u32 = ir_type_int(&st, 32, false), *bl = ir_type_bool(&st);
+    Span sp = mk(4, 1, 4, 9);
+    IrLocal *x = ir_local_new(&st, 0, "x", u32, sp, false);
+    IrExpr *lx = ir_expr_local(&st, sp, x), *one = ir_expr_int(&st, sp, u32, 1), *t = ir_expr_bool(&st, sp, true);
+    expect(capture(dump_s, ir_stmt_let(&st, sp, x, one)), "(let@4:1-4:9 x #0 u32\n  (int@4:1-4:9 1 u32))");
+    expect(capture(dump_s, ir_stmt_assign(&st, sp, lx, one)),
+           "(assign@4:1-4:9\n  (local@4:1-4:9 x #0 u32)\n  (int@4:1-4:9 1 u32))");
+    expect(capture(dump_s, ir_stmt_break(&st, sp)), "(break@4:1-4:9)");
+    expect(capture(dump_s, ir_stmt_continue(&st, sp)), "(continue@4:1-4:9)");
+    expect(capture(dump_s, ir_stmt_return(&st, sp, NULL)), "(return@4:1-4:9)");
+    expect(capture(dump_s, ir_stmt_return(&st, sp, one)), "(return@4:1-4:9\n  (int@4:1-4:9 1 u32))");
+    expect(capture(dump_s, ir_stmt_expr(&st, sp, one)), "(expr_stmt@4:1-4:9\n  (int@4:1-4:9 1 u32))");
+    IrStmt *blk = ir_stmt_block(&st, sp, none);
+    expect(capture(dump_s, ir_stmt_while(&st, sp, t, blk)),
+           "(while@4:1-4:9\n  (bool@4:1-4:9 true bool)\n  (block@4:1-4:9))");
+    expect(capture(dump_s, ir_stmt_if(&st, sp, t, blk, NULL)),
+           "(if@4:1-4:9\n  (bool@4:1-4:9 true bool)\n  (block@4:1-4:9))");
+    IrStmt *inner = ir_stmt_if(&st, sp, t, blk, ir_stmt_block(&st, sp, none));
+    expect(capture(dump_s, ir_stmt_if(&st, sp, t, blk, inner)),
+           "(if@4:1-4:9\n  (bool@4:1-4:9 true bool)\n  (block@4:1-4:9)\n"
+           "  (if@4:1-4:9\n    (bool@4:1-4:9 true bool)\n    (block@4:1-4:9)\n    (block@4:1-4:9)))");
+    IrExpr *cond = ir_expr_binary(&st, sp, bl, BINOP_LT, lx, one);
+    IrStmt *step = ir_stmt_assign(&st, sp, lx, ir_expr_binary(&st, sp, u32, BINOP_ADD, lx, one));
+    expect(capture(dump_s, ir_stmt_for(&st, sp, ir_stmt_let(&st, sp, x, ir_expr_int(&st, sp, u32, 0)), cond, step, blk)),
+           "(for@4:1-4:9\n"
+           "  (let@4:1-4:9 x #0 u32\n    (int@4:1-4:9 0 u32))\n"
+           "  (binary@4:1-4:9 < bool\n    (local@4:1-4:9 x #0 u32)\n    (int@4:1-4:9 1 u32))\n"
+           "  (assign@4:1-4:9\n    (local@4:1-4:9 x #0 u32)\n    (binary@4:1-4:9 + u32\n      (local@4:1-4:9 x #0 u32)\n      (int@4:1-4:9 1 u32)))\n"
+           "  (block@4:1-4:9))");
+    ir_state_destroy(&st);
+    pass("dump: functions (params, returns, kernel_hook) and every statement kind");
+}
+
+static void test_dump_module_and_determinism(void) {
+    char *dumps[2];
+    for (int round = 0; round < 2; round++) {
+        static IrState st[2];
+        ir_state_init(&st[round], 1 << 20);
+        void *pad = NULL;
+        if (round == 1) {
+            (void)arena_alloc(st[round].arena, 4096 + 3, 1); /* a different arena layout */
+            pad = malloc(1234);                              /* and a shifted heap; freed below */
+        }
+        IrModule m;
+        node_list_init(&m.structs);
+        node_list_init(&m.funcs);
+        IrStruct *s = arena_alloc(st[round].arena, sizeof(IrStruct), 8);
+        memset(s, 0, sizeof *s);
+        s->name = "Empty"; s->span = mk(1, 1, 1, 15); s->align = 1;
+        node_list_push(st[round].arena, &m.structs, s);
+        node_list_push(st[round].arena, &m.funcs, build_add(&st[round]));
+        dumps[round] = capture(dump_m, &m);
+        ir_state_destroy(&st[round]);
+        free(pad);
+    }
+    assert(strcmp(dumps[0], dumps[1]) == 0);
+    /* structs first, then functions; one form per line, each ending in a newline */
+    assert(strncmp(dumps[0], "(struct@1:1-1:15 Empty size=0 align=1)\n(fn@2:1-5:1 fn:add\n", 58) == 0);
+    size_t n = strlen(dumps[0]);
+    assert(n > 0 && dumps[0][n - 1] == '\n');
+    free(dumps[0]);
+    free(dumps[1]);
+
+    IrModule none;
+    node_list_init(&none.structs);
+    node_list_init(&none.funcs);
+    expect(capture(dump_m, &none), ""); /* an empty module prints nothing */
+    pass("dump: module order (structs, then functions), empty module, identical across arena bases");
+}
+
+/* ---- the parser's height bound, as the IR will assert it ---- */
+
+static void test_ast_height_assertion(void) {
+    Arena *a = arena_create(1 << 20);
+    Span sp = mk(1, 1, 1, 2);
+    Expr *e = expr_number(a, sp, 1);
+    for (int i = 0; i < MAX_EXPR_HEIGHT - 1; i++) {
+        e = expr_binary(a, sp, BINOP_ADD, e, expr_number(a, sp, 1));
+    }
+    assert(e->height == MAX_EXPR_HEIGHT && ir_ast_height_ok(e));
+    e = expr_binary(a, sp, BINOP_ADD, e, expr_number(a, sp, 1));
+    assert(e->height == MAX_EXPR_HEIGHT + 1 && !ir_ast_height_ok(e));
+    arena_destroy(a);
+    pass("ir_ast_height_ok: 512 accepted, 513 rejected");
+}
+
+/* ---- stack: the dumper on maximal trees ---- */
+
+typedef enum { SH_BINARY, SH_MIXED, SH_FIELD, SH_INDEX, SH_POSTFIX_MIX, SH_IN_CALLS, SH_IN_IFS, SH_COUNT } Shape;
+static const char *const shape_names[SH_COUNT] = {"binary", "mixed_prec", "field", "index", "postfix_mix", "in_calls", "in_ifs"};
+
+/* Builds a tree of expression height exactly MAX_EXPR_HEIGHT (leaf = 1; asserted by
+ * construction, counted in `h`) in the given shape; `in_ifs` wraps the statement in
+ * 120 nested ifs (the parser allows 127 levels of nested if) around it. Hand-built
+ * IR: the dumper never type-checks, so types are only as precise as it prints. */
+static IrExpr *build_chain(IrState *st, Shape sh, int *h) {
+    const IrType *u32 = ir_type_int(st, 32, false);
+    Span sp = mk(1, 1, 1, 2);
+    static IrStruct rec; /* struct S { f: S }: lets `field` chain without a type error to hide */
+    static IrField rec_f;
+    rec_f.name = "f"; rec_f.type = NULL;
+    rec.name = "S"; rec.fields = &rec_f; rec.n_fields = 1; rec.size = 0; rec.align = 1;
+    const IrType *ts = ir_type_struct(st, &rec);
+    rec_f.type = ts;
+    IrLocal *l = ir_local_new(st, 0, "s", ts, sp, false);
+    IrExpr *leaf = ir_expr_int(st, sp, u32, 1);
+    IrExpr *e;
+    *h = 1;
+    switch (sh) {
+        case SH_BINARY:
+        case SH_IN_IFS:
+            e = leaf;
+            while (*h < MAX_EXPR_HEIGHT) { e = ir_expr_binary(st, sp, u32, BINOP_ADD, e, leaf); (*h)++; }
+            return e;
+        case SH_MIXED:
+            e = leaf;
+            *h = 1;
+            while (*h < MAX_EXPR_HEIGHT) {
+                IrExpr *rhs = ir_expr_binary(st, sp, u32, BINOP_MUL, leaf, leaf); /* height 2 */
+                e = ir_expr_binary(st, sp, u32, BINOP_ADD, e, rhs);
+                *h = *h < 2 ? 3 : *h + 1;
+            }
+            return e;
+        case SH_FIELD:
+            e = ir_expr_local(st, sp, l);
+            while (*h < MAX_EXPR_HEIGHT) { e = ir_expr_field(st, sp, ts, e, 0); (*h)++; }
+            return e;
+        case SH_INDEX:
+            e = ir_expr_local(st, sp, l);
+            while (*h < MAX_EXPR_HEIGHT) { e = ir_expr_index(st, sp, u32, e, leaf); (*h)++; }
+            return e;
+        case SH_POSTFIX_MIX:
+            e = ir_expr_local(st, sp, l);
+            while (*h < MAX_EXPR_HEIGHT) {
+                e = (*h % 2) ? ir_expr_field(st, sp, ts, e, 0) : ir_expr_index(st, sp, ts, e, leaf);
+                (*h)++;
+            }
+            return e;
+        case SH_IN_CALLS: {
+            NodeList no_locals;
+            node_list_init(&no_locals);
+            IrFunc *f = ir_func_new(st, sp, "f", false, no_locals, 0, u32, NULL);
+            e = leaf;
+            while (*h < MAX_EXPR_HEIGHT - 200) { e = ir_expr_binary(st, sp, u32, BINOP_ADD, e, leaf); (*h)++; }
+            for (int i = 0; i < 200; i++) { e = ir_expr_call(st, sp, u32, f, list1(st, e)); (*h)++; }
+            return e;
+        }
+        default:
+            assert(!"bad shape");
+            return NULL;
+    }
+}
+
+static void run_shape(Shape sh) {
+    static IrState st;
+    ir_state_init(&st, 16 << 20);
+    int h;
+    IrExpr *e = build_chain(&st, sh, &h);
+    assert(h == MAX_EXPR_HEIGHT);
+    IrStmt *s = ir_stmt_expr(&st, mk(1, 1, 1, 2), e);
+    if (sh == SH_IN_IFS) {
+        IrExpr *cond = ir_expr_bool(&st, mk(1, 1, 1, 2), true);
+        for (int i = 0; i < 120; i++) {
+            IrStmt *blk = ir_stmt_block(&st, mk(1, 1, 1, 2), list1(&st, s));
+            s = ir_stmt_if(&st, mk(1, 1, 1, 2), cond, blk, NULL);
+        }
+    }
+    FILE *f = tmpfile();
+    assert(f);
+    ir_dump_stmt(f, s, 0);
+    long n = ftell(f);
+    assert(n > 0);
+    rewind(f);
+    long open = 0, close = 0;
+    int c;
+    while ((c = fgetc(f)) != EOF) {
+        open += (c == '(');
+        close += (c == ')');
+    }
+    fclose(f);
+    assert(open == close && open > MAX_EXPR_HEIGHT);
+    ir_state_destroy(&st);
+}
+
+static void test_stack_shapes(void) {
+    for (int sh = 0; sh < SH_COUNT; sh++) {
+        run_shape((Shape)sh);
+        printf("PASS: stack: %s, height %d\n", shape_names[sh], MAX_EXPR_HEIGHT);
+    }
+}
+
+int main(int argc, char **argv) {
     setvbuf(stdout, NULL, _IOLBF, 0); /* a hang or abort must not swallow the PASS lines before it */
+    if (argc == 2 && strcmp(argv[1], "--stack") == 0) { /* the Makefile's 2 MB (4x) gate */
+        test_stack_shapes();
+        return 0;
+    }
+    if (argc == 3 && strcmp(argv[1], "--shape") == 0) { /* tools/measure_ir_stack.sh */
+        for (int sh = 0; sh < SH_COUNT; sh++) {
+            if (strcmp(argv[2], shape_names[sh]) == 0) { run_shape((Shape)sh); return 0; }
+        }
+        fprintf(stderr, "unknown shape %s\n", argv[2]);
+        return 2;
+    }
     test_primitives();
     test_composites();
     test_table_growth();
     test_e0203();
     test_e0201_and_reuse();
     test_reset_primitives();
+    test_dump_expressions();
+    test_dump_functions_and_statements();
+    test_dump_module_and_determinism();
+    test_ast_height_assertion();
+    test_stack_shapes();
     return 0;
 }

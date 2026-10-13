@@ -52,7 +52,7 @@ QEMU_FLAGS   := -machine q35 -m 8G -cpu qemu64,+apic,+pdpe1gb \
                 -serial file:serial.log -monitor stdio -no-reboot \
                 -d int,cpu_reset -D qemu.log
 
-.PHONY: all image run debug clean limine stage-esp test-wx test-lexer test-lexer-asan test-arena test-arena-asan test-ast test-ast-asan test-parser-state test-parser-state-asan test-parser-fixes test-parser-fixes-asan test-parser test-parser-asan test-determinism test-ir-unit test-ir-unit-asan coverage fuzz fuzz-lexer fuzz-parser measure-height
+.PHONY: all image run debug clean limine stage-esp test-wx test-lexer test-lexer-asan test-arena test-arena-asan test-ast test-ast-asan test-parser-state test-parser-state-asan test-parser-fixes test-parser-fixes-asan test-parser test-parser-asan test-determinism test-ir-unit test-ir-unit-asan coverage fuzz fuzz-lexer fuzz-parser measure-height measure-ir-stack
 
 all: $(KERNEL_ELF)
 
@@ -264,21 +264,25 @@ test-determinism:
 # Typed IR (docs/TYPED_IR.md step 3). The IR targets honor MANNAC_CC so a
 # Linux/gcc reviewer run is `make MANNAC_CC=gcc test-ir-unit-asan` (the older
 # targets above hardcode clang and are left as they are). ir_test.c runs under
-# an 8 MB stack, the host default the stack tests are about.
+# an 8 MB stack, the host default the stack tests are about, and the stack
+# shapes run again at 2 MB: the dumper must keep a 4x margin on the maximal
+# (512-high) trees at that limit, plain and ASan.
 MANNAC_CC      ?= clang
 IR_TEST_DIR    := $(BUILD)/ir_test
 IR_TEST_SRCS   := tools/mannac/arena.c tools/mannac/ast.c tools/mannac/diag.c \
-                  tools/mannac/ir.c tools/mannac/ir_test.c
+                  tools/mannac/ir.c tools/mannac/ir_dump.c tools/mannac/ir_test.c
 
 test-ir-unit:
 	@mkdir -p $(IR_TEST_DIR)
 	$(MANNAC_CC) -std=c11 -Wall -Wextra -O2 -g -o $(IR_TEST_DIR)/ir_test $(IR_TEST_SRCS)
 	sh -c 'ulimit -s 8192 && $(IR_TEST_DIR)/ir_test'
+	sh -c 'ulimit -s 2048 && $(IR_TEST_DIR)/ir_test --stack'
 
 test-ir-unit-asan:
 	@mkdir -p $(IR_TEST_DIR)
 	$(MANNAC_CC) -std=c11 -Wall -Wextra -g -fsanitize=address,undefined -o $(IR_TEST_DIR)/ir_test-asan $(IR_TEST_SRCS)
 	sh -c 'ulimit -s 8192 && $(IR_TEST_DIR)/ir_test-asan'
+	sh -c 'ulimit -s 2048 && $(IR_TEST_DIR)/ir_test-asan --stack'
 
 # Per-file coverage for mannac (lexer, arena, ast, diag, parser_state),
 # via clang's source-based coverage (llvm-profdata/llvm-cov, bundled with
@@ -339,3 +343,8 @@ clean:
 # for ~1-2 minutes; deliberately NOT part of `test-*`/CI.
 measure-height:
 	./tools/measure_expr_height.sh
+
+# Typed-IR step 3b: per-shape stack the IR dumper needs on a maximal tree, and
+# the 4x gate (tools/measure_ir_stack.sh). Not part of `test-*`/CI.
+measure-ir-stack:
+	CC=$(MANNAC_CC) ./tools/measure_ir_stack.sh

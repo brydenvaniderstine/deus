@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stdio.h>
 #include "arena.h"
 #include "ast.h"
 #include "diag.h"
@@ -117,3 +118,138 @@ const IrType *ir_type_struct(IrState *st, const IrStruct *decl);
  * Primitives return static strings; composites are arena-allocated. This text
  * is part of the dump format AND of the type-mismatch messages. */
 const char *ir_type_text(IrState *st, const IrType *t);
+
+/* Writes the canonical type text (same as ir_type_text) straight to `out`:
+ * no state, no allocation, so the dumper can never longjmp. */
+void ir_type_print(FILE *out, const IrType *t);
+
+/* ---- Nodes (the vocabulary of M2_PLAN "IR shape") ---- */
+
+typedef struct IrExpr IrExpr;
+typedef struct IrStmt IrStmt;
+typedef struct IrFunc IrFunc;
+
+typedef struct {
+    uint32_t       slot;     /* declaration order; parameters first */
+    const char    *name;     /* points into the AST arena */
+    const IrType  *type;
+    Span           span;
+    bool           is_param;
+} IrLocal;
+
+typedef enum {
+    IR_E_INT, IR_E_BOOL, IR_E_LOCAL, IR_E_UNARY, IR_E_BINARY, IR_E_CALL,
+    IR_E_STRUCT_NEW, IR_E_FIELD, IR_E_INDEX, IR_E_SLICE, IR_E_CONVERT,
+    IR_E_ARRAY, IR_E_REPEAT,
+} IrExprKind;
+
+/* Every expression has a type (never ERROR in a built module) and the span of
+ * the AST node it came from. Whether an operation traps (arithmetic, shifts,
+ * division) or short-circuits (&&, ||) is a function of its operator and type,
+ * so it is neither stored nor printed. */
+struct IrExpr {
+    IrExprKind    kind;
+    Span          span;
+    const IrType *type;
+    union {
+        struct { uint64_t bits; } integer;   /* two's complement, sign-extended to 64 bits for signed types */
+        struct { bool value; } boolean;
+        struct { const IrLocal *local; } local;
+        struct { UnOp op; IrExpr *operand; } unary;
+        struct { BinOp op; IrExpr *lhs; IrExpr *rhs; } binary;
+        struct { const IrFunc *func; NodeList args; } call;      /* args: IrExpr* */
+        struct { NodeList values; } struct_new;                  /* values: IrExpr*, declaration order */
+        struct { IrExpr *base; uint32_t index; } field;          /* index into the base struct's fields */
+        struct { IrExpr *base; IrExpr *idx; } index;
+        struct { IrExpr *base; IrExpr *lo; IrExpr *hi; } slice;
+        struct { IrExpr *operand; } convert;                     /* target type == expr type */
+        struct { NodeList elems; } array;                        /* elems: IrExpr* */
+        struct { IrExpr *value; uint64_t count; } repeat;       /* count == the array type's length */
+    } as;
+};
+
+typedef enum {
+    IR_S_LET, IR_S_ASSIGN, IR_S_IF, IR_S_WHILE, IR_S_FOR,
+    IR_S_BREAK, IR_S_CONTINUE, IR_S_RETURN, IR_S_EXPR, IR_S_BLOCK,
+} IrStmtKind;
+
+struct IrStmt {
+    IrStmtKind kind;
+    Span       span;
+    union {
+        struct { const IrLocal *local; IrExpr *init; } let;
+        struct { IrExpr *place; IrExpr *value; } assign;
+        struct { IrExpr *cond; IrStmt *then_branch; IrStmt *else_branch; } if_stmt; /* else: NULL, an IF or a BLOCK */
+        struct { IrExpr *cond; IrStmt *body; } while_stmt;
+        struct { IrStmt *init; IrExpr *cond; IrStmt *step; IrStmt *body; } for_stmt; /* `for` stays a `for` */
+        struct { IrExpr *value; } ret;                           /* NULL = bare return */
+        struct { IrExpr *expr; } expr;
+        struct { NodeList stmts; } block;                        /* IrStmt* */
+    } as;
+};
+
+struct IrFunc {
+    Span          span;
+    const char   *name;
+    const char   *id;          /* "fn:name" (docs/M2_PLAN.md S7 item 5) */
+    bool          kernel_hook;
+    NodeList      locals;      /* IrLocal*, every slot in slot order, parameters first */
+    size_t        n_params;
+    const IrType *ret;         /* unit when the source has no '-> type' */
+    IrStmt       *body;        /* an IR_S_BLOCK */
+};
+
+typedef struct {
+    NodeList structs;          /* IrStruct*, declaration order */
+    NodeList funcs;            /* IrFunc*, declaration order */
+} IrModule;
+
+/* Constructors (arena-allocated like ast.c's; they may longjmp to
+ * st->fatal_target on arena exhaustion, E0201). */
+IrLocal *ir_local_new(IrState *st, uint32_t slot, const char *name, const IrType *type, Span span, bool is_param);
+IrExpr *ir_expr_int(IrState *st, Span span, const IrType *type, uint64_t bits);
+IrExpr *ir_expr_bool(IrState *st, Span span, bool value);
+IrExpr *ir_expr_local(IrState *st, Span span, const IrLocal *local);
+IrExpr *ir_expr_unary(IrState *st, Span span, const IrType *type, UnOp op, IrExpr *operand);
+IrExpr *ir_expr_binary(IrState *st, Span span, const IrType *type, BinOp op, IrExpr *lhs, IrExpr *rhs);
+IrExpr *ir_expr_call(IrState *st, Span span, const IrType *type, const IrFunc *func, NodeList args);
+IrExpr *ir_expr_struct_new(IrState *st, Span span, const IrType *type, NodeList values);
+IrExpr *ir_expr_field(IrState *st, Span span, const IrType *type, IrExpr *base, uint32_t index);
+IrExpr *ir_expr_index(IrState *st, Span span, const IrType *type, IrExpr *base, IrExpr *idx);
+IrExpr *ir_expr_slice(IrState *st, Span span, const IrType *type, IrExpr *base, IrExpr *lo, IrExpr *hi);
+IrExpr *ir_expr_convert(IrState *st, Span span, const IrType *type, IrExpr *operand);
+IrExpr *ir_expr_array(IrState *st, Span span, const IrType *type, NodeList elems);
+IrExpr *ir_expr_repeat(IrState *st, Span span, const IrType *type, IrExpr *value, uint64_t count);
+IrStmt *ir_stmt_let(IrState *st, Span span, const IrLocal *local, IrExpr *init);
+IrStmt *ir_stmt_assign(IrState *st, Span span, IrExpr *place, IrExpr *value);
+IrStmt *ir_stmt_if(IrState *st, Span span, IrExpr *cond, IrStmt *then_branch, IrStmt *else_branch);
+IrStmt *ir_stmt_while(IrState *st, Span span, IrExpr *cond, IrStmt *body);
+IrStmt *ir_stmt_for(IrState *st, Span span, IrStmt *init, IrExpr *cond, IrStmt *step, IrStmt *body);
+IrStmt *ir_stmt_break(IrState *st, Span span);
+IrStmt *ir_stmt_continue(IrState *st, Span span);
+IrStmt *ir_stmt_return(IrState *st, Span span, IrExpr *value);
+IrStmt *ir_stmt_expr(IrState *st, Span span, IrExpr *expr);
+IrStmt *ir_stmt_block(IrState *st, Span span, NodeList stmts);
+IrFunc *ir_func_new(IrState *st, Span span, const char *name, bool kernel_hook, NodeList locals,
+                    size_t n_params, const IrType *ret, IrStmt *body);
+
+/* True if the AST expression respects the parser's E0111 bound. The IR stage
+ * ASSERTS the bound, it enforces none of its own (docs/TYPED_IR.md Q14): the
+ * builder will `assert(ir_ast_height_ok(e))` at every expression root. O(1):
+ * it reads Expr.height, the constructors having computed it. */
+bool ir_ast_height_ok(const Expr *e);
+
+/* ---- Dump (docs/M2_PLAN.md "IR shape", Dump format) ----
+ * Output-only S-expressions, the AST dump's conventions: `(tag@L:C-L:C
+ * scalars... children)`, two-space indent per level, an expression's type is
+ * its LAST header scalar, locals print `name #slot`, nothing printed depends
+ * on a pointer, hash order or time. No trailing newline. The dumpers are
+ * recursive; their stack cost is bounded by the parser's depth and height
+ * bounds and measured (tools/measure_ir_stack.sh), see ir_test.c. */
+void ir_dump_expr(FILE *out, const IrExpr *e, int depth);
+void ir_dump_stmt(FILE *out, const IrStmt *s, int depth);
+void ir_dump_func(FILE *out, const IrFunc *f);
+void ir_dump_struct(FILE *out, const IrStruct *s);
+/* Structs first (declaration order), then functions (declaration order), one
+ * form per line, each followed by '\n'. An empty module prints nothing. */
+void ir_dump_module(FILE *out, const IrModule *m);
