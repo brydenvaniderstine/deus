@@ -1,0 +1,2 @@
+manna v0;
+struct A { f: [3][2]Nope, }

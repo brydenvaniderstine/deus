@@ -1,0 +1,6 @@
+manna v0;
+struct Pair {
+    left: u32,
+    right: u32,
+    left: u8,
+}

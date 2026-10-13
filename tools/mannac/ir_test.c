@@ -712,7 +712,7 @@ static void test_unimplemented(void) {
     static IrState st;
     ir_state_init(&st, 1 << 20);
     static const struct { const char *src, *what; } cases[] = {
-        {"manna v0;\nstruct P { x: u32, }\n", "struct declarations"},
+        {"manna v0;\nstruct P { x: u32, }\n", "struct layout"},
         {"manna v0;\n[kernel_hook] fn f() { }\n", "attributes"},
         {"manna v0;\nfn f(a: u8) { }\n", "parameters"},
         {"manna v0;\nfn f() -> u8 { }\n", "return types"},
@@ -733,14 +733,14 @@ static void test_unimplemented(void) {
 }
 
 static void test_build_e0201_and_reuse(void) {
-    enum { N = 5000 };
-    char *src = malloc((size_t)N * 20 + 32);
+    enum { N = 20000 };
+    char *src = malloc((size_t)N * 24 + 32);
     assert(src);
     char *w = src + sprintf(src, "manna v0;\n");
     for (int i = 0; i < N; i++) w += sprintf(w, "fn f%d() { }\n", i);
 
     static IrState st;
-    ir_state_init(&st, 64 << 10); /* 64 KiB: far fewer than 5000 functions' worth */
+    ir_state_init(&st, 4 << 20); /* 4 MiB: the name table (~1.3 MB) fits; 20000 functions' IR does not */
     parse_src(src);
     assert(g_ps.diags.len == 0 && g_items.len == N);
     IrModule *m = (IrModule *)0x1;
@@ -750,7 +750,7 @@ static void test_build_e0201_and_reuse(void) {
     assert(strcmp(d->code, "E0201") == 0);
     assert(d->span.start_col == 1 && d->span.start_line > 2 && d->span.start_line <= N + 1);
     /* Pinned (like the parser's G5): the line of the function being built when the cap is hit. */
-    assert(d->span.start_line == 271); /* ~152 bytes a function (block 56, func 88, id) + list growth vs 48 KiB */
+    assert(d->span.start_line == 8194); /* function #8192: its push doubles the function list to 16384 entries (128 KiB), which the cap (4 MiB less the 2.6 MB name table and the IR so far) no longer has */
 
     /* The state stays exhausted (the arena is not reset): a second build reports E0201
      * again - the hook is re-armed, so reuse is never silent (the parser's G4 lesson). */
@@ -760,6 +760,59 @@ static void test_build_e0201_and_reuse(void) {
     ir_state_destroy(&st);
     free(src);
     pass("build: arena exhaustion gives E0201 at the declaration being built; reuse reports it again");
+}
+
+/* Exhaustion while sizing the name table happens before any declaration is reached:
+ * E0201 is then located at 1:1 (the reset position), not at some declaration. */
+static void test_e0201_in_name_table(void) {
+    enum { N = 5000 };
+    char *src = malloc((size_t)N * 24 + 32);
+    assert(src);
+    char *w = src + sprintf(src, "manna v0;\n");
+    for (int i = 0; i < N; i++) w += sprintf(w, "fn f%d() { }\n", i);
+    static IrState st;
+    ir_state_init(&st, 64 << 10); /* the table alone is 16384 slots * 40 bytes */
+    parse_src(src);
+    IrModule *m = NULL;
+    assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_ERRORS && m == NULL);
+    assert(st.diags.len == 1 && strcmp(st.diags.items[0].code, "E0201") == 0);
+    assert(st.diags.items[0].span.start_line == 1 && st.diags.items[0].span.start_col == 1);
+    parse_done();
+    ir_state_destroy(&st);
+    free(src);
+    pass("E0201 while sizing the name table is located at 1:1");
+}
+
+/* ---- top-level declarations (step 4) ---- */
+
+static void test_decls_many_names(void) {
+    /* 20000 distinct functions and 20000 repeats: the name table is sized for its keys
+     * and must find every first declaration; nothing quadratic or order-dependent. */
+    enum { N = 20000 };
+    char *src = malloc((size_t)N * 2 * 24 + 32);
+    assert(src);
+    char *w = src + sprintf(src, "manna v0;\n");
+    for (int i = 0; i < N; i++) w += sprintf(w, "fn f%d() { }\n", i);
+    static IrState st;
+    ir_state_init(&st, 16 << 20);
+    parse_src(src);
+    assert(g_ps.diags.len == 0 && g_items.len == N);
+    IrModule *m = NULL;
+    assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_BUILT && m->funcs.len == N);
+    parse_done();
+
+    /* the same N again: each repeat is E0210 naming the FIRST declaration's position */
+    w += sprintf(w, "fn f%d() { }\n", 7); /* line N+2, repeats f7 declared at line 9 */
+    parse_src(src);
+    assert(g_ps.diags.len == 0);
+    assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_ERRORS && m == NULL);
+    assert(st.diags.len == 1 && strcmp(st.diags.items[0].code, "E0210") == 0);
+    assert(strcmp(st.diags.items[0].message, "'f7' is already declared at 9:4") == 0);
+    assert(st.diags.items[0].span.start_line == N + 2 && st.diags.items[0].span.start_col == 4);
+    parse_done();
+    ir_state_destroy(&st);
+    free(src);
+    pass("decls: 20000 names resolved through the table; a repeat names the first declaration");
 }
 
 int main(int argc, char **argv) {
@@ -790,6 +843,8 @@ int main(int argc, char **argv) {
     test_build_empty_functions();
     test_unimplemented();
     test_build_e0201_and_reuse();
+    test_e0201_in_name_table();
+    test_decls_many_names();
     test_stack_shapes();
     return 0;
 }

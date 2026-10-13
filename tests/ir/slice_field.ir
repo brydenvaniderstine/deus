@@ -1,0 +1,2 @@
+ERRORS:
+2:15 E0227 a struct field can't contain a slice type; slices are allowed only as parameter and local types

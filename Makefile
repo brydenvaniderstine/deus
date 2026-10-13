@@ -273,7 +273,7 @@ test-determinism:
 MANNAC_CC      ?= clang
 IR_TEST_DIR    := $(BUILD)/ir_test
 IR_TEST_SRCS   := tools/mannac/arena.c tools/mannac/ast.c tools/mannac/diag.c \
-                  tools/mannac/ir.c tools/mannac/ir_dump.c tools/mannac/ir_build.c \
+                  tools/mannac/ir.c tools/mannac/ir_dump.c tools/mannac/ir_build.c tools/mannac/ir_decls.c \
                   tools/mannac/parser_state.c tools/mannac/parser.c tools/mannac/lexer.c \
                   tools/mannac/ir_test.c
 
@@ -283,7 +283,7 @@ IR_TEST_SRCS   := tools/mannac/arena.c tools/mannac/ast.c tools/mannac/diag.c \
 IR_DUMP_DIR  := $(BUILD)/ir_dump
 IR_DUMP_SRCS := tools/mannac/arena.c tools/mannac/ast.c tools/mannac/diag.c \
                 tools/mannac/parser_state.c tools/mannac/parser.c tools/mannac/lexer.c \
-                tools/mannac/ir.c tools/mannac/ir_dump.c tools/mannac/ir_build.c \
+                tools/mannac/ir.c tools/mannac/ir_dump.c tools/mannac/ir_build.c tools/mannac/ir_decls.c \
                 tools/mannac/ir_main.c
 
 test-ir:

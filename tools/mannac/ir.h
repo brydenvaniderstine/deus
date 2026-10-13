@@ -275,3 +275,8 @@ typedef enum {
  * can produce. `items` is parser_parse_file's output. *out is NULL unless the
  * result is IR_BUILT. Owns its setjmp: E0201 and E0203 unwind to it. */
 IrStatus ir_build(IrState *st, const DiagList *parse_diags, const NodeList *items, IrModule **out);
+
+/* The top-level declaration pass (ir_decls.c), called by ir_build: declares every
+ * struct and function name (E0210), builds each struct's fields (E0211) and
+ * resolves their types (E0220, E0227). Returns false if it recorded any error. */
+bool ir_declare_items(IrState *st, const NodeList *items, IrModule *m);

@@ -1,0 +1,22 @@
+ERRORS:
+3:8 E0210 'A' is already declared at 2:8
+4:8 E0210 'A' is already declared at 2:8
+5:8 E0210 'A' is already declared at 2:8
+6:8 E0210 'A' is already declared at 2:8
+7:8 E0210 'A' is already declared at 2:8
+8:8 E0210 'A' is already declared at 2:8
+9:8 E0210 'A' is already declared at 2:8
+10:8 E0210 'A' is already declared at 2:8
+11:8 E0210 'A' is already declared at 2:8
+12:8 E0210 'A' is already declared at 2:8
+13:8 E0210 'A' is already declared at 2:8
+14:8 E0210 'A' is already declared at 2:8
+15:8 E0210 'A' is already declared at 2:8
+16:8 E0210 'A' is already declared at 2:8
+17:8 E0210 'A' is already declared at 2:8
+18:8 E0210 'A' is already declared at 2:8
+19:8 E0210 'A' is already declared at 2:8
+20:8 E0210 'A' is already declared at 2:8
+21:8 E0210 'A' is already declared at 2:8
+22:8 E0210 'A' is already declared at 2:8
+22:8 E0203 too many errors, stopping

@@ -1,0 +1,2 @@
+ERRORS:
+5:5 E0211 duplicate field 'left' in struct 'Pair'

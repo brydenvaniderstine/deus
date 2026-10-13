@@ -119,6 +119,25 @@ Diagnostic diag_ir_input_too_large(Span span);
  * at the 20th error's span. No fix-it. */
 Diagnostic diag_ir_too_many_errors(Span span);
 
+/* ---- Typed IR (E02xx) ---- */
+
+/* E0210: "'X' is already declared at L:C" - a struct or function name already
+ * taken (structs and functions share one top-level namespace). Reported at the
+ * SECOND declaration's name; L:C is the first declaration's name. */
+Diagnostic diag_ir_duplicate_decl(Arena *a, Span at, const char *name, Span first_name);
+
+/* E0211: "duplicate field 'x' in struct 'S'" - at the second field's name. */
+Diagnostic diag_ir_duplicate_field(Arena *a, Span at, const char *field, const char *strukt);
+
+/* E0220: "unknown type 'X'" - an identifier in type position that names no struct
+ * (a function's name used as a type is the same error). */
+Diagnostic diag_ir_unknown_type(Arena *a, Span at, const char *name);
+
+/* E0227: a slice type where slices are not allowed. Step 4 emits the struct-field
+ * wording; later steps add the other placements (return type, a slice's element)
+ * under the same code (docs/error_codes.md). */
+Diagnostic diag_ir_slice_in_field(Span at);
+
 /* Generic "expected X, found Y" - every parse error that isn't one of the
  * two dedicated messages above goes through this one constructor, so the
  * message format (docs/M2_PLAN.md's own golden-file example: "expected

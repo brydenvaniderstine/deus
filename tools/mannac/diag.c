@@ -177,6 +177,42 @@ Diagnostic diag_ir_too_many_errors(Span span) {
     return d;
 }
 
+Diagnostic diag_ir_duplicate_decl(Arena *a, Span at, const char *name, Span first_name) {
+    Diagnostic d = {0};
+    d.code = "E0210";
+    d.severity = DIAG_ERROR;
+    d.message = arena_sprintf(a, "'%s' is already declared at %d:%d", name, first_name.start_line, first_name.start_col);
+    d.span = at;
+    return d;
+}
+
+Diagnostic diag_ir_duplicate_field(Arena *a, Span at, const char *field, const char *strukt) {
+    Diagnostic d = {0};
+    d.code = "E0211";
+    d.severity = DIAG_ERROR;
+    d.message = arena_sprintf(a, "duplicate field '%s' in struct '%s'", field, strukt);
+    d.span = at;
+    return d;
+}
+
+Diagnostic diag_ir_unknown_type(Arena *a, Span at, const char *name) {
+    Diagnostic d = {0};
+    d.code = "E0220";
+    d.severity = DIAG_ERROR;
+    d.message = arena_sprintf(a, "unknown type '%s'", name);
+    d.span = at;
+    return d;
+}
+
+Diagnostic diag_ir_slice_in_field(Span at) {
+    Diagnostic d = {0};
+    d.code = "E0227";
+    d.severity = DIAG_ERROR;
+    d.message = "a struct field can't contain a slice type; slices are allowed only as parameter and local types";
+    d.span = at;
+    return d;
+}
+
 Diagnostic diag_expected(Arena *a, Span span, const char *expected, const char *found, const char *context) {
     Diagnostic d = {0};
     d.code = "E0105";
