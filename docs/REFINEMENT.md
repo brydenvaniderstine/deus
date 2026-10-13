@@ -29,12 +29,14 @@ The first entries recorded under this loop. The entries themselves live in `docs
 
 | Date | Title (section in `docs/IDEAS.md`) | Source | Earliest milestone boundary | Admission Test | Status |
 |---|---|---|---|---|---|
-| 2026-10-11 | Exhaustive `match` on enums | Bryden | v1, with enums | not run | candidate |
-| 2026-10-11 | Required argument labels on multi-parameter calls | Bryden | v1 edition boundary (open tension with P21) | not run | candidate |
-| 2026-10-11 | Wrapping arithmetic builtins | Bryden | v1 stdlib, before kernel code is written in Manna | not run | candidate |
-| 2026-10-11 | Formatting as a check | Bryden | after `manna fmt` exists | not run | candidate |
-| 2026-10-11 | Offline self-describing toolchain | Bryden | tooling, after typed IR | not run | candidate |
-| 2026-10-11 | Change-impact report | Bryden | tooling, after effects + contracts | not run | candidate |
+| 2026-10-11 | Exhaustive `match` on enums | Bryden | v1, with enums | not run | parked 2026-10-13 |
+| 2026-10-11 | Required argument labels on multi-parameter calls | Bryden | v1 edition boundary (open tension with P21) | not run | parked 2026-10-13 |
+| 2026-10-11 | Wrapping arithmetic builtins | Bryden | v1 stdlib, before kernel code is written in Manna | not run | parked 2026-10-13 |
+| 2026-10-11 | Formatting as a check | Bryden | after `manna fmt` exists | not run | parked 2026-10-13 |
+| 2026-10-11 | Offline self-describing toolchain | Bryden | tooling, after typed IR | not run | parked 2026-10-13 |
+| 2026-10-11 | Change-impact report | Bryden | tooling, after effects + contracts | not run | parked 2026-10-13 |
+
+**Review 2026-10-13 (`m2-parser-v0.1`):** all six candidates above are **Parked** (reason: none belongs in the IR skeleton); none promoted, none rejected. §2 says "pick at most 3 candidates"; reviewing all six is a deliberate deviation: the cap exists to limit promotions and Admission Test runs, and neither happened (no Admission Test was run, nothing entered the next stage's plan). Recorded in each entry's status line in `docs/IDEAS.md`.
 
 Five rejections were logged the same day under "Considered and rejected" in `docs/IDEAS.md` (distinct integer types, compile-time evaluation, catch-all match arm, expression-bodied functions, string interpolation), each with its reason.
 
@@ -56,6 +58,15 @@ A dated section below: **what went wrong this stage, the rule that prevents it, 
 - **What went wrong.** Phase A re-baselined the golden `tests/parser/err_recovery_stress_no_infinite_loop.ast` from 7 diagnostics to 1 so that it would match a regression in `sync_skip` (a lone unmatched `(` or `[` swallowed every following `}`, `fn` and `struct`). CI stayed green because the golden had been changed to match the output. The regression shipped inside the tag `m2-parser-r1` and was found by an external audit afterwards (`docs/STATUS.md`, r1 entry).
 - **The rule.** *A golden that loses diagnostics or AST nodes is STOP-tier:* the report must list every removed line and why.
 - **Where it lives.** `CLAUDE.md`, section "Lessons", the last bullet ("A golden that loses diagnostics or AST nodes in a commit is STOP-tier ..."), which cites `da9f01c` by name. The golden itself was restored to 7 diagnostics in `e3d6652` and still has 7 (checked by command on 2026-10-12). **No automated check enforces the rule:** it is a review rule, because CI only compares output to the golden and cannot see that the golden was edited to match.
+
+### Retro 2026-10-13: typed-IR step 2 / tag `m2-parser-v0.1`
+
+- **(a) What went wrong.** `tools/height_probe.c` never freed its input buffer. Under the reviewer's Linux LSan run every measurement probe exited nonzero from the leak report and the measurement script classed each exit as a crash (`docs/STATUS.md`, reviewer's Linux run). Fixed in `b4bc92b`.
+  - **The rule.** Test harnesses and measurement probes must be leak-clean like product code, and a measurement script counts only a signal exit (rc > 128) as a crash.
+  - **Where it lives.** The leak-clean half is enforced only by the reviewer's Linux LSan run (no CI job runs LSan). The rc > 128 half is a script rule: stated here, and applied in `tools/measure_ir_stack.sh` (typed-IR step 3b). `tools/measure_expr_height.sh` is not yet changed to follow it.
+- **(b) What went wrong.** `leaks --atExit` hung on macOS during the `m2-parser-v0.1` verification: `arena_test` sat at 0% CPU for ~6 minutes and was killed, so no figure was produced.
+  - **The rule.** The reviewer's Linux LSan run is the leak evidence of record; a macOS `leaks` figure is optional and its absence is not a gap.
+  - **Where it lives.** This file and the `docs/STATUS.md` verification snapshot, which already says no macOS `leaks` figure is claimed for this tag. Not enforced by any check.
 
 ## 4. Measure (at each tag)
 

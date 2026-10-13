@@ -130,7 +130,7 @@ Naming predicates (§7 item 2 gives only the names of the conventions, not their
 
 ## 6. Test strategy
 
-**Invariant for every step:** the 365 parser goldens and 15 lexer goldens stay **byte-identical** (a golden that loses diagnostics or nodes is STOP-tier with every removed line listed, per CLAUDE.md "Lessons"). Counts re-checked against `STATUS.md`'s snapshot: `tests/parser/*.mn` = 365, `tests/lexer/*.mn` = 15.
+**Invariant for every step:** the 376 parser goldens and 15 lexer goldens stay **byte-identical** (a golden that loses diagnostics or nodes is STOP-tier with every removed line listed, per CLAUDE.md "Lessons"). Counts re-checked against `STATUS.md`'s snapshot: `tests/parser/*.mn` = 376 (365 at `m2-parser-v0`, +11 height goldens in step 2b), `tests/lexer/*.mn` = 15.
 
 - **Goldens** `tests/ir/*.mn` -> `*.ir`, `make test-ir` / `test-ir-asan`, harness `tools/mannac/ir_main.c` -> `ir_dump` (whole-file mode only; expression/block modes need a symbol context). Output is either the IR dump or `ERRORS:`. **Error lines carry the code** (`3:5 E0223 type mismatch: ...`) - unlike the parser goldens, which print message text only - because 39 codes with generic-looking messages are too easy to mix up silently. One golden per rule row in M2_PLAN's Typed IR rules (a positive and a negative), at least one per code, plus a no-cascade golden for each poisoning path.
 - **Per-code coverage by script**, not by memory (the method the `m2-parser-v0` tag used for productions): every `E02xx` in `error_codes.md` appears in at least one `.ir` golden, and every code string in the source is registered. The script's output goes in the step report.
@@ -242,5 +242,5 @@ Each cites where; none was silently settled in the sections above - the ones I h
 - "One mistake, one error": a golden for every poisoning path.
 - Determinism over every IR golden, plain x2 and ASan x1, byte-compared.
 - Per-code coverage by script; uncovered lines of `ir*.c` listed with justifications.
-- Parser (365) and lexer (15) goldens byte-identical at every step; `make test-parser`, `-asan`, `test-determinism` re-run whenever step 2 or any shared file (`diag.h`, `ast.h`) changes.
+- Parser (376) and lexer (15) goldens byte-identical at every step; `make test-parser`, `-asan`, `test-determinism` re-run whenever step 2 or any shared file (`diag.h`, `ast.h`) changes.
 - Docs consistency check (`docs/README.md`) before the tag; quote-check every number in the STATUS entry against the repo, not against this file.
