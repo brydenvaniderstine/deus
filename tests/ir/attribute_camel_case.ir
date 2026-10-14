@@ -1,0 +1,2 @@
+ERRORS:
+2:2 E0214 unknown attribute 'KernelHook'; the only v0 attribute is 'kernel_hook'

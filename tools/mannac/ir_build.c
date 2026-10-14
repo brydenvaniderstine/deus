@@ -2,33 +2,15 @@
 #include <assert.h>
 #include <stdalign.h>
 
-/* AST -> typed IR, the skeleton (typed-IR step 3): the parse-diagnostics gate,
- * the module, and functions whose signature and body are empty. Everything the
- * later steps add (docs/TYPED_IR.md section 7) is refused with IR_UNIMPLEMENTED
- * rather than half-built, so no golden can record a half-checked IR. */
+/* AST -> typed IR (typed-IR steps 3-5): the parse-diagnostics gate, the module,
+ * the top-level declarations and function signatures (ir_decls.c), and function
+ * bodies that are empty. Statements, the one thing still to come
+ * (docs/TYPED_IR.md section 7), are refused with IR_UNIMPLEMENTED rather than
+ * half-built, so no golden can record a half-checked IR. */
 
 static IrStatus unimplemented(IrState *st, const char *what) {
     st->unimplemented = what;
     return IR_UNIMPLEMENTED;
-}
-
-static IrStatus build_function(IrState *st, const Decl *d, IrModule *m) {
-    assert(d->kind == DECL_FUNCTION);
-    const NodeList *attrs = &d->as.function_decl.attributes;
-    const Stmt *body = d->as.function_decl.body;
-    assert(body && body->kind == STMT_BLOCK); /* a clean parse guarantees a block body */
-    if (attrs->len > 0) return unimplemented(st, "attributes (step 5)");
-    if (d->as.function_decl.params.len > 0) return unimplemented(st, "parameters (step 5)");
-    if (d->as.function_decl.return_type) return unimplemented(st, "return types (step 5)");
-    if (body->as.block.stmts.len > 0) return unimplemented(st, "statements (steps 7-13)");
-
-    NodeList no_stmts, no_locals;
-    node_list_init(&no_stmts);
-    node_list_init(&no_locals);
-    IrStmt *ir_body = ir_stmt_block(st, body->span, no_stmts);
-    IrFunc *f = ir_func_new(st, d->span, d->as.function_decl.name, false, no_locals, 0, ir_type_unit(st), ir_body);
-    node_list_push(st->arena, &m->funcs, f);
-    return IR_BUILT;
 }
 
 IrStatus ir_build(IrState *st, const DiagList *parse_diags, const NodeList *items, IrModule **out) {
@@ -47,12 +29,19 @@ IrStatus ir_build(IrState *st, const DiagList *parse_diags, const NodeList *item
     node_list_init(&m->structs);
     node_list_init(&m->funcs);
     if (!ir_declare_items(st, items, m)) return IR_ERRORS;
+    /* ir_declare_items built every struct and every function SIGNATURE (module order
+     * is declaration order); the bodies are filled in here. */
+    size_t fi = 0;
     for (size_t i = 0; i < items->len; i++) {
         const Decl *d = items->items[i];
+        if (d->kind == DECL_STRUCT) continue;
+        const Stmt *body = d->as.function_decl.body;
+        assert(body && body->kind == STMT_BLOCK); /* a clean parse guarantees a block body */
         st->progress = d->span;
-        if (d->kind == DECL_STRUCT) continue; /* built by ir_declare_items */
-        IrStatus s = build_function(st, d, m);
-        if (s != IR_BUILT) return s;
+        if (body->as.block.stmts.len > 0) return unimplemented(st, "statements (steps 7-13)");
+        NodeList no_stmts;
+        node_list_init(&no_stmts);
+        ((IrFunc *)m->funcs.items[fi++])->body = ir_stmt_block(st, body->span, no_stmts);
     }
     if (st->diags.len > base) return IR_ERRORS;
     *out = m;

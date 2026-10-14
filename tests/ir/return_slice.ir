@@ -1,0 +1,2 @@
+ERRORS:
+2:11 E0227 a return type can't contain a slice type; slices are allowed only as parameter and local types

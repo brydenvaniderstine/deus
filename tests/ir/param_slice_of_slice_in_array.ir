@@ -1,0 +1,2 @@
+ERRORS:
+2:14 E0227 a slice's element type can't contain a slice type

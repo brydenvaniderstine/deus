@@ -33,9 +33,9 @@ static uint64_t name_hash(const char *s) {
     return h;
 }
 
-/* Capacity for `n` entries at load <= 1/2. */
+/* Capacity for `n` entries at load <= 1/2 (so a lookup always finds an empty slot). */
 static void symtab_init(IrState *st, Symtab *t, size_t n) {
-    size_t cap = 8;
+    size_t cap = 2;
     while (cap < n * 2) cap *= 2;
     t->slots = arena_alloc(st->arena, cap * sizeof(SymEntry), alignof(SymEntry));
     memset(t->slots, 0, cap * sizeof(SymEntry));
@@ -95,6 +95,8 @@ typedef struct {
     StructInfo *structs; /* declaration order */
     size_t      n_structs;
     IrStruct   *irs;     /* contiguous: struct i is irs[i] */
+    IrFunc    **fns;     /* signatures, in declaration order (bodies are ir_build's) */
+    size_t      n_fns;
 } Ctx;
 
 static const char *decl_name(const Decl *d) {
@@ -116,10 +118,19 @@ static const IrType *prim_type(IrState *st, const char *name) {
     return strcmp(name, "bool") == 0 ? ir_type_bool(st) : NULL;
 }
 
+/* Where a type is being written, which decides what a slice may do there
+ * (docs/M2_PLAN.md "Arrays, slices, storage"). */
+typedef enum {
+    CTX_FIELD,       /* a struct field: no slice at any depth */
+    CTX_PARAM,       /* a parameter: a slice is fine (also inside arrays) */
+    CTX_RETURN,      /* a return type: no slice at any depth */
+    CTX_SLICE_ELEM,  /* inside a slice's element type: no slice at any depth */
+} TypeCtx;
+
 /* AST type -> IR type. A failure records ONE error and yields ERROR, which
- * every enclosing array silently propagates (one mistake, one error). Recursion
- * is once per nested array/slice level: the parser bounds that to 254. */
-static const IrType *resolve_type(Ctx *cx, const Type *t) {
+ * every enclosing array or slice silently propagates (one mistake, one error).
+ * Recursion is once per nested array/slice level: the parser bounds that to 254. */
+static const IrType *resolve_type(Ctx *cx, const Type *t, TypeCtx ctx) {
     IrState *st = cx->st;
     switch (t->kind) {
         case TYPE_IDENT: {
@@ -131,17 +142,21 @@ static const IrType *resolve_type(Ctx *cx, const Type *t) {
             return ir_type_error(st);
         }
         case TYPE_ARRAY: {
-            const IrType *elem = resolve_type(cx, t->as.array.elem);
+            const IrType *elem = resolve_type(cx, t->as.array.elem, ctx);
             if (elem->kind == IR_T_ERROR) return elem;
             return ir_type_array(st, t->as.array.size, elem);
         }
         case TYPE_SLICE:
             break;
     }
-    /* A slice. Step 4 resolves types only for struct fields, where a slice is never
-     * allowed (docs/M2_PLAN.md "Arrays, slices, storage"); parameters and locals,
-     * where it is, arrive in later steps with their own context. */
-    ir_error(st, diag_ir_slice_in_field(t->span));
+    /* A slice. */
+    if (ctx == CTX_PARAM) {
+        const IrType *elem = resolve_type(cx, t->as.slice.elem, CTX_SLICE_ELEM);
+        return elem->kind == IR_T_ERROR ? elem : ir_type_slice(st, elem);
+    }
+    ir_error(st, ctx == CTX_FIELD ? diag_ir_slice_in_field(t->span)
+                 : ctx == CTX_RETURN ? diag_ir_slice_in_return(t->span)
+                                     : diag_ir_slice_of_slice(t->span));
     return ir_type_error(st);
 }
 
@@ -182,14 +197,14 @@ static void build_fields(Ctx *cx, StructInfo *s) {
     ir->fields = arena_alloc(st->arena, (fl->len ? fl->len : 1) * sizeof(IrField), alignof(IrField));
     s->field_types = arena_alloc(st->arena, (fl->len ? fl->len : 1) * sizeof(const Type *), alignof(const Type *));
 
-    Symtab seen;
-    symtab_init(st, &seen, fl->len);
+    Symtab seen = {0};
+    if (fl->len > 0) symtab_init(st, &seen, fl->len);
     for (size_t i = 0; i < fl->len; i++) {
         const Field *f = fl->items[i];
         bool inserted;
         symtab_insert(&seen, f->name, f->name_span, false, 0, &inserted);
         if (!inserted) ir_error(st, diag_ir_duplicate_field(st->arena, f->name_span, f->name, ir->name));
-        const IrType *t = resolve_type(cx, f->type);
+        const IrType *t = resolve_type(cx, f->type, CTX_FIELD);
         if (t->kind == IR_T_ERROR) s->poisoned = true;
         if (!inserted) continue;
         s->field_types[ir->n_fields] = f->type;
@@ -245,11 +260,24 @@ static LayResult type_layout(Ctx *cx, const Type *ast, const IrType *t, uint64_t
             }
             return LAY_OK;
         }
+        case IR_T_SLICE: {
+            /* For the SIZE CHECK only a slice counts as 16 bytes, align 8 (pointer + length
+             * at 64 bits, the larger of the Wasm and native targets), so a type that passes
+             * the limit fits on every backend; the real layout is the backend's choice
+             * (docs/M2_PLAN.md "Layout and limits"). Its element type is still checked. */
+            uint64_t es;
+            uint32_t ea;
+            LayResult r = type_layout(cx, ast->as.slice.elem, t->as.slice.elem, &es, &ea, bad);
+            if (r != LAY_OK) return r;
+            *size = 16;
+            *align = 8;
+            return LAY_OK;
+        }
         default:
             break;
     }
-    /* A struct: slices, unit and ERROR never reach here (a slice field is E0227, which
-     * poisons the struct; unit is unwritable). */
+    /* A struct: unit and ERROR never reach here (unit is unwritable; a failed type is
+     * never laid out). */
     assert(t->kind == IR_T_STRUCT);
     const StructInfo *dep = &cx->structs[t->as.strukt.decl - cx->irs];
     if (!dep->sized) return LAY_UNSIZED;
@@ -397,6 +425,69 @@ static void analyze_structs(Ctx *cx) {
     }
 }
 
+/* ---- function signatures ---- */
+
+/* E0222 for a parameter or return type whose size exceeds the limit. A type that needs
+ * an unsized struct is silent (that struct's own error is already reported). */
+static void check_type_size(Ctx *cx, const Type *ast, const IrType *t) {
+    if (t->kind == IR_T_ERROR) return;
+    uint64_t size;
+    uint32_t align;
+    Span bad;
+    if (type_layout(cx, ast, t, &size, &align, &bad) == LAY_TOO_BIG) {
+        ir_error(cx->st, diag_ir_type_too_large(bad));
+    }
+}
+
+/* One function's signature: attributes, then parameters in order, then the return
+ * type. The first `kernel_hook` sets the flag; a repeat is E0215 (with a fix that
+ * deletes it); any other name is E0214 and gets no further check, so `[Kernel_hook]`
+ * is one error, not also a casing error. A repeated parameter name is E0212 (the first
+ * wins; the repeat's type is still resolved for its own errors, but it is not a local).
+ * A parameter whose type failed still declares its name, typed ERROR, so later uses do
+ * not cascade. */
+static void build_signature(Ctx *cx, const Decl *d) {
+    IrState *st = cx->st;
+    const NodeList *attrs = &d->as.function_decl.attributes;
+    const NodeList *params = &d->as.function_decl.params;
+    st->progress = d->span;
+
+    bool kernel_hook = false;
+    for (size_t i = 0; i < attrs->len; i++) {
+        const Attribute *a = attrs->items[i];
+        if (strcmp(a->name, "kernel_hook") != 0) {
+            ir_error(st, diag_ir_unknown_attribute(st->arena, a->name_span, a->name));
+        } else if (kernel_hook) {
+            ir_error(st, diag_ir_duplicate_attribute(st->arena, a->name_span, a->span, a->name));
+        } else {
+            kernel_hook = true;
+        }
+    }
+
+    NodeList locals;
+    node_list_init(&locals);
+    Symtab seen = {0};
+    if (params->len > 0) symtab_init(st, &seen, params->len);
+    for (size_t i = 0; i < params->len; i++) {
+        const Param *p = params->items[i];
+        bool inserted;
+        symtab_insert(&seen, p->name, p->name_span, false, 0, &inserted);
+        if (!inserted) ir_error(st, diag_ir_duplicate_param(st->arena, p->name_span, p->name));
+        const IrType *t = resolve_type(cx, p->type, CTX_PARAM);
+        check_type_size(cx, p->type, t);
+        if (!inserted) continue;
+        node_list_push(st->arena, &locals, ir_local_new(st, (uint32_t)locals.len, p->name, t, p->span, true));
+    }
+    size_t n_params = locals.len;
+
+    const IrType *ret = ir_type_unit(st);
+    if (d->as.function_decl.return_type) {
+        ret = resolve_type(cx, d->as.function_decl.return_type, CTX_RETURN);
+        check_type_size(cx, d->as.function_decl.return_type, ret);
+    }
+    cx->fns[cx->n_fns++] = ir_func_new(st, d->span, d->as.function_decl.name, kernel_hook, locals, n_params, ret, NULL);
+}
+
 bool ir_declare_items(IrState *st, const NodeList *items, IrModule *m) {
     int errors_before = st->error_count;
     Ctx cx = {0};
@@ -407,6 +498,7 @@ bool ir_declare_items(IrState *st, const NodeList *items, IrModule *m) {
     symtab_init(st, &cx.top, items->len);
     cx.structs = arena_alloc(st->arena, (n ? n : 1) * sizeof(StructInfo), alignof(StructInfo));
     cx.irs = arena_alloc(st->arena, (n ? n : 1) * sizeof(IrStruct), alignof(IrStruct));
+    cx.fns = arena_alloc(st->arena, (items->len - n ? items->len - n : 1) * sizeof(IrFunc *), alignof(IrFunc *));
     memset(cx.structs, 0, (n ? n : 1) * sizeof(StructInfo));
 
     declare_names(&cx, items);
@@ -426,7 +518,13 @@ bool ir_declare_items(IrState *st, const NodeList *items, IrModule *m) {
         ir_error(st, diag_ir_type_too_large(cx.structs[i].size_error_span));
     }
 
+    for (size_t i = 0; i < items->len; i++) {
+        const Decl *d = items->items[i];
+        if (d->kind == DECL_FUNCTION) build_signature(&cx, d);
+    }
+
     if (st->error_count != errors_before) return false;
     for (size_t i = 0; i < n; i++) node_list_push(st->arena, &m->structs, cx.structs[i].ir);
+    for (size_t i = 0; i < cx.n_fns; i++) node_list_push(st->arena, &m->funcs, cx.fns[i]);
     return true;
 }

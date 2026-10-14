@@ -712,9 +712,6 @@ static void test_unimplemented(void) {
     static IrState st;
     ir_state_init(&st, 1 << 20);
     static const struct { const char *src, *what; } cases[] = {
-        {"manna v0;\n[kernel_hook] fn f() { }\n", "attributes"},
-        {"manna v0;\nfn f(a: u8) { }\n", "parameters"},
-        {"manna v0;\nfn f() -> u8 { }\n", "return types"},
         {"manna v0;\nfn f() { return; }\n", "statements"},
         {"manna v0;\nfn ok() { }\nfn f() { return; }\n", "statements"}, /* after a buildable function */
     };
@@ -728,7 +725,7 @@ static void test_unimplemented(void) {
         parse_done();
     }
     ir_state_destroy(&st);
-    pass("IR_UNIMPLEMENTED: attribute / parameter / return type / statement, no diagnostic, no module");
+    pass("IR_UNIMPLEMENTED: only statements remain, no diagnostic, no module");
 }
 
 static void test_build_e0201_and_reuse(void) {
@@ -749,7 +746,7 @@ static void test_build_e0201_and_reuse(void) {
     assert(strcmp(d->code, "E0201") == 0);
     assert(d->span.start_col == 1 && d->span.start_line > 2 && d->span.start_line <= N + 1);
     /* Pinned (like the parser's G5): the line of the function being built when the cap is hit. */
-    assert(d->span.start_line == 8194); /* function #8192: its push doubles the function list to 16384 entries (128 KiB), which the cap (4 MiB less the 2.6 MB name table and the IR so far) no longer has */
+    assert(d->span.start_line == 13505); /* function #13503, in the SIGNATURE pass: the 4 MiB cap less the 16 KiB reserve, the 2.6 MB name table and the 160 KB signature array leaves ~1.4 MB, and each signature (IrFunc 88 + "fn:fNNNN" + alignment) is ~103 bytes: 1.4 MB / 103 ~ 13500 */
 
     /* The state stays exhausted (the arena is not reset): a second build reports E0201
      * again - the hook is re-armed, so reuse is never silent (the parser's G4 lesson). */
@@ -812,6 +809,74 @@ static void test_decls_many_names(void) {
     ir_state_destroy(&st);
     free(src);
     pass("decls: 20000 names resolved through the table; a repeat names the first declaration");
+}
+
+/* ---- function signatures (step 5) ---- */
+
+static void test_signatures(void) {
+    static IrState st;
+    ir_state_init(&st, 1 << 20);
+    parse_src("manna v0;\n[kernel_hook]\nfn f(a: u8, b: [2]u8, c: []u8) -> u32 { }\nfn g(d: []u8) { }\nfn h() -> [3]u16 { }\n");
+    assert(g_ps.diags.len == 0);
+    IrModule *m = NULL;
+    assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_BUILT && m->funcs.len == 3);
+
+    const IrFunc *f = m->funcs.items[0], *g = m->funcs.items[1], *h = m->funcs.items[2];
+    assert(f->kernel_hook && !g->kernel_hook && !h->kernel_hook);
+    assert(f->n_params == 3 && f->locals.len == 3);
+    for (size_t i = 0; i < 3; i++) {
+        const IrLocal *l = f->locals.items[i];
+        assert(l->slot == i && l->is_param);
+    }
+    const IrType *u8 = ir_type_int(&st, 8, false);
+    assert(((const IrLocal *)f->locals.items[0])->type == u8);
+    assert(((const IrLocal *)f->locals.items[1])->type == ir_type_array(&st, 2, u8));
+    const IrType *sl = ((const IrLocal *)f->locals.items[2])->type;
+    assert(sl == ir_type_slice(&st, u8));                                /* interned: pointer equality */
+    assert(((const IrLocal *)g->locals.items[0])->type == sl);            /* the same slice type in another function */
+    assert(f->ret == ir_type_int(&st, 32, false) && g->ret == ir_type_unit(&st));
+    assert(h->ret == ir_type_array(&st, 3, ir_type_int(&st, 16, false)));
+    /* a return type prints; unit (no '-> type') prints (returns) */
+    expect(capture(dump_f, f),
+           "(fn@2:1-3:42 fn:f kernel_hook\n"
+           "  (params (param@3:6-3:11 a #0 u8) (param@3:13-3:21 b #1 [2]u8) (param@3:23-3:30 c #2 []u8))\n"
+           "  (returns u32)\n"
+           "  (block@3:39-3:42))");
+    expect(capture(dump_f, h), "(fn@5:1-5:21 fn:h\n  (params)\n  (returns [3]u16)\n  (block@5:18-5:21))");
+    parse_done();
+    ir_state_destroy(&st);
+    pass("signatures: slots, is_param, interned param/return types, kernel_hook flag, (returns T)");
+}
+
+/* E0215's fix deletes the repeated attribute: pinned edit, and applying it yields a
+ * file with no E02xx (the registry says "delete it"). */
+static void test_duplicate_attribute_fix(void) {
+    static IrState st;
+    ir_state_init(&st, 1 << 20);
+    const char *src = "manna v0;\n[kernel_hook] [kernel_hook] fn f() { }\n";
+    parse_src(src);
+    IrModule *m = NULL;
+    assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_ERRORS);
+    assert(st.diags.len == 1 && strcmp(st.diags.items[0].code, "E0215") == 0);
+    const Diagnostic *d = &st.diags.items[0];
+    assert(d->span.start_line == 2 && d->span.start_col == 16);          /* the repeat's name */
+    assert(d->fix && d->fix->n_edits == 1 && strcmp(d->fix->edits[0].text, "") == 0);
+    Span e = d->fix->edits[0].span;                                      /* the whole `[kernel_hook]` */
+    assert(e.start_line == 2 && e.start_col == 15 && e.end_line == 2 && e.end_col == 28);
+    parse_done();
+
+    /* apply: line 2 is `[kernel_hook] [kernel_hook] fn f() { }`; drop columns 15..27 */
+    char fixed[128];
+    snprintf(fixed, sizeof fixed, "manna v0;\n%.*s%s", e.start_col - 1, "[kernel_hook] [kernel_hook] fn f() { }\n",
+             "[kernel_hook] [kernel_hook] fn f() { }\n" + (e.end_col - 1));
+    assert(strcmp(fixed, "manna v0;\n[kernel_hook]  fn f() { }\n") == 0);
+    parse_src(fixed);
+    assert(g_ps.diags.len == 0);
+    assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_BUILT);
+    assert(((const IrFunc *)m->funcs.items[0])->kernel_hook);
+    parse_done();
+    ir_state_destroy(&st);
+    pass("E0215: the fix is one edit deleting the repeat; applying it leaves a clean file");
 }
 
 /* ---- structs at scale: nothing recursive over a chain of structs ---- */
@@ -915,6 +980,8 @@ int main(int argc, char **argv) {
     test_build_e0201_and_reuse();
     test_e0201_in_name_table();
     test_decls_many_names();
+    test_signatures();
+    test_duplicate_attribute_fix();
     test_struct_chain_and_ring();
     test_deepest_array_type();
     test_stack_shapes();

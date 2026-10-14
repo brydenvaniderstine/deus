@@ -1,0 +1,3 @@
+ERRORS:
+2:2 E0214 unknown attribute 'foo'; the only v0 attribute is 'kernel_hook'
+2:7 E0214 unknown attribute 'foo'; the only v0 attribute is 'kernel_hook'

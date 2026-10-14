@@ -1,0 +1,4 @@
+manna v0;
+fn first(s: Later) { }
+fn second() { }
+struct Later { v: u8, }

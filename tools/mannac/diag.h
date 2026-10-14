@@ -143,6 +143,22 @@ Diagnostic diag_ir_struct_contains_itself(Arena *a, Span at, const char *name);
  * array type that overflowed, or the struct's name when the struct as a whole does. */
 Diagnostic diag_ir_type_too_large(Span at);
 
+/* E0212: "duplicate parameter 'x'" - at the repeat's name. */
+Diagnostic diag_ir_duplicate_param(Arena *a, Span at, const char *name);
+
+/* E0214: "unknown attribute 'x'; the only v0 attribute is 'kernel_hook'" - at the
+ * attribute's name. Supersedes any naming-convention check on it (one mistake,
+ * one error). */
+Diagnostic diag_ir_unknown_attribute(Arena *a, Span at, const char *name);
+
+/* E0215: "duplicate attribute 'x'" - at the repeat's name. Fix: delete the
+ * repeated attribute (one edit removing `attribute_span`, the whole `[ IDENT ]`). */
+Diagnostic diag_ir_duplicate_attribute(Arena *a, Span at, Span attribute_span, const char *name);
+
+/* E0227, return-type and slice-element wordings (the struct-field one is below). */
+Diagnostic diag_ir_slice_in_return(Span at);
+Diagnostic diag_ir_slice_of_slice(Span at);
+
 /* E0227: a slice type where slices are not allowed. Step 4 emits the struct-field
  * wording; later steps add the other placements (return type, a slice's element)
  * under the same code (docs/error_codes.md). */

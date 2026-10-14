@@ -1,0 +1,5 @@
+ERRORS:
+2:2 E0214 unknown attribute 'bad'; the only v0 attribute is 'kernel_hook'
+2:15 E0220 unknown type 'Nope'
+2:21 E0212 duplicate parameter 'a'
+2:31 E0227 a return type can't contain a slice type; slices are allowed only as parameter and local types

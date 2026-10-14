@@ -1,0 +1,4 @@
+(fn@2:1-2:27 fn:add
+  (params (param@2:8-2:14 a #0 u32) (param@2:16-2:22 b #1 u32))
+  (returns)
+  (block@2:24-2:27))

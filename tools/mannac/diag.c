@@ -222,6 +222,58 @@ Diagnostic diag_ir_type_too_large(Span at) {
     return d;
 }
 
+Diagnostic diag_ir_duplicate_param(Arena *a, Span at, const char *name) {
+    Diagnostic d = {0};
+    d.code = "E0212";
+    d.severity = DIAG_ERROR;
+    d.message = arena_sprintf(a, "duplicate parameter '%s'", name);
+    d.span = at;
+    return d;
+}
+
+Diagnostic diag_ir_unknown_attribute(Arena *a, Span at, const char *name) {
+    Diagnostic d = {0};
+    d.code = "E0214";
+    d.severity = DIAG_ERROR;
+    d.message = arena_sprintf(a, "unknown attribute '%s'; the only v0 attribute is 'kernel_hook'", name);
+    d.span = at;
+    return d;
+}
+
+Diagnostic diag_ir_duplicate_attribute(Arena *a, Span at, Span attribute_span, const char *name) {
+    DiagFix *fix = arena_alloc(a, sizeof(DiagFix), alignof(DiagFix));
+    fix->title = "delete the repeated attribute";
+    fix->n_edits = 1;
+    fix->edits[0].span = attribute_span;
+    fix->edits[0].text = "";
+
+    Diagnostic d = {0};
+    d.code = "E0215";
+    d.severity = DIAG_ERROR;
+    d.message = arena_sprintf(a, "duplicate attribute '%s'", name);
+    d.span = at;
+    d.fix = fix;
+    return d;
+}
+
+Diagnostic diag_ir_slice_in_return(Span at) {
+    Diagnostic d = {0};
+    d.code = "E0227";
+    d.severity = DIAG_ERROR;
+    d.message = "a return type can't contain a slice type; slices are allowed only as parameter and local types";
+    d.span = at;
+    return d;
+}
+
+Diagnostic diag_ir_slice_of_slice(Span at) {
+    Diagnostic d = {0};
+    d.code = "E0227";
+    d.severity = DIAG_ERROR;
+    d.message = "a slice's element type can't contain a slice type";
+    d.span = at;
+    return d;
+}
+
 Diagnostic diag_ir_slice_in_field(Span at) {
     Diagnostic d = {0};
     d.code = "E0227";

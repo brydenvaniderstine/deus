@@ -1,0 +1,2 @@
+manna v0;
+[kernel_hook][foo][kernel_hook] fn f() { }
