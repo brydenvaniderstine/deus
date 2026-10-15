@@ -383,23 +383,27 @@ static void test_dump_expressions(void) {
 }
 
 static IrFunc *build_add(IrState *st) {
-    /* M2_PLAN "IR shape", the documented example, byte for byte */
+    /* M2_PLAN "IR shape", the documented example, byte for byte. Its spans are what the
+     * parser really produces for
+     *   fn add(a: u32, b: u32) -> u32 {\n    return a + b;\n}
+     * on line 2 (checked against parser_dump and ir_dump); until step 7 builds statements the
+     * body cannot be produced by ir_build, so it is built by hand here. */
     const IrType *u32 = ir_type_int(st, 32, false);
-    IrLocal *a = ir_local_new(st, 0, "a", u32, mk(2, 8, 2, 17), true);
-    IrLocal *b = ir_local_new(st, 1, "b", u32, mk(2, 19, 2, 28), true);
+    IrLocal *a = ir_local_new(st, 0, "a", u32, mk(2, 8, 2, 14), true);
+    IrLocal *b = ir_local_new(st, 1, "b", u32, mk(2, 16, 2, 22), true);
     IrExpr *sum = ir_expr_binary(st, mk(3, 12, 3, 17), u32, BINOP_ADD, ir_expr_local(st, mk(3, 12, 3, 13), a),
                                  ir_expr_local(st, mk(3, 16, 3, 17), b));
-    IrStmt *ret = ir_stmt_return(st, mk(3, 5, 3, 14), sum);
-    IrStmt *body = ir_stmt_block(st, mk(2, 31, 5, 1), list1(st, ret));
-    return ir_func_new(st, mk(2, 1, 5, 1), "add", false, list2(st, a, b), 2, u32, body);
+    IrStmt *ret = ir_stmt_return(st, mk(3, 5, 3, 18), sum);
+    IrStmt *body = ir_stmt_block(st, mk(2, 31, 4, 2), list1(st, ret));
+    return ir_func_new(st, mk(2, 1, 4, 2), "add", false, list2(st, a, b), 2, u32, body);
 }
 
 static const char *const ADD_DUMP =
-    "(fn@2:1-5:1 fn:add\n"
-    "  (params (param@2:8-2:17 a #0 u32) (param@2:19-2:28 b #1 u32))\n"
+    "(fn@2:1-4:2 fn:add\n"
+    "  (params (param@2:8-2:14 a #0 u32) (param@2:16-2:22 b #1 u32))\n"
     "  (returns u32)\n"
-    "  (block@2:31-5:1\n"
-    "    (return@3:5-3:14\n"
+    "  (block@2:31-4:2\n"
+    "    (return@3:5-3:18\n"
     "      (binary@3:12-3:17 + u32\n"
     "        (local@3:12-3:13 a #0 u32)\n"
     "        (local@3:16-3:17 b #1 u32)))))";
@@ -476,7 +480,7 @@ static void test_dump_module_and_determinism(void) {
     }
     assert(strcmp(dumps[0], dumps[1]) == 0);
     /* structs first, then functions; one form per line, each ending in a newline */
-    assert(strncmp(dumps[0], "(struct@1:1-1:15 Empty size=0 align=1)\n(fn@2:1-5:1 fn:add\n", 58) == 0);
+    assert(strncmp(dumps[0], "(struct@1:1-1:15 Empty size=0 align=1)\n(fn@2:1-4:2 fn:add\n", 58) == 0);
     size_t n = strlen(dumps[0]);
     assert(n > 0 && dumps[0][n - 1] == '\n');
     free(dumps[0]);

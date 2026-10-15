@@ -655,15 +655,17 @@ IrStmt   LET{slot, init} | ASSIGN{place, value} | IF | WHILE | FOR{init, cond, s
 **Dump format (golden contract, implemented in `tools/mannac/ir_dump.c`; fixed by the first golden `tests/ir/empty_function.ir`, with these forms reviewed at step 3).** The AST dump's S-expression convention (`tag@span`, scalar header, children; types as bare inline text); an expression's type is the **last header scalar**; locals print as `name #slot`; no pointer, hash order or time ever appears (determinism); IR nodes keep the span of the AST node they came from.
 
 ```
-(fn@2:1-5:1 fn:add
-  (params (param@2:8-2:17 a #0 u32) (param@2:19-2:28 b #1 u32))
+(fn@2:1-4:2 fn:add
+  (params (param@2:8-2:14 a #0 u32) (param@2:16-2:22 b #1 u32))
   (returns u32)
-  (block@2:31-5:1
-    (return@3:5-3:14
+  (block@2:31-4:2
+    (return@3:5-3:18
       (binary@3:12-3:17 + u32
         (local@3:12-3:13 a #0 u32)
         (local@3:16-3:17 b #1 u32)))))
 ```
+
+The example's source is `fn add(a: u32, b: u32) -> u32 {` / `    return a + b;` / `}` on lines 2-4, after `manna v0;`. The signature lines are the real `ir_dump` output for it (a span's end column is exclusive, so a `}` in column 1 ends at column 2, and a parameter's span is `a: u32` without its comma); the body lines are the parser's spans, which the IR keeps, until step 7 lets `ir_dump` print a body. `ir_test.c` pins this text byte for byte.
 
 The full vocabulary (implemented and byte-tested in `ir_test.c`; the first goldens cover only the empty module and the empty function, the rest arrive with their steps): `(int@… V T)`, `(bool@… true|false bool)`, `(local@… name #slot T)`, `(unary@… op T operand)`, `(binary@… op T lhs rhs)`, `(call@… fn:name T args…)`, `(struct_new@… S values…)`, `(field@… name #index T base)`, `(index@… T base idx)`, `(slice@… T base lo hi)`, `(convert@… T operand)`, `(array@… T elems…)`, `(repeat@… count T value)`; statements `(let@… name #slot T init)`, `(assign@… place value)`, `(if@… cond then [else])`, `(while@… cond body)`, `(for@… init cond step body)`, `(break@…)`, `(continue@…)`, `(return@… [value])`, `(expr_stmt@… e)`, `(block@… stmts…)`. An integer prints by its *type's* signedness (`-128 i8`, `18446744073709551615 u64`). Whether an operation traps or short-circuits is a function of its operator and type: neither stored nor printed. A function prints `(fn@… fn:name [kernel_hook]`, its parameters on **one** line `(params (param@… a #0 u32) …)`, `(returns [T])`, then the body. A struct prints `(struct@… Name size=N align=A` with one `(field@… name T +offset)` child per field (first golden at step 4). A module prints its structs, then its functions, each form followed by a newline; **an empty module prints nothing** (the golden runner `tools/run_ir_tests.sh` therefore also requires exit status 0, so a silent crash cannot match an empty golden). The test harness `ir_dump` prints one of: the dump; `ERRORS:` and lines `L:C CODE message` (and, for a file the gate refused, a blank line and `IR: skipped (parse errors)`); or, while the skeleton cannot build a construct yet, `IR: unimplemented` with exit status 3, which no golden can record.
 
