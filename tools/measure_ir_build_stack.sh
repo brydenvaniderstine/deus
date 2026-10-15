@@ -46,6 +46,9 @@ bisect() {
     local r lo=16 hi=$FULL mid
     r=$(run "$1" $FULL "$2" "$3" "$4")
     [ "$r" = pass ] || { echo "$r"; return; }
+    # The level count comes from THIS run, which passed at the full stack; $BUILD/out is
+    # overwritten by every later bisection step, and a crashed run prints no count.
+    grep -o 'levels=[0-9]*' "$BUILD/out" | head -1 | cut -d= -f2 > "$BUILD/levels"
     while [ $((hi - lo)) -gt $STEP ]; do
         mid=$(( (lo + hi) / 2 ))
         r=$(run "$1" $mid "$2" "$3" "$4")
@@ -73,8 +76,8 @@ for build in plain asan; do
         for var in int bool; do
             sf=$(bisect "$bin" "$shape" $full $var)
             case "$sf" in FAIL|crash|ERROR|error) echo "$build $shape $var: $sf"; stop=1; continue ;; esac
-            levels=$(grep -o 'levels=[0-9]*' "$BUILD/out" | head -1 | cut -d= -f2)
-            [ -n "$levels" ] || levels=$full
+            levels=$(cat "$BUILD/levels")
+            if ! [ "${levels:-0}" -gt 0 ] 2>/dev/null; then echo "$build $shape $var: no level count from the full-stack run"; stop=1; continue; fi
             sb=$(bisect "$bin" "$shape" $base $var)
             case "$sb" in crash|ERROR|error|FAIL) sb=0 ;; esac
             per=$(awk -v f=$sf -v b=$sb -v l=$levels 'BEGIN{printf "%.0f", (f-b+4)*1024/l}')
