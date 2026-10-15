@@ -165,6 +165,73 @@ Earliest milestone boundary: after the typed IR stage (first-try pass needs type
 Admission Test status: not applicable (tooling, not a language feature).
 Status: candidate
 
+## 2026-10-15: Deterministic record and replay of apps
+
+Title: Deterministic record and replay of apps
+Date: 2026-10-15
+Source: Claude
+Problem it solves: a bug or a bad AI action that happened once can't be reproduced exactly.
+Helps humans how / helps AI how: any run can be replayed step by step; an AI debugging loop gets an exact reproduction instead of a guess.
+Shape: all nondeterminism (clock, input, randomness, IPC messages) reaches a Wasm app only through capabilities ("Capabilities instead of ambient authority" entry), so the runtime logs those inputs per instance and replays them identically. Known gaps to spec: Wasm NaN bit patterns, resource exhaustion, and any future threads.
+Prior art: Determinator (https://dedis.cs.yale.edu/2010/det/papers/osdi10-abs), Hermit (https://developers.facebook.com/blog/post/2022/11/22/hermit-deterministic-linux-testing/), Midori (no global clock).
+Cost (P10): log size per captured input; measure before any claim.
+Depends on: the capabilities entry.
+Earliest milestone boundary: M3 (Wasm runtime design).
+Admission Test status: not run.
+Status: candidate
+
+## 2026-10-15: Undoable agent actions
+
+Title: Undoable agent actions
+Date: 2026-10-15
+Source: Claude
+Problem it solves: an AI agent's mistaken write can't be taken back.
+Helps humans how / helps AI how: every agent task can be rolled back with one command, so the system never has to trust the AI to be right.
+Shape: an agent task's writes land on a copy-on-write snapshot; the user commits or rolls back. External effects (network sends) can't be undone, so they need human approval (extends the VISION agent-service rule that model output can never trigger an action by itself).
+Prior art: AgentRewind (https://arxiv.org/pdf/2608.14380), DeltaBox (https://arxiv.org/pdf/2605.22781); both sit on top of Linux and can't undo network calls.
+Depends on: storage/filesystem and the VISION "Agent service on Deus" candidate.
+Earliest milestone boundary: post-M3, with the agent service.
+Admission Test status: not applicable (OS feature, not language).
+Status: candidate
+
+## 2026-10-15: Contracts as the human review surface
+
+Title: Contracts as the human review surface
+Date: 2026-10-15
+Source: Claude
+Problem it solves: humans can't review hundreds of AI-written lines line by line.
+Helps humans how / helps AI how: a human reviews a few `requires`/`ensures` lines and the effects list; the AI must meet them and the compiler proves them or traps.
+Shape: reviewing AI-written code starts from the contracts and effects diff (the "Change-impact report" entry), not the body. Extends the 2026-10-09 "Type guardrails = contracts, not dependent types" entry; adds no new syntax.
+Earliest milestone boundary: v1, with contracts.
+Admission Test status: not run (inherits the contracts entry's P21 tension).
+Status: candidate
+
+## 2026-10-15: Deterministic simulation testing of kernel logic
+
+Title: Deterministic simulation testing of kernel logic
+Date: 2026-10-15
+Source: Claude
+Problem it solves: rare scheduler and IPC bugs show up once in a million runs and can't be reproduced.
+Helps humans how / helps AI how: millions of seeded random runs on the Mac; any failure replays exactly from its seed.
+Shape: build scheduler/IPC/allocator logic as host-side test code against a fake clock, fake interrupts and a seeded scheduler. It is host tooling like the fuzzers; nothing from it enters the Deus image.
+Prior art: TigerBeetle VOPR (https://docs.tigerbeetle.com/about/vopr), FoundationDB.
+Earliest milestone boundary: M3 (when IPC exists).
+Admission Test status: not applicable (tooling).
+Status: candidate
+
+## 2026-10-15: Hardware backstop for Spectre
+
+Title: Hardware backstop for Spectre
+Date: 2026-10-15
+Source: lesson (Chrome: "assume any active code can read any data in the same address space", https://chromium.googlesource.com/chromium/src/+/master/docs/security/side-channel-threat-model.md; Cloudflare Workers, 2026: a cross-tenant Spectre leak inside one process, fixed partly with memory protection keys, https://thehackernews.com/2026/08/cloudflare-workers-spectre-attack-leaks.html)
+Problem it solves: LBS alone can't stop Spectre in the single address space (CLAUDE.md known risk).
+Helps humans how / helps AI how: secrets and network-facing apps get a hardware wall as well as the language wall.
+Options: (a) protection keys (supervisor keys, PKS, since Deus code runs in ring 0): no CR3 reload, keeps the single address space; CPU support must be checked (not all x86_64 CPUs have PKS). (b) separate page tables for secret-holding or network-facing tasks: breaks the "one CR3 load" hard constraint.
+HARD CONSTRAINT AREA: any option is Bryden's decision; nothing here changes CLAUDE.md.
+Earliest milestone boundary: the Spectre mitigation plan CLAUDE.md requires before networking.
+Admission Test status: not applicable (OS design).
+Status: candidate
+
 ## 2026-10-09: Considered and rejected ("Omni/AetherOS" brainstorm)
 
 One line of why each, so they aren't re-proposed:
