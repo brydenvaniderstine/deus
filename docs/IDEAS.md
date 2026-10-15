@@ -104,6 +104,30 @@ Format: `- YYYY-MM-DD: idea, one or two sentences, and where it might eventually
 - **Where:** tooling, after effects and contracts exist (`docs/M2_PLAN.md` §6 items 7-8); before that there is nothing beyond signatures to report.
 - **Shape:** `manna check --json --since <rev>` lists the function signatures, effects and contracts that changed since `<rev>`, for reviewing AI-written edits at the level of what the code is allowed to do, not line by line.
 
+## 2026-10-14: Decide the generics story before the v1 stdlib
+
+Title: Decide the generics story before the v1 stdlib
+Date: 2026-10-14
+Source: lesson (Go shipped without generics in 2009 and added them in 2022 at high cost)
+Problem it solves: v0 excludes generics (M2_PLAN §2); nothing says how v1 containers (lists, maps) get written without them.
+Helps humans how / helps AI how: one settled answer before code depends on it; no late retrofit that changes how existing code reads.
+Options to weigh at v1: (a) none, concrete types only; (b) built-in generic types only (?T, !T, slices, arrays) (arrays and slices exist today; ?T and !T are specified for v1); (c) minimal generic functions, no templates, no traits.
+Earliest milestone boundary: v1, before the stdlib.
+Admission Test status: not run (watch P1 one way, P7 small core, P10 predictable cost, LL(1) grammar).
+Status: candidate
+
+## 2026-10-14: Small, in-tree v1 standard library, scoped to Deus
+
+Title: Small, in-tree v1 standard library, scoped to Deus
+Date: 2026-10-14
+Source: lesson (languages win through ecosystem fit for their niche)
+Problem it solves: nothing yet lists what the v1 stdlib contains, so it can grow by accident.
+Helps humans how / helps AI how: a short, fixed list of modules with P18 names (len, never size/count) that an AI can hold in context and a human can audit.
+Shape: a written scope list decided together with the generics entry (2026-10-14); ships in the repo, versioned with the spec edition; counts against P7's ~20-page budget; no third-party packages until the package manager exists.
+Earliest milestone boundary: v1, after the generics entry (2026-10-14) is decided.
+Admission Test status: not run.
+Status: candidate
+
 ## 2026-10-09: Considered and rejected ("Omni/AetherOS" brainstorm)
 
 One line of why each, so they aren't re-proposed:
