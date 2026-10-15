@@ -1,0 +1,3 @@
+ERRORS:
+2:23 E0223 type mismatch: expected u8, found bool
+3:24 E0223 type mismatch: expected i64, found bool

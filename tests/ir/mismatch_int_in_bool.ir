@@ -1,0 +1,6 @@
+ERRORS:
+2:30 E0223 type mismatch: expected bool, found integer literal
+3:31 E0223 type mismatch: expected bool, found integer literal
+4:29 E0223 type mismatch: expected bool, found integer literal
+5:29 E0223 type mismatch: expected bool, found integer literal
+6:33 E0223 type mismatch: expected bool, found integer literal

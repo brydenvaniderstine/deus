@@ -1,0 +1,3 @@
+ERRORS:
+2:26 E0223 type mismatch: expected [3]u8, found integer literal
+3:26 E0223 type mismatch: expected [3]u8, found bool

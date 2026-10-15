@@ -38,7 +38,7 @@ static void unimplemented_kind(IrState *st, const Expr *e) {
         case EXPR_ARRAY:
         case EXPR_ARRAY_REPEAT: ir_unimplemented(st, "arrays, indexing and slicing (step 12)");
         case EXPR_CONVERT:      ir_unimplemented(st, "conversions (step 13)");
-        case EXPR_BOOL:         ir_unimplemented(st, "bool literals (step 6b)");
+        case EXPR_BOOL:         ir_unimplemented(st, "a bool operand inside an integer expression (step 8)");
         case EXPR_NUMBER:
         case EXPR_UNARY:
         case EXPR_BINARY:
@@ -49,6 +49,14 @@ static void unimplemented_kind(IrState *st, const Expr *e) {
 
 static bool is_int(const IrType *t) {
     return t->kind == IR_T_INT;
+}
+
+/* The operators whose operands may all be untyped literal expressions: arithmetic,
+ * bitwise and shift. Comparisons and && / || yield bool (they are not literal groups)
+ * and belong to step 8. */
+_Static_assert(BINOP_SHR < BINOP_LT, "is_group_operator relies on ast.h's BinOp order");
+static bool is_group_operator(BinOp op) {
+    return op <= BINOP_SHR; /* ADD SUB MUL DIV MOD BITAND BITOR BITXOR SHL SHR, in that order (ast.h) */
 }
 
 /* Largest value of an integer type, as an unsigned magnitude. */
@@ -76,6 +84,11 @@ static void require_group(IrState *st, const Expr *e) {
         case EXPR_UNARY:
             if (e->as.unary.op != UNOP_NEG) ir_unimplemented(st, "unary '!' and '~' (step 8)");
             require_group(st, e->as.unary.operand);
+            return;
+        case EXPR_BINARY:
+            if (!is_group_operator(e->as.binary.op)) ir_unimplemented(st, "comparison and logical operators (step 8)");
+            require_group(st, e->as.binary.lhs);
+            require_group(st, e->as.binary.rhs);
             return;
         default:
             unimplemented_kind(st, e);
@@ -125,6 +138,14 @@ static IrExpr *check_group(IrState *st, const Expr *e, const IrType *t) {
         case EXPR_UNARY:
             if (e->as.unary.op != UNOP_NEG) ir_unimplemented(st, "unary '!' and '~' (step 8)");
             return check_neg(st, e, t);
+        case EXPR_BINARY: {
+            if (!is_group_operator(e->as.binary.op)) ir_unimplemented(st, "comparison and logical operators (step 8)");
+            /* Both operands get the group's type; left to right, so diagnostics come out in
+             * source order. */
+            IrExpr *l = check_group(st, e->as.binary.lhs, t);
+            IrExpr *r = check_group(st, e->as.binary.rhs, t);
+            return ir_expr_binary(st, e->span, t, e->as.binary.op, l, r);
+        }
         default:
             unimplemented_kind(st, e);
             return NULL;
@@ -133,11 +154,21 @@ static IrExpr *check_group(IrState *st, const Expr *e, const IrType *t) {
 
 IrExpr *ir_check_expr(IrState *st, const Expr *e, const IrType *expected) {
     assert(ir_ast_height_ok(e)); /* the parser's E0111 bound; this stage asserts it, enforces none */
+    if (e->kind == EXPR_BOOL) {
+        if (expected->kind != IR_T_BOOL) {
+            ir_error(st, diag_ir_type_mismatch(st->arena, e->span, ir_type_text(st, expected), "bool"));
+            return error_node(st, e->span);
+        }
+        return ir_expr_bool(st, e->span, e->as.boolean.value);
+    }
     if (!is_int(expected)) {
-        /* An integer literal expression where a non-integer type is expected: reported
-         * as a type mismatch in step 6b. */
+        /* An integer literal expression where no integer is expected: one mismatch for the
+         * whole group, without descending (poison: the group is ERROR, so nothing inside is
+         * reported again). The walk first proves it is a pure literal group - a later step
+         * may type a mixed expression differently - and stops the build otherwise. */
         require_group(st, e);
-        ir_unimplemented(st, "integer literal where a non-integer type is expected (step 6b)");
+        ir_error(st, diag_ir_type_mismatch(st->arena, e->span, ir_type_text(st, expected), "integer literal"));
+        return error_node(st, e->span);
     }
     return check_group(st, e, expected);
 }

@@ -1,0 +1,3 @@
+ERRORS:
+3:22 E0223 type mismatch: expected P, found integer literal
+4:22 E0223 type mismatch: expected P, found bool

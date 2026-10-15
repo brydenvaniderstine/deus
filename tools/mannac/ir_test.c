@@ -723,7 +723,12 @@ static void test_unimplemented(void) {
         {"manna v0;\nfn f(x: u8) -> u8 { return x; }\n", "identifiers"},
         {"manna v0;\nfn f() -> u8 { return g(); }\nfn g() -> u8 { }\n", "calls"},
         {"manna v0;\nfn f() -> u8 { return !1; }\n", "unary '!' and '~'"},
-        {"manna v0;\nfn f() -> bool { return 1; }\n", "non-integer"},          /* until step 6b */
+        {"manna v0;\nfn f() -> u8 { return 1 < 2; }\n", "comparison and logical"},
+        {"manna v0;\nfn f() -> u8 { return 1 + true; }\n", "bool operand"},
+        {"manna v0;\nfn f() -> u8 { return true + 1; }\n", "bool operand"},
+        {"manna v0;\nfn f(x: u8) -> u8 { return 1 + x; }\n", "identifiers"},
+        {"manna v0;\nfn f(x: u8) -> bool { return 1 + x; }\n", "identifiers"},      /* never blamed as a literal mismatch */
+        {"manna v0;\nfn f() -> bool { return -true; }\n", "bool operand"},
         {"manna v0;\nfn f() -> u8 { return u8(1); }\n", "conversions"},
     };
     for (size_t i = 0; i < sizeof cases / sizeof cases[0]; i++) {
@@ -817,6 +822,72 @@ static void test_literal_matrix(void) {
     }
     ir_state_destroy(&st);
     printf("PASS: literal matrix: %d generated cases (8 types x boundary values x 4 forms)\n", cases);
+}
+
+/* E0223 across expected types and expression kinds (bool or integer literal against bool,
+ * integers, arrays, structs), with the exact wording and the once-per-group rule. */
+static void test_type_mismatch(void) {
+    static IrState st;
+    ir_state_init(&st, 1 << 20);
+    static const struct { const char *prelude, *ret, *expr, *msg; } cases[] = {
+        {"", "bool", "true", NULL},
+        {"", "bool", "false", NULL},
+        {"", "u8", "true", "type mismatch: expected u8, found bool"},
+        {"", "i64", "false", "type mismatch: expected i64, found bool"},
+        {"", "bool", "1", "type mismatch: expected bool, found integer literal"},
+        {"", "bool", "-1", "type mismatch: expected bool, found integer literal"},
+        {"", "bool", "1 + 2 * 3", "type mismatch: expected bool, found integer literal"},
+        {"", "bool", "256 + 300", "type mismatch: expected bool, found integer literal"},   /* not two range errors */
+        {"", "[3]u8", "1", "type mismatch: expected [3]u8, found integer literal"},
+        {"", "[3]u8", "true", "type mismatch: expected [3]u8, found bool"},
+        {"struct P { x: u8, }\n", "P", "1", "type mismatch: expected P, found integer literal"},
+        {"struct P { x: u8, }\n", "P", "true", "type mismatch: expected P, found bool"},
+    };
+    for (size_t i = 0; i < sizeof cases / sizeof cases[0]; i++) {
+        char src[256];
+        snprintf(src, sizeof src, "manna v0;\n%sfn f() -> %s { return %s; }\n", cases[i].prelude, cases[i].ret, cases[i].expr);
+        parse_src(src);
+        assert(g_ps.diags.len == 0);
+        IrModule *m = NULL;
+        size_t before = st.diags.len;
+        IrStatus r = ir_build(&st, &g_ps.diags, &g_items, &m);
+        if (!cases[i].msg) {
+            assert(r == IR_BUILT && st.diags.len == before);
+        } else {
+            assert(r == IR_ERRORS && st.diags.len == before + 1);
+            assert(strcmp(st.diags.items[before].code, "E0223") == 0);
+            assert(strcmp(st.diags.items[before].message, cases[i].msg) == 0);
+            assert(st.diags.items[before].fix == NULL);
+        }
+        parse_done();
+    }
+    ir_state_destroy(&st);
+    pass("E0223: bool/integer literal against bool, integers, arrays, structs; one error per group, no range errors under it");
+}
+
+/* A literal group is built as written (no constant folding): `1 + 2 * 3` is a binary tree
+ * typed u8 at every node, each literal typed u8. */
+static void test_group_representation(void) {
+    static IrState st;
+    ir_state_init(&st, 1 << 20);
+    IrModule *m = NULL;
+    assert(build_return(&st, "u8", "1 + 2 * 3", &m) == IR_BUILT);
+    const IrExpr *e = ((const IrStmt *)((const IrFunc *)m->funcs.items[0])->body->as.block.stmts.items[0])->as.ret.value;
+    const IrType *u8 = ir_type_int(&st, 8, false);
+    assert(e->kind == IR_E_BINARY && e->as.binary.op == BINOP_ADD && e->type == u8);
+    assert(e->as.binary.lhs->kind == IR_E_INT && e->as.binary.lhs->as.integer.bits == 1 && e->as.binary.lhs->type == u8);
+    const IrExpr *r = e->as.binary.rhs;
+    assert(r->kind == IR_E_BINARY && r->as.binary.op == BINOP_MUL && r->type == u8);
+    assert(r->as.binary.lhs->as.integer.bits == 2 && r->as.binary.rhs->as.integer.bits == 3);
+    /* operators of every kind in a group: all ten build */
+    static const char *ops[] = {"+", "-", "*", "/", "%", "&", "|", "^", "<<", ">>"};
+    for (size_t i = 0; i < 10; i++) {
+        char expr[32];
+        snprintf(expr, sizeof expr, "6 %s 2", ops[i]);
+        assert(build_return(&st, "u8", expr, &m) == IR_BUILT);
+    }
+    ir_state_destroy(&st);
+    pass("literal groups: built as written, every node typed by the expected type, all ten operators");
 }
 
 /* The folded i64::MIN: one int node, bits sign-extended, spanning the minus; -127 is not folded. */
@@ -1092,6 +1163,8 @@ int main(int argc, char **argv) {
     test_decls_many_names();
     test_literal_matrix();
     test_min_representation();
+    test_type_mismatch();
+    test_group_representation();
     test_signatures();
     test_duplicate_attribute_fix();
     test_struct_chain_and_ring();

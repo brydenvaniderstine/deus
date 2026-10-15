@@ -256,6 +256,15 @@ Diagnostic diag_ir_duplicate_attribute(Arena *a, Span at, Span attribute_span, c
     return d;
 }
 
+Diagnostic diag_ir_type_mismatch(Arena *a, Span at, const char *expected, const char *found) {
+    Diagnostic d = {0};
+    d.code = "E0223";
+    d.severity = DIAG_ERROR;
+    d.message = arena_sprintf(a, "type mismatch: expected %s, found %s", expected, found);
+    d.span = at;
+    return d;
+}
+
 Diagnostic diag_ir_literal_range(Arena *a, Span at, uint64_t value, bool negated, const char *type) {
     Diagnostic d = {0};
     d.code = "E0224";

@@ -1,0 +1,4 @@
+ERRORS:
+2:37 E0223 type mismatch: expected bool, found integer literal
+3:34 E0224 integer literal 256 does not fit in u8
+3:40 E0224 integer literal 300 does not fit in u8

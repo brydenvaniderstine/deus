@@ -155,6 +155,11 @@ Diagnostic diag_ir_unknown_attribute(Arena *a, Span at, const char *name);
  * repeated attribute (one edit removing `attribute_span`, the whole `[ IDENT ]`). */
 Diagnostic diag_ir_duplicate_attribute(Arena *a, Span at, Span attribute_span, const char *name);
 
+/* E0223: "type mismatch: expected T, found U" - U is a type name, or `integer literal` for an
+ * untyped integer literal expression (it has no type until one is expected of it). At the
+ * whole offending expression. */
+Diagnostic diag_ir_type_mismatch(Arena *a, Span at, const char *expected, const char *found);
+
 /* E0224: "integer literal N does not fit in T" - N is the literal as written, in decimal.
  * `negated` prints it with its sign (`-129`) for a literal directly under unary minus,
  * located over the whole `-129`; a parenthesized literal under minus, `-(129)`, is the
