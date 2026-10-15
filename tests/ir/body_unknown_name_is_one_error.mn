@@ -1,0 +1,11 @@
+manna v0;
+fn f() {
+    let a = nope;
+    let b = a;
+    let c: u8 = a;
+    a;
+    b;
+    c;
+    a = 1;
+    b = true;
+}

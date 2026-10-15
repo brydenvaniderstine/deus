@@ -1,0 +1,7 @@
+manna v0;
+fn f(c: bool) {
+    if c {
+        let y: u8 = 1;
+    }
+    y;
+}

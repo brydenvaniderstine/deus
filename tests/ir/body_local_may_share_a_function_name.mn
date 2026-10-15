@@ -1,0 +1,6 @@
+manna v0;
+fn f() { }
+fn g() {
+    let f = true;
+    f;
+}

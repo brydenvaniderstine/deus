@@ -1,0 +1,4 @@
+ERRORS:
+2:18 E0230 unknown name 'x'
+3:10 E0230 unknown name 'x'
+4:23 E0230 unknown name 'x'

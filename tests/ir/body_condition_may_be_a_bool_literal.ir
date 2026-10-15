@@ -1,0 +1,10 @@
+(fn@2:1-6:2 fn:f
+  (params)
+  (returns)
+  (block@2:8-6:2
+    (if@3:5-5:6
+      (bool@3:8-3:12 true bool)
+      (block@3:13-5:6
+        (if@4:9-4:21
+          (bool@4:12-4:17 false bool)
+          (block@4:18-4:21))))))

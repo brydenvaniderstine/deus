@@ -1,0 +1,8 @@
+manna v0;
+fn g() { }
+struct P { }
+fn f() {
+    let a = g;
+    let b = P;
+    g;
+}

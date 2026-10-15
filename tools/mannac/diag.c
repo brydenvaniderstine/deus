@@ -256,6 +256,52 @@ Diagnostic diag_ir_duplicate_attribute(Arena *a, Span at, Span attribute_span, c
     return d;
 }
 
+Diagnostic diag_ir_already_declared(Arena *a, Span at, const char *name) {
+    Diagnostic d = {0};
+    d.code = "E0213";
+    d.severity = DIAG_ERROR;
+    d.message = arena_sprintf(a, "'%s' is already declared in this function", name);
+    d.span = at;
+    return d;
+}
+
+Diagnostic diag_ir_cannot_infer(Arena *a, Span at) {
+    (void)a;
+    Diagnostic d = {0};
+    d.code = "E0225";
+    d.severity = DIAG_ERROR;
+    d.message = "cannot infer the type of this integer literal; annotate it";
+    d.span = at;
+    return d;
+}
+
+Diagnostic diag_ir_unknown_name(Arena *a, Span at, const char *name) {
+    Diagnostic d = {0};
+    d.code = "E0230";
+    d.severity = DIAG_ERROR;
+    d.message = arena_sprintf(a, "unknown name '%s'", name);
+    d.span = at;
+    return d;
+}
+
+Diagnostic diag_ir_not_a_value(Arena *a, Span at, const char *name, bool is_struct) {
+    Diagnostic d = {0};
+    d.code = "E0231";
+    d.severity = DIAG_ERROR;
+    d.message = arena_sprintf(a, "'%s' is a %s, not a value", name, is_struct ? "struct" : "function");
+    d.span = at;
+    return d;
+}
+
+Diagnostic diag_ir_not_assignable(Span at) {
+    Diagnostic d = {0};
+    d.code = "E0270";
+    d.severity = DIAG_ERROR;
+    d.message = "can't assign to this expression";
+    d.span = at;
+    return d;
+}
+
 Diagnostic diag_ir_type_mismatch(Arena *a, Span at, const char *expected, const char *found) {
     Diagnostic d = {0};
     d.code = "E0223";

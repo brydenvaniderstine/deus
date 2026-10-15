@@ -1,0 +1,4 @@
+manna v0;
+fn a() { let y = x; }
+fn b() { x; }
+fn c() -> u8 { return x; }

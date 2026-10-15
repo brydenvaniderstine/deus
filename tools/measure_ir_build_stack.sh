@@ -2,7 +2,8 @@
 # Typed-IR step 6c: how much host stack does the REAL builder (parser -> ir_build) need on a
 # maximal parser-built tree, per live shape and variant, plain and ASan+UBSan?
 #   shape    binary / mixed_prec (height 512, the parser's E0111 bound) / neg_chain (as many
-#            minus signs as the nesting bound E0103 accepts, ~253)
+#            minus signs as the nesting bound E0103 accepts, ~253) / in_ifs (a 512-high chain
+#            inside 120 nested ifs: the scope machinery plus the expression recursion)
 #   variant  int  = built against an integer return type (check_group)
 #            bool = the one-mismatch path (require_group)
 # For each, bisects `ulimit -s` (KB, 4 KB steps) for the smallest stack that passes at full
@@ -24,7 +25,7 @@ export ASAN_OPTIONS="${ASAN_OPTIONS:+$ASAN_OPTIONS:}abort_on_error=1"
 CC="${CC:-clang}"
 BUILD="${BUILD:-build/measure_ir_build}"
 SRC="tools/mannac"
-SRCS="$SRC/arena.c $SRC/ast.c $SRC/diag.c $SRC/parser_state.c $SRC/parser.c $SRC/lexer.c $SRC/ir.c $SRC/ir_dump.c $SRC/ir_build.c $SRC/ir_decls.c $SRC/ir_expr.c $SRC/ir_test.c"
+SRCS="$SRC/arena.c $SRC/ast.c $SRC/diag.c $SRC/parser_state.c $SRC/parser.c $SRC/lexer.c $SRC/ir.c $SRC/ir_dump.c $SRC/ir_build.c $SRC/ir_decls.c $SRC/ir_expr.c $SRC/ir_body.c $SRC/ir_test.c"
 FULL=8192
 GATE=2048
 STEP=4
@@ -67,11 +68,12 @@ stop=0
 printf '%-5s %-11s %-4s %9s %9s %8s %12s %7s\n' build shape var "S_full KB" "S_base KB" levels "B/level (<=)" margin
 for build in plain asan; do
     bin="$BUILD/t"; [ "$build" = asan ] && bin="$BUILD/t-asan"
-    for shape in binary mixed_prec neg_chain; do
+    for shape in binary mixed_prec neg_chain in_ifs; do
         case "$shape" in
             binary) full=512; base=1 ;;
             mixed_prec) full=512; base=2 ;;
             neg_chain) full=0; base=1 ;;
+            in_ifs) full=512; base=1 ;;   # the chain inside 120 nested ifs; the base keeps the 120 ifs, so B/level is the expression's
         esac
         for var in int bool; do
             sf=$(bisect "$bin" "$shape" $full $var)
@@ -88,6 +90,6 @@ for build in plain asan; do
         done
     done
 done
-echo "pending shapes (live when their constructs land): in_ifs (step 8), in_calls (step 10), field (step 11), index and postfix_mix (step 12)"
+echo "pending shapes (live when their constructs land): in_calls (step 10), field (step 11), index and postfix_mix (step 12)"
 [ $stop -eq 0 ] || { echo "STOP: a case is under the 4x gate (or failed outright); do not proceed"; exit 1; }
 echo "all live cases keep >= 4x"

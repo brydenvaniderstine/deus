@@ -1,0 +1,12 @@
+(fn@2:1-2:11 fn:f
+  (params)
+  (returns)
+  (block@2:8-2:11))
+(fn@3:1-6:2 fn:g
+  (params)
+  (returns)
+  (block@3:8-6:2
+    (let@4:5-4:18 f #0 bool
+      (bool@4:13-4:17 true bool))
+    (expr_stmt@5:5-5:7
+      (local@5:5-5:6 f #0 bool))))

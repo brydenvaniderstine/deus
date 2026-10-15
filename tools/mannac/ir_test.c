@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "ir.h"
+#include "ir_internal.h"
 #include "lexer.h"
 #include "parser.h"
 #include "parser_state.h"
@@ -719,15 +720,20 @@ static void test_unimplemented(void) {
         {"manna v0;\nfn f() { return; }\n", "bare return"},
         {"manna v0;\nfn ok() { }\nfn f() { return; }\n", "bare return"},       /* after a buildable function */
         {"manna v0;\nfn f() { return 1; }\n", "return in a unit function"},
-        {"manna v0;\nfn f() -> u8 { let x: u8 = 1; }\n", "statements other than return"},
-        {"manna v0;\nfn f(x: u8) -> u8 { return x; }\n", "identifiers"},
+        {"manna v0;\nfn f() { while true { } }\n", "loops, break and continue"},
+        {"manna v0;\nfn f() { for let i: u8 = 0; true; i = 1 { } }\n", "loops, break and continue"},
+        {"manna v0;\nfn f() { break; }\n", "loops, break and continue"},
+        {"manna v0;\nfn f(x: i8) -> i8 { return -x; }\n", "a name inside an operator"},
+        {"manna v0;\nstruct P { x: u8, }\nfn f(p: P) { p.x = 1; }\n", "assignment to a field or an element"},
+        {"manna v0;\nfn f(a: [2]u8) { a[0] = 1; }\n", "assignment to a field or an element"},
         {"manna v0;\nfn f() -> u8 { return g(); }\nfn g() -> u8 { }\n", "calls"},
         {"manna v0;\nfn f() -> u8 { return !1; }\n", "unary '!' and '~'"},
         {"manna v0;\nfn f() -> u8 { return 1 < 2; }\n", "comparison and logical"},
         {"manna v0;\nfn f() -> u8 { return 1 + true; }\n", "bool operand"},
         {"manna v0;\nfn f() -> u8 { return true + 1; }\n", "bool operand"},
-        {"manna v0;\nfn f(x: u8) -> u8 { return 1 + x; }\n", "identifiers"},
-        {"manna v0;\nfn f(x: u8) -> bool { return 1 + x; }\n", "identifiers"},      /* never blamed as a literal mismatch */
+        {"manna v0;\nfn f(x: u8) -> u8 { return 1 + x; }\n", "a name inside an operator"},
+        {"manna v0;\nfn f(x: u8) -> bool { return 1 + x; }\n", "a name inside an operator"}, /* never blamed as a literal mismatch */
+        {"manna v0;\nfn f(x: u8) { let y = 1 + x; }\n", "a name inside an operator"},
         {"manna v0;\nfn f() -> bool { return -true; }\n", "bool operand"},
         {"manna v0;\nfn f() -> u8 { return u8(1); }\n", "conversions"},
     };
@@ -742,7 +748,7 @@ static void test_unimplemented(void) {
     }
 
     /* Errors found before the unwind win over IR_UNIMPLEMENTED, and the state is reusable. */
-    parse_src("manna v0;\nfn a() -> i8 { return 128; }\nfn b(x: u8) -> u8 { return x; }\n");
+    parse_src("manna v0;\nfn a() -> i8 { return 128; }\nfn b() { while true { } }\n");
     IrModule *m = NULL;
     assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_ERRORS && m == NULL);
     assert(st.diags.len == 1 && strcmp(st.diags.items[0].code, "E0224") == 0);
@@ -927,7 +933,7 @@ static void test_build_e0201_and_reuse(void) {
     assert(strcmp(d->code, "E0201") == 0);
     assert(d->span.start_col == 1 && d->span.start_line > 2 && d->span.start_line <= N + 1);
     /* Pinned (like the parser's G5): the line of the function being built when the cap is hit. */
-    assert(d->span.start_line == 13505); /* function #13503, in the SIGNATURE pass: the 4 MiB cap less the 16 KiB reserve, the 2.6 MB name table and the 160 KB signature array leaves ~1.4 MB, and each signature (IrFunc 88 + "fn:fNNNN" + alignment) is ~103 bytes: 1.4 MB / 103 ~ 13500 */
+    assert(d->span.start_line == 13504); /* function #13502, in the SIGNATURE pass (one earlier than before step 7: the body context' Ctx, ~104 bytes, is now allocated first): the 4 MiB cap less the 16 KiB reserve, the 2.6 MB name table and the 160 KB signature array leaves ~1.4 MB, and each signature (IrFunc 88 + "fn:fNNNN" + alignment) is ~103 bytes: 1.4 MB / 103 ~ 13500 */
 
     /* The state stays exhausted (the arena is not reset): a second build reports E0201
      * again - the hook is re-armed, so reuse is never silent (the parser's G4 lesson). */
@@ -1060,6 +1066,117 @@ static void test_duplicate_attribute_fix(void) {
     pass("E0215: the fix is one edit deleting the repeat; applying it leaves a clean file");
 }
 
+/* ---- scopes (step 7) ---- */
+
+static IrFunc *fake_function(IrState *st, const char *const *params, size_t n) {
+    NodeList locals;
+    node_list_init(&locals);
+    for (size_t i = 0; i < n; i++) {
+        node_list_push(st->arena, &locals, ir_local_new(st, (uint32_t)i, params[i], ir_type_int(st, 8, false), mk(1, 1, 1, 2), true));
+    }
+    return ir_func_new(st, mk(1, 1, 1, 2), "f", false, locals, n, ir_type_unit(st), NULL);
+}
+
+/* The visible-name table directly: push/pop, revival of a name in a sibling scope, growth, deep
+ * nesting. After the last pop exactly the parameters are visible and every local still has its
+ * own slot (storage is not scoped). */
+static void test_scope_api(void) {
+    static IrState st;
+    ir_state_init(&st, 16 << 20);
+    const char *params[] = {"a", "b"};
+    IrFunc *f = fake_function(&st, params, 2);
+    BodyCtx bc;
+    body_init(&bc, &st, NULL, f);
+    const IrType *u8 = ir_type_int(&st, 8, false);
+    assert(body_lookup(&bc, "a") && body_lookup(&bc, "b") && !body_lookup(&bc, "c"));
+
+    body_push_scope(&bc);                              /* the function body block */
+    IrLocal *c = body_declare(&bc, "c", u8, mk(1, 1, 1, 2));
+    assert(c->slot == 2 && !c->is_param && body_lookup(&bc, "c") == c);
+    body_push_scope(&bc);                              /* an inner block */
+    IrLocal *d = body_declare(&bc, "d", u8, mk(1, 1, 1, 2));
+    assert(d->slot == 3 && body_lookup(&bc, "d") == d && body_lookup(&bc, "c") == c);
+    body_pop_scope(&bc);
+    assert(body_lookup(&bc, "d") == NULL && body_lookup(&bc, "c") == c && f->locals.len == 4);
+    /* a sibling block reuses the dead name: a NEW local, a NEW slot */
+    body_push_scope(&bc);
+    IrLocal *d2 = body_declare(&bc, "d", u8, mk(1, 1, 1, 2));
+    assert(d2 != d && d2->slot == 4 && body_lookup(&bc, "d") == d2);
+    body_pop_scope(&bc);
+    assert(body_lookup(&bc, "d") == NULL);
+    body_pop_scope(&bc);
+    assert(body_lookup(&bc, "c") == NULL && body_lookup(&bc, "a") && body_lookup(&bc, "b"));
+    assert(bc.depth == 0 && f->locals.len == 5);
+
+    /* growth: 5000 names in one scope, all visible, all gone after the pop */
+    enum { N = 5000 };
+    static char names[N][12];
+    body_push_scope(&bc);
+    for (int i = 0; i < N; i++) {
+        snprintf(names[i], sizeof names[i], "n%d", i);
+        IrLocal *l = body_declare(&bc, names[i], u8, mk(1, 1, 1, 2));
+        assert(l->slot == (uint32_t)(5 + i));
+    }
+    for (int i = 0; i < N; i++) assert(body_lookup(&bc, names[i]) && strcmp(body_lookup(&bc, names[i])->name, names[i]) == 0);
+    body_pop_scope(&bc);
+    for (int i = 0; i < N; i++) assert(body_lookup(&bc, names[i]) == NULL);
+    assert(body_lookup(&bc, "a") && f->locals.len == (size_t)(5 + N));
+
+    /* deep nesting: 10000 scopes, one fresh name in each, unwound completely */
+    enum { DEEP = 10000 };
+    static char deep[DEEP][12];
+    for (int i = 0; i < DEEP; i++) {
+        body_push_scope(&bc);
+        snprintf(deep[i], sizeof deep[i], "d%d", i);
+        body_declare(&bc, deep[i], u8, mk(1, 1, 1, 2));
+    }
+    assert(bc.depth == DEEP && body_lookup(&bc, deep[0]) && body_lookup(&bc, deep[DEEP - 1]));
+    for (int i = DEEP - 1; i >= 0; i--) {
+        body_pop_scope(&bc);
+        assert(body_lookup(&bc, deep[i]) == NULL);
+        if (i > 0) assert(body_lookup(&bc, deep[i - 1]) != NULL); /* the enclosing scope's name survives */
+    }
+    assert(bc.depth == 0);
+    for (int i = 0; i < DEEP; i++) assert(body_lookup(&bc, deep[i]) == NULL);
+    assert(body_lookup(&bc, "a") && body_lookup(&bc, "b") && f->locals.len == (size_t)(5 + N + DEEP));
+    ir_state_destroy(&st);
+    pass("scopes: push/pop, a sibling revives a dead name with a new slot, growth to 5000, 10000 deep, parameters stay");
+}
+
+/* The same through the real builder: 3000 sibling blocks all declaring `y` (each its own slot),
+ * and 120 levels of nesting each declaring a fresh name. */
+static void test_scopes_through_the_builder(void) {
+    enum { N = 3000 };
+    char *src = malloc((size_t)N * 40 + 256);
+    assert(src);
+    static IrState st;
+    ir_state_init(&st, 16 << 20);
+    char *w = src + sprintf(src, "manna v0;\nfn f(c: bool) {\n");
+    for (int i = 0; i < N; i++) w += sprintf(w, "    if c { let y: u8 = 1; }\n");
+    sprintf(w, "}\n");
+    parse_src(src);
+    assert(g_ps.diags.len == 0);
+    IrModule *m = NULL;
+    assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_BUILT);
+    const IrFunc *f = m->funcs.items[0];
+    assert(f->locals.len == 1 + N && f->n_params == 1);
+    for (size_t i = 1; i <= N; i++) assert(((const IrLocal *)f->locals.items[i])->slot == i);
+    parse_done();
+
+    w = src + sprintf(src, "manna v0;\nfn f(c: bool) {\n");
+    for (int i = 0; i < 120; i++) w += sprintf(w, "if c { let v%d: u8 = %d;\n", i, i % 200);
+    for (int i = 0; i < 120; i++) w += sprintf(w, "}\n");
+    sprintf(w, "}\n");
+    parse_src(src);
+    assert(g_ps.diags.len == 0);
+    assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_BUILT);
+    assert(((const IrFunc *)m->funcs.items[0])->locals.len == 121);
+    parse_done();
+    ir_state_destroy(&st);
+    free(src);
+    pass("scopes through the builder: 3000 sibling blocks reuse a name, 120 nested blocks");
+}
+
 /* ---- structs at scale: nothing recursive over a chain of structs ---- */
 
 /* A chain of 20000 structs, each holding the next (S0 holds S1 holds ...), and a ring
@@ -1140,8 +1257,8 @@ static void test_deepest_array_type(void) {
  * (the one-mismatch path: require_group). */
 typedef struct { const char *name; int live_step; /* 0 = live now, else the step that makes it live */ } BuildShape;
 static const BuildShape build_shapes[] = {
-    {"binary", 0}, {"mixed_prec", 0}, {"neg_chain", 0},
-    {"in_ifs", 8}, {"in_calls", 10}, {"field", 11}, {"index", 12}, {"postfix_mix", 12},
+    {"binary", 0}, {"mixed_prec", 0}, {"neg_chain", 0}, {"in_ifs", 0},
+    {"in_calls", 10}, {"field", 11}, {"index", 12}, {"postfix_mix", 12},
 };
 enum { N_BUILD_SHAPES = sizeof build_shapes / sizeof build_shapes[0] };
 
@@ -1185,9 +1302,18 @@ static int run_build_shape(const char *shape, int height, bool as_bool, bool par
     } else {
         expr = gen_expr(shape, height);
     }
-    char *src = malloc(strlen(expr) + 64);
+    char *src = malloc(strlen(expr) + 4096); /* the 120-deep wrapper alone is ~1.5 KB */
     assert(src);
-    sprintf(src, "manna v0;\nfn f() -> %s { return %s; }\n", as_bool ? "bool" : (neg ? "i64" : "u64"), expr);
+    const char *rt = as_bool ? "bool" : (neg ? "i64" : "u64");
+    if (strcmp(shape, "in_ifs") == 0) { /* the chain inside 120 nested ifs (the parser allows 127 levels) */
+        char *w = src + sprintf(src, "manna v0;\nfn f() -> %s { ", rt);
+        for (int i = 0; i < 120; i++) w += sprintf(w, "if true { ");
+        w += sprintf(w, "return %s; ", expr);
+        for (int i = 0; i < 120; i++) w += sprintf(w, "} ");
+        sprintf(w, "}\n");
+    } else {
+        sprintf(src, "manna v0;\nfn f() -> %s { return %s; }\n", rt, expr);
+    }
     printf("levels=%d\n", neg ? (int)strlen(expr) - 1 : height); /* neg_chain: the minus signs the parser accepted */
     parse_src(src);
     assert(g_ps.diags.len == 0);
@@ -1266,6 +1392,8 @@ int main(int argc, char **argv) {
     test_min_representation();
     test_type_mismatch();
     test_group_representation();
+    test_scope_api();
+    test_scopes_through_the_builder();
     test_signatures();
     test_duplicate_attribute_fix();
     test_struct_chain_and_ring();

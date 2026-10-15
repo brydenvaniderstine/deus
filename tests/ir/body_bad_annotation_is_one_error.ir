@@ -1,0 +1,3 @@
+ERRORS:
+3:12 E0220 unknown type 'Nope'
+5:14 E0227 a slice's element type can't contain a slice type

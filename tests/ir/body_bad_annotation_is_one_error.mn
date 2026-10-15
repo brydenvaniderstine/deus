@@ -1,0 +1,7 @@
+manna v0;
+fn f() {
+    let x: Nope = 1;
+    x;
+    let y: [][]u8 = 1;
+    y;
+}

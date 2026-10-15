@@ -1,0 +1,4 @@
+ERRORS:
+5:13 E0231 'g' is a function, not a value
+6:13 E0231 'P' is a struct, not a value
+7:5 E0231 'g' is a function, not a value

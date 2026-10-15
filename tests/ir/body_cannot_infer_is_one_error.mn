@@ -1,0 +1,7 @@
+manna v0;
+fn f() {
+    let i = 0;
+    let j: u8 = i;
+    i;
+    let k = i;
+}

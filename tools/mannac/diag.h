@@ -155,6 +155,23 @@ Diagnostic diag_ir_unknown_attribute(Arena *a, Span at, const char *name);
  * repeated attribute (one edit removing `attribute_span`, the whole `[ IDENT ]`). */
 Diagnostic diag_ir_duplicate_attribute(Arena *a, Span at, Span attribute_span, const char *name);
 
+/* E0213: "'x' is already declared in this function" - a `let` whose name is already visible
+ * (a parameter, or a local of this or an enclosing block): no shadowing. At the new name. */
+Diagnostic diag_ir_already_declared(Arena *a, Span at, const char *name);
+
+/* E0225: "cannot infer the type of this integer literal; annotate it" - an integer literal
+ * expression with no expected type (`let i = 0;`). At the whole expression. */
+Diagnostic diag_ir_cannot_infer(Arena *a, Span at);
+
+/* E0230: "unknown name 'x'". */
+Diagnostic diag_ir_unknown_name(Arena *a, Span at, const char *name);
+
+/* E0231: "'f' is a function, not a value" / "'S' is a struct, not a value". */
+Diagnostic diag_ir_not_a_value(Arena *a, Span at, const char *name, bool is_struct);
+
+/* E0270: "can't assign to this expression" - at the whole target. */
+Diagnostic diag_ir_not_assignable(Span at);
+
 /* E0223: "type mismatch: expected T, found U" - U is a type name, or `integer literal` for an
  * untyped integer literal expression (it has no type until one is expected of it). At the
  * whole offending expression. */

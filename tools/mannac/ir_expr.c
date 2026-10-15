@@ -1,4 +1,4 @@
-#include "ir.h"
+#include "ir_internal.h"
 #include <assert.h>
 #include <stdint.h>
 
@@ -27,9 +27,9 @@ _Noreturn void ir_unimplemented(IrState *st, const char *what) {
 }
 
 /* Which later step owns an expression kind this step does not check. */
-static void unimplemented_kind(IrState *st, const Expr *e) {
+static _Noreturn void unimplemented_kind(IrState *st, const Expr *e) {
     switch (e->kind) {
-        case EXPR_IDENT:        ir_unimplemented(st, "identifiers (step 7)");
+        case EXPR_IDENT:        ir_unimplemented(st, "a name inside an operator expression (step 8)");
         case EXPR_CALL:
         case EXPR_NAMED_ARG:    ir_unimplemented(st, "calls and struct construction (steps 10-11)");
         case EXPR_FIELD_ACCESS: ir_unimplemented(st, "field access (step 11)");
@@ -152,14 +152,43 @@ static IrExpr *check_group(IrState *st, const Expr *e, const IrType *t) {
     }
 }
 
-IrExpr *ir_check_expr(IrState *st, const Expr *e, const IrType *expected) {
+/* A name used as a value: a visible local (parameters included), else - because the top-level
+ * namespace is separate and inner - a function or struct name, which is not a value (E0231),
+ * else unknown (E0230). `expected` NULL = no expectation (infer); ERROR = the expected type
+ * already failed, so no mismatch is reported. A local whose own type is ERROR is silent too:
+ * its mistake was reported where it was declared. */
+static IrExpr *check_ident(BodyCtx *bc, const Expr *e, const IrType *expected) {
+    IrState *st = bc->st;
+    const char *name = e->as.ident.name;
+    IrLocal *l = body_lookup(bc, name);
+    if (!l) {
+        const SymEntry *top = symtab_lookup(&bc->decls->top, name);
+        ir_error(st, top ? diag_ir_not_a_value(st->arena, e->span, name, top->is_struct)
+                         : diag_ir_unknown_name(st->arena, e->span, name));
+        return error_node(st, e->span);
+    }
+    IrExpr *node = ir_expr_local(st, e->span, l);
+    if (expected && expected->kind != IR_T_ERROR && l->type->kind != IR_T_ERROR && l->type != expected) {
+        ir_error(st, diag_ir_type_mismatch(st->arena, e->span, ir_type_text(st, expected), ir_type_text(st, l->type)));
+        return error_node(st, e->span);
+    }
+    return node;
+}
+
+IrExpr *ir_check_expr(BodyCtx *bc, const Expr *e, const IrType *expected) {
+    IrState *st = bc->st;
     assert(ir_ast_height_ok(e)); /* the parser's E0111 bound; this stage asserts it, enforces none */
+    if (e->kind == EXPR_IDENT) return check_ident(bc, e, expected);
     if (e->kind == EXPR_BOOL) {
-        if (expected->kind != IR_T_BOOL) {
-            ir_error(st, diag_ir_type_mismatch(st->arena, e->span, ir_type_text(st, expected), "bool"));
-            return error_node(st, e->span);
-        }
-        return ir_expr_bool(st, e->span, e->as.boolean.value);
+        if (expected->kind == IR_T_BOOL || expected->kind == IR_T_ERROR) return ir_expr_bool(st, e->span, e->as.boolean.value);
+        ir_error(st, diag_ir_type_mismatch(st->arena, e->span, ir_type_text(st, expected), "bool"));
+        return error_node(st, e->span);
+    }
+    if (expected->kind == IR_T_ERROR) {
+        /* The expected type already failed: an integer literal expression has no type to be
+         * checked against. Prove it is a pure literal group (else stop the build) and say nothing. */
+        require_group(st, e);
+        return error_node(st, e->span);
     }
     if (!is_int(expected)) {
         /* An integer literal expression where no integer is expected: one mismatch for the
@@ -171,4 +200,26 @@ IrExpr *ir_check_expr(IrState *st, const Expr *e, const IrType *expected) {
         return error_node(st, e->span);
     }
     return check_group(st, e, expected);
+}
+
+IrExpr *ir_infer_expr(BodyCtx *bc, const Expr *e) {
+    IrState *st = bc->st;
+    assert(ir_ast_height_ok(e));
+    switch (e->kind) {
+        case EXPR_IDENT:
+            return check_ident(bc, e, NULL);
+        case EXPR_BOOL:
+            return ir_expr_bool(st, e->span, e->as.boolean.value);
+        case EXPR_NUMBER:
+        case EXPR_UNARY:
+        case EXPR_BINARY:
+            /* A literal expression has no type of its own: it takes the one expected of it,
+             * and nothing expects one here. A mixed expression is a later step's, so prove the
+             * group is pure first (else stop the build). */
+            require_group(st, e);
+            ir_error(st, diag_ir_cannot_infer(st->arena, e->span));
+            return error_node(st, e->span);
+        default:
+            unimplemented_kind(st, e);
+    }
 }

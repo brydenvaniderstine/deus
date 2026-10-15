@@ -1,0 +1,6 @@
+manna v0;
+fn f() {
+    let x: u8 = 1;
+    let x: bool = true;
+    let y: u8 = x;
+}

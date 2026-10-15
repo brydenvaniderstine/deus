@@ -1,0 +1,7 @@
+manna v0;
+fn f(a: u8, b: bool) {
+    a = true;
+    b = 1;
+    a = b;
+    a = 300;
+}

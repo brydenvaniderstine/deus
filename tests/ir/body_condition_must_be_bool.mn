@@ -1,0 +1,7 @@
+manna v0;
+fn f(a: u8, c: bool) {
+    if 1 { }
+    if a { }
+    if nope { }
+    if c { }
+}

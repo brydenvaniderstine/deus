@@ -1,4 +1,4 @@
-#include "ir.h"
+#include "ir_internal.h"
 #include <assert.h>
 #include <stdalign.h>
 #include <stdint.h>
@@ -10,94 +10,7 @@
  * grouped by check, each group in declaration order (E0210 for every
  * declaration, then E0211/E0220/E0227 struct by struct, ...). */
 
-/* ---- open-addressing name table: looked up, never iterated ---- */
 
-typedef struct {
-    const char *name;     /* NULL = empty slot */
-    Span        name_span;
-    bool        is_struct;
-    size_t      index;    /* structs: position in declaration order */
-} SymEntry;
-
-typedef struct {
-    SymEntry *slots; /* arena-allocated, cap entries, name == NULL = empty */
-    size_t    cap;   /* power of two */
-} Symtab;
-
-static uint64_t name_hash(const char *s) {
-    uint64_t h = 1469598103934665603ULL; /* FNV-1a */
-    while (*s) {
-        h ^= (unsigned char)*s++;
-        h *= 1099511628211ULL;
-    }
-    return h;
-}
-
-/* Capacity for `n` entries at load <= 1/2 (so a lookup always finds an empty slot). */
-static void symtab_init(IrState *st, Symtab *t, size_t n) {
-    size_t cap = 2;
-    while (cap < n * 2) cap *= 2;
-    t->slots = arena_alloc(st->arena, cap * sizeof(SymEntry), alignof(SymEntry));
-    memset(t->slots, 0, cap * sizeof(SymEntry));
-    t->cap = cap;
-}
-
-static const SymEntry *symtab_lookup(const Symtab *t, const char *name) {
-    size_t mask = t->cap - 1;
-    for (size_t i = (size_t)(name_hash(name) & mask);; i = (i + 1) & mask) {
-        if (!t->slots[i].name) return NULL;
-        if (strcmp(t->slots[i].name, name) == 0) return &t->slots[i];
-    }
-}
-
-/* Inserts unless the name is present; returns the entry that holds the name
- * (the new one, or the first declaration's). The table is sized for its keys
- * up front, so it can never fill. */
-static const SymEntry *symtab_insert(Symtab *t, const char *name, Span name_span, bool is_struct, size_t index, bool *inserted) {
-    size_t mask = t->cap - 1;
-    for (size_t i = (size_t)(name_hash(name) & mask);; i = (i + 1) & mask) {
-        if (!t->slots[i].name) {
-            t->slots[i].name = name;
-            t->slots[i].name_span = name_span;
-            t->slots[i].is_struct = is_struct;
-            t->slots[i].index = index;
-            *inserted = true;
-            return &t->slots[i];
-        }
-        if (strcmp(t->slots[i].name, name) == 0) {
-            *inserted = false;
-            return &t->slots[i];
-        }
-    }
-}
-
-/* ---- declarations ---- */
-
-/* Largest size of any single type (docs/M2_PLAN.md "Layout and limits": Wasm MVP
- * memory32, signed-offset friendly). */
-#define IR_MAX_TYPE_SIZE ((uint64_t)INT32_MAX)
-
-typedef struct {
-    const Decl   *decl;
-    IrStruct     *ir;
-    const Type  **field_types; /* the AST type of each KEPT field (parallel to ir->fields) */
-    bool          poisoned;    /* a field type failed to resolve: no layout, no further errors from it */
-    bool          sized;       /* ir->size/align/offsets are valid */
-    bool          cyclic;      /* member of a containment cycle (E0221 reported for the cycle) */
-    bool          cycle_error; /* this member is where E0221 is reported (lowest declaration index) */
-    bool          size_error;  /* E0222 to report at size_error_span */
-    Span          size_error_span;
-} StructInfo;
-
-typedef struct {
-    IrState    *st;
-    Symtab      top;     /* structs and functions, one namespace */
-    StructInfo *structs; /* declaration order */
-    size_t      n_structs;
-    IrStruct   *irs;     /* contiguous: struct i is irs[i] */
-    IrFunc    **fns;     /* signatures, in declaration order (bodies are ir_build's) */
-    size_t      n_fns;
-} Ctx;
 
 static const char *decl_name(const Decl *d) {
     return d->kind == DECL_STRUCT ? d->as.struct_decl.name : d->as.function_decl.name;
@@ -118,19 +31,12 @@ static const IrType *prim_type(IrState *st, const char *name) {
     return strcmp(name, "bool") == 0 ? ir_type_bool(st) : NULL;
 }
 
-/* Where a type is being written, which decides what a slice may do there
- * (docs/M2_PLAN.md "Arrays, slices, storage"). */
-typedef enum {
-    CTX_FIELD,       /* a struct field: no slice at any depth */
-    CTX_PARAM,       /* a parameter: a slice is fine (also inside arrays) */
-    CTX_RETURN,      /* a return type: no slice at any depth */
-    CTX_SLICE_ELEM,  /* inside a slice's element type: no slice at any depth */
-} TypeCtx;
+
 
 /* AST type -> IR type. A failure records ONE error and yields ERROR, which
  * every enclosing array or slice silently propagates (one mistake, one error).
  * Recursion is once per nested array/slice level: the parser bounds that to 254. */
-static const IrType *resolve_type(Ctx *cx, const Type *t, TypeCtx ctx) {
+const IrType *ir_resolve_type(Ctx *cx, const Type *t, TypeCtx ctx) {
     IrState *st = cx->st;
     switch (t->kind) {
         case TYPE_IDENT: {
@@ -142,7 +48,7 @@ static const IrType *resolve_type(Ctx *cx, const Type *t, TypeCtx ctx) {
             return ir_type_error(st);
         }
         case TYPE_ARRAY: {
-            const IrType *elem = resolve_type(cx, t->as.array.elem, ctx);
+            const IrType *elem = ir_resolve_type(cx, t->as.array.elem, ctx);
             if (elem->kind == IR_T_ERROR) return elem;
             return ir_type_array(st, t->as.array.size, elem);
         }
@@ -151,7 +57,7 @@ static const IrType *resolve_type(Ctx *cx, const Type *t, TypeCtx ctx) {
     }
     /* A slice. */
     if (ctx == CTX_PARAM) {
-        const IrType *elem = resolve_type(cx, t->as.slice.elem, CTX_SLICE_ELEM);
+        const IrType *elem = ir_resolve_type(cx, t->as.slice.elem, CTX_SLICE_ELEM);
         return elem->kind == IR_T_ERROR ? elem : ir_type_slice(st, elem);
     }
     ir_error(st, ctx == CTX_FIELD ? diag_ir_slice_in_field(t->span)
@@ -204,7 +110,7 @@ static void build_fields(Ctx *cx, StructInfo *s) {
         bool inserted;
         symtab_insert(&seen, f->name, f->name_span, false, 0, &inserted);
         if (!inserted) ir_error(st, diag_ir_duplicate_field(st->arena, f->name_span, f->name, ir->name));
-        const IrType *t = resolve_type(cx, f->type, CTX_FIELD);
+        const IrType *t = ir_resolve_type(cx, f->type, CTX_FIELD);
         if (t->kind == IR_T_ERROR) s->poisoned = true;
         if (!inserted) continue;
         s->field_types[ir->n_fields] = f->type;
@@ -429,7 +335,7 @@ static void analyze_structs(Ctx *cx) {
 
 /* E0222 for a parameter or return type whose size exceeds the limit. A type that needs
  * an unsized struct is silent (that struct's own error is already reported). */
-static void check_type_size(Ctx *cx, const Type *ast, const IrType *t) {
+void ir_check_type_size(Ctx *cx, const Type *ast, const IrType *t) {
     if (t->kind == IR_T_ERROR) return;
     uint64_t size;
     uint32_t align;
@@ -473,8 +379,8 @@ static void build_signature(Ctx *cx, const Decl *d) {
         bool inserted;
         symtab_insert(&seen, p->name, p->name_span, false, 0, &inserted);
         if (!inserted) ir_error(st, diag_ir_duplicate_param(st->arena, p->name_span, p->name));
-        const IrType *t = resolve_type(cx, p->type, CTX_PARAM);
-        check_type_size(cx, p->type, t);
+        const IrType *t = ir_resolve_type(cx, p->type, CTX_PARAM);
+        ir_check_type_size(cx, p->type, t);
         if (!inserted) continue;
         node_list_push(st->arena, &locals, ir_local_new(st, (uint32_t)locals.len, p->name, t, p->span, true));
     }
@@ -482,14 +388,15 @@ static void build_signature(Ctx *cx, const Decl *d) {
 
     const IrType *ret = ir_type_unit(st);
     if (d->as.function_decl.return_type) {
-        ret = resolve_type(cx, d->as.function_decl.return_type, CTX_RETURN);
-        check_type_size(cx, d->as.function_decl.return_type, ret);
+        ret = ir_resolve_type(cx, d->as.function_decl.return_type, CTX_RETURN);
+        ir_check_type_size(cx, d->as.function_decl.return_type, ret);
     }
     cx->fns[cx->n_fns++] = ir_func_new(st, d->span, d->as.function_decl.name, kernel_hook, locals, n_params, ret, NULL);
 }
 
-bool ir_declare_items(IrState *st, const NodeList *items, IrModule *m) {
+bool ir_declare_items(IrState *st, const NodeList *items, IrModule *m, Ctx **out_ctx) {
     int errors_before = st->error_count;
+    Ctx *cxp = arena_alloc(st->arena, sizeof(Ctx), alignof(Ctx));
     Ctx cx = {0};
     cx.st = st;
     size_t n = 0;
@@ -526,5 +433,7 @@ bool ir_declare_items(IrState *st, const NodeList *items, IrModule *m) {
     if (st->error_count != errors_before) return false;
     for (size_t i = 0; i < n; i++) node_list_push(st->arena, &m->structs, cx.structs[i].ir);
     for (size_t i = 0; i < cx.n_fns; i++) node_list_push(st->arena, &m->funcs, cx.fns[i]);
+    *cxp = cx;
+    *out_ctx = cxp;
     return true;
 }
