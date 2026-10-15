@@ -1,0 +1,4 @@
+manna v0;
+fn over() -> u16 { return 65536; }
+fn paren_over() -> u16 { return (65536); }
+fn far_over() -> u16 { return 196605; }

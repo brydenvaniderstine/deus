@@ -256,6 +256,25 @@ Diagnostic diag_ir_duplicate_attribute(Arena *a, Span at, Span attribute_span, c
     return d;
 }
 
+Diagnostic diag_ir_literal_range(Arena *a, Span at, uint64_t value, bool negated, const char *type) {
+    Diagnostic d = {0};
+    d.code = "E0224";
+    d.severity = DIAG_ERROR;
+    d.message = arena_sprintf(a, "integer literal %s%llu does not fit in %s", negated ? "-" : "",
+                              (unsigned long long)value, type);
+    d.span = at;
+    return d;
+}
+
+Diagnostic diag_ir_operator_undefined(Arena *a, Span at, const char *op, const char *type) {
+    Diagnostic d = {0};
+    d.code = "E0260";
+    d.severity = DIAG_ERROR;
+    d.message = arena_sprintf(a, "operator '%s' is not defined for %s", op, type);
+    d.span = at;
+    return d;
+}
+
 Diagnostic diag_ir_slice_in_return(Span at) {
     Diagnostic d = {0};
     d.code = "E0227";

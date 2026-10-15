@@ -1,0 +1,5 @@
+ERRORS:
+2:27 E0224 integer literal 9223372036854775808 does not fit in i64
+3:31 E0224 integer literal -9223372036854775809 does not fit in i64
+4:37 E0224 integer literal 9223372036854775808 does not fit in i64
+5:31 E0224 integer literal 18446744073709551615 does not fit in i64

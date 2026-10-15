@@ -1,0 +1,4 @@
+ERRORS:
+2:27 E0224 integer literal 4294967296 does not fit in u32
+3:33 E0224 integer literal 4294967296 does not fit in u32
+4:31 E0224 integer literal 12884901885 does not fit in u32

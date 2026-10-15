@@ -1,0 +1,6 @@
+(fn@2:1-2:33 fn:min
+  (params)
+  (returns i8)
+  (block@2:16-2:33
+    (return@2:18-2:31
+      (int@2:25-2:30 -128 i8))))

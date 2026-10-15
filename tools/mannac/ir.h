@@ -280,3 +280,14 @@ IrStatus ir_build(IrState *st, const DiagList *parse_diags, const NodeList *item
  * struct and function name (E0210), builds each struct's fields (E0211) and
  * resolves their types (E0220, E0227). Returns false if it recorded any error. */
 bool ir_declare_items(IrState *st, const NodeList *items, IrModule *m);
+
+/* ---- Expressions (ir_expr.c, typed-IR step 6) ---- */
+
+/* Checks `e` against `expected` (never NULL, never ERROR) and returns the typed IR
+ * expression. Errors are recorded and the result is typed ERROR where the type could
+ * not be determined; a construct a later step owns calls ir_unimplemented. */
+IrExpr *ir_check_expr(IrState *st, const Expr *e, const IrType *expected);
+
+/* Stops the build with IR_UNIMPLEMENTED (st->unimplemented names the construct): unwinds
+ * to ir_build, so it may be called from any depth. Never returns. */
+_Noreturn void ir_unimplemented(IrState *st, const char *what);

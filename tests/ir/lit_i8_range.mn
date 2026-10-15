@@ -1,0 +1,5 @@
+manna v0;
+fn over() -> i8 { return 128; }
+fn neg_over() -> i8 { return -129; }
+fn neg_paren_min() -> i8 { return -(128); }
+fn far_over() -> i8 { return 255; }

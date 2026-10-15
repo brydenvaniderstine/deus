@@ -1,0 +1,18 @@
+(fn@2:1-2:34 fn:max
+  (params)
+  (returns u16)
+  (block@2:17-2:34
+    (return@2:19-2:32
+      (int@2:26-2:31 65535 u16))))
+(fn@3:1-3:31 fn:zero
+  (params)
+  (returns u16)
+  (block@3:18-3:31
+    (return@3:20-3:29
+      (int@3:27-3:28 0 u16))))
+(fn@4:1-4:38 fn:paren
+  (params)
+  (returns u16)
+  (block@4:19-4:38
+    (return@4:21-4:36
+      (int@4:28-4:35 65535 u16))))

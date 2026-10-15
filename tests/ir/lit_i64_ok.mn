@@ -1,0 +1,8 @@
+manna v0;
+fn max() -> i64 { return 9223372036854775807; }
+fn min() -> i64 { return -9223372036854775808; }
+fn neg() -> i64 { return -9223372036854775807; }
+fn zero() -> i64 { return 0; }
+fn neg_zero() -> i64 { return -0; }
+fn paren() -> i64 { return (9223372036854775807); }
+fn neg_paren() -> i64 { return -(9223372036854775807); }

@@ -1,0 +1,5 @@
+ERRORS:
+2:27 E0224 integer literal 32768 does not fit in i16
+3:31 E0224 integer literal -32769 does not fit in i16
+4:37 E0224 integer literal 32768 does not fit in i16
+5:31 E0224 integer literal 65535 does not fit in i16

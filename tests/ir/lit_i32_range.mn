@@ -1,0 +1,5 @@
+manna v0;
+fn over() -> i32 { return 2147483648; }
+fn neg_over() -> i32 { return -2147483649; }
+fn neg_paren_min() -> i32 { return -(2147483648); }
+fn far_over() -> i32 { return 4294967295; }

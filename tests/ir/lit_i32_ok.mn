@@ -1,0 +1,8 @@
+manna v0;
+fn max() -> i32 { return 2147483647; }
+fn min() -> i32 { return -2147483648; }
+fn neg() -> i32 { return -2147483647; }
+fn zero() -> i32 { return 0; }
+fn neg_zero() -> i32 { return -0; }
+fn paren() -> i32 { return (2147483647); }
+fn neg_paren() -> i32 { return -(2147483647); }

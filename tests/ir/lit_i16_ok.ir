@@ -1,0 +1,45 @@
+(fn@2:1-2:34 fn:max
+  (params)
+  (returns i16)
+  (block@2:17-2:34
+    (return@2:19-2:32
+      (int@2:26-2:31 32767 i16))))
+(fn@3:1-3:35 fn:min
+  (params)
+  (returns i16)
+  (block@3:17-3:35
+    (return@3:19-3:33
+      (int@3:26-3:32 -32768 i16))))
+(fn@4:1-4:35 fn:neg
+  (params)
+  (returns i16)
+  (block@4:17-4:35
+    (return@4:19-4:33
+      (unary@4:26-4:32 - i16
+        (int@4:27-4:32 32767 i16)))))
+(fn@5:1-5:31 fn:zero
+  (params)
+  (returns i16)
+  (block@5:18-5:31
+    (return@5:20-5:29
+      (int@5:27-5:28 0 i16))))
+(fn@6:1-6:36 fn:neg_zero
+  (params)
+  (returns i16)
+  (block@6:22-6:36
+    (return@6:24-6:34
+      (unary@6:31-6:33 - i16
+        (int@6:32-6:33 0 i16)))))
+(fn@7:1-7:38 fn:paren
+  (params)
+  (returns i16)
+  (block@7:19-7:38
+    (return@7:21-7:36
+      (int@7:28-7:35 32767 i16))))
+(fn@8:1-8:43 fn:neg_paren
+  (params)
+  (returns i16)
+  (block@8:23-8:43
+    (return@8:25-8:41
+      (unary@8:32-8:40 - i16
+        (int@8:33-8:40 32767 i16)))))

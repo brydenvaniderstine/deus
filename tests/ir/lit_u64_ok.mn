@@ -1,0 +1,4 @@
+manna v0;
+fn max() -> u64 { return 18446744073709551615; }
+fn zero() -> u64 { return 0; }
+fn paren() -> u64 { return (18446744073709551615); }

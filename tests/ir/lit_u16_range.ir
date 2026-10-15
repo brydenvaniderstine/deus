@@ -1,0 +1,4 @@
+ERRORS:
+2:27 E0224 integer literal 65536 does not fit in u16
+3:33 E0224 integer literal 65536 does not fit in u16
+4:31 E0224 integer literal 196605 does not fit in u16

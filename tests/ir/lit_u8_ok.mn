@@ -1,0 +1,4 @@
+manna v0;
+fn max() -> u8 { return 255; }
+fn zero() -> u8 { return 0; }
+fn paren() -> u8 { return (255); }

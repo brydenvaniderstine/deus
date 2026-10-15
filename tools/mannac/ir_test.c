@@ -716,8 +716,15 @@ static void test_unimplemented(void) {
     static IrState st;
     ir_state_init(&st, 1 << 20);
     static const struct { const char *src, *what; } cases[] = {
-        {"manna v0;\nfn f() { return; }\n", "statements"},
-        {"manna v0;\nfn ok() { }\nfn f() { return; }\n", "statements"}, /* after a buildable function */
+        {"manna v0;\nfn f() { return; }\n", "bare return"},
+        {"manna v0;\nfn ok() { }\nfn f() { return; }\n", "bare return"},       /* after a buildable function */
+        {"manna v0;\nfn f() { return 1; }\n", "return in a unit function"},
+        {"manna v0;\nfn f() -> u8 { let x: u8 = 1; }\n", "statements other than return"},
+        {"manna v0;\nfn f(x: u8) -> u8 { return x; }\n", "identifiers"},
+        {"manna v0;\nfn f() -> u8 { return g(); }\nfn g() -> u8 { }\n", "calls"},
+        {"manna v0;\nfn f() -> u8 { return !1; }\n", "unary '!' and '~'"},
+        {"manna v0;\nfn f() -> bool { return 1; }\n", "non-integer"},          /* until step 6b */
+        {"manna v0;\nfn f() -> u8 { return u8(1); }\n", "conversions"},
     };
     for (size_t i = 0; i < sizeof cases / sizeof cases[0]; i++) {
         parse_src(cases[i].src);
@@ -728,8 +735,107 @@ static void test_unimplemented(void) {
         assert(st.unimplemented && strstr(st.unimplemented, cases[i].what));
         parse_done();
     }
+
+    /* Errors found before the unwind win over IR_UNIMPLEMENTED, and the state is reusable. */
+    parse_src("manna v0;\nfn a() -> i8 { return 128; }\nfn b(x: u8) -> u8 { return x; }\n");
+    IrModule *m = NULL;
+    assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_ERRORS && m == NULL);
+    assert(st.diags.len == 1 && strcmp(st.diags.items[0].code, "E0224") == 0);
+    parse_done();
+    parse_src("manna v0;\nfn a() -> i8 { return 127; }\n");
+    assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_BUILT && m != NULL && st.unimplemented == NULL);
+    parse_done();
     ir_state_destroy(&st);
-    pass("IR_UNIMPLEMENTED: only statements remain, no diagnostic, no module");
+    pass("IR_UNIMPLEMENTED: what step 6 does not build, no diagnostic, no module; real errors win; state reusable");
+}
+
+/* `fn f() -> T { return <expr>; }` for one case of the range matrix. Returns the build status;
+ * the diagnostics are left in st. */
+static IrStatus build_return(IrState *st, const char *type, const char *expr, IrModule **m) {
+    char src[256];
+    snprintf(src, sizeof src, "manna v0;\nfn f() -> %s { return %s; }\n", type, expr);
+    parse_src(src);
+    assert(g_ps.diags.len == 0);
+    IrStatus r = ir_build(st, &g_ps.diags, &g_items, m);
+    parse_done();
+    return r;
+}
+
+/* The literal range matrix, generated: every width and sign, the three values around each
+ * boundary, each written bare, directly negated, parenthesized, and negated-parenthesized.
+ * The expected outcome is computed here from the rules (not from the checker). */
+static void test_literal_matrix(void) {
+    static IrState st;
+    ir_state_init(&st, 16 << 20);
+    static const struct { const char *name; int bits; bool sg; } types[] = {
+        {"u8", 8, false}, {"u16", 16, false}, {"u32", 32, false}, {"u64", 64, false},
+        {"i8", 8, true}, {"i16", 16, true}, {"i32", 32, true}, {"i64", 64, true},
+    };
+    int cases = 0;
+    for (size_t t = 0; t < 8; t++) {
+        int bits = types[t].bits;
+        bool sg = types[t].sg;
+        uint64_t half = UINT64_C(1) << (bits - 1);
+        uint64_t umax = bits == 64 ? UINT64_MAX : (UINT64_C(1) << bits) - 1;
+        uint64_t max = sg ? half - 1 : umax;
+        /* values around the boundary of this type; skip those the lexer cannot write (>= 2^64) */
+        uint64_t vals[] = {0, 1, max - 1, max, max + 1, half, half + 1};
+        for (size_t k = 0; k < sizeof vals / sizeof vals[0]; k++) {
+            uint64_t v = vals[k];
+            if (k >= 4 && v < max) continue; /* wrapped past 2^64 (u64 max + 1) */
+            for (int form = 0; form < 4; form++) {
+                char expr[64];
+                const char *code = NULL; /* expected first diagnostic code, NULL = builds */
+                switch (form) {
+                    case 0: snprintf(expr, sizeof expr, "%llu", (unsigned long long)v);
+                            if (v > max) code = "E0224";
+                            break;
+                    case 1: snprintf(expr, sizeof expr, "-%llu", (unsigned long long)v);
+                            if (!sg) code = "E0260"; else if (v > half) code = "E0224";
+                            break;
+                    case 2: snprintf(expr, sizeof expr, "(%llu)", (unsigned long long)v);
+                            if (v > max) code = "E0224";
+                            break;
+                    default: snprintf(expr, sizeof expr, "-(%llu)", (unsigned long long)v);
+                            if (!sg) code = "E0260"; else if (v > max) code = "E0224";
+                            break;
+                }
+                IrModule *m = NULL;
+                size_t before = st.diags.len;
+                IrStatus r = build_return(&st, types[t].name, expr, &m);
+                if (code == NULL) {
+                    assert(r == IR_BUILT && st.diags.len == before);
+                } else {
+                    if (r != IR_ERRORS || st.diags.len != before + 1 || strcmp(st.diags.items[before].code, code) != 0) {
+                        fprintf(stderr, "matrix: %s %s expected %s\n", types[t].name, expr, code);
+                        abort();
+                    }
+                }
+                cases++;
+            }
+        }
+    }
+    ir_state_destroy(&st);
+    printf("PASS: literal matrix: %d generated cases (8 types x boundary values x 4 forms)\n", cases);
+}
+
+/* The folded i64::MIN: one int node, bits sign-extended, spanning the minus; -127 is not folded. */
+static void test_min_representation(void) {
+    static IrState st;
+    ir_state_init(&st, 1 << 20);
+    IrModule *m = NULL;
+    assert(build_return(&st, "i8", "-128", &m) == IR_BUILT);
+    const IrStmt *ret = ((const IrFunc *)m->funcs.items[0])->body->as.block.stmts.items[0];
+    const IrExpr *v = ret->as.ret.value;
+    assert(v->kind == IR_E_INT && v->as.integer.bits == UINT64_C(0xFFFFFFFFFFFFFF80) && v->type == ir_type_int(&st, 8, true));
+    assert(build_return(&st, "i64", "-9223372036854775808", &m) == IR_BUILT);
+    v = ((const IrStmt *)((const IrFunc *)m->funcs.items[0])->body->as.block.stmts.items[0])->as.ret.value;
+    assert(v->kind == IR_E_INT && v->as.integer.bits == UINT64_C(0x8000000000000000));
+    assert(build_return(&st, "i8", "-127", &m) == IR_BUILT);
+    v = ((const IrStmt *)((const IrFunc *)m->funcs.items[0])->body->as.block.stmts.items[0])->as.ret.value;
+    assert(v->kind == IR_E_UNARY && v->as.unary.operand->kind == IR_E_INT && v->as.unary.operand->as.integer.bits == 127);
+    ir_state_destroy(&st);
+    pass("i64::MIN folds to one int node (bits sign-extended); -127 stays a unary node");
 }
 
 static void test_build_e0201_and_reuse(void) {
@@ -984,6 +1090,8 @@ int main(int argc, char **argv) {
     test_build_e0201_and_reuse();
     test_e0201_in_name_table();
     test_decls_many_names();
+    test_literal_matrix();
+    test_min_representation();
     test_signatures();
     test_duplicate_attribute_fix();
     test_struct_chain_and_ring();

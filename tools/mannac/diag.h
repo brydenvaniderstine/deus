@@ -155,6 +155,15 @@ Diagnostic diag_ir_unknown_attribute(Arena *a, Span at, const char *name);
  * repeated attribute (one edit removing `attribute_span`, the whole `[ IDENT ]`). */
 Diagnostic diag_ir_duplicate_attribute(Arena *a, Span at, Span attribute_span, const char *name);
 
+/* E0224: "integer literal N does not fit in T" - N is the literal as written, in decimal.
+ * `negated` prints it with its sign (`-129`) for a literal directly under unary minus,
+ * located over the whole `-129`; a parenthesized literal under minus, `-(129)`, is the
+ * plain form at the parenthesized literal. */
+Diagnostic diag_ir_literal_range(Arena *a, Span at, uint64_t value, bool negated, const char *type);
+
+/* E0260: "operator 'op' is not defined for T" - at the whole operator expression. */
+Diagnostic diag_ir_operator_undefined(Arena *a, Span at, const char *op, const char *type);
+
 /* E0227, return-type and slice-element wordings (the struct-field one is below). */
 Diagnostic diag_ir_slice_in_return(Span at);
 Diagnostic diag_ir_slice_of_slice(Span at);

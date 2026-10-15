@@ -1,0 +1,5 @@
+ERRORS:
+2:27 E0224 integer literal 2147483648 does not fit in i32
+3:31 E0224 integer literal -2147483649 does not fit in i32
+4:37 E0224 integer literal 2147483648 does not fit in i32
+5:31 E0224 integer literal 4294967295 does not fit in i32

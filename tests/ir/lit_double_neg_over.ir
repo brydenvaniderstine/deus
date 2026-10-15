@@ -1,0 +1,2 @@
+ERRORS:
+2:27 E0224 integer literal -129 does not fit in i8

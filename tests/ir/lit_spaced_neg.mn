@@ -1,0 +1,2 @@
+manna v0;
+fn min() -> i8 { return - 128; }

@@ -1,0 +1,8 @@
+manna v0;
+fn one() -> u32 { return -1; }
+fn zero() -> u8 { return -0; }
+fn min64() -> u64 { return -9223372036854775808; }
+fn paren() -> u16 { return -(1); }
+fn twice() -> u8 { return --1; }
+fn big_literal_silent() -> u8 { return -256; }
+fn spaced() -> u32 { return - 5; }
