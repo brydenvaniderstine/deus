@@ -2,6 +2,21 @@
 
 This document is forward-looking context, not a spec. `CLAUDE.md` is the source of truth for what's actually being built; this file holds the longer-range goals and the R&D leads we're tracking but haven't committed to.
 
+## Positioning and prior art
+
+**Claim (design intent, not a result; quote it as a result only once M3 boots and runs Manna end to end):**
+
+> Deus combines ideas proven separately in Singularity, Theseus and Nebulet (language-enforced isolation in a single address space, with WebAssembly apps) with Manna, a small language designed from the start for AI authors to write and machine-check. Related agent-safety work (tacit, AgenticOS) pairs language or capability checks with AI agents as a library or a paper design; Deus aims to build that pairing into a real kernel.
+
+- Singularity (Microsoft Research): https://pdos.csail.mit.edu/6.828/2018/lec/l-singularity.pdf
+- Theseus (Rust, OSDI 2020): https://www.usenix.org/conference/osdi20/presentation/boos
+- Nebulet (Wasm in ring 0): https://www.phoronix.com/news/Nebulet-Ring-0-WebAssembly
+- tacit (typed agent capabilities): https://arxiv.org/pdf/2603.00991
+- AgenticOS (paper design, no implementation): https://arxiv.org/pdf/2606.21129
+- Not cousins: Ironclad and Muen (SPARK) prove their own kernel free of runtime errors but isolate programs with hardware; seL4 likewise. Their lesson for Deus is proof, not isolation.
+
+Rule: no single feature is claimed as novel.
+
 ## Cross-platform bridge
 
 Deus's single-CR3, flat-paging, LBS-enforced design targets bare metal first. The same kernel should run as a guest under major hypervisors without redesigning the memory model — paging stays flat, context switches stay register-save-only, nothing here should need a second code path per hypervisor.
@@ -39,6 +54,11 @@ An LLM-based tool could emit a Manna AST directly for generated code, skipping t
 ### Agent service on Deus
 
 A user-space Wasm service that runs AI tasks under explicit, capability-limited permissions (Manna declared effects). Model output and fetched web content are untrusted data and can never trigger an action by themselves. The model never runs in the kernel; it is reached off-box (API) or, later, run as a local model. The kernel stays provider-neutral.
+
+**Design inputs (parked):**
+
+- A classified-data wrapper: secret data can be transformed by pure functions but never sent out (tacit, https://arxiv.org/pdf/2603.00991).
+- Prompt-injection patterns: plan-then-execute and a privileged/quarantined model split (https://arxiv.org/pdf/2506.08837).
 
 **Prerequisites:** M3 (Wasm runtime + IPC), networking, and the Spectre mitigation plan CLAUDE.md requires before networking.
 
@@ -91,7 +111,7 @@ The bar for the first list is a file, a test, or a log line in this repo right n
 
 ### Metrics to benchmark against Linux (identical QEMU config, both sides)
 
-- **Context-switch latency** — the thing our zero-CR3-reload design is supposed to win on. Not benchmarked yet.
+- **Context-switch latency** — the thing our zero-CR3-reload design is supposed to win on. Not benchmarked yet. Compare against Linux with PCID enabled; modern CPUs already avoid most TLB-flush cost, so expect a small margin, not a headline.
 - **IPC round-trip time** — needs the IPC design CLAUDE.md's M3 phase calls for; doesn't exist yet.
 - **Boot-to-shell time** — needs a shell; doesn't exist yet.
 - **Memory footprint** — kernel + minimal userspace, measured, not estimated.
