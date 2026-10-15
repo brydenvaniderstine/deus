@@ -60,6 +60,12 @@ A minimal browser written in Manna, starting with a reading-mode renderer (HTML 
 
 **Validates via:** rendering a fixed set of static test pages to match reference screenshots, with fetched page content unable to invoke any agent action without user approval.
 
+### CHERI (hardware capabilities)
+
+A CPU design that enforces memory safety in the chip itself. Candidate hardware backstop for LBS, the way NX backs W^X today. Depends on CHERI-capable x86_64 hardware existing; none does yet.
+
+**Validates via:** a CHERI-capable x86_64 CPU or a faithful emulator exists, and Deus's single address space plus LBS maps onto capabilities without redesign.
+
 ## "Better than Linux" scorecard
 
 A standing discipline, not a marketing claim: every item below is either something we can already point to in this repo, or a target we haven't measured yet. The two categories are never allowed to blur together.
