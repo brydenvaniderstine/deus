@@ -1048,8 +1048,8 @@ static void test_duplicate_attribute_fix(void) {
 
     /* apply: line 2 is `[kernel_hook] [kernel_hook] fn f() { }`; drop columns 15..27 */
     char fixed[128];
-    snprintf(fixed, sizeof fixed, "manna v0;\n%.*s%s", e.start_col - 1, "[kernel_hook] [kernel_hook] fn f() { }\n",
-             "[kernel_hook] [kernel_hook] fn f() { }\n" + (e.end_col - 1));
+    const char *line = "[kernel_hook] [kernel_hook] fn f() { }\n";
+    snprintf(fixed, sizeof fixed, "manna v0;\n%.*s%s", e.start_col - 1, line, line + (e.end_col - 1));
     assert(strcmp(fixed, "manna v0;\n[kernel_hook]  fn f() { }\n") == 0);
     parse_src(fixed);
     assert(g_ps.diags.len == 0);
@@ -1129,6 +1129,99 @@ static void test_deepest_array_type(void) {
     printf("PASS: arrays nested %d deep (the parser's limit in a field) resolve and lay out\n", accepted);
 }
 
+/* ---- stack: the real BUILDER on parser-built maximal trees (step 6) ---- */
+
+/* The builder's recursion (check_group / require_group) runs once per tree level, and the
+ * parser bounds the height to 512 (E0111). These shapes are generated as SOURCE, parsed
+ * by the real parser and built by the real ir_build, at height 512 (the neg chain at the
+ * most the nesting bound allows, E0103, near 255). A shape whose constructs a later step
+ * adds is listed as pending, with the step, and becomes live then. Two variants each:
+ * `int` (the expression is built against an integer return type: check_group) and `bool`
+ * (the one-mismatch path: require_group). */
+typedef struct { const char *name; int live_step; /* 0 = live now, else the step that makes it live */ } BuildShape;
+static const BuildShape build_shapes[] = {
+    {"binary", 0}, {"mixed_prec", 0}, {"neg_chain", 0},
+    {"in_ifs", 8}, {"in_calls", 10}, {"field", 11}, {"index", 12}, {"postfix_mix", 12},
+};
+enum { N_BUILD_SHAPES = sizeof build_shapes / sizeof build_shapes[0] };
+
+/* Source of the expression for `shape` with `height` levels (neg_chain: height = number of
+ * minus signs). malloc'd. */
+static char *gen_expr(const char *shape, int height) {
+    char *out = malloc((size_t)height * 8 + 16);
+    assert(out);
+    char *w = out;
+    if (strcmp(shape, "neg_chain") == 0) {
+        for (int i = 0; i < height; i++) *w++ = '-';
+        *w++ = '1';
+    } else if (strcmp(shape, "mixed_prec") == 0) {
+        w += sprintf(w, "1");
+        for (int i = 0; i < height - 2; i++) w += sprintf(w, "+2*3"); /* tree height = adds + 2 */
+    } else { /* binary */
+        w += sprintf(w, "1");
+        for (int i = 0; i < height - 1; i++) w += sprintf(w, "+1");
+    }
+    *w = 0;
+    return out;
+}
+
+/* Runs one shape: parse, then (unless parse_only) build. Returns 0 if everything came out as
+ * expected; the caller treats any crash as a stack failure. */
+static int run_build_shape(const char *shape, int height, bool as_bool, bool parse_only) {
+    bool neg = strcmp(shape, "neg_chain") == 0;
+    char *expr = NULL;
+    if (neg && height == 0) { /* the deepest the nesting bound accepts */
+        for (int k = 255; k >= 200 && !expr; k--) {
+            char *e = gen_expr(shape, k);
+            char *src = malloc(strlen(e) + 64);
+            sprintf(src, "manna v0;\nfn f() -> i64 { return %s; }\n", e);
+            parse_src(src);
+            bool ok = g_ps.diags.len == 0;
+            parse_done();
+            free(src);
+            if (ok) expr = e; else free(e);
+        }
+        assert(expr);
+    } else {
+        expr = gen_expr(shape, height);
+    }
+    char *src = malloc(strlen(expr) + 64);
+    assert(src);
+    sprintf(src, "manna v0;\nfn f() -> %s { return %s; }\n", as_bool ? "bool" : (neg ? "i64" : "u64"), expr);
+    printf("levels=%d\n", neg ? (int)strlen(expr) - 1 : height); /* neg_chain: the minus signs the parser accepted */
+    parse_src(src);
+    assert(g_ps.diags.len == 0);
+    if (!parse_only) {
+        static IrState st;
+        ir_state_init(&st, 16 << 20);
+        IrModule *m = NULL;
+        IrStatus r = ir_build(&st, &g_ps.diags, &g_items, &m);
+        if (as_bool) {
+            assert(r == IR_ERRORS && st.diags.len == 1 && strcmp(st.diags.items[0].code, "E0223") == 0);
+        } else {
+            assert(r == IR_BUILT);
+        }
+        ir_state_destroy(&st);
+    }
+    parse_done();
+    free(src);
+    free(expr);
+    return 0;
+}
+
+static void test_builder_stack(void) {
+    for (int i = 0; i < N_BUILD_SHAPES; i++) {
+        if (build_shapes[i].live_step) {
+            printf("PENDING: builder stack: %s (becomes live at step %d)\n", build_shapes[i].name, build_shapes[i].live_step);
+            continue;
+        }
+        int height = strcmp(build_shapes[i].name, "neg_chain") == 0 ? 0 : MAX_EXPR_HEIGHT;
+        run_build_shape(build_shapes[i].name, height, false, false);
+        run_build_shape(build_shapes[i].name, height, true, false);
+        printf("PASS: builder stack: %s, built and mismatch-walked at the maximal height\n", build_shapes[i].name);
+    }
+}
+
 int main(int argc, char **argv) {
     setvbuf(stdout, NULL, _IOLBF, 0); /* a hang or abort must not swallow the PASS lines before it */
     if (argc == 2 && strcmp(argv[1], "--stack") == 0) { /* the Makefile's 2 MB (4x) gate */
@@ -1136,6 +1229,14 @@ int main(int argc, char **argv) {
         test_struct_chain_and_ring();
         test_deepest_array_type();
         return 0;
+    }
+    if (argc == 2 && strcmp(argv[1], "--build-stack") == 0) { /* the Makefile's 2 MB (4x) gate */
+        test_builder_stack();
+        return 0;
+    }
+    /* tools/measure_ir_build_stack.sh: --build-shape NAME HEIGHT int|bool [parse-only] */
+    if (argc >= 5 && strcmp(argv[1], "--build-shape") == 0) {
+        return run_build_shape(argv[2], atoi(argv[3]), strcmp(argv[4], "bool") == 0, argc > 5);
     }
     if (argc == 3 && strcmp(argv[1], "--shape") == 0) { /* tools/measure_ir_stack.sh */
         for (int sh = 0; sh < SH_COUNT; sh++) {
@@ -1169,6 +1270,7 @@ int main(int argc, char **argv) {
     test_duplicate_attribute_fix();
     test_struct_chain_and_ring();
     test_deepest_array_type();
+    test_builder_stack();
     test_stack_shapes();
     return 0;
 }

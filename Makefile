@@ -52,7 +52,7 @@ QEMU_FLAGS   := -machine q35 -m 8G -cpu qemu64,+apic,+pdpe1gb \
                 -serial file:serial.log -monitor stdio -no-reboot \
                 -d int,cpu_reset -D qemu.log
 
-.PHONY: all image run debug clean limine stage-esp test-wx test-lexer test-lexer-asan test-arena test-arena-asan test-ast test-ast-asan test-parser-state test-parser-state-asan test-parser-fixes test-parser-fixes-asan test-parser test-parser-asan test-determinism test-ir test-ir-asan test-ir-unit test-ir-unit-asan coverage fuzz fuzz-lexer fuzz-parser measure-height measure-ir-stack
+.PHONY: all image run debug clean limine stage-esp test-wx test-lexer test-lexer-asan test-arena test-arena-asan test-ast test-ast-asan test-parser-state test-parser-state-asan test-parser-fixes test-parser-fixes-asan test-parser test-parser-asan test-determinism test-ir test-ir-asan test-ir-unit test-ir-unit-asan coverage fuzz fuzz-lexer fuzz-parser measure-height measure-ir-stack measure-ir-build-stack
 
 all: $(KERNEL_ELF)
 
@@ -301,12 +301,14 @@ test-ir-unit:
 	$(MANNAC_CC) -std=c11 -Wall -Wextra -O2 -g -o $(IR_TEST_DIR)/ir_test $(IR_TEST_SRCS)
 	sh -c 'ulimit -s 8192 && $(IR_TEST_DIR)/ir_test'
 	sh -c 'ulimit -s 2048 && $(IR_TEST_DIR)/ir_test --stack'
+	sh -c 'ulimit -s 2048 && $(IR_TEST_DIR)/ir_test --build-stack'
 
 test-ir-unit-asan:
 	@mkdir -p $(IR_TEST_DIR)
 	$(MANNAC_CC) -std=c11 -Wall -Wextra -g -fsanitize=address,undefined -o $(IR_TEST_DIR)/ir_test-asan $(IR_TEST_SRCS)
 	sh -c 'ulimit -s 8192 && $(IR_TEST_DIR)/ir_test-asan'
 	sh -c 'ulimit -s 2048 && $(IR_TEST_DIR)/ir_test-asan --stack'
+	sh -c 'ulimit -s 2048 && $(IR_TEST_DIR)/ir_test-asan --build-stack'
 
 # Per-file coverage for mannac (lexer, arena, ast, diag, parser_state, ir*),
 # via clang's source-based coverage (llvm-profdata/llvm-cov, bundled with
@@ -378,3 +380,8 @@ measure-height:
 # the 4x gate (tools/measure_ir_stack.sh). Not part of `test-*`/CI.
 measure-ir-stack:
 	CC=$(MANNAC_CC) ./tools/measure_ir_stack.sh
+
+# Typed-IR step 6c: per-level stack cost of the real builder on maximal parser-built trees
+# and the 4x gate (tools/measure_ir_build_stack.sh). Not part of `test-*`/CI.
+measure-ir-build-stack:
+	CC=$(MANNAC_CC) ./tools/measure_ir_build_stack.sh
