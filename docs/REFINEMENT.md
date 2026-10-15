@@ -37,6 +37,9 @@ The first entries recorded under this loop. The entries themselves live in `docs
 | 2026-10-11 | Change-impact report | Bryden | tooling, after effects + contracts | not run | parked 2026-10-13 |
 | 2026-10-14 | Decide the generics story before the v1 stdlib | lesson | v1, before the stdlib | not run | candidate |
 | 2026-10-14 | Small, in-tree v1 standard library, scoped to Deus | lesson | v1, after the generics entry (2026-10-14) is decided | not run | candidate |
+| 2026-10-15 | Capabilities instead of ambient authority | lesson | v1, decided together with effects | not run | candidate |
+| 2026-10-15 | Bugs trap the sandbox; errors are values | lesson | M3 (Wasm runtime), with the spec line at v1 | not run | candidate |
+| 2026-10-15 | AI fluency scorecard | lesson | after the typed IR stage | not applicable | candidate |
 
 **Review 2026-10-13 (`m2-parser-v0.1`):** the six 2026-10-11 candidates are **Parked** (reason: none belongs in the IR skeleton); none promoted, none rejected. §2 says "pick at most 3 candidates"; reviewing all six is a deliberate deviation: the cap exists to limit promotions and Admission Test runs, and neither happened (no Admission Test was run, nothing entered the next stage's plan). Recorded in each entry's status line in `docs/IDEAS.md`.
 

@@ -128,6 +128,43 @@ Earliest milestone boundary: v1, after the generics entry (2026-10-14) is decide
 Admission Test status: not run.
 Status: candidate
 
+## 2026-10-15: Capabilities instead of ambient authority
+
+Title: Capabilities instead of ambient authority
+Date: 2026-10-15
+Source: lesson (Microsoft Midori: https://joeduffyblog.com/2015/11/10/objects-as-secure-capabilities/)
+Problem it solves: code can reach anything global; effects alone say what kind of thing a function touches, not which thing.
+Helps humans how / helps AI how: a reviewer sees every power a program has in main's inputs; an AI agent can only use what it was handed.
+Shape: no mutable globals and no global clock; access to I/O, time and hardware is an unforgeable value passed in; an app manifest decides what main receives; declared effects (M2_PLAN §6) are checked against the capabilities held.
+Relation: extends the 2026-10-09 "Capability grants (post-M3)" entry; does not replace it.
+Earliest milestone boundary: v1, decided together with effects.
+Admission Test status: not run (watch P21 tokens; supports P3 local reasoning).
+Status: candidate
+
+## 2026-10-15: Bugs trap the sandbox; errors are values
+
+Title: Bugs trap the sandbox; errors are values
+Date: 2026-10-15
+Source: lesson (Midori error model: https://joeduffyblog.com/2016/02/07/the-error-model/)
+Problem it solves: nothing yet says what a trap (overflow, out-of-bounds, failed contract) ends: the task, the app, or the system.
+Helps humans how / helps AI how: one rule; a bug never needs handling code, an expected failure always does.
+Shape: a bug traps and ends only its own Wasm instance, never the kernel or other apps; expected failures are `!T` values (MANNA_PRINCIPLES Part 4 item 8). A trap inside [kernel_hook] code is a kernel panic; say so in the spec.
+Earliest milestone boundary: M3 (Wasm runtime), with the spec line at v1.
+Admission Test status: not run.
+Status: candidate
+
+## 2026-10-15: AI fluency scorecard
+
+Title: AI fluency scorecard
+Date: 2026-10-15
+Source: lesson (AI agents fail to compile in unfamiliar languages and fall back to Python: https://www.khoury.northeastern.edu/~arjunguha/main/papers/wu-tokenmaxxing.html)
+Problem it solves: "AI-friendly" is a claim with no number behind it.
+Helps humans how / helps AI how: shows whether the spec card, corpus and fix-its actually help an AI write Manna.
+Shape: a fixed set of small tasks; a pinned model name and version; N runs per task; report the first-try `manna check` pass rate, fix-loop rounds to zero diagnostics, and tokens used. A row is added to REFINEMENT.md section 4 at each tag once it exists. Separate from the "Token benchmark suite" entry (that measures code size; this measures AI success). No AI-friendliness claim in VISION/README/STATUS without a run log.
+Earliest milestone boundary: after the typed IR stage (first-try pass needs type errors).
+Admission Test status: not applicable (tooling, not a language feature).
+Status: candidate
+
 ## 2026-10-09: Considered and rejected ("Omni/AetherOS" brainstorm)
 
 One line of why each, so they aren't re-proposed:
