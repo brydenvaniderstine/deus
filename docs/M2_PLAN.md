@@ -709,7 +709,7 @@ A function with no return type prints `(returns)`, matching `(return_type)`. A u
 | `return` | `return e;` requires a non-unit function and `e` of its return type; `return;` only in a unit function. |
 | missing return | A non-unit function must **definitely return**, structurally: its body ends in `return`, or in an `if`/`else` whose two branches both definitely return. Loops never count (`while true { return 1; }` still needs a trailing `return`). Unreachable code after `return`/`break`/`continue` is **allowed** (v0 has no warnings, `diag.h`). |
 | expression statement | Any well-typed expression; the value may be discarded. |
-| assignment | The target must be an lvalue: `IDENT`, `lvalue.field`, or `lvalue[idx]` (base array or slice). Anything else (a call, conversion, array literal, number, slice expression, parenthesized non-lvalue) is an error. The value is `check(v, type(target))`; types must be equal. |
+| assignment | The target must be an lvalue: `IDENT`, `lvalue.field`, or `lvalue[idx]` (base array or slice). Anything else (a call, conversion, array literal, number, slice expression, any parenthesized target, `(x) = 1` included (the lvalue productions have no parentheses)) is an error. The value is `check(v, type(target))`; types must be equal. |
 
 #### Calls and struct construction
 
