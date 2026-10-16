@@ -1,0 +1,21 @@
+(fn@2:1-9:2 fn:f
+  (params (param@2:6-2:11 n #0 u8))
+  (returns)
+  (block@2:13-9:2
+    (for@3:5-8:6
+      (let@3:9-3:23 i #1 u8
+        (int@3:21-3:22 0 u8))
+      (binary@3:24-3:29 < bool
+        (local@3:24-3:25 i #1 u8)
+        (local@3:28-3:29 n #0 u8))
+      (assign@3:31-3:40
+        (local@3:31-3:32 i #1 u8)
+        (binary@3:35-3:40 + u8
+          (local@3:35-3:36 i #1 u8)
+          (int@3:39-3:40 1 u8)))
+      (block@3:41-8:6
+        (while@4:9-6:10
+          (bool@4:15-4:19 true bool)
+          (block@4:20-6:10
+            (break@5:13-5:19)))
+        (continue@7:9-7:18)))))

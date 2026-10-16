@@ -720,9 +720,6 @@ static void test_unimplemented(void) {
         {"manna v0;\nfn f() { return; }\n", "bare return"},
         {"manna v0;\nfn ok() { }\nfn f() { return; }\n", "bare return"},       /* after a buildable function */
         {"manna v0;\nfn f() { return 1; }\n", "return in a unit function"},
-        {"manna v0;\nfn f() { while true { } }\n", "loops, break and continue"},
-        {"manna v0;\nfn f() { for let i: u8 = 0; true; i = 1 { } }\n", "loops, break and continue"},
-        {"manna v0;\nfn f() { break; }\n", "loops, break and continue"},
         {"manna v0;\nfn f() -> u8 { return g(); }\nfn g() -> u8 { }\n", "calls"},
         {"manna v0;\nfn f() { g(); }\nfn g() { }\n", "calls"},
         {"manna v0;\nstruct P { x: u8, }\nfn f(p: P) { p.x = 1; }\n", "assignment to a field or an element"},

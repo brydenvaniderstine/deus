@@ -3,9 +3,8 @@
 
 /* Function bodies (typed-IR step 7, docs/M2_PLAN.md "Names, scopes, items" and "Operators and
  * statements"): block scopes, `let`, assignment and its lvalue rule, expression statements,
- * `return expr;` and - pulled forward from step 8, because a bare `{ }` is not a statement and
- * `if` is the only way to open an inner block to test scoping with - `if`/`else`. Loops,
- * `break` and `continue` stop the build as IR_UNIMPLEMENTED. */
+ * `return expr;`, `if`/`else` (pulled forward from step 8 at step 7), and the loops: `while`, `for`,
+ * `break`, `continue`. */
 
 /* ---- visible names ---- */
 
@@ -168,6 +167,32 @@ static IrStmt *build_if(BodyCtx *bc, const Stmt *s) {
     return ir_stmt_if(bc->st, s->span, cond, then_b, else_b);
 }
 
+/* `while cond { body }`: the condition is checked against bool; `break`/`continue` are legal in
+ * the body (lexically: an `if` inside the body is still inside the loop). */
+static IrStmt *build_while(BodyCtx *bc, const Stmt *s) {
+    IrExpr *cond = ir_check_expr(bc, s->as.while_stmt.cond, ir_type_bool(bc->st));
+    bc->loop_depth++;
+    IrStmt *body = build_block(bc, s->as.while_stmt.body);
+    bc->loop_depth--;
+    return ir_stmt_while(bc->st, s->span, cond, body);
+}
+
+/* `for init; cond; step { body }` stays a `for` (so `continue` keeps meaning "run the step").
+ * The loop opens its own scope: an `init` that is a `let` is visible in the condition, the step
+ * and the body and gone after the loop, and is checked against every visible name like any
+ * other `let` (E0213). Only the body counts as inside the loop for `break`/`continue`. */
+static IrStmt *build_for(BodyCtx *bc, const Stmt *s) {
+    body_push_scope(bc);
+    IrStmt *init = build_stmt(bc, s->as.for_stmt.init);
+    IrExpr *cond = ir_check_expr(bc, s->as.for_stmt.cond, ir_type_bool(bc->st));
+    IrStmt *step = build_stmt(bc, s->as.for_stmt.step);
+    bc->loop_depth++;
+    IrStmt *body = build_block(bc, s->as.for_stmt.body);
+    bc->loop_depth--;
+    body_pop_scope(bc);
+    return ir_stmt_for(bc->st, s->span, init, cond, step, body);
+}
+
 static IrStmt *build_stmt(BodyCtx *bc, const Stmt *s) {
     IrState *st = bc->st;
     switch (s->kind) {
@@ -179,19 +204,25 @@ static IrStmt *build_stmt(BodyCtx *bc, const Stmt *s) {
             return ir_stmt_expr(st, s->span, ir_infer_expr(bc, s->as.expr_stmt.expr));
         case STMT_IF:
             return build_if(bc, s);
+        case STMT_WHILE:
+            return build_while(bc, s);
+        case STMT_FOR:
+            return build_for(bc, s);
+        case STMT_BREAK:
+            if (bc->loop_depth == 0) ir_error(st, diag_ir_outside_loop(s->span, "break"));
+            return ir_stmt_break(st, s->span);
+        case STMT_CONTINUE:
+            if (bc->loop_depth == 0) ir_error(st, diag_ir_outside_loop(s->span, "continue"));
+            return ir_stmt_continue(st, s->span);
         case STMT_RETURN: {
             if (!s->as.return_stmt.value) ir_unimplemented(st, "bare return (step 9)");
             if (bc->func->ret->kind == IR_T_UNIT) ir_unimplemented(st, "return in a unit function (step 9)");
             return ir_stmt_return(st, s->span, ir_check_expr(bc, s->as.return_stmt.value, bc->func->ret));
         }
-        case STMT_WHILE:
-        case STMT_FOR:
-        case STMT_BREAK:
-        case STMT_CONTINUE:
         case STMT_BLOCK:
             break;
     }
-    ir_unimplemented(st, "loops, break and continue (step 8)");
+    ir_unimplemented(st, "a bare block statement"); /* the parser never builds one */
 }
 
 IrStmt *ir_build_body(IrState *st, Ctx *decls, IrFunc *f, const Stmt *body) {

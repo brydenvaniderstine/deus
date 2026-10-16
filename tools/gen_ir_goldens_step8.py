@@ -1,4 +1,4 @@
-# Generates the typed-IR step 8 goldens (tests/ir/op_*: the per-operator type matrix, unary operators, literal-on-the-left, no-cascade) from rules written here, with columns computed from the source text, independent of the C checker; run from the repo root.
+# Generates the typed-IR step 8 goldens (tests/ir/op_*, loop_*: the per-operator type matrix, unary operators, literal-on-the-left, no-cascade, loops) from rules written here, with columns computed from the source text, independent of the C checker; run from the repo root.
 import re
 import gen_ir_goldens_step7 as g
 
@@ -246,8 +246,90 @@ def sibling_and_misc():
     g.put("op_precedence_ok", L, g.func(L, 2, 6, "f", params, "", g.body(L, 2, 6,
         g.stmt(L, 3, s1, "let", "x #7 bool", lt), g.stmt(L, 4, s2, "let", "y #8 bool", orn), g.stmt(L, 5, s3, "let", "z #9 bool", an))))
 
+def loops():
+    outside = lambda w: "'%s' outside a loop" % w
+    # ---- positive ----
+    L = ["manna v0;", "fn f(n: u32) {", "    let i: u32 = 0;", "    while i < n {", "        i = i + 1;", "    }", "}"]
+    def lc(ln, name, slot, t, occ=0): return g.local(L, ln, name, slot, t, occ)
+    cond = g.N("binary", g.sp(L, 4, "i < n"), "< bool", lc(4, "i", 1, "u32"), lc(4, "n", 0, "u32"))
+    assign = g.stmt(L, 5, "i = i + 1;", "assign", "", lc(5, "i", 1, "u32"),
+                    g.N("binary", g.sp(L, 5, "i + 1"), "+ u32", lc(5, "i", 1, "u32", occ=1), g.num(L, 5, "1", "u32")))
+    wh = g.N("while", ml(L, 4, "while", 6), "", cond, g.block(g.span2(4, L[3].rindex("{") + 1, 6, 6), assign))
+    g.put("loop_while_basic", L, g.func(L, 2, 7, "f", [("n: u32", "n", "u32")], "", g.body(L, 2, 7,
+        g.stmt(L, 3, "let i: u32 = 0;", "let", "i #1 u32", g.num(L, 3, "0", "u32")), wh)))
+
+    L = ["manna v0;", "fn f(n: u32) {", "    for let i: u32 = 0; i < n; i = i + 1 {", "    }", "}"]
+    init = g.stmt(L, 3, "let i: u32 = 0;", "let", "i #1 u32", g.num(L, 3, "0", "u32"))
+    cond = g.N("binary", g.sp(L, 3, "i < n"), "< bool", g.local(L, 3, "i", 1, "u32", 1), g.local(L, 3, "n", 0, "u32"))
+    step = g.stmt(L, 3, "i = i + 1", "assign", "", g.local(L, 3, "i", 1, "u32", 2),
+                  g.N("binary", g.sp(L, 3, "i + 1"), "+ u32", g.local(L, 3, "i", 1, "u32", 3), g.num(L, 3, "1", "u32")))
+    fr = g.N("for", ml(L, 3, "for", 4), "", init, cond, step, g.block(g.span2(3, L[2].rindex("{") + 1, 4, 6)))
+    g.put("loop_for_basic", L, g.func(L, 2, 5, "f", [("n: u32", "n", "u32")], "", g.body(L, 2, 5, fr)))
+
+    L = ["manna v0;", "fn f(c: bool) {", "    while true {", "        if c {", "            break;", "        } else {", "            continue;", "        }", "    }", "}"]
+    brk = g.stmt(L, 5, "break;", "break", "")
+    cnt = g.stmt(L, 7, "continue;", "continue", "")
+    iff = g.N("if", ml(L, 4, "if", 8), "", g.local(L, 4, "c", 0, "bool"),
+              g.block(g.span2(4, L[3].rindex("{") + 1, 6, L[5].index("}") + 2), brk),
+              g.block(g.span2(6, L[5].rindex("{") + 1, 8, L[7].index("}") + 2), cnt))
+    wh = g.N("while", ml(L, 3, "while", 9), "", g.boolean(L, 3, "true"), g.block(g.span2(3, L[2].rindex("{") + 1, 9, 6), iff))
+    g.put("loop_break_continue_ok", L, g.func(L, 2, 10, "f", [("c: bool", "c", "bool")], "", g.body(L, 2, 10, wh)))
+
+    L = ["manna v0;", "fn f() {", "    for let i: u8 = 0; i < 3; i = i + 1 {", "    }", "    for let i: u8 = 0; i < 3; i = i + 1 {", "        i;", "    }", "}"]
+    def forloop(l1, l2, slot, body_stmts):
+        i0 = g.stmt(L, l1, "let i: u8 = 0;", "let", "i #%d u8" % slot, g.num(L, l1, "0", "u8"))
+        cn = g.N("binary", g.sp(L, l1, "i < 3"), "< bool", g.local(L, l1, "i", slot, "u8", 1), g.num(L, l1, "3", "u8"))
+        sp_ = g.stmt(L, l1, "i = i + 1", "assign", "", g.local(L, l1, "i", slot, "u8", 2),
+                     g.N("binary", g.sp(L, l1, "i + 1"), "+ u8", g.local(L, l1, "i", slot, "u8", 3), g.num(L, l1, "1", "u8")))
+        return g.N("for", ml(L, l1, "for", l2), "", i0, cn, sp_, g.block(g.span2(l1, L[l1 - 1].rindex("{") + 1, l2, 6), *body_stmts))
+    g.put("loop_for_init_scope_reuse", L, g.func(L, 2, 8, "f", [], "", g.body(L, 2, 8,
+        forloop(3, 4, 0, []), forloop(5, 7, 1, [g.stmt(L, 6, "i;", "expr_stmt", "", g.local(L, 6, "i", 1, "u8"))]))))
+
+    L = ["manna v0;", "fn f() {", "    let i: u8 = 0;", "    for i = 1; i < 3; i = i + 1 {", "    }", "}"]
+    init = g.stmt(L, 4, "i = 1;", "assign", "", g.local(L, 4, "i", 0, "u8"), g.num(L, 4, "1", "u8"))
+    cn = g.N("binary", g.sp(L, 4, "i < 3"), "< bool", g.local(L, 4, "i", 0, "u8", 1), g.num(L, 4, "3", "u8"))
+    sp_ = g.stmt(L, 4, "i = i + 1", "assign", "", g.local(L, 4, "i", 0, "u8", 2),
+                 g.N("binary", g.sp(L, 4, "i + 1"), "+ u8", g.local(L, 4, "i", 0, "u8", 3), g.num(L, 4, "1", "u8", occ=1)))
+    fr = g.N("for", ml(L, 4, "for", 5), "", init, cn, sp_, g.block(g.span2(4, L[3].rindex("{") + 1, 5, 6)))
+    g.put("loop_for_assign_init", L, g.func(L, 2, 6, "f", [], "", g.body(L, 2, 6,
+        g.stmt(L, 3, "let i: u8 = 0;", "let", "i #0 u8", g.num(L, 3, "0", "u8")), fr)))
+
+    L = ["manna v0;", "fn f(n: u8) {", "    for let i: u8 = 0; i < n; i = i + 1 {", "        while true {", "            break;", "        }", "        continue;", "    }", "}"]
+    i0 = g.stmt(L, 3, "let i: u8 = 0;", "let", "i #1 u8", g.num(L, 3, "0", "u8"))
+    cn = g.N("binary", g.sp(L, 3, "i < n"), "< bool", g.local(L, 3, "i", 1, "u8", 1), g.local(L, 3, "n", 0, "u8"))
+    sp_ = g.stmt(L, 3, "i = i + 1", "assign", "", g.local(L, 3, "i", 1, "u8", 2),
+                 g.N("binary", g.sp(L, 3, "i + 1"), "+ u8", g.local(L, 3, "i", 1, "u8", 3), g.num(L, 3, "1", "u8")))
+    wh = g.N("while", ml(L, 4, "while", 6), "", g.boolean(L, 4, "true"), g.block(g.span2(4, L[3].rindex("{") + 1, 6, 10), g.stmt(L, 5, "break;", "break", "")))
+    fr = g.N("for", ml(L, 3, "for", 8), "", i0, cn, sp_, g.block(g.span2(3, L[2].rindex("{") + 1, 8, 6), wh, g.stmt(L, 7, "continue;", "continue", "")))
+    g.put("loop_nested_break_continue", L, g.func(L, 2, 9, "f", [("n: u8", "n", "u8")], "", g.body(L, 2, 9, fr)))
+
+    # ---- errors ----
+    L = ["manna v0;", "fn f(c: bool) {", "    break;", "    continue;", "    if c {", "        break;", "    } else {", "        continue;", "    }", "}"]
+    g.errors("loop_break_outside_a_loop", L, [g.err(L, 3, "break", "E0275", outside("break")), g.err(L, 4, "continue", "E0275", outside("continue")),
+                                              g.err(L, 6, "break", "E0275", outside("break")), g.err(L, 8, "continue", "E0275", outside("continue"))])
+    L = ["manna v0;", "fn f(c: bool) {", "    while c {", "        break;", "    }", "    break;", "    for let i: u8 = 0; i < 3; i = i + 1 {", "    }", "    continue;", "}"]
+    g.errors("loop_break_after_a_loop", L, [g.err(L, 6, "break", "E0275", outside("break")), g.err(L, 9, "continue", "E0275", outside("continue"))])
+    already = "'%s' is already declared in this function"
+    L = ["manna v0;", "fn f(i: u8) {", "    let k: u8 = 0;", "    for let i: u8 = 0; i < 3; i = i + 1 {", "    }", "    for let k: u8 = 0; k < 3; k = k + 1 {", "    }",
+         "    for let j: u8 = 0; j < 3; j = j + 1 {", "        let j: u8 = 2;", "    }", "}"]
+    g.errors("loop_for_init_redeclare", L, [g.err(L, 4, "i", "E0213", already % "i"), g.err(L, 6, "k", "E0213", already % "k"), g.err(L, 9, "j", "E0213", already % "j")])
+    L = ["manna v0;", "fn f() {", "    for let i: u8 = 0; i < 3; i = i + 1 {", "    }", "    i;", "}"]
+    g.errors("loop_for_init_not_visible_after", L, [g.err(L, 5, "i", "E0230", "unknown name 'i'")])
+    L = ["manna v0;", "fn f() {", "    for let i: u8 = 0; i < 3; i = i + 1 {", "        for let i: u8 = 0; i < 3; i = i + 1 {", "        }", "    }", "}"]
+    g.errors("loop_for_nested_same_name", L, [g.err(L, 4, "i", "E0213", already % "i")])
+    L = ["manna v0;", "fn f(a: u8) {", "    while 1 {", "    }", "    for let i: u8 = 0; i; i = 1 {", "    }", "    while nope {", "    }", "    while a {", "    }", "}"]
+    g.errors("loop_condition_must_be_bool", L, [g.err(L, 3, "1", "E0223", "type mismatch: expected bool, found integer literal"),
+                                                 g.err(L, 5, "i", "E0223", "type mismatch: expected bool, found u8", occ=1),
+                                                 g.err(L, 7, "nope", "E0230", "unknown name 'nope'"),
+                                                 g.err(L, 9, "a", "E0223", "type mismatch: expected bool, found u8")])
+    L = ["manna v0;", "fn f() {", "    while 0 == 1 {", "    }", "}"]
+    g.errors("loop_condition_error_is_silent", L, [g.err(L, 3, "0", "E0225", "cannot infer the type of this integer literal; annotate it")])
+    L = ["manna v0;", "fn f() {", "    for let i: u8 = 0; i < 3; i = true {", "    }", "}"]
+    g.errors("loop_for_step_is_checked", L, [g.err(L, 3, "true", "E0223", "type mismatch: expected u8, found bool")])
+
 if __name__ == "__main__":
     for op, nm in OPS:
         matrix_for(op, nm)
     unary()
     sibling_and_misc()
+    loops()

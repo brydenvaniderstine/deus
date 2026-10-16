@@ -1,0 +1,10 @@
+manna v0;
+fn f(c: bool) {
+    while c {
+        break;
+    }
+    break;
+    for let i: u8 = 0; i < 3; i = i + 1 {
+    }
+    continue;
+}

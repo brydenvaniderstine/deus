@@ -1,0 +1,10 @@
+manna v0;
+fn f(c: bool) {
+    while true {
+        if c {
+            break;
+        } else {
+            continue;
+        }
+    }
+}

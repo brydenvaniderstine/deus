@@ -1,0 +1,5 @@
+ERRORS:
+3:11 E0223 type mismatch: expected bool, found integer literal
+5:24 E0223 type mismatch: expected bool, found u8
+7:11 E0230 unknown name 'nope'
+9:11 E0223 type mismatch: expected bool, found u8

@@ -314,6 +314,15 @@ Diagnostic diag_ir_operand_types_differ(Arena *a, Span at, const char *left, con
     return d;
 }
 
+Diagnostic diag_ir_outside_loop(Span at, const char *word) {
+    Diagnostic d = {0};
+    d.code = "E0275";
+    d.severity = DIAG_ERROR;
+    d.message = word[0] == 'b' ? "'break' outside a loop" : "'continue' outside a loop";
+    d.span = at;
+    return d;
+}
+
 Diagnostic diag_ir_not_assignable(Span at) {
     Diagnostic d = {0};
     d.code = "E0270";

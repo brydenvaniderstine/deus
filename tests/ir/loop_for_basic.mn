@@ -1,0 +1,5 @@
+manna v0;
+fn f(n: u32) {
+    for let i: u32 = 0; i < n; i = i + 1 {
+    }
+}

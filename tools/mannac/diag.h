@@ -178,6 +178,9 @@ Diagnostic diag_ir_not_a_value(Arena *a, Span at, const char *name, bool is_stru
 Diagnostic diag_ir_operand_types_differ(Arena *a, Span at, const char *left, const char *right,
                                         Span left_span, Span right_span, bool wrap_left, const char *fix_to_type);
 
+/* E0275: "'break' outside a loop" / "'continue' outside a loop" - at the statement. */
+Diagnostic diag_ir_outside_loop(Span at, const char *word);
+
 /* E0270: "can't assign to this expression" - at the whole target. */
 Diagnostic diag_ir_not_assignable(Span at);
 

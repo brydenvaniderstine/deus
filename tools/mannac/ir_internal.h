@@ -142,6 +142,7 @@ typedef struct {
     size_t   *scope_start; /* func->locals.len when each open block was entered */
     size_t    depth;     /* open blocks */
     size_t    scope_cap;
+    size_t    loop_depth; /* enclosing `while`/`for` bodies: `break`/`continue` are legal only inside one */
 } BodyCtx;
 
 /* Starts a body: registers the parameters (already in func->locals, slots 0..n_params-1). */

@@ -1,0 +1,5 @@
+ERRORS:
+3:5 E0275 'break' outside a loop
+4:5 E0275 'continue' outside a loop
+6:9 E0275 'break' outside a loop
+8:9 E0275 'continue' outside a loop

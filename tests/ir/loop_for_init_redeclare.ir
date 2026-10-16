@@ -1,0 +1,4 @@
+ERRORS:
+4:13 E0213 'i' is already declared in this function
+6:13 E0213 'k' is already declared in this function
+9:13 E0213 'j' is already declared in this function

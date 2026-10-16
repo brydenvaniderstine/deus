@@ -1,0 +1,9 @@
+manna v0;
+fn f(n: u8) {
+    for let i: u8 = 0; i < n; i = i + 1 {
+        while true {
+            break;
+        }
+        continue;
+    }
+}
