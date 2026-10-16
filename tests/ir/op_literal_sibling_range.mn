@@ -1,0 +1,7 @@
+manna v0;
+fn f(x: u8, y: i8) {
+    let a = 256 + x;
+    let b = x + 256;
+    let c = 300 == x;
+    let d = -129 < y;
+}

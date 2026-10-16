@@ -1,0 +1,14 @@
+(fn@2:1-2:33 fn:case_1
+  (params (param@2:11-2:16 a #0 i8))
+  (returns)
+  (block@2:18-2:33
+    (let@2:20-2:31 r #1 i8
+      (unary@2:28-2:30 - i8
+        (local@2:29-2:30 a #0 i8)))))
+(fn@3:1-3:34 fn:case_2
+  (params (param@3:11-3:17 a #0 i64))
+  (returns)
+  (block@3:19-3:34
+    (let@3:21-3:32 r #1 i64
+      (unary@3:29-3:31 - i64
+        (local@3:30-3:31 a #0 i64)))))

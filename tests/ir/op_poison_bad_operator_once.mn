@@ -1,0 +1,8 @@
+manna v0;
+fn f(a: bool, b: bool) {
+    let r = a + b;
+    let s = r + 1;
+    let t: u8 = r;
+    let u = -r;
+    let v = r < s;
+}

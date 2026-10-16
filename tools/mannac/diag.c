@@ -293,6 +293,27 @@ Diagnostic diag_ir_not_a_value(Arena *a, Span at, const char *name, bool is_stru
     return d;
 }
 
+Diagnostic diag_ir_operand_types_differ(Arena *a, Span at, const char *left, const char *right,
+                                        Span left_span, Span right_span, bool wrap_left, const char *fix_to_type) {
+    Diagnostic d = {0};
+    d.code = "E0261";
+    d.severity = DIAG_ERROR;
+    d.message = arena_sprintf(a, "operands have different types: %s and %s; convert one explicitly", left, right);
+    d.span = at;
+    if (fix_to_type) {
+        Span op = wrap_left ? left_span : right_span;
+        DiagFix *fix = arena_alloc(a, sizeof(DiagFix), alignof(DiagFix));
+        fix->title = arena_sprintf(a, "convert the %s operand to %s", wrap_left ? "left" : "right", fix_to_type);
+        fix->n_edits = 2;
+        fix->edits[0].span = (Span){op.start_line, op.start_col, op.start_line, op.start_col}; /* zero-width, before */
+        fix->edits[0].text = arena_sprintf(a, "%s(", fix_to_type);
+        fix->edits[1].span = (Span){op.end_line, op.end_col, op.end_line, op.end_col};         /* zero-width, after */
+        fix->edits[1].text = ")";
+        d.fix = fix;
+    }
+    return d;
+}
+
 Diagnostic diag_ir_not_assignable(Span at) {
     Diagnostic d = {0};
     d.code = "E0270";

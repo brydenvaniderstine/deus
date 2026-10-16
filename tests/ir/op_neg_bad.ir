@@ -1,0 +1,5 @@
+ERRORS:
+3:27 E0260 operator '-' is not defined for u8
+4:29 E0260 operator '-' is not defined for bool
+5:26 E0260 operator '-' is not defined for P
+6:28 E0260 operator '-' is not defined for u32

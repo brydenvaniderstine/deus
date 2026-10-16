@@ -1,0 +1,5 @@
+ERRORS:
+3:13 E0224 integer literal 256 does not fit in u8
+4:17 E0224 integer literal 256 does not fit in u8
+5:13 E0224 integer literal 300 does not fit in u8
+6:13 E0224 integer literal -129 does not fit in i8

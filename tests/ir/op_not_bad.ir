@@ -1,0 +1,4 @@
+ERRORS:
+3:27 E0260 operator '!' is not defined for u8
+4:27 E0260 operator '!' is not defined for i8
+5:26 E0260 operator '!' is not defined for P

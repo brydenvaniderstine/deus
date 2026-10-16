@@ -1,0 +1,4 @@
+manna v0;
+fn f(a: u8, b: i8, c: u8) {
+    let r = (a + b) * c;
+}

@@ -1,0 +1,7 @@
+(fn@2:1-2:35 fn:case_1
+  (params (param@2:11-2:18 a #0 bool))
+  (returns)
+  (block@2:20-2:35
+    (let@2:22-2:33 r #1 bool
+      (unary@2:30-2:32 ! bool
+        (local@2:31-2:32 a #0 bool)))))

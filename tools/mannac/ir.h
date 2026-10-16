@@ -86,6 +86,7 @@ typedef struct {
     IrTypeTable  composites;
     Span         progress;     /* the declaration being built: where E0201 reports */
     const char  *unimplemented; /* set with IR_UNIMPLEMENTED: the construct step 3 cannot build yet */
+    size_t       expr_visits;   /* expression nodes visited by the checker this build (tests prove the checker is linear) */
 } IrState;
 
 /* An IrState used across a setjmp/longjmp must have static (or otherwise
@@ -282,3 +283,8 @@ IrStatus ir_build(IrState *st, const DiagList *parse_diags, const NodeList *item
 /* Stops the build with IR_UNIMPLEMENTED (st->unimplemented names the construct): unwinds
  * to ir_build, so it may be called from any depth. Never returns. */
 _Noreturn void ir_unimplemented(IrState *st, const char *what);
+
+/* Source spelling of an operator (`+`, `<<`, `&&`, `-`, `!`, ...): shared by the dump and the
+ * diagnostics. */
+const char *ir_binop_text(BinOp op);
+const char *ir_unop_text(UnOp op);

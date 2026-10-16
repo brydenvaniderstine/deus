@@ -1,0 +1,6 @@
+manna v0;
+fn f(a: u8, b: u8) {
+    let r: u16 = a + b;
+    let s: bool = a + b;
+    let t: u8 = a < b;
+}

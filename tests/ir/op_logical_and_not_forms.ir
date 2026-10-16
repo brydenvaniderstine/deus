@@ -1,0 +1,6 @@
+ERRORS:
+3:14 E0223 type mismatch: expected bool, found integer literal
+4:13 E0260 operator '!' is not defined for u8
+5:13 E0223 type mismatch: expected bool, found integer literal
+6:13 E0260 operator '&&' is not defined for u8
+7:18 E0223 type mismatch: expected bool, found integer literal

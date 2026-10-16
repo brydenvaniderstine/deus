@@ -12,13 +12,6 @@
  * span, scalars) is printed by non-recursive helpers. The measured cost is in
  * ir_test.c / tools/measure_ir_stack.sh, not asserted here. */
 
-static const char *const unop_names[] = {"!", "-", "~"}; /* UnOp order: NOT, NEG, BITNOT */
-static const char *const binop_names[] = {
-    "+", "-", "*", "/", "%", "&", "|", "^", "<<", ">>", "<", ">", "<=", ">=", "==", "!=", "&&", "||",
-}; /* BinOp order */
-_Static_assert(UNOP_BITNOT == 2, "unop_names must follow UnOp");
-_Static_assert(BINOP_OR == 17, "binop_names must follow BinOp");
-
 static void nl_indent(FILE *out, int depth) {
     fprintf(out, "\n%*s", depth * 2, "");
 }
@@ -58,11 +51,11 @@ static void expr_header(FILE *out, const IrExpr *e) {
             break;
         case IR_E_UNARY:
             open_form(out, "unary", e->span);
-            fprintf(out, " %s", unop_names[e->as.unary.op]);
+            fprintf(out, " %s", ir_unop_text(e->as.unary.op));
             break;
         case IR_E_BINARY:
             open_form(out, "binary", e->span);
-            fprintf(out, " %s", binop_names[e->as.binary.op]);
+            fprintf(out, " %s", ir_binop_text(e->as.binary.op));
             break;
         case IR_E_CALL:
             open_form(out, "call", e->span);

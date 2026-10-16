@@ -1,0 +1,8 @@
+(fn@2:1-2:48 fn:case_1
+  (params (param@2:11-2:18 a #0 bool) (param@2:20-2:27 b #1 bool))
+  (returns)
+  (block@2:29-2:48
+    (let@2:31-2:46 r #2 bool
+      (binary@2:39-2:45 || bool
+        (local@2:39-2:40 a #0 bool)
+        (local@2:44-2:45 b #1 bool)))))

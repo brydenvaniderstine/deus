@@ -4,3 +4,4 @@ build/
 *.img
 *.log
 limine/
+__pycache__/

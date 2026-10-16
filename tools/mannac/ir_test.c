@@ -723,19 +723,15 @@ static void test_unimplemented(void) {
         {"manna v0;\nfn f() { while true { } }\n", "loops, break and continue"},
         {"manna v0;\nfn f() { for let i: u8 = 0; true; i = 1 { } }\n", "loops, break and continue"},
         {"manna v0;\nfn f() { break; }\n", "loops, break and continue"},
-        {"manna v0;\nfn f(x: i8) -> i8 { return -x; }\n", "a name inside an operator"},
+        {"manna v0;\nfn f() -> u8 { return g(); }\nfn g() -> u8 { }\n", "calls"},
+        {"manna v0;\nfn f() { g(); }\nfn g() { }\n", "calls"},
         {"manna v0;\nstruct P { x: u8, }\nfn f(p: P) { p.x = 1; }\n", "assignment to a field or an element"},
         {"manna v0;\nfn f(a: [2]u8) { a[0] = 1; }\n", "assignment to a field or an element"},
-        {"manna v0;\nfn f() -> u8 { return g(); }\nfn g() -> u8 { }\n", "calls"},
-        {"manna v0;\nfn f() -> u8 { return !1; }\n", "unary '!' and '~'"},
-        {"manna v0;\nfn f() -> u8 { return 1 < 2; }\n", "comparison and logical"},
-        {"manna v0;\nfn f() -> u8 { return 1 + true; }\n", "bool operand"},
-        {"manna v0;\nfn f() -> u8 { return true + 1; }\n", "bool operand"},
-        {"manna v0;\nfn f(x: u8) -> u8 { return 1 + x; }\n", "a name inside an operator"},
-        {"manna v0;\nfn f(x: u8) -> bool { return 1 + x; }\n", "a name inside an operator"}, /* never blamed as a literal mismatch */
-        {"manna v0;\nfn f(x: u8) { let y = 1 + x; }\n", "a name inside an operator"},
-        {"manna v0;\nfn f() -> bool { return -true; }\n", "bool operand"},
+        {"manna v0;\nstruct P { x: u8, }\nfn f(p: P) { p.x; }\n", "field access"},
+        {"manna v0;\nfn f(a: [2]u8) { a[0]; }\n", "arrays, indexing and slicing"},
+        {"manna v0;\nfn f() { [1, 2]; }\n", "arrays, indexing and slicing"},
         {"manna v0;\nfn f() -> u8 { return u8(1); }\n", "conversions"},
+        {"manna v0;\nfn f(x: u8) { let y = x + g(); }\nfn g() -> u8 { }\n", "calls"},    /* an operand the builder cannot type */
     };
     for (size_t i = 0; i < sizeof cases / sizeof cases[0]; i++) {
         parse_src(cases[i].src);
@@ -748,7 +744,7 @@ static void test_unimplemented(void) {
     }
 
     /* Errors found before the unwind win over IR_UNIMPLEMENTED, and the state is reusable. */
-    parse_src("manna v0;\nfn a() -> i8 { return 128; }\nfn b() { while true { } }\n");
+    parse_src("manna v0;\nfn a() -> i8 { return 128; }\nfn b() -> u8 { return g(); }\nfn g() -> u8 { }\n");
     IrModule *m = NULL;
     assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_ERRORS && m == NULL);
     assert(st.diags.len == 1 && strcmp(st.diags.items[0].code, "E0224") == 0);
@@ -757,7 +753,7 @@ static void test_unimplemented(void) {
     assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_BUILT && m != NULL && st.unimplemented == NULL);
     parse_done();
     ir_state_destroy(&st);
-    pass("IR_UNIMPLEMENTED: what step 6 does not build, no diagnostic, no module; real errors win; state reusable");
+    pass("IR_UNIMPLEMENTED: what is not built yet (returns, calls, fields, arrays, conversions), no diagnostic, no module; real errors win; state reusable");
 }
 
 /* `fn f() -> T { return <expr>; }` for one case of the range matrix. Returns the build status;
@@ -1177,6 +1173,192 @@ static void test_scopes_through_the_builder(void) {
     pass("scopes through the builder: 3000 sibling blocks reuse a name, 120 nested blocks");
 }
 
+/* ---- operators (step 8) ---- */
+
+/* Builds `fn f(a: TA, b: TB) { let r = a OP b; }` (struct P declared) and returns the status; the
+ * diagnostics are left in st. */
+static IrStatus build_binary(IrState *st, const char *ta, const char *tb, const char *op, IrModule **m) {
+    char src[256];
+    snprintf(src, sizeof src, "manna v0;\nstruct P { x: u8, }\nfn f(a: %s, b: %s) { let r = a %s b; }\n", ta, tb, op);
+    parse_src(src);
+    assert(g_ps.diags.len == 0);
+    IrStatus r = ir_build(st, &g_ps.diags, &g_items, m);
+    parse_done();
+    return r;
+}
+
+/* The operator rules, written out again here as a table and compared with the checker on EVERY
+ * operator x EVERY pair of operand types (integers, bool, a struct, an array): E0260 when an
+ * operand type is not allowed (the left one first), E0261 when two allowed types differ, else it
+ * builds. The python generator covers the same ground with spans; this covers more types. */
+static void test_operator_matrix(void) {
+    static IrState st;
+    ir_state_init(&st, 32 << 20);
+    static const char *const types[] = {"u8", "i8", "u32", "u64", "i64", "bool", "P", "[2]u8"};
+    static const char *const ops[] = {"+", "-", "*", "/", "%", "&", "|", "^", "<<", ">>",
+                                      "<", ">", "<=", ">=", "==", "!=", "&&", "||"};
+    int cases = 0;
+    for (size_t o = 0; o < 18; o++) {
+        bool logical = o >= 16, equality = o == 14 || o == 15;
+        for (size_t l = 0; l < 8; l++) {
+            for (size_t r = 0; r < 8; r++) {
+                bool lint = l < 5, rint = r < 5, lbool = l == 5, rbool = r == 5;
+                bool lok = logical ? lbool : (lint || (equality && lbool));
+                bool rok = logical ? rbool : (rint || (equality && rbool));
+                const char *want = NULL;
+                if (!lok || !rok) want = "E0260";
+                else if (l != r) want = "E0261";
+                IrModule *m = NULL;
+                size_t before = st.diags.len;
+                IrStatus status = build_binary(&st, types[l], types[r], ops[o], &m);
+                if (!want) {
+                    assert(status == IR_BUILT && st.diags.len == before);
+                } else {
+                    if (status != IR_ERRORS || st.diags.len != before + 1 || strcmp(st.diags.items[before].code, want) != 0) {
+                        fprintf(stderr, "operator matrix: %s %s %s expected %s\n", types[l], ops[o], types[r], want);
+                        abort();
+                    }
+                }
+                cases++;
+            }
+        }
+    }
+    ir_state_destroy(&st);
+    printf("PASS: operator matrix: %d cases (18 operators x 8 x 8 operand types)\n", cases);
+}
+
+/* Result types: arithmetic/bitwise/shift keep the operand type, everything else is bool. */
+static void test_operator_result_types(void) {
+    static IrState st;
+    ir_state_init(&st, 1 << 20);
+    static const struct { const char *op, *want; } cases[] = {
+        {"+", "u32"}, {"-", "u32"}, {"*", "u32"}, {"/", "u32"}, {"%", "u32"}, {"&", "u32"}, {"|", "u32"}, {"^", "u32"},
+        {"<<", "u32"}, {">>", "u32"}, {"<", "bool"}, {">", "bool"}, {"<=", "bool"}, {">=", "bool"}, {"==", "bool"}, {"!=", "bool"},
+    };
+    for (size_t i = 0; i < 16; i++) {
+        IrModule *m = NULL;
+        assert(build_binary(&st, "u32", "u32", cases[i].op, &m) == IR_BUILT);
+        const IrFunc *f = m->funcs.items[0];
+        const IrStmt *let = f->body->as.block.stmts.items[0];
+        assert(strcmp(ir_type_text(&st, let->as.let.init->type), cases[i].want) == 0);
+        assert(let->as.let.init->kind == IR_E_BINARY && let->as.let.init->as.binary.op == (BinOp)i);
+    }
+    IrModule *m = NULL;
+    assert(build_binary(&st, "bool", "bool", "&&", &m) == IR_BUILT);
+    ir_state_destroy(&st);
+    pass("operator result types: arithmetic keeps the operand type, comparisons and logic give bool");
+}
+
+/* E0261's fix (D4), pinned: which operand is wrapped, in what, and the exact edits - two
+ * zero-width inserts, `T(` before the operand and `)` after it. Applied to the source the text is
+ * the expected one (the file then PARSES; re-checking it waits for conversions, step 13). */
+static void test_e0261_fix(void) {
+    static IrState st;
+    ir_state_init(&st, 1 << 20);
+    static const struct { const char *ta, *tb, *op, *expr, *fixed; bool left; const char *to; } cases[] = {
+        {"u8", "u32", "+", "a + b", "u32(a) + b", true, "u32"},      /* the narrower converts losslessly: wrap it */
+        {"u32", "u8", "+", "a + b", "a + u32(b)", false, "u32"},
+        {"u8", "i8", "+", "a + b", "a + u8(b)", false, "u8"},        /* neither direction is lossless: right into left's type */
+        {"i8", "u8", "-", "a - b", "a - i8(b)", false, "i8"},
+        {"u8", "i32", "*", "a * b", "i32(a) * b", true, "i32"},      /* unsigned -> wider signed is lossless */
+        {"i32", "u8", "<", "a < b", "a < i32(b)", false, "i32"},
+        {"u32", "i64", "==", "a == b", "i64(a) == b", true, "i64"},
+        {"i8", "i64", "/", "a / b", "i64(a) / b", true, "i64"},
+        {"u8", "u32", "<<", "a << b", "a << u8(b)", false, "u8"},    /* a shift's COUNT is always the one wrapped */
+        {"u32", "u8", ">>", "a >> b", "a >> u32(b)", false, "u32"},
+        {"u8", "u32", "&", "(a) & b", "u32((a)) & b", true, "u32"},  /* the operand's span includes its parentheses */
+    };
+    for (size_t i = 0; i < sizeof cases / sizeof cases[0]; i++) {
+        char src[256];
+        snprintf(src, sizeof src, "manna v0;\nfn f(a: %s, b: %s) { let r = %s; }\n", cases[i].ta, cases[i].tb, cases[i].expr);
+        parse_src(src);
+        assert(g_ps.diags.len == 0);
+        IrModule *m = NULL;
+        size_t before = st.diags.len;
+        assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_ERRORS && st.diags.len == before + 1);
+        const Diagnostic *d = &st.diags.items[before];
+        assert(strcmp(d->code, "E0261") == 0 && d->fix && d->fix->n_edits == 2);
+        const DiagEdit *e0 = &d->fix->edits[0], *e1 = &d->fix->edits[1];
+        char to_open[16];
+        snprintf(to_open, sizeof to_open, "%s(", cases[i].to);
+        assert(strcmp(e0->text, to_open) == 0 && strcmp(e1->text, ")") == 0);
+        assert(e0->span.start_line == e0->span.end_line && e0->span.start_col == e0->span.end_col); /* zero-width */
+        assert(e1->span.start_line == e1->span.end_line && e1->span.start_col == e1->span.end_col);
+        /* apply: both edits are on the function's source line (line 2) */
+        const char *ln2 = strchr(src, '\n') + 1;
+        size_t c0 = (size_t)e0->span.start_col - 1, c1 = (size_t)e1->span.start_col - 1;
+        char fixed[256];
+        snprintf(fixed, sizeof fixed, "%.*s%s%.*s%s%s", (int)c0, ln2, e0->text, (int)(c1 - c0), ln2 + c0, e1->text, ln2 + c1);
+        char want[256];
+        snprintf(want, sizeof want, "fn f(a: %s, b: %s) { let r = %s; }\n", cases[i].ta, cases[i].tb, cases[i].fixed);
+        if (strcmp(fixed, want) != 0) { fprintf(stderr, "fix applied: %s want: %s", fixed, want); abort(); }
+        parse_done();
+        char fsrc[300];
+        snprintf(fsrc, sizeof fsrc, "manna v0;\n%s", fixed);
+        parse_src(fsrc);
+        assert(g_ps.diags.len == 0); /* the fixed file parses cleanly */
+        parse_done();
+    }
+    /* no integer conversion exists with a bool or a struct: no fix */
+    static const struct { const char *ta, *tb; } nofix[] = {{"u8", "bool"}, {"bool", "u8"}};
+    for (size_t i = 0; i < 2; i++) {
+        char src[200];
+        snprintf(src, sizeof src, "manna v0;\nfn f(a: %s, b: %s) { let r = a == b; }\n", nofix[i].ta, nofix[i].tb);
+        parse_src(src);
+        IrModule *m = NULL;
+        size_t before = st.diags.len;
+        assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_ERRORS);
+        assert(strcmp(st.diags.items[before].code, "E0261") == 0 && st.diags.items[before].fix == NULL);
+        parse_done();
+    }
+    ir_state_destroy(&st);
+    pass("E0261: the D4 fix pinned (which operand, what type, two zero-width inserts), applied it parses; no fix for bool");
+}
+
+/* The checker is linear: the single bottom-up pass visits every node at most twice (once to
+ * classify and type it, once more if it is a literal group resolved against its sibling). On
+ * 512-high chains that would be ~n*h/2 visits for a predicate re-run at each node; here
+ * visits <= 2 * nodes at every height, and the ratio does not grow with height. */
+static void test_checker_is_linear(void) {
+    static IrState st;
+    ir_state_init(&st, 32 << 20);
+    static const char *const shapes[] = {"x_first", "x_last", "alternating"};
+    for (size_t sh = 0; sh < 3; sh++) {
+        for (int h = 128; h <= 512; h *= 2) {
+            char *src = malloc((size_t)h * 12 + 128);
+            assert(src);
+            char *w = src + sprintf(src, "manna v0;\nfn f(x: u64) { let r: u64 = ");
+            size_t nodes;
+            if (sh == 0) {            /* x + 1 + 1 + ... : the typed operand at the bottom of the left spine */
+                w += sprintf(w, "x");
+                for (int i = 0; i < h - 1; i++) w += sprintf(w, " + 1");
+                nodes = (size_t)(h - 1) * 2 + 1;
+            } else if (sh == 1) {     /* 1 + 1 + ... + x : a literal chain, typed only at the root */
+                w += sprintf(w, "1");
+                for (int i = 0; i < h - 2; i++) w += sprintf(w, " + 1");
+                w += sprintf(w, " + x");
+                nodes = (size_t)(h - 1) * 2 + 1;
+            } else {                  /* 1 + x + 1 + x + ... */
+                w += sprintf(w, "1");
+                for (int i = 0; i < h - 1; i++) w += sprintf(w, i % 2 ? " + 1" : " + x");
+                nodes = (size_t)(h - 1) * 2 + 1;
+            }
+            sprintf(w, "; }\n");
+            parse_src(src);
+            assert(g_ps.diags.len == 0);
+            IrModule *m = NULL;
+            assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_BUILT);
+            size_t visits = st.expr_visits;
+            /* nodes counts the expression only; the let's annotation etc. add nothing to the counter */
+            if (visits > 2 * nodes + 4) { fprintf(stderr, "%s h=%d: %zu visits for %zu nodes\n", shapes[sh], h, visits, nodes); abort(); }
+            parse_done();
+            free(src);
+        }
+    }
+    ir_state_destroy(&st);
+    pass("the checker is linear: <= 2 visits per node on 128/256/512-high chains with the typed operand at the bottom, the root, or alternating");
+}
+
 /* ---- structs at scale: nothing recursive over a chain of structs ---- */
 
 /* A chain of 20000 structs, each holding the next (S0 holds S1 holds ...), and a ring
@@ -1257,7 +1439,7 @@ static void test_deepest_array_type(void) {
  * (the one-mismatch path: require_group). */
 typedef struct { const char *name; int live_step; /* 0 = live now, else the step that makes it live */ } BuildShape;
 static const BuildShape build_shapes[] = {
-    {"binary", 0}, {"mixed_prec", 0}, {"neg_chain", 0}, {"in_ifs", 0},
+    {"binary", 0}, {"mixed_prec", 0}, {"neg_chain", 0}, {"in_ifs", 0}, {"name_chain", 0}, {"and_chain", 0},
     {"in_calls", 10}, {"field", 11}, {"index", 12}, {"postfix_mix", 12},
 };
 enum { N_BUILD_SHAPES = sizeof build_shapes / sizeof build_shapes[0] };
@@ -1274,6 +1456,12 @@ static char *gen_expr(const char *shape, int height) {
     } else if (strcmp(shape, "mixed_prec") == 0) {
         w += sprintf(w, "1");
         for (int i = 0; i < height - 2; i++) w += sprintf(w, "+2*3"); /* tree height = adds + 2 */
+    } else if (strcmp(shape, "name_chain") == 0) { /* x+1+1+... : a typed name under a literal chain */
+        w += sprintf(w, "x");
+        for (int i = 0; i < height - 1; i++) w += sprintf(w, "+1");
+    } else if (strcmp(shape, "and_chain") == 0) { /* p&&p&&... : bool names */
+        w += sprintf(w, "p");
+        for (int i = 0; i < height - 1; i++) w += sprintf(w, "&&p");
     } else { /* binary */
         w += sprintf(w, "1");
         for (int i = 0; i < height - 1; i++) w += sprintf(w, "+1");
@@ -1291,7 +1479,7 @@ static int run_build_shape(const char *shape, int height, bool as_bool, bool par
         for (int k = 255; k >= 200 && !expr; k--) {
             char *e = gen_expr(shape, k);
             char *src = malloc(strlen(e) + 64);
-            sprintf(src, "manna v0;\nfn f() -> i64 { return %s; }\n", e);
+            sprintf(src, "manna v0;\nfn f(x: u64, p: bool) -> i64 { return %s; }\n", e);
             parse_src(src);
             bool ok = g_ps.diags.len == 0;
             parse_done();
@@ -1304,15 +1492,17 @@ static int run_build_shape(const char *shape, int height, bool as_bool, bool par
     }
     char *src = malloc(strlen(expr) + 4096); /* the 120-deep wrapper alone is ~1.5 KB */
     assert(src);
-    const char *rt = as_bool ? "bool" : (neg ? "i64" : "u64");
+    /* the `int` variant matches the expression's type; the `bool` variant mismatches it (one E0223) */
+    bool is_and = strcmp(shape, "and_chain") == 0;
+    const char *rt = is_and ? (as_bool ? "u64" : "bool") : (as_bool ? "bool" : (neg ? "i64" : "u64"));
     if (strcmp(shape, "in_ifs") == 0) { /* the chain inside 120 nested ifs (the parser allows 127 levels) */
-        char *w = src + sprintf(src, "manna v0;\nfn f() -> %s { ", rt);
+        char *w = src + sprintf(src, "manna v0;\nfn f(x: u64, p: bool) -> %s { ", rt);
         for (int i = 0; i < 120; i++) w += sprintf(w, "if true { ");
         w += sprintf(w, "return %s; ", expr);
         for (int i = 0; i < 120; i++) w += sprintf(w, "} ");
         sprintf(w, "}\n");
     } else {
-        sprintf(src, "manna v0;\nfn f() -> %s { return %s; }\n", rt, expr);
+        sprintf(src, "manna v0;\nfn f(x: u64, p: bool) -> %s { return %s; }\n", rt, expr);
     }
     printf("levels=%d\n", neg ? (int)strlen(expr) - 1 : height); /* neg_chain: the minus signs the parser accepted */
     parse_src(src);
@@ -1392,6 +1582,10 @@ int main(int argc, char **argv) {
     test_min_representation();
     test_type_mismatch();
     test_group_representation();
+    test_operator_matrix();
+    test_operator_result_types();
+    test_e0261_fix();
+    test_checker_is_linear();
     test_scope_api();
     test_scopes_through_the_builder();
     test_signatures();

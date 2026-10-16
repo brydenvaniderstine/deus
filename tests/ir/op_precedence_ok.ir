@@ -1,0 +1,26 @@
+(fn@2:1-6:2 fn:f
+  (params (param@2:6-2:11 a #0 u8) (param@2:13-2:18 b #1 u8) (param@2:20-2:25 c #2 u8) (param@2:27-2:32 d #3 u8) (param@2:34-2:41 p #4 bool) (param@2:43-2:50 q #5 bool) (param@2:52-2:59 r #6 bool))
+  (returns)
+  (block@2:61-6:2
+    (let@3:5-3:27 x #7 bool
+      (binary@3:13-3:26 < bool
+        (binary@3:13-3:22 + u8
+          (local@3:13-3:14 a #0 u8)
+          (binary@3:17-3:22 * u8
+            (local@3:17-3:18 b #1 u8)
+            (local@3:21-3:22 c #2 u8)))
+        (local@3:25-3:26 d #3 u8)))
+    (let@4:5-4:25 y #8 bool
+      (binary@4:13-4:24 || bool
+        (binary@4:13-4:19 && bool
+          (local@4:13-4:14 p #4 bool)
+          (local@4:18-4:19 q #5 bool))
+        (local@4:23-4:24 r #6 bool)))
+    (let@5:5-5:30 z #9 bool
+      (binary@5:13-5:29 && bool
+        (binary@5:13-5:19 == bool
+          (local@5:13-5:14 a #0 u8)
+          (local@5:18-5:19 b #1 u8))
+        (binary@5:23-5:29 != bool
+          (local@5:23-5:24 c #2 u8)
+          (local@5:28-5:29 d #3 u8))))))

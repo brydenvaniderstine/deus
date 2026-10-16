@@ -1,0 +1,32 @@
+(fn@2:1-2:43 fn:case_1
+  (params (param@2:11-2:16 a #0 u8) (param@2:18-2:23 b #1 u8))
+  (returns)
+  (block@2:25-2:43
+    (let@2:27-2:41 r #2 u8
+      (binary@2:35-2:40 | u8
+        (local@2:35-2:36 a #0 u8)
+        (local@2:39-2:40 b #1 u8)))))
+(fn@3:1-3:43 fn:case_2
+  (params (param@3:11-3:16 a #0 i8) (param@3:18-3:23 b #1 i8))
+  (returns)
+  (block@3:25-3:43
+    (let@3:27-3:41 r #2 i8
+      (binary@3:35-3:40 | i8
+        (local@3:35-3:36 a #0 i8)
+        (local@3:39-3:40 b #1 i8)))))
+(fn@4:1-4:45 fn:case_3
+  (params (param@4:11-4:17 a #0 u32) (param@4:19-4:25 b #1 u32))
+  (returns)
+  (block@4:27-4:45
+    (let@4:29-4:43 r #2 u32
+      (binary@4:37-4:42 | u32
+        (local@4:37-4:38 a #0 u32)
+        (local@4:41-4:42 b #1 u32)))))
+(fn@5:1-5:45 fn:case_4
+  (params (param@5:11-5:17 a #0 i64) (param@5:19-5:25 b #1 i64))
+  (returns)
+  (block@5:27-5:45
+    (let@5:29-5:43 r #2 i64
+      (binary@5:37-5:42 | i64
+        (local@5:37-5:38 a #0 i64)
+        (local@5:41-5:42 b #1 i64)))))

@@ -2,24 +2,31 @@
 #include <assert.h>
 #include <stdint.h>
 
-/* Expression checking (typed-IR step 6, docs/M2_PLAN.md "Types and literals"): the
- * bidirectional `check(expr, expected)` for the integer literal expressions step 6 owns.
+/* Expression checking (typed-IR steps 6-8, docs/M2_PLAN.md "Types and literals" and
+ * "Operators and statements").
  *
- * An UNTYPED LITERAL EXPRESSION is a number, unary `-` over one, or an arithmetic /
- * bitwise / shift operation whose operands are all untyped literal expressions
- * (parentheses add no node). It has no type of its own: the expected type gives it
- * one, and every literal in it must fit. Every other expression kind belongs to a
- * later step and stops the build with IR_UNIMPLEMENTED (ir_unimplemented), never a
- * half-built or half-checked IR.
+ * An UNTYPED LITERAL EXPRESSION (a "group") is a number, unary `-` or `~` over one, or an
+ * arithmetic / bitwise / shift operation whose operands are all groups (parentheses add no
+ * node). It has no type of its own: a type is given to it, and every literal in it must fit.
+ * The type comes from the expected type, or from the TYPED SIBLING when it is one operand of
+ * a binary operator (`0 == x`, `1 + x`, `10 < n`, either side), and it flows into the WHOLE
+ * group. With no type from anywhere it is E0225.
  *
- * Because every supported node is a member of the group, no "is this subtree a group?"
- * predicate is needed. When identifiers and mixed operands arrive (steps 7-8) that
- * predicate MUST be computed bottom-up in one pass, not re-walked per node: re-walking
- * is O(nodes x height).
+ * ONE BOTTOM-UP PASS. synth(e) classifies and types in a single visit of each node and
+ * returns either "group" (nothing is built yet) or a typed IrExpr. A group is later resolved
+ * once its type is known, by resolve_group: a second visit of the group's nodes only. So every
+ * node is visited at most twice and the checker is O(nodes); a predicate that re-walked a
+ * subtree at every node ("is this a group?") would be O(nodes x height) - on `x + 1 + 2 + ...`
+ * that is quadratic. ir_test.c counts the visits (IrState.expr_visits) on 512-high trees.
  *
- * Stack: check_group recurses once per tree level (tree height is bounded to 512 by the
- * parser, E0111); require_group is the same walk without building. The measured
- * per-level cost is in tools/measure_ir_build_stack.sh and ir_test.c. */
+ * Operators (Q6 i-vi): arithmetic, bitwise and shift need integers, both operands the SAME type
+ * (a shift's count too); `==` `!=` also take bool; `< > <= >=` integers; `&&` `||` `!` bool; unary
+ * `-` signed, `~` any integer. An operand type the operator is not defined for is E0260; two
+ * integer types that differ are E0261 (with a conversion fix); a bool and an integer, E0261
+ * without. A failed operand makes the expression ERROR and nothing built on it reports again.
+ *
+ * Stack: synth and resolve_group recurse once per tree level (the parser bounds the height to
+ * 512, E0111); the measured per-level cost is in tools/measure_ir_build_stack.sh. */
 
 _Noreturn void ir_unimplemented(IrState *st, const char *what) {
     st->unimplemented = what;
@@ -29,7 +36,6 @@ _Noreturn void ir_unimplemented(IrState *st, const char *what) {
 /* Which later step owns an expression kind this step does not check. */
 static _Noreturn void unimplemented_kind(IrState *st, const Expr *e) {
     switch (e->kind) {
-        case EXPR_IDENT:        ir_unimplemented(st, "a name inside an operator expression (step 8)");
         case EXPR_CALL:
         case EXPR_NAMED_ARG:    ir_unimplemented(st, "calls and struct construction (steps 10-11)");
         case EXPR_FIELD_ACCESS: ir_unimplemented(st, "field access (step 11)");
@@ -38,26 +44,25 @@ static _Noreturn void unimplemented_kind(IrState *st, const Expr *e) {
         case EXPR_ARRAY:
         case EXPR_ARRAY_REPEAT: ir_unimplemented(st, "arrays, indexing and slicing (step 12)");
         case EXPR_CONVERT:      ir_unimplemented(st, "conversions (step 13)");
-        case EXPR_BOOL:         ir_unimplemented(st, "a bool operand inside an integer expression (step 8)");
         case EXPR_NUMBER:
+        case EXPR_BOOL:
+        case EXPR_IDENT:
         case EXPR_UNARY:
         case EXPR_BINARY:
             break;
     }
-    ir_unimplemented(st, "this expression (steps 7-13)");
+    ir_unimplemented(st, "this expression (steps 9-13)");
 }
 
 static bool is_int(const IrType *t) {
     return t->kind == IR_T_INT;
 }
 
-/* The operators whose operands may all be untyped literal expressions: arithmetic,
- * bitwise and shift. Comparisons and && / || yield bool (they are not literal groups)
- * and belong to step 8. */
-_Static_assert(BINOP_SHR < BINOP_LT, "is_group_operator relies on ast.h's BinOp order");
-static bool is_group_operator(BinOp op) {
-    return op <= BINOP_SHR; /* ADD SUB MUL DIV MOD BITAND BITOR BITXOR SHL SHR, in that order (ast.h) */
-}
+_Static_assert(BINOP_SHR < BINOP_LT && BINOP_NE < BINOP_AND, "the operator classes rely on ast.h's BinOp order");
+static bool is_arith_class(BinOp op) { return op <= BINOP_SHR; }                  /* + - * / % & | ^ << >> */
+static bool is_shift(BinOp op)       { return op == BINOP_SHL || op == BINOP_SHR; }
+static bool is_equality(BinOp op)    { return op == BINOP_EQ || op == BINOP_NE; }
+static bool is_logical(BinOp op)     { return op == BINOP_AND || op == BINOP_OR; }
 
 /* Largest value of an integer type, as an unsigned magnitude. */
 static uint64_t int_max(const IrType *t) {
@@ -66,37 +71,17 @@ static uint64_t int_max(const IrType *t) {
     return bits == 64 ? UINT64_MAX : (UINT64_C(1) << bits) - 1;
 }
 
-/* An error placeholder: the module is never produced once an error is recorded, so the
- * node only carries the ERROR type that silences enclosing checks. */
+/* An error placeholder: the module is never produced once an error is recorded, so the node
+ * only carries the ERROR type that silences enclosing checks. */
 static IrExpr *error_node(IrState *st, Span span) {
     return ir_expr_int(st, span, ir_type_error(st), 0);
 }
 
+/* ---- groups: resolved top-down once the type is known ---- */
 
-/* Walks an untyped literal expression WITHOUT building anything, stopping the build
- * (IR_UNIMPLEMENTED) at the first node outside the group. Used before reporting an error
- * about a whole group, so we never blame a group that a later step would have typed
- * differently (`-x` in a u32 function is E0223 if x is an i32, not E0260). */
-static void require_group(IrState *st, const Expr *e) {
-    switch (e->kind) {
-        case EXPR_NUMBER:
-            return;
-        case EXPR_UNARY:
-            if (e->as.unary.op != UNOP_NEG) ir_unimplemented(st, "unary '!' and '~' (step 8)");
-            require_group(st, e->as.unary.operand);
-            return;
-        case EXPR_BINARY:
-            if (!is_group_operator(e->as.binary.op)) ir_unimplemented(st, "comparison and logical operators (step 8)");
-            require_group(st, e->as.binary.lhs);
-            require_group(st, e->as.binary.rhs);
-            return;
-        default:
-            unimplemented_kind(st, e);
-            return;
-    }
-}
+static IrExpr *resolve_group(IrState *st, const Expr *e, const IrType *t);
 
-static IrExpr *check_literal(IrState *st, const Expr *e, const IrType *t) {
+static IrExpr *group_literal(IrState *st, const Expr *e, const IrType *t) {
     uint64_t v = e->as.number.value;
     if (v > int_max(t)) {
         ir_error(st, diag_ir_literal_range(st->arena, e->span, v, false, ir_type_text(st, t)));
@@ -106,13 +91,10 @@ static IrExpr *check_literal(IrState *st, const Expr *e, const IrType *t) {
     return ir_expr_int(st, e->span, t, v);
 }
 
-static IrExpr *check_group(IrState *st, const Expr *e, const IrType *t);
-
-/* Unary `-` against an integer type. */
-static IrExpr *check_neg(IrState *st, const Expr *e, const IrType *t) {
+/* Unary `-` over a group, against an integer type. */
+static IrExpr *group_neg(IrState *st, const Expr *e, const IrType *t) {
     const Expr *op = e->as.unary.operand;
     if (!t->as.integer.is_signed) {
-        require_group(st, op);
         ir_error(st, diag_ir_operator_undefined(st->arena, e->span, "-", ir_type_text(st, t)));
         return error_node(st, e->span);
     }
@@ -122,42 +104,57 @@ static IrExpr *check_neg(IrState *st, const Expr *e, const IrType *t) {
          * magnitude does not fit, reported with its sign over the whole `-N`. */
         uint64_t half = UINT64_C(1) << (t->as.integer.bits - 1);
         uint64_t v = op->as.number.value;
+        st->expr_visits++;
         if (v == half) return ir_expr_int(st, e->span, t, UINT64_C(0) - half); /* sign-extended -half */
         if (v > half) {
             ir_error(st, diag_ir_literal_range(st->arena, e->span, v, true, ir_type_text(st, t)));
             return ir_expr_int(st, e->span, t, 0);
         }
     }
-    return ir_expr_unary(st, e->span, t, UNOP_NEG, check_group(st, op, t));
+    return ir_expr_unary(st, e->span, t, UNOP_NEG, resolve_group(st, op, t));
 }
 
-static IrExpr *check_group(IrState *st, const Expr *e, const IrType *t) {
+/* `e` is known to be a group (synth said so) and `t` an integer type. */
+static IrExpr *resolve_group(IrState *st, const Expr *e, const IrType *t) {
+    st->expr_visits++;
     switch (e->kind) {
         case EXPR_NUMBER:
-            return check_literal(st, e, t);
+            return group_literal(st, e, t);
         case EXPR_UNARY:
-            if (e->as.unary.op != UNOP_NEG) ir_unimplemented(st, "unary '!' and '~' (step 8)");
-            return check_neg(st, e, t);
-        case EXPR_BINARY: {
-            if (!is_group_operator(e->as.binary.op)) ir_unimplemented(st, "comparison and logical operators (step 8)");
-            /* Both operands get the group's type; left to right, so diagnostics come out in
-             * source order. */
-            IrExpr *l = check_group(st, e->as.binary.lhs, t);
-            IrExpr *r = check_group(st, e->as.binary.rhs, t);
-            return ir_expr_binary(st, e->span, t, e->as.binary.op, l, r);
-        }
+            if (e->as.unary.op == UNOP_NEG) return group_neg(st, e, t);
+            assert(e->as.unary.op == UNOP_BITNOT); /* `!` is never part of a group */
+            return ir_expr_unary(st, e->span, t, UNOP_BITNOT, resolve_group(st, e->as.unary.operand, t));
         default:
-            unimplemented_kind(st, e);
-            return NULL;
+            assert(e->kind == EXPR_BINARY && !is_equality(e->as.binary.op)); /* a group's only binaries */
+            {
+                /* Both operands get the group's type, left to right, so diagnostics come out in
+                 * source order. */
+                IrExpr *l = resolve_group(st, e->as.binary.lhs, t);
+                IrExpr *r = resolve_group(st, e->as.binary.rhs, t);
+                return ir_expr_binary(st, e->span, t, e->as.binary.op, l, r);
+            }
     }
 }
 
+/* A group against the type it is expected to take: ERROR = already failed (say nothing), a
+ * non-integer type is one mismatch for the whole group (`expected bool, found integer
+ * literal`), an integer type resolves it. */
+static IrExpr *group_against(IrState *st, const Expr *e, const IrType *expected) {
+    if (expected->kind == IR_T_ERROR) return error_node(st, e->span);
+    if (!is_int(expected)) {
+        ir_error(st, diag_ir_type_mismatch(st->arena, e->span, ir_type_text(st, expected), "integer literal"));
+        return error_node(st, e->span);
+    }
+    return resolve_group(st, e, expected);
+}
+
+/* ---- names ---- */
+
 /* A name used as a value: a visible local (parameters included), else - because the top-level
  * namespace is separate and inner - a function or struct name, which is not a value (E0231),
- * else unknown (E0230). `expected` NULL = no expectation (infer); ERROR = the expected type
- * already failed, so no mismatch is reported. A local whose own type is ERROR is silent too:
- * its mistake was reported where it was declared. */
-static IrExpr *check_ident(BodyCtx *bc, const Expr *e, const IrType *expected) {
+ * else unknown (E0230). A local whose own type is ERROR is silent: its mistake was reported
+ * where it was declared. */
+static IrExpr *check_ident(BodyCtx *bc, const Expr *e) {
     IrState *st = bc->st;
     const char *name = e->as.ident.name;
     IrLocal *l = body_lookup(bc, name);
@@ -167,59 +164,185 @@ static IrExpr *check_ident(BodyCtx *bc, const Expr *e, const IrType *expected) {
                          : diag_ir_unknown_name(st->arena, e->span, name));
         return error_node(st, e->span);
     }
-    IrExpr *node = ir_expr_local(st, e->span, l);
-    if (expected && expected->kind != IR_T_ERROR && l->type->kind != IR_T_ERROR && l->type != expected) {
-        ir_error(st, diag_ir_type_mismatch(st->arena, e->span, ir_type_text(st, expected), ir_type_text(st, l->type)));
-        return error_node(st, e->span);
-    }
-    return node;
+    return ir_expr_local(st, e->span, l);
 }
+
+/* ---- synth: the single bottom-up pass ---- */
+
+typedef struct {
+    bool     group; /* an untyped literal expression: nothing built yet */
+    IrExpr  *node;  /* otherwise the typed (or ERROR) expression */
+} Synth;
+
+static Synth synth(BodyCtx *bc, const Expr *e);
+
+static Synth is_group(void)        { Synth s = {true, NULL}; return s; }
+static Synth is_node(IrExpr *n)    { Synth s = {false, n}; return s; }
+static Synth is_error(IrState *st, Span at) { return is_node(error_node(st, at)); }
+
+static bool has_error(Synth s) { return !s.group && s.node->type->kind == IR_T_ERROR; }
+
+static Synth synth_unary(BodyCtx *bc, const Expr *e) {
+    IrState *st = bc->st;
+    UnOp op = e->as.unary.op;
+    Synth o = synth(bc, e->as.unary.operand);
+    if (op != UNOP_NOT && o.group) return o;                  /* `-` and `~` of a group are groups */
+    if (op == UNOP_NOT && o.group) {                          /* `!` needs a bool; a literal has no type to name */
+        const Expr *operand = e->as.unary.operand;
+        ir_error(st, diag_ir_type_mismatch(st->arena, operand->span, "bool", "integer literal"));
+        return is_error(st, e->span);
+    }
+    if (has_error(o)) return is_error(st, e->span);
+    const IrType *t = o.node->type;
+    bool ok = op == UNOP_NOT ? t->kind == IR_T_BOOL
+            : op == UNOP_NEG ? is_int(t) && t->as.integer.is_signed
+                             : is_int(t);
+    if (!ok) {
+        ir_error(st, diag_ir_operator_undefined(st->arena, e->span, ir_unop_text(op), ir_type_text(st, t)));
+        return is_error(st, e->span);
+    }
+    return is_node(ir_expr_unary(st, e->span, t, op, o.node));
+}
+
+/* May `t` be an operand of `op`? Arithmetic, bitwise, shift and ordering: integers. Equality:
+ * integers and bool. (&& and || are handled by synth_logical.) */
+static bool operand_ok(BinOp op, const IrType *t) {
+    return is_int(t) || (is_equality(op) && t->kind == IR_T_BOOL);
+}
+
+/* Can a value of integer type `from` be converted to `to` without losing any? */
+static bool lossless(const IrType *from, const IrType *to) {
+    unsigned fb = from->as.integer.bits, tb = to->as.integer.bits;
+    bool fs = from->as.integer.is_signed, ts = to->as.integer.is_signed;
+    if (fs == ts) return tb > fb;
+    return !fs && ts && tb > fb; /* unsigned -> a wider signed type */
+}
+
+/* E0261 for two typed operands of different types. The fix (both integer types only) wraps ONE
+ * operand in the conversion to the other's type: the one that converts without loss if exactly
+ * one does (u8 + u32 -> `u32(a) + b`), else the RIGHT operand into the left's type; a shift's
+ * count is always the one wrapped (its left operand decides the result type). */
+static void report_types_differ(BodyCtx *bc, const Expr *e, const IrType *lt, const IrType *rt) {
+    IrState *st = bc->st;
+    const Expr *le = e->as.binary.lhs, *re = e->as.binary.rhs;
+    bool wrap_left = false;
+    const char *to = NULL;
+    if (is_int(lt) && is_int(rt)) {
+        bool l2r = lossless(lt, rt), r2l = lossless(rt, lt);
+        wrap_left = !is_shift(e->as.binary.op) && l2r && !r2l;
+        to = ir_type_text(st, wrap_left ? rt : lt);
+    }
+    ir_error(st, diag_ir_operand_types_differ(st->arena, e->span, ir_type_text(st, lt), ir_type_text(st, rt),
+                                              le->span, re->span, wrap_left, to));
+}
+
+/* A binary operator with at least one TYPED operand (the other may be a group). In order: an
+ * ERROR operand silences everything; two groups under a comparison have no type (E0225, once,
+ * at the left); an operand type the operator is not defined for is E0260, once, naming the
+ * left one first; then a group takes its typed sibling's type; then the types must agree. */
+static Synth typed_binary(BodyCtx *bc, const Expr *e, Synth l, Synth r) {
+    IrState *st = bc->st;
+    BinOp op = e->as.binary.op;
+    const Expr *le = e->as.binary.lhs, *re = e->as.binary.rhs;
+    if (has_error(l) || has_error(r)) return is_error(st, e->span);
+    if (l.group && r.group) { /* only a comparison reaches here with two groups */
+        ir_error(st, diag_ir_cannot_infer(st->arena, le->span));
+        return is_error(st, e->span);
+    }
+    const IrType *lt = l.group ? NULL : l.node->type;
+    const IrType *rt = r.group ? NULL : r.node->type;
+    const IrType *bad = (lt && !operand_ok(op, lt)) ? lt : (rt && !operand_ok(op, rt)) ? rt : NULL;
+    if (bad) {
+        ir_error(st, diag_ir_operator_undefined(st->arena, e->span, ir_binop_text(op), ir_type_text(st, bad)));
+        return is_error(st, e->span);
+    }
+    IrExpr *ln = l.group ? group_against(st, le, rt) : l.node;
+    IrExpr *rn = r.group ? group_against(st, re, lt) : r.node;
+    if (ln->type->kind == IR_T_ERROR || rn->type->kind == IR_T_ERROR) return is_error(st, e->span); /* already reported */
+    if (ln->type != rn->type) {
+        report_types_differ(bc, e, ln->type, rn->type);
+        return is_error(st, e->span);
+    }
+    const IrType *result = is_arith_class(op) ? ln->type : ir_type_bool(st);
+    return is_node(ir_expr_binary(st, e->span, result, op, ln, rn));
+}
+
+/* `&&` and `||`: both operands bool. A typed non-bool operand is E0260 (once, the left first); a
+ * literal has no type to name, so it is a mismatch against bool. Split in two so the function
+ * that is live while the operands recurse (synth_logical) holds nothing but the two results:
+ * the checks sit in a frame of their own that exists only after the recursion returned. */
+static Synth finish_logical(BodyCtx *bc, const Expr *e, Synth l, Synth r) {
+    IrState *st = bc->st;
+    BinOp op = e->as.binary.op;
+    if (has_error(l) || has_error(r)) return is_error(st, e->span);
+    const Expr *ops[2] = {e->as.binary.lhs, e->as.binary.rhs};
+    Synth sy[2] = {l, r};
+    for (int i = 0; i < 2; i++) {
+        if (sy[i].group) {
+            ir_error(st, diag_ir_type_mismatch(st->arena, ops[i]->span, "bool", "integer literal"));
+            return is_error(st, e->span);
+        }
+        if (sy[i].node->type->kind != IR_T_BOOL) {
+            ir_error(st, diag_ir_operator_undefined(st->arena, e->span, ir_binop_text(op), ir_type_text(st, sy[i].node->type)));
+            return is_error(st, e->span);
+        }
+    }
+    return is_node(ir_expr_binary(st, e->span, ir_type_bool(st), op, l.node, r.node));
+}
+
+static Synth synth_logical(BodyCtx *bc, const Expr *e) {
+    Synth l = synth(bc, e->as.binary.lhs);
+    Synth r = synth(bc, e->as.binary.rhs);
+    return finish_logical(bc, e, l, r);
+}
+
+static Synth synth_binary(BodyCtx *bc, const Expr *e) {
+    BinOp op = e->as.binary.op;
+    if (is_logical(op)) return synth_logical(bc, e);
+    Synth l = synth(bc, e->as.binary.lhs);
+    Synth r = synth(bc, e->as.binary.rhs);
+    if (is_arith_class(op) && l.group && r.group) return is_group();
+    return typed_binary(bc, e, l, r);
+}
+
+static Synth synth(BodyCtx *bc, const Expr *e) {
+    IrState *st = bc->st;
+    st->expr_visits++;
+    assert(ir_ast_height_ok(e)); /* the parser's E0111 bound; this stage asserts it, enforces none */
+    switch (e->kind) {
+        case EXPR_NUMBER:
+            return is_group();
+        case EXPR_BOOL:
+            return is_node(ir_expr_bool(st, e->span, e->as.boolean.value));
+        case EXPR_IDENT:
+            return is_node(check_ident(bc, e));
+        case EXPR_UNARY:
+            return synth_unary(bc, e);
+        case EXPR_BINARY:
+            return synth_binary(bc, e);
+        default:
+            unimplemented_kind(st, e);
+    }
+}
+
+/* ---- the two entry points ---- */
 
 IrExpr *ir_check_expr(BodyCtx *bc, const Expr *e, const IrType *expected) {
     IrState *st = bc->st;
-    assert(ir_ast_height_ok(e)); /* the parser's E0111 bound; this stage asserts it, enforces none */
-    if (e->kind == EXPR_IDENT) return check_ident(bc, e, expected);
-    if (e->kind == EXPR_BOOL) {
-        if (expected->kind == IR_T_BOOL || expected->kind == IR_T_ERROR) return ir_expr_bool(st, e->span, e->as.boolean.value);
-        ir_error(st, diag_ir_type_mismatch(st->arena, e->span, ir_type_text(st, expected), "bool"));
-        return error_node(st, e->span);
-    }
-    if (expected->kind == IR_T_ERROR) {
-        /* The expected type already failed: an integer literal expression has no type to be
-         * checked against. Prove it is a pure literal group (else stop the build) and say nothing. */
-        require_group(st, e);
-        return error_node(st, e->span);
-    }
-    if (!is_int(expected)) {
-        /* An integer literal expression where no integer is expected: one mismatch for the
-         * whole group, without descending (poison: the group is ERROR, so nothing inside is
-         * reported again). The walk first proves it is a pure literal group - a later step
-         * may type a mixed expression differently - and stops the build otherwise. */
-        require_group(st, e);
-        ir_error(st, diag_ir_type_mismatch(st->arena, e->span, ir_type_text(st, expected), "integer literal"));
-        return error_node(st, e->span);
-    }
-    return check_group(st, e, expected);
+    Synth s = synth(bc, e);
+    if (s.group) return group_against(st, e, expected);
+    const IrType *t = s.node->type;
+    if (t->kind == IR_T_ERROR || expected->kind == IR_T_ERROR || t == expected) return s.node;
+    ir_error(st, diag_ir_type_mismatch(st->arena, e->span, ir_type_text(st, expected), ir_type_text(st, t)));
+    return error_node(st, e->span);
 }
 
 IrExpr *ir_infer_expr(BodyCtx *bc, const Expr *e) {
     IrState *st = bc->st;
-    assert(ir_ast_height_ok(e));
-    switch (e->kind) {
-        case EXPR_IDENT:
-            return check_ident(bc, e, NULL);
-        case EXPR_BOOL:
-            return ir_expr_bool(st, e->span, e->as.boolean.value);
-        case EXPR_NUMBER:
-        case EXPR_UNARY:
-        case EXPR_BINARY:
-            /* A literal expression has no type of its own: it takes the one expected of it,
-             * and nothing expects one here. A mixed expression is a later step's, so prove the
-             * group is pure first (else stop the build). */
-            require_group(st, e);
-            ir_error(st, diag_ir_cannot_infer(st->arena, e->span));
-            return error_node(st, e->span);
-        default:
-            unimplemented_kind(st, e);
-    }
+    Synth s = synth(bc, e);
+    if (!s.group) return s.node;
+    /* A literal expression has no type of its own: it takes the one expected of it, and nothing
+     * expects one here. */
+    ir_error(st, diag_ir_cannot_infer(st->arena, e->span));
+    return error_node(st, e->span);
 }

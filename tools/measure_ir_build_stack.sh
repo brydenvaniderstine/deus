@@ -3,7 +3,9 @@
 # maximal parser-built tree, per live shape and variant, plain and ASan+UBSan?
 #   shape    binary / mixed_prec (height 512, the parser's E0111 bound) / neg_chain (as many
 #            minus signs as the nesting bound E0103 accepts, ~253) / in_ifs (a 512-high chain
-#            inside 120 nested ifs: the scope machinery plus the expression recursion)
+#            inside 120 nested ifs: the scope machinery plus the expression recursion) /
+#            name_chain (`x+1+1+...`, a typed name under a literal chain: synth plus a literal
+#            resolved against it at every level) / and_chain (`p&&p&&...`, bool names)
 #   variant  int  = built against an integer return type (check_group)
 #            bool = the one-mismatch path (require_group)
 # For each, bisects `ulimit -s` (KB, 4 KB steps) for the smallest stack that passes at full
@@ -68,11 +70,13 @@ stop=0
 printf '%-5s %-11s %-4s %9s %9s %8s %12s %7s\n' build shape var "S_full KB" "S_base KB" levels "B/level (<=)" margin
 for build in plain asan; do
     bin="$BUILD/t"; [ "$build" = asan ] && bin="$BUILD/t-asan"
-    for shape in binary mixed_prec neg_chain in_ifs; do
+    for shape in binary mixed_prec neg_chain in_ifs name_chain and_chain; do
         case "$shape" in
             binary) full=512; base=1 ;;
             mixed_prec) full=512; base=2 ;;
             neg_chain) full=0; base=1 ;;
+            name_chain) full=512; base=1 ;;
+            and_chain) full=512; base=1 ;;
             in_ifs) full=512; base=1 ;;   # the chain inside 120 nested ifs; the base keeps the 120 ifs, so B/level is the expression's
         esac
         for var in int bool; do

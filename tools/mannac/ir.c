@@ -31,6 +31,7 @@ void ir_state_reset_for_build(IrState *st) {
     st->error_count = 0;
     st->progress = (Span){1, 1, 1, 1};
     st->unimplemented = NULL;
+    st->expr_visits = 0;
     arena_rearm_overflow_hook(st->arena); /* E0201 again if this build overflows too */
     prims_init(st);
     st->composites.slots = NULL;
@@ -403,3 +404,13 @@ IrFunc *ir_func_new(IrState *st, Span span, const char *name, bool kernel_hook, 
     f->body = body;
     return f;
 }
+
+static const char *const unop_names[] = {"!", "-", "~"}; /* UnOp order: NOT, NEG, BITNOT */
+static const char *const binop_names[] = {
+    "+", "-", "*", "/", "%", "&", "|", "^", "<<", ">>", "<", ">", "<=", ">=", "==", "!=", "&&", "||",
+}; /* BinOp order */
+_Static_assert(UNOP_BITNOT == 2, "unop_names must follow UnOp");
+_Static_assert(BINOP_OR == 17, "binop_names must follow BinOp");
+
+const char *ir_binop_text(BinOp op) { return binop_names[op]; }
+const char *ir_unop_text(UnOp op)   { return unop_names[op]; }

@@ -1,0 +1,5 @@
+manna v0;
+fn f(a: bool, b: u8, c: i8) {
+    let r = a + a;
+    let s = b + c;
+}

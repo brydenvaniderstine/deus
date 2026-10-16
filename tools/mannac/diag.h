@@ -169,6 +169,15 @@ Diagnostic diag_ir_unknown_name(Arena *a, Span at, const char *name);
 /* E0231: "'f' is a function, not a value" / "'S' is a struct, not a value". */
 Diagnostic diag_ir_not_a_value(Arena *a, Span at, const char *name, bool is_struct);
 
+/* E0261: "operands have different types: T and U; convert one explicitly" - at the whole operator
+ * expression. When BOTH are integer types a fix is attached: wrap one operand in the conversion
+ * to the other's type, as two zero-width inserts (`T(` before the operand, `)` after it - the
+ * E0108 mechanism; no source text needed). `wrap_left` picks the operand, `to_type` the target
+ * (docs/TYPED_IR.md D4). With a non-integer operand (bool, a struct) no conversion exists and
+ * there is no fix (`fix_to_type` NULL). */
+Diagnostic diag_ir_operand_types_differ(Arena *a, Span at, const char *left, const char *right,
+                                        Span left_span, Span right_span, bool wrap_left, const char *fix_to_type);
+
 /* E0270: "can't assign to this expression" - at the whole target. */
 Diagnostic diag_ir_not_assignable(Span at);
 
