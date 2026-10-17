@@ -1,0 +1,4 @@
+manna v0;
+fn f() -> u8 {
+    let x: u8 = 1;
+}

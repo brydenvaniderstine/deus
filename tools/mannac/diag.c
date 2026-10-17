@@ -314,6 +314,33 @@ Diagnostic diag_ir_operand_types_differ(Arena *a, Span at, const char *left, con
     return d;
 }
 
+Diagnostic diag_ir_missing_return_value(Arena *a, Span at, const char *func, const char *ret_type) {
+    Diagnostic d = {0};
+    d.code = "E0276";
+    d.severity = DIAG_ERROR;
+    d.message = arena_sprintf(a, "missing return value: function '%s' returns %s", func, ret_type);
+    d.span = at;
+    return d;
+}
+
+Diagnostic diag_ir_unexpected_return_value(Arena *a, Span at, const char *func) {
+    Diagnostic d = {0};
+    d.code = "E0276";
+    d.severity = DIAG_ERROR;
+    d.message = arena_sprintf(a, "unexpected return value: function '%s' returns nothing", func);
+    d.span = at;
+    return d;
+}
+
+Diagnostic diag_ir_may_end_without_return(Arena *a, Span at, const char *func) {
+    Diagnostic d = {0};
+    d.code = "E0277";
+    d.severity = DIAG_ERROR;
+    d.message = arena_sprintf(a, "function '%s' may end without returning a value", func);
+    d.span = at;
+    return d;
+}
+
 Diagnostic diag_ir_outside_loop(Span at, const char *word) {
     Diagnostic d = {0};
     d.code = "E0275";

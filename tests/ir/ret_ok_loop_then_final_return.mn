@@ -1,0 +1,7 @@
+manna v0;
+fn f(c: bool) -> u8 {
+    while c {
+        return 1;
+    }
+    return 2;
+}

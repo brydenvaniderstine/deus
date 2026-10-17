@@ -1,0 +1,2 @@
+ERRORS:
+3:5 E0276 missing return value: function 'f' returns u8

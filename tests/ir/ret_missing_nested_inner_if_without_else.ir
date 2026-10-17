@@ -1,0 +1,2 @@
+ERRORS:
+10:1 E0277 function 'f' may end without returning a value

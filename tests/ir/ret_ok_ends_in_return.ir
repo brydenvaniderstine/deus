@@ -1,0 +1,6 @@
+(fn@2:1-4:2 fn:f
+  (params)
+  (returns u8)
+  (block@2:14-4:2
+    (return@3:5-3:14
+      (int@3:12-3:13 1 u8))))

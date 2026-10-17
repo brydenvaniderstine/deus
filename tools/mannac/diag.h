@@ -178,6 +178,16 @@ Diagnostic diag_ir_not_a_value(Arena *a, Span at, const char *name, bool is_stru
 Diagnostic diag_ir_operand_types_differ(Arena *a, Span at, const char *left, const char *right,
                                         Span left_span, Span right_span, bool wrap_left, const char *fix_to_type);
 
+/* E0276: a `return` whose value does not match the function. `return;` in a function that returns a
+ * type: "missing return value: function 'f' returns T", at the statement. `return v;` in a function
+ * that returns nothing: "unexpected return value: function 'f' returns nothing", at the VALUE. */
+Diagnostic diag_ir_missing_return_value(Arena *a, Span at, const char *func, const char *ret_type);
+Diagnostic diag_ir_unexpected_return_value(Arena *a, Span at, const char *func);
+
+/* E0277: "function 'f' may end without returning a value" - located at the body's closing `}`, the
+ * place where control runs off the end. */
+Diagnostic diag_ir_may_end_without_return(Arena *a, Span at, const char *func);
+
 /* E0275: "'break' outside a loop" / "'continue' outside a loop" - at the statement. */
 Diagnostic diag_ir_outside_loop(Span at, const char *word);
 

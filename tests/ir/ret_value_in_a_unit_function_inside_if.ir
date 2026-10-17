@@ -1,0 +1,2 @@
+ERRORS:
+4:16 E0276 unexpected return value: function 'f' returns nothing

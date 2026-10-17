@@ -1,0 +1,9 @@
+manna v0;
+fn f(c: bool) -> u8 {
+    if c {
+        return 1;
+    } else {
+        return 2;
+    }
+    let y: u8 = 3;
+}

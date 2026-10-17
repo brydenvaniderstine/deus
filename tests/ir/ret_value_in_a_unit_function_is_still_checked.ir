@@ -1,0 +1,3 @@
+ERRORS:
+3:12 E0276 unexpected return value: function 'f' returns nothing
+3:12 E0230 unknown name 'nope'

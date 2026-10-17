@@ -1,0 +1,11 @@
+(fn@2:1-7:2 fn:f
+  (params (param@2:6-2:13 c #0 bool))
+  (returns u8)
+  (block@2:21-7:2
+    (if@3:5-5:6
+      (local@3:8-3:9 c #0 bool)
+      (block@3:10-5:6
+        (return@4:9-4:18
+          (int@4:16-4:17 1 u8))))
+    (return@6:5-6:14
+      (int@6:12-6:13 2 u8))))

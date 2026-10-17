@@ -1,0 +1,10 @@
+manna v0;
+fn a() -> u8 {
+}
+fn b() -> u8 {
+    return 1;
+}
+fn c() {
+}
+fn d() -> bool {
+}

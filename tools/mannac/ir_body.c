@@ -3,8 +3,8 @@
 
 /* Function bodies (typed-IR step 7, docs/M2_PLAN.md "Names, scopes, items" and "Operators and
  * statements"): block scopes, `let`, assignment and its lvalue rule, expression statements,
- * `return expr;`, `if`/`else` (pulled forward from step 8 at step 7), and the loops: `while`, `for`,
- * `break`, `continue`. */
+ * `return` (its shape, E0276, and the missing-return analysis, E0277), `if`/`else`, and the loops:
+ * `while`, `for`, `break`, `continue`. */
 
 /* ---- visible names ---- */
 
@@ -193,6 +193,27 @@ static IrStmt *build_for(BodyCtx *bc, const Stmt *s) {
     return ir_stmt_for(bc->st, s->span, init, cond, step, body);
 }
 
+/* `return;` / `return v;` against the function. The shape must match (E0276): a value in a function
+ * that returns one - `return;` is "missing" (reported at the statement) - and no value in a function that
+ * returns nothing ("unexpected", reported at the value, which is still checked for its OWN mistakes
+ * against no type). A value is checked against the return type like any other expectation. Any
+ * `return`, mistaken or not, counts as returning for E0277: one mistake, one error. */
+static IrStmt *build_return(BodyCtx *bc, const Stmt *s) {
+    IrState *st = bc->st;
+    const IrFunc *f = bc->func;
+    const Expr *v = s->as.return_stmt.value;
+    bool unit = f->ret->kind == IR_T_UNIT;
+    if (!v) {
+        if (!unit) ir_error(st, diag_ir_missing_return_value(st->arena, s->span, f->name, ir_type_text(st, f->ret)));
+        return ir_stmt_return(st, s->span, NULL);
+    }
+    if (unit) {
+        ir_error(st, diag_ir_unexpected_return_value(st->arena, v->span, f->name));
+        return ir_stmt_return(st, s->span, ir_check_expr(bc, v, ir_type_error(st)));
+    }
+    return ir_stmt_return(st, s->span, ir_check_expr(bc, v, f->ret));
+}
+
 static IrStmt *build_stmt(BodyCtx *bc, const Stmt *s) {
     IrState *st = bc->st;
     switch (s->kind) {
@@ -214,19 +235,55 @@ static IrStmt *build_stmt(BodyCtx *bc, const Stmt *s) {
         case STMT_CONTINUE:
             if (bc->loop_depth == 0) ir_error(st, diag_ir_outside_loop(s->span, "continue"));
             return ir_stmt_continue(st, s->span);
-        case STMT_RETURN: {
-            if (!s->as.return_stmt.value) ir_unimplemented(st, "bare return (step 9)");
-            if (bc->func->ret->kind == IR_T_UNIT) ir_unimplemented(st, "return in a unit function (step 9)");
-            return ir_stmt_return(st, s->span, ir_check_expr(bc, s->as.return_stmt.value, bc->func->ret));
-        }
+        case STMT_RETURN:
+            return build_return(bc, s);
         case STMT_BLOCK:
             break;
     }
     ir_unimplemented(st, "a bare block statement"); /* the parser never builds one */
 }
 
+/* ---- missing return (E0277) ---- */
+
+/* Does control certainly reach a `return` (so it cannot fall off the end)? Structural, per Q5
+ * (docs/M2_PLAN.md "missing return"): a block does if ANY of its statements does (statements after
+ * a `return` are unreachable, which is allowed, so `return 1; let x = 2;` returns); a `return` does;
+ * an `if` does only with an `else` and when the then-block and the else both do (an else-if chain
+ * is an else that is itself an `if`). LOOPS NEVER COUNT - not even `while true { return 1; }` or a
+ * `for` whose body returns - and `break`/`continue` do not return. No constant folding: `if true
+ * { return 1; }` without an else does not return. Runs on the built IR; the else-if chain is a
+ * loop, the only recursion is through nested blocks (bounded by the parser's nesting depth). */
+static bool block_returns(const IrStmt *b);
+
+static bool if_returns(const IrStmt *s) {
+    for (;;) {
+        if (!block_returns(s->as.if_stmt.then_branch)) return false;
+        const IrStmt *e = s->as.if_stmt.else_branch;
+        if (!e) return false;
+        if (e->kind == IR_S_IF) { s = e; continue; }
+        return block_returns(e);
+    }
+}
+
+static bool block_returns(const IrStmt *b) {
+    for (size_t i = 0; i < b->as.block.stmts.len; i++) {
+        const IrStmt *s = b->as.block.stmts.items[i];
+        if (s->kind == IR_S_RETURN || (s->kind == IR_S_IF && if_returns(s))) return true;
+    }
+    return false;
+}
+
+/* E0277 is reported at the body's closing `}`: that is where control runs off the end, it is
+ * always on a line of its own end of the function (the name is far above in a long body), and the
+ * message names the function. One per function, after the body's own errors. */
 IrStmt *ir_build_body(IrState *st, Ctx *decls, IrFunc *f, const Stmt *body) {
     BodyCtx bc;
     body_init(&bc, st, decls, f);
-    return build_block(&bc, body);
+    IrStmt *blk = build_block(&bc, body);
+    if (f->ret->kind != IR_T_UNIT && !block_returns(blk)) {
+        Span end = body->span;
+        Span brace = {end.end_line, end.end_col - 1, end.end_line, end.end_col};
+        ir_error(st, diag_ir_may_end_without_return(st->arena, brace, f->name));
+    }
+    return blk;
 }

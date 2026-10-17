@@ -1,0 +1,3 @@
+ERRORS:
+3:17 E0230 unknown name 'nope'
+4:1 E0277 function 'f' may end without returning a value

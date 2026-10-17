@@ -717,9 +717,6 @@ static void test_unimplemented(void) {
     static IrState st;
     ir_state_init(&st, 1 << 20);
     static const struct { const char *src, *what; } cases[] = {
-        {"manna v0;\nfn f() { return; }\n", "bare return"},
-        {"manna v0;\nfn ok() { }\nfn f() { return; }\n", "bare return"},       /* after a buildable function */
-        {"manna v0;\nfn f() { return 1; }\n", "return in a unit function"},
         {"manna v0;\nfn f() -> u8 { return g(); }\nfn g() -> u8 { }\n", "calls"},
         {"manna v0;\nfn f() { g(); }\nfn g() { }\n", "calls"},
         {"manna v0;\nstruct P { x: u8, }\nfn f(p: P) { p.x = 1; }\n", "assignment to a field or an element"},
@@ -750,7 +747,7 @@ static void test_unimplemented(void) {
     assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_BUILT && m != NULL && st.unimplemented == NULL);
     parse_done();
     ir_state_destroy(&st);
-    pass("IR_UNIMPLEMENTED: what is not built yet (returns, calls, fields, arrays, conversions), no diagnostic, no module; real errors win; state reusable");
+    pass("IR_UNIMPLEMENTED: what is not built yet (calls, fields, arrays, conversions), no diagnostic, no module; real errors win; state reusable");
 }
 
 /* `fn f() -> T { return <expr>; }` for one case of the range matrix. Returns the build status;
@@ -996,13 +993,13 @@ static void test_decls_many_names(void) {
 static void test_signatures(void) {
     static IrState st;
     ir_state_init(&st, 1 << 20);
-    parse_src("manna v0;\n[kernel_hook]\nfn f(a: u8, b: [2]u8, c: []u8) -> u32 { }\nfn g(d: []u8) { }\nfn h() -> [3]u16 { }\n");
+    parse_src("manna v0;\n[kernel_hook]\nfn f(a: u8, b: [2]u8, c: []u8) -> u32 { return 0; }\nfn g(d: []u8) { }\n");
     assert(g_ps.diags.len == 0);
     IrModule *m = NULL;
-    assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_BUILT && m->funcs.len == 3);
+    assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_BUILT && m->funcs.len == 2);
 
-    const IrFunc *f = m->funcs.items[0], *g = m->funcs.items[1], *h = m->funcs.items[2];
-    assert(f->kernel_hook && !g->kernel_hook && !h->kernel_hook);
+    const IrFunc *f = m->funcs.items[0], *g = m->funcs.items[1];
+    assert(f->kernel_hook && !g->kernel_hook);
     assert(f->n_params == 3 && f->locals.len == 3);
     for (size_t i = 0; i < 3; i++) {
         const IrLocal *l = f->locals.items[i];
@@ -1015,14 +1012,14 @@ static void test_signatures(void) {
     assert(sl == ir_type_slice(&st, u8));                                /* interned: pointer equality */
     assert(((const IrLocal *)g->locals.items[0])->type == sl);            /* the same slice type in another function */
     assert(f->ret == ir_type_int(&st, 32, false) && g->ret == ir_type_unit(&st));
-    assert(h->ret == ir_type_array(&st, 3, ir_type_int(&st, 16, false)));
     /* a return type prints; unit (no '-> type') prints (returns) */
     expect(capture(dump_f, f),
-           "(fn@2:1-3:42 fn:f kernel_hook\n"
+           "(fn@2:1-3:52 fn:f kernel_hook\n"
            "  (params (param@3:6-3:11 a #0 u8) (param@3:13-3:21 b #1 [2]u8) (param@3:23-3:30 c #2 []u8))\n"
            "  (returns u32)\n"
-           "  (block@3:39-3:42))");
-    expect(capture(dump_f, h), "(fn@5:1-5:21 fn:h\n  (params)\n  (returns [3]u16)\n  (block@5:18-5:21))");
+           "  (block@3:39-3:52\n"
+           "    (return@3:41-3:50\n"
+           "      (int@3:48-3:49 0 u32))))");
     parse_done();
     ir_state_destroy(&st);
     pass("signatures: slots, is_param, interned param/return types, kernel_hook flag, (returns T)");
@@ -1497,7 +1494,8 @@ static int run_build_shape(const char *shape, int height, bool as_bool, bool par
         for (int i = 0; i < 120; i++) w += sprintf(w, "if true { ");
         w += sprintf(w, "return %s; ", expr);
         for (int i = 0; i < 120; i++) w += sprintf(w, "} ");
-        sprintf(w, "}\n");
+        /* the return inside the ifs is conditional, so the function also needs one at its end (E0277) */
+        sprintf(w, "return %s; }\n", strcmp(rt, "bool") == 0 ? "true" : "0");
     } else {
         sprintf(src, "manna v0;\nfn f(x: u64, p: bool) -> %s { return %s; }\n", rt, expr);
     }
