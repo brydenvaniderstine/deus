@@ -60,6 +60,12 @@ Format: `- YYYY-MM-DD: idea, one or two sentences, and where it might eventually
 - A task can do a sensitive action only with an explicit, unforgeable, user-granted capability. Builds on effects (`docs/M2_PLAN.md` §6 effects item) and intent tags.
 - The user or a written policy grants rights, never an AI. No self-replicating agents.
 
+## 2026-10-17: Capability-scoped storage (post-M3, needs a storage driver)
+
+- No global path tree for user code: a Wasm task sees only the directory/file handles it is granted through host imports (Fuchsia component namespaces / WASI preopens model). Extends the Capability grants entry above; the user or a written policy grants handles, never an AI.
+- Layout candidate: immutable, hash-named system store (kernel, Manna stdlib), with hashes checked at boot; separate user-owned data tree; few, readable top-level names (TempleOS simplicity).
+- Limits: protects on-disk files only, not the running kernel (see CLAUDE.md known risks). Prerequisites: M3 Wasm runtime and a storage driver (virtio-blk first). Must not add filesystem code to the kernel TCB beyond what the 120k LOC cap allows.
+
 ## 2026-10-09: Per-task execution budget (M3)
 
 - Extends M2's loop-counter injection to a runtime budget per Wasm task; on exhaustion the task traps cleanly.
