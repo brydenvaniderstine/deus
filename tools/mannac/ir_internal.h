@@ -97,6 +97,11 @@ typedef struct {
     Span          size_error_span;
 } StructInfo;
 
+typedef struct CallEdge {
+    uint32_t caller, callee; /* function positions in declaration order */
+    Span     span;           /* the whole call */
+} CallEdge;
+
 typedef struct {
     IrState    *st;
     Symtab      top;     /* structs and functions, one namespace */
@@ -105,6 +110,10 @@ typedef struct {
     IrStruct   *irs;     /* contiguous: struct i is irs[i] */
     IrFunc    **fns;     /* signatures, in declaration order (bodies are ir_build's) */
     size_t      n_fns;
+    /* The call graph, recorded while the bodies are built: one edge per call that names a function
+     * (a SymEntry of a function holds its position in fns[] as `index`). Caller order = body order. */
+    struct CallEdge *edges;
+    size_t      n_edges, cap_edges;
 } Ctx;
 
 /* Where a type is being written, which decides what a slice may do there
@@ -153,6 +162,7 @@ typedef struct {
     size_t   *scope_start; /* func->locals.len when each open block was entered */
     size_t    depth;     /* open blocks */
     size_t    scope_cap;
+    size_t    fn_index;  /* this function's position among the functions (the call graph's caller) */
     size_t    loop_depth; /* enclosing `while`/`for` bodies: `break`/`continue` are legal only inside one */
 } BodyCtx;
 
@@ -167,7 +177,10 @@ IrLocal *body_lookup(const BodyCtx *bc, const char *name);
 IrLocal *body_declare(BodyCtx *bc, const char *name, const IrType *type, Span span);
 
 /* Builds a function body (a block); statements the later steps own stop the build. */
-IrStmt *ir_build_body(IrState *st, Ctx *decls, IrFunc *f, const Stmt *body);
+IrStmt *ir_build_body(IrState *st, Ctx *decls, IrFunc *f, size_t fn_index, const Stmt *body);
+
+/* After every body: rejects direct and mutual recursion (E0235, once per cycle; ir_calls.c). */
+void ir_check_recursion(IrState *st, Ctx *decls);
 
 /* Checks `e` against `expected` (never NULL; ERROR means "the expected type already failed":
  * check the expression's own names, report nothing about its type). Errors are recorded and
@@ -176,3 +189,10 @@ IrExpr *ir_check_expr(BodyCtx *bc, const Expr *e, const IrType *expected);
 /* The type of `e` with no expectation: bool literals and names; an integer literal expression
  * has no type of its own (E0225). */
 IrExpr *ir_infer_expr(BodyCtx *bc, const Expr *e);
+/* As ir_infer_expr, but a `unit` value is fine: an expression STATEMENT may be a call to a function
+ * that returns nothing. */
+IrExpr *ir_infer_discard(BodyCtx *bc, const Expr *e);
+/* Checks `e` for its OWN mistakes only (names, operators, nested calls) and says nothing about its type
+ * or about being a unit value: for a value whose expected type is unknown or irrelevant (the value of an
+ * assignment to a non-lvalue, an unexpected return value, the arguments of an unknown function). */
+void ir_check_silent(BodyCtx *bc, const Expr *e);

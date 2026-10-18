@@ -1,0 +1,7 @@
+manna v0;
+fn one() -> u8 {
+    return 1;
+}
+fn f() -> bool {
+    return one() + 2 == 3;
+}

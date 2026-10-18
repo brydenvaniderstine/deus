@@ -1,0 +1,10 @@
+manna v0;
+fn one() -> u8 {
+    return 1;
+}
+fn nothing() {
+}
+fn f() {
+    one();
+    nothing();
+}

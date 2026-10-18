@@ -36,8 +36,7 @@ _Noreturn void ir_unimplemented(IrState *st, const char *what) {
 /* Which later step owns an expression kind this step does not check. */
 static _Noreturn void unimplemented_kind(IrState *st, const Expr *e) {
     switch (e->kind) {
-        case EXPR_CALL:
-        case EXPR_NAMED_ARG:    ir_unimplemented(st, "calls and struct construction (steps 10-11)");
+        case EXPR_NAMED_ARG:    ir_unimplemented(st, "struct construction (step 11)"); /* only ever inside a call's arguments */
         case EXPR_FIELD_ACCESS: ir_unimplemented(st, "field access (step 11)");
         case EXPR_INDEX:
         case EXPR_SLICE:
@@ -49,9 +48,10 @@ static _Noreturn void unimplemented_kind(IrState *st, const Expr *e) {
         case EXPR_IDENT:
         case EXPR_UNARY:
         case EXPR_BINARY:
+        case EXPR_CALL:
             break;
     }
-    ir_unimplemented(st, "this expression (steps 9-13)");
+    ir_unimplemented(st, "this expression (steps 11-13)");
 }
 
 static bool is_int(const IrType *t) {
@@ -111,6 +111,10 @@ static IR_COLD void report_name(IrState *st, const Expr *e, const SymEntry *top)
     const char *name = e->as.ident.name;
     ir_error(st, top ? diag_ir_not_a_value(st->arena, e->span, name, top->is_struct)
                      : diag_ir_unknown_name(st->arena, e->span, name));
+}
+
+static IR_COLD void report_unit(IrState *st, Span at) { /* a call that returns nothing, used as a value */
+    ir_error(st, diag_ir_unit_value(at));
 }
 
 /* ---- groups: resolved top-down once the type is known ----
@@ -226,10 +230,15 @@ static Synth is_node(IrExpr *n)    { Synth s = {false, n}; return s; }
 static Synth is_error(IrState *st, Span at) { return is_node(error_node(st, at)); }
 
 static bool has_error(Synth s) { return !s.group && s.node->type->kind == IR_T_ERROR; }
+static bool is_unit(Synth s)   { return !s.group && s.node->type->kind == IR_T_UNIT; }
 
 static IR_NOINLINE Synth finish_unary(BodyCtx *bc, const Expr *e, Synth o) {
     IrState *st = bc->st;
     UnOp op = e->as.unary.op;
+    if (is_unit(o)) { /* a unit call is not an operand */
+        report_unit(st, e->as.unary.operand->span);
+        return is_error(st, e->span);
+    }
     if (op != UNOP_NOT && o.group) return o;                  /* `-` and `~` of a group are groups */
     if (op == UNOP_NOT && o.group) {                          /* `!` needs a bool; a literal has no type to name */
         report_bool_expected(st, e->as.unary.operand->span);
@@ -338,6 +347,10 @@ static IR_NOINLINE Synth finish_logical(BodyCtx *bc, const Expr *e, Synth l, Syn
 
 static IR_NOINLINE Synth finish_binary(BodyCtx *bc, const Expr *e, Synth l, Synth r) {
     BinOp op = e->as.binary.op;
+    if (is_unit(l) || is_unit(r)) { /* a unit call is not an operand; the left one is reported first, once */
+        report_unit(bc->st, is_unit(l) ? e->as.binary.lhs->span : e->as.binary.rhs->span);
+        return is_error(bc->st, e->span);
+    }
     if (is_logical(op)) return finish_logical(bc, e, l, r);
     if (is_arith_class(op) && l.group && r.group) return is_group();
     return typed_binary(bc, e, l, r);
@@ -347,6 +360,87 @@ static Synth synth_binary(BodyCtx *bc, const Expr *e) {
     Synth l = synth(bc, e->as.binary.lhs);
     Synth r = synth(bc, e->as.binary.rhs);
     return finish_binary(bc, e, l, r);
+}
+
+/* ---- calls (typed-IR step 10, docs/M2_PLAN.md "Calls and struct construction") ----
+ * The callee is looked up among the TOP-LEVEL names only (a local of the same name is irrelevant;
+ * forward references are legal). Unknown: E0232 at the name, the arguments still checked for their
+ * own mistakes, arity not compared, the call ERROR. A struct is construction (step 11). Otherwise the
+ * call has the function's declared return type whatever is wrong with its arguments, so an argument
+ * mistake never spreads to the code around the call. Arguments are positional only (E0234 for a
+ * named one, once, at the first), their count must match (E0233, at the call) and each is checked
+ * against its parameter's type, left to right (the IR keeps them in written order, Q6 (v)). */
+
+static IR_NOINLINE void silently_check_args(BodyCtx *bc, const Expr *e) {
+    const NodeList *args = &e->as.call.args;
+    for (size_t i = 0; i < args->len; i++) {
+        const Expr *a = args->items[i];
+        ir_check_silent(bc, a->kind == EXPR_NAMED_ARG ? a->as.named_arg.value : a);
+    }
+}
+
+static IR_COLD void report_unknown_function(BodyCtx *bc, const Expr *e) {
+    ir_error(bc->st, diag_ir_unknown_function(bc->st->arena, e->as.call.name_span, e->as.call.name));
+}
+
+static IR_NOINLINE void record_call(BodyCtx *bc, size_t callee, Span span) {
+    Ctx *cx = bc->decls;
+    if (cx->n_edges == cx->cap_edges) {
+        size_t cap = cx->cap_edges ? cx->cap_edges * 2 : 64;
+        CallEdge *edges = arena_alloc(bc->st->arena, cap * sizeof(CallEdge), alignof(CallEdge));
+        if (cx->n_edges) memcpy(edges, cx->edges, cx->n_edges * sizeof(CallEdge));
+        cx->edges = edges; /* installed only after the allocation succeeded */
+        cx->cap_edges = cap;
+    }
+    cx->edges[cx->n_edges++] = (CallEdge){(uint32_t)bc->fn_index, (uint32_t)callee, span};
+}
+
+/* The function a call names, or NULL after reporting E0232. A struct stops the build. */
+static IR_NOINLINE const IrFunc *call_target(BodyCtx *bc, const Expr *e) {
+    const SymEntry *t = symtab_lookup(&bc->decls->top, e->as.call.name);
+    if (!t) {
+        report_unknown_function(bc, e);
+        silently_check_args(bc, e);
+        return NULL;
+    }
+    if (t->is_struct) ir_unimplemented(bc->st, "struct construction (step 11)");
+    record_call(bc, t->index, e->span);
+    return bc->decls->fns[t->index];
+}
+
+/* True if the arguments are positional and as many as the parameters, i.e. each is to be checked
+ * against its parameter. Otherwise the one error (E0234 or E0233) is reported and the arguments are
+ * checked for their own mistakes only. */
+static IR_NOINLINE bool call_shape_ok(BodyCtx *bc, const Expr *e, const IrFunc *f) {
+    IrState *st = bc->st;
+    const NodeList *args = &e->as.call.args;
+    for (size_t i = 0; i < args->len; i++) {
+        const Expr *a = args->items[i];
+        if (a->kind != EXPR_NAMED_ARG) continue;
+        ir_error(st, diag_ir_named_args_to_function(st->arena, a->span, f->name));
+        silently_check_args(bc, e);
+        return false;
+    }
+    if (args->len != f->n_params) {
+        ir_error(st, diag_ir_wrong_arity(st->arena, e->span, f->name, f->n_params, args->len));
+        silently_check_args(bc, e);
+        return false;
+    }
+    return true;
+}
+
+static Synth synth_call(BodyCtx *bc, const Expr *e) {
+    const IrFunc *f = call_target(bc, e);
+    if (!f) return is_error(bc->st, e->span);
+    NodeList args;
+    node_list_init(&args);
+    if (call_shape_ok(bc, e, f)) {
+        for (size_t i = 0; i < f->n_params; i++) {
+            const IrLocal *p = f->locals.items[i];
+            node_list_push(bc->st->arena, &args, ir_check_expr(bc, e->as.call.args.items[i], p->type));
+        }
+    }
+    return is_node(ir_expr_call(bc->st, e->span, f->ret, f, args));
 }
 
 static IR_NOINLINE Synth synth_leaf(BodyCtx *bc, const Expr *e) {
@@ -368,6 +462,7 @@ static Synth synth(BodyCtx *bc, const Expr *e) {
     assert(ir_ast_height_ok(e)); /* the parser's E0111 bound; this stage asserts it, enforces none */
     if (e->kind == EXPR_BINARY) return synth_binary(bc, e);
     if (e->kind == EXPR_UNARY) return synth_unary(bc, e);
+    if (e->kind == EXPR_CALL) return synth_call(bc, e);
     return synth_leaf(bc, e);
 }
 
@@ -377,6 +472,10 @@ IrExpr *ir_check_expr(BodyCtx *bc, const Expr *e, const IrType *expected) {
     IrState *st = bc->st;
     Synth s = synth(bc, e);
     if (s.group) return group_against(st, e, expected);
+    if (is_unit(s)) { /* nothing is expected to BE unit: a call that returns nothing is not a value */
+        report_unit(st, e->span);
+        return error_node(st, e->span);
+    }
     const IrType *t = s.node->type;
     if (t->kind == IR_T_ERROR || expected->kind == IR_T_ERROR || t == expected) return s.node;
     report_mismatch_types(st, e->span, expected, t);
@@ -386,9 +485,25 @@ IrExpr *ir_check_expr(BodyCtx *bc, const Expr *e, const IrType *expected) {
 IrExpr *ir_infer_expr(BodyCtx *bc, const Expr *e) {
     IrState *st = bc->st;
     Synth s = synth(bc, e);
+    if (is_unit(s)) {
+        report_unit(st, e->span);
+        return error_node(st, e->span);
+    }
     if (!s.group) return s.node;
     /* A literal expression has no type of its own: it takes the one expected of it, and nothing
      * expects one here. */
     report_cannot_infer(st, e->span);
     return error_node(st, e->span);
+}
+
+IrExpr *ir_infer_discard(BodyCtx *bc, const Expr *e) {
+    IrState *st = bc->st;
+    Synth s = synth(bc, e);
+    if (!s.group) return s.node; /* a value that is thrown away may be unit */
+    report_cannot_infer(st, e->span);
+    return error_node(st, e->span);
+}
+
+void ir_check_silent(BodyCtx *bc, const Expr *e) {
+    (void)synth(bc, e);
 }

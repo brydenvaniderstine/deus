@@ -1,0 +1,24 @@
+(fn@2:1-5:2 fn:top
+  (params)
+  (returns)
+  (block@2:10-5:2
+    (expr_stmt@3:5-3:12
+      (call@3:5-3:11 fn:left unit))
+    (expr_stmt@4:5-4:13
+      (call@4:5-4:12 fn:right unit))))
+(fn@6:1-8:2 fn:left
+  (params)
+  (returns)
+  (block@6:11-8:2
+    (expr_stmt@7:5-7:14
+      (call@7:5-7:13 fn:bottom unit))))
+(fn@9:1-11:2 fn:right
+  (params)
+  (returns)
+  (block@9:12-11:2
+    (expr_stmt@10:5-10:14
+      (call@10:5-10:13 fn:bottom unit))))
+(fn@12:1-13:2 fn:bottom
+  (params)
+  (returns)
+  (block@12:13-13:2))

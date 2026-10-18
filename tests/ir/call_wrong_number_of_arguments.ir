@@ -1,0 +1,6 @@
+ERRORS:
+12:5 E0233 'add' takes 2 arguments, found 1
+13:5 E0233 'add' takes 2 arguments, found 3
+14:5 E0233 'one' takes 1 argument, found 2
+15:5 E0233 'zero' takes 0 arguments, found 1
+16:5 E0233 'one' takes 1 argument, found 0

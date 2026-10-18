@@ -1,0 +1,10 @@
+manna v0;
+fn nothing() {
+}
+fn f() {
+    return nothing();
+}
+fn g() {
+    nope(nothing());
+    1 = nothing();
+}

@@ -1,0 +1,18 @@
+(fn@2:1-4:2 fn:one
+  (params)
+  (returns u8)
+  (block@2:16-4:2
+    (return@3:5-3:14
+      (int@3:12-3:13 1 u8))))
+(fn@5:1-6:2 fn:nothing
+  (params)
+  (returns)
+  (block@5:14-6:2))
+(fn@7:1-10:2 fn:f
+  (params)
+  (returns)
+  (block@7:8-10:2
+    (expr_stmt@8:5-8:11
+      (call@8:5-8:10 fn:one u8))
+    (expr_stmt@9:5-9:15
+      (call@9:5-9:14 fn:nothing unit))))

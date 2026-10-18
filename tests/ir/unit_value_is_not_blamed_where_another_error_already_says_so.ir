@@ -1,0 +1,4 @@
+ERRORS:
+5:12 E0276 unexpected return value: function 'f' returns nothing
+8:5 E0232 unknown function 'nope'
+9:5 E0270 can't assign to this expression

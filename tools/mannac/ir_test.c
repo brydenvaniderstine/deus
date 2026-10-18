@@ -2,6 +2,7 @@
  * lesson of the parser's G6 (glibc -std=c11 hides POSIX declarations). */
 #define _POSIX_C_SOURCE 200809L
 #include <assert.h>
+#include <pthread.h>
 #include <setjmp.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -637,6 +638,27 @@ static void parse_done(void) {
     parser_state_destroy(&g_ps);
 }
 
+/* Parses on a thread with a 256 MB stack, then returns: the parser's frames are gone before the caller builds.
+ * The builder-stack harness uses it so the stack the builder is measured on is the builder's own, not the
+ * parser's (parsing 254 nested calls needs 4-8 MB under ASan by itself: measured, reported in
+ * docs/TYPED_IR.md step 10). Everything the parse produces lives in statics and the parser's arena. */
+static const char *g_big_src;
+static void *parse_thread(void *unused) {
+    (void)unused;
+    parse_src(g_big_src);
+    return NULL;
+}
+static void parse_src_big_stack(const char *src) {
+    pthread_attr_t attr;
+    pthread_t th;
+    g_big_src = src;
+    assert(pthread_attr_init(&attr) == 0);
+    assert(pthread_attr_setstacksize(&attr, (size_t)256 << 20) == 0);
+    assert(pthread_create(&th, &attr, parse_thread, NULL) == 0);
+    assert(pthread_join(th, NULL) == 0);
+    pthread_attr_destroy(&attr);
+}
+
 static char *dump_module_of(const IrModule *m) {
     return capture(dump_m, m);
 }
@@ -717,15 +739,14 @@ static void test_unimplemented(void) {
     static IrState st;
     ir_state_init(&st, 1 << 20);
     static const struct { const char *src, *what; } cases[] = {
-        {"manna v0;\nfn f() -> u8 { return g(); }\nfn g() -> u8 { }\n", "calls"},
-        {"manna v0;\nfn f() { g(); }\nfn g() { }\n", "calls"},
+        {"manna v0;\nstruct P { x: u8, }\nfn f() { let p = P(x: 1); }\n", "struct construction"},
         {"manna v0;\nstruct P { x: u8, }\nfn f(p: P) { p.x = 1; }\n", "assignment to a field or an element"},
         {"manna v0;\nfn f(a: [2]u8) { a[0] = 1; }\n", "assignment to a field or an element"},
         {"manna v0;\nstruct P { x: u8, }\nfn f(p: P) { p.x; }\n", "field access"},
         {"manna v0;\nfn f(a: [2]u8) { a[0]; }\n", "arrays, indexing and slicing"},
         {"manna v0;\nfn f() { [1, 2]; }\n", "arrays, indexing and slicing"},
         {"manna v0;\nfn f() -> u8 { return u8(1); }\n", "conversions"},
-        {"manna v0;\nfn f(x: u8) { let y = x + g(); }\nfn g() -> u8 { }\n", "calls"},    /* an operand the builder cannot type */
+        {"manna v0;\nstruct P { x: u8, }\nfn f(x: u8) { let y = x + P(x: 1).x; }\n", "field access"},   /* an operand the builder cannot type */
     };
     for (size_t i = 0; i < sizeof cases / sizeof cases[0]; i++) {
         parse_src(cases[i].src);
@@ -738,7 +759,7 @@ static void test_unimplemented(void) {
     }
 
     /* Errors found before the unwind win over IR_UNIMPLEMENTED, and the state is reusable. */
-    parse_src("manna v0;\nfn a() -> i8 { return 128; }\nfn b() -> u8 { return g(); }\nfn g() -> u8 { }\n");
+    parse_src("manna v0;\nfn a() -> i8 { return 128; }\nfn b() -> u8 { return u8(1); }\n");
     IrModule *m = NULL;
     assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_ERRORS && m == NULL);
     assert(st.diags.len == 1 && strcmp(st.diags.items[0].code, "E0224") == 0);
@@ -747,7 +768,7 @@ static void test_unimplemented(void) {
     assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_BUILT && m != NULL && st.unimplemented == NULL);
     parse_done();
     ir_state_destroy(&st);
-    pass("IR_UNIMPLEMENTED: what is not built yet (calls, fields, arrays, conversions), no diagnostic, no module; real errors win; state reusable");
+    pass("IR_UNIMPLEMENTED: what is not built yet (struct construction, fields, arrays, conversions), no diagnostic, no module; real errors win; state reusable");
 }
 
 /* `fn f() -> T { return <expr>; }` for one case of the range matrix. Returns the build status;
@@ -1353,6 +1374,65 @@ static void test_checker_is_linear(void) {
     pass("the checker is linear: <= 2 visits per node on 128/256/512-high chains with the typed operand at the bottom, the root, or alternating");
 }
 
+/* ---- calls (step 10) ---- */
+
+/* The IR of a call: the callee is the module's own IrFunc (pointer identity), the type is its declared
+ * return type, and the arguments are in WRITTEN order, each typed by its parameter. */
+static void test_call_ir(void) {
+    static IrState st;
+    ir_state_init(&st, 1 << 20);
+    parse_src("manna v0;\nfn mix(a: u8, b: bool, c: i64) -> i64 { return c; }\nfn f() -> i64 { return mix(1, true, 3); }\nfn g() { mix(2, false, 4); }\n");
+    IrModule *m = NULL;
+    assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_BUILT && m->funcs.len == 3);
+    const IrFunc *mix = m->funcs.items[0], *f = m->funcs.items[1], *g = m->funcs.items[2];
+    const IrExpr *c = ((const IrStmt *)f->body->as.block.stmts.items[0])->as.ret.value;
+    assert(c->kind == IR_E_CALL && c->as.call.func == mix && c->type == ir_type_int(&st, 64, true));
+    assert(c->as.call.args.len == 3);
+    const IrExpr *a0 = c->as.call.args.items[0], *a1 = c->as.call.args.items[1], *a2 = c->as.call.args.items[2];
+    assert(a0->kind == IR_E_INT && a0->as.integer.bits == 1 && a0->type == ir_type_int(&st, 8, false));
+    assert(a1->kind == IR_E_BOOL && a1->as.boolean.value);
+    assert(a2->kind == IR_E_INT && a2->as.integer.bits == 3 && a2->type == ir_type_int(&st, 64, true));
+    /* a discarded call statement keeps the call (and its value, unused) */
+    const IrStmt *es = g->body->as.block.stmts.items[0];
+    assert(es->kind == IR_S_EXPR && es->as.expr.expr->kind == IR_E_CALL && es->as.expr.expr->as.call.func == mix);
+    parse_done();
+    ir_state_destroy(&st);
+    pass("call IR: the callee is the module's own function, the type its return type, arguments in written order");
+}
+
+/* The call graph is analysed iteratively: a chain of 20000 functions each calling the next is fine; the
+ * same chain closed into a ring is ONE E0235, at the first call made from the lowest function. Also run
+ * under the 2 MB gate (--stack): a recursive walk 20000 deep would not fit. */
+static void test_call_graph_scale(void) {
+    enum { N = 20000 };
+    char *src = malloc((size_t)N * 40 + 64);
+    assert(src);
+    static IrState st;
+    for (int ring = 0; ring < 2; ring++) {
+        char *w = src + sprintf(src, "manna v0;\n");
+        for (int i = 0; i < N; i++) {
+            if (i + 1 < N) w += sprintf(w, "fn f%d() { f%d(); }\n", i, i + 1);
+            else if (ring) w += sprintf(w, "fn f%d() { f0(); }\n", i);
+            else w += sprintf(w, "fn f%d() { }\n", i);
+        }
+        ir_state_init(&st, 32 << 20);
+        parse_src(src);
+        assert(g_ps.diags.len == 0 && g_items.len == N);
+        IrModule *m = NULL;
+        IrStatus r = ir_build(&st, &g_ps.diags, &g_items, &m);
+        if (!ring) {
+            assert(r == IR_BUILT && m->funcs.len == N);
+        } else {
+            assert(r == IR_ERRORS && st.diags.len == 1 && strcmp(st.diags.items[0].code, "E0235") == 0);
+            assert(st.diags.items[0].span.start_line == 2 && st.diags.items[0].span.start_col == 11); /* f0's call `f1()` */
+        }
+        parse_done();
+        ir_state_destroy(&st);
+    }
+    free(src);
+    pass("call graph: a 20000-long chain builds (iterative), the same chain as a ring is one E0235 at f0's first call");
+}
+
 /* ---- structs at scale: nothing recursive over a chain of structs ---- */
 
 /* A chain of 20000 structs, each holding the next (S0 holds S1 holds ...), and a ring
@@ -1434,7 +1514,7 @@ static void test_deepest_array_type(void) {
 typedef struct { const char *name; int live_step; /* 0 = live now, else the step that makes it live */ } BuildShape;
 static const BuildShape build_shapes[] = {
     {"binary", 0}, {"mixed_prec", 0}, {"neg_chain", 0}, {"in_ifs", 0}, {"name_chain", 0}, {"and_chain", 0},
-    {"in_calls", 10}, {"field", 11}, {"index", 12}, {"postfix_mix", 12},
+    {"in_calls", 0}, {"field", 11}, {"index", 12}, {"postfix_mix", 12},
 };
 enum { N_BUILD_SHAPES = sizeof build_shapes / sizeof build_shapes[0] };
 
@@ -1450,6 +1530,10 @@ static char *gen_expr(const char *shape, int height) {
     } else if (strcmp(shape, "mixed_prec") == 0) {
         w += sprintf(w, "1");
         for (int i = 0; i < height - 2; i++) w += sprintf(w, "+2*3"); /* tree height = adds + 2 */
+    } else if (strcmp(shape, "in_calls") == 0) { /* g(g(g(...g(1)...))): `height` nested calls */
+        for (int i = 0; i < height; i++) w += sprintf(w, "g(");
+        w += sprintf(w, "1");
+        for (int i = 0; i < height; i++) *w++ = ')';
     } else if (strcmp(shape, "name_chain") == 0) { /* x+1+1+... : a typed name under a literal chain */
         w += sprintf(w, "x");
         for (int i = 0; i < height - 1; i++) w += sprintf(w, "+1");
@@ -1468,17 +1552,19 @@ static char *gen_expr(const char *shape, int height) {
  * expected; the caller treats any crash as a stack failure. */
 static int run_build_shape(const char *shape, int height, bool as_bool, bool parse_only) {
     bool neg = strcmp(shape, "neg_chain") == 0;
+    bool calls = strcmp(shape, "in_calls") == 0;
     char *expr = NULL;
-    if (neg && height == 0) { /* the deepest the nesting bound accepts */
+    int levels = height;
+    if ((neg || calls) && height == 0) { /* the deepest the nesting bound accepts */
         for (int k = 255; k >= 200 && !expr; k--) {
             char *e = gen_expr(shape, k);
-            char *src = malloc(strlen(e) + 64);
-            sprintf(src, "manna v0;\nfn f(x: u64, p: bool) -> i64 { return %s; }\n", e);
-            parse_src(src);
+            char *src = malloc(strlen(e) + 128);
+            sprintf(src, "manna v0;\nfn g(a: u64) -> u64 { return a; }\nfn f(x: u64, p: bool) -> %s { return %s; }\n", neg ? "i64" : "u64", e);
+            parse_src_big_stack(src);
             bool ok = g_ps.diags.len == 0;
             parse_done();
             free(src);
-            if (ok) expr = e; else free(e);
+            if (ok) { expr = e; levels = k; } else free(e);
         }
         assert(expr);
     } else {
@@ -1490,17 +1576,19 @@ static int run_build_shape(const char *shape, int height, bool as_bool, bool par
     bool is_and = strcmp(shape, "and_chain") == 0;
     const char *rt = is_and ? (as_bool ? "u64" : "bool") : (as_bool ? "bool" : (neg ? "i64" : "u64"));
     if (strcmp(shape, "in_ifs") == 0) { /* the chain inside 120 nested ifs (the parser allows 127 levels) */
-        char *w = src + sprintf(src, "manna v0;\nfn f(x: u64, p: bool) -> %s { ", rt);
+        char *w = src + sprintf(src, "manna v0;\nfn g(a: u64) -> u64 { return a; }\nfn f(x: u64, p: bool) -> %s { ", rt);
         for (int i = 0; i < 120; i++) w += sprintf(w, "if true { ");
         w += sprintf(w, "return %s; ", expr);
         for (int i = 0; i < 120; i++) w += sprintf(w, "} ");
         /* the return inside the ifs is conditional, so the function also needs one at its end (E0277) */
         sprintf(w, "return %s; }\n", strcmp(rt, "bool") == 0 ? "true" : "0");
     } else {
-        sprintf(src, "manna v0;\nfn f(x: u64, p: bool) -> %s { return %s; }\n", rt, expr);
+        sprintf(src, "manna v0;\nfn g(a: u64) -> u64 { return a; }\nfn f(x: u64, p: bool) -> %s { return %s; }\n", rt, expr);
     }
-    printf("levels=%d\n", neg ? (int)strlen(expr) - 1 : height); /* neg_chain: the minus signs the parser accepted */
-    parse_src(src);
+    printf("levels=%d\n", levels); /* neg_chain / in_calls: the deepest nesting the parser accepted */
+    /* parse-only measures the PARSER on the process stack; otherwise the parse happens on a big-stack thread
+     * so that what is measured afterwards is the builder alone */
+    if (parse_only) parse_src(src); else parse_src_big_stack(src);
     assert(g_ps.diags.len == 0);
     if (!parse_only) {
         static IrState st;
@@ -1526,7 +1614,7 @@ static void test_builder_stack(void) {
             printf("PENDING: builder stack: %s (becomes live at step %d)\n", build_shapes[i].name, build_shapes[i].live_step);
             continue;
         }
-        int height = strcmp(build_shapes[i].name, "neg_chain") == 0 ? 0 : MAX_EXPR_HEIGHT;
+        int height = (strcmp(build_shapes[i].name, "neg_chain") == 0 || strcmp(build_shapes[i].name, "in_calls") == 0) ? 0 : MAX_EXPR_HEIGHT;
         run_build_shape(build_shapes[i].name, height, false, false);
         run_build_shape(build_shapes[i].name, height, true, false);
         printf("PASS: builder stack: %s, built and mismatch-walked at the maximal height\n", build_shapes[i].name);
@@ -1538,6 +1626,7 @@ int main(int argc, char **argv) {
     if (argc == 2 && strcmp(argv[1], "--stack") == 0) { /* the Makefile's 2 MB (4x) gate */
         test_stack_shapes();
         test_struct_chain_and_ring();
+        test_call_graph_scale();
         test_deepest_array_type();
         return 0;
     }
@@ -1581,6 +1670,8 @@ int main(int argc, char **argv) {
     test_operator_result_types();
     test_e0261_fix();
     test_checker_is_linear();
+    test_call_ir();
+    test_call_graph_scale();
     test_scope_api();
     test_scopes_through_the_builder();
     test_signatures();

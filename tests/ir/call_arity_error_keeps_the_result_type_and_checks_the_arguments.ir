@@ -1,0 +1,5 @@
+ERRORS:
+6:5 E0233 'add' takes 2 arguments, found 1
+6:9 E0230 unknown name 'nope'
+7:13 E0233 'add' takes 2 arguments, found 1
+8:19 E0223 type mismatch: expected bool, found u8

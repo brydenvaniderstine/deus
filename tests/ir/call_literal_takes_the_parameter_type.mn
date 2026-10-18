@@ -1,0 +1,7 @@
+manna v0;
+fn id(a: i8) -> i8 {
+    return a;
+}
+fn f() -> i8 {
+    return id(-128);
+}

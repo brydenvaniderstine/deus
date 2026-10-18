@@ -149,8 +149,9 @@ static IR_NOINLINE IrStmt *build_assign(BodyCtx *bc, const Stmt *s) {
     if (!lvalue_shape(target)) {
         ir_error(st, diag_ir_not_assignable(target->span));
         /* The value is still checked for its own mistakes, against no type. */
-        IrExpr *v = ir_check_expr(bc, value, ir_type_error(st));
-        return ir_stmt_assign(st, s->span, ir_expr_int(st, target->span, ir_type_error(st), 0), v);
+        ir_check_silent(bc, value);
+        return ir_stmt_assign(st, s->span, ir_expr_int(st, target->span, ir_type_error(st), 0),
+                              ir_expr_int(st, value->span, ir_type_error(st), 0));
     }
     if (target->kind != EXPR_IDENT) ir_unimplemented(st, "assignment to a field or an element (steps 11-12)");
     IrExpr *place = ir_infer_expr(bc, target); /* the local, or E0230/E0231 and ERROR */
@@ -209,7 +210,8 @@ static IR_NOINLINE IrStmt *build_return(BodyCtx *bc, const Stmt *s) {
     }
     if (unit) {
         ir_error(st, diag_ir_unexpected_return_value(st->arena, v->span, f->name));
-        return ir_stmt_return(st, s->span, ir_check_expr(bc, v, ir_type_error(st)));
+        ir_check_silent(bc, v);
+        return ir_stmt_return(st, s->span, ir_expr_int(st, v->span, ir_type_error(st), 0));
     }
     return ir_stmt_return(st, s->span, ir_check_expr(bc, v, f->ret));
 }
@@ -223,7 +225,7 @@ static IR_NOINLINE IrStmt *build_jump(BodyCtx *bc, const Stmt *s) {
 }
 
 static IR_NOINLINE IrStmt *build_expr_stmt(BodyCtx *bc, const Stmt *s) {
-    return ir_stmt_expr(bc->st, s->span, ir_infer_expr(bc, s->as.expr_stmt.expr));
+    return ir_stmt_expr(bc->st, s->span, ir_infer_discard(bc, s->as.expr_stmt.expr));
 }
 
 /* A thin dispatcher: it is live across every level of statement nesting (build_stmt -> build_if /
@@ -278,9 +280,10 @@ static bool block_returns(const IrStmt *b) {
 /* E0277 is reported at the body's closing `}`: that is where control runs off the end, it is
  * always on a line of its own end of the function (the name is far above in a long body), and the
  * message names the function. One per function, after the body's own errors. */
-IrStmt *ir_build_body(IrState *st, Ctx *decls, IrFunc *f, const Stmt *body) {
+IrStmt *ir_build_body(IrState *st, Ctx *decls, IrFunc *f, size_t fn_index, const Stmt *body) {
     BodyCtx bc;
     body_init(&bc, st, decls, f);
+    bc.fn_index = fn_index;
     IrStmt *blk = build_block(&bc, body);
     if (f->ret->kind != IR_T_UNIT && !block_returns(blk)) {
         Span end = body->span;

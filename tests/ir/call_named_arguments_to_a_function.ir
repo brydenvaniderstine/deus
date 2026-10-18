@@ -1,0 +1,5 @@
+ERRORS:
+6:9 E0234 'add' is a function; named arguments are for struct construction
+7:12 E0234 'add' is a function; named arguments are for struct construction
+8:9 E0234 'add' is a function; named arguments are for struct construction
+8:12 E0230 unknown name 'nope'

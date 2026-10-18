@@ -1,0 +1,7 @@
+manna v0;
+fn mix(a: u8, b: bool, c: i64) -> i64 {
+    return c;
+}
+fn f(x: u8, y: bool, z: i64) -> i64 {
+    return mix(x, y, z);
+}

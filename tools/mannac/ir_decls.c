@@ -70,7 +70,7 @@ const IrType *ir_resolve_type(Ctx *cx, const Type *t, TypeCtx ctx) {
  * of a name wins; each later one is E0210 at its name, naming the first. */
 static void declare_names(Ctx *cx, const NodeList *items) {
     IrState *st = cx->st;
-    size_t si = 0;
+    size_t si = 0, fi = 0; /* positions among the structs and among the functions, in declaration order */
     for (size_t i = 0; i < items->len; i++) {
         const Decl *d = items->items[i];
         st->progress = d->span;
@@ -80,9 +80,9 @@ static void declare_names(Ctx *cx, const NodeList *items) {
             cx->structs[si].ir = &cx->irs[si];
         }
         bool inserted;
-        const SymEntry *e = symtab_insert(&cx->top, decl_name(d), decl_name_span(d), is_struct, si, &inserted);
+        const SymEntry *e = symtab_insert(&cx->top, decl_name(d), decl_name_span(d), is_struct, is_struct ? si : fi, &inserted);
         if (!inserted) ir_error(st, diag_ir_duplicate_decl(st->arena, decl_name_span(d), decl_name(d), e->name_span));
-        if (is_struct) si++;
+        if (is_struct) si++; else fi++;
     }
 }
 

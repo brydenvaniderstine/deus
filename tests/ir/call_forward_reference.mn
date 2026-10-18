@@ -1,0 +1,7 @@
+manna v0;
+fn f() -> u8 {
+    return later(7);
+}
+fn later(a: u8) -> u8 {
+    return a;
+}

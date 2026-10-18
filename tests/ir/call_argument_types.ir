@@ -1,0 +1,5 @@
+ERRORS:
+6:9 E0223 type mismatch: expected u8, found bool
+7:12 E0224 integer literal 300 does not fit in u8
+8:9 E0223 type mismatch: expected u8, found bool
+9:12 E0223 type mismatch: expected u8, found bool

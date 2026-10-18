@@ -39,8 +39,9 @@ IrStatus ir_build(IrState *st, const DiagList *parse_diags, const NodeList *item
         assert(body && body->kind == STMT_BLOCK); /* a clean parse guarantees a block body */
         IrFunc *f = m->funcs.items[fi++];
         st->progress = d->span;
-        f->body = ir_build_body(st, decls, f, body);
+        f->body = ir_build_body(st, decls, f, fi - 1, body);
     }
+    ir_check_recursion(st, decls); /* E0235, once per cycle, after every body */
     if (st->diags.len > base) return IR_ERRORS;
     *out = m;
     return IR_BUILT;

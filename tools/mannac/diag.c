@@ -341,6 +341,51 @@ Diagnostic diag_ir_may_end_without_return(Arena *a, Span at, const char *func) {
     return d;
 }
 
+Diagnostic diag_ir_unit_value(Span at) {
+    Diagnostic d = {0};
+    d.code = "E0226";
+    d.severity = DIAG_ERROR;
+    d.message = "a 'unit' value can't be used here";
+    d.span = at;
+    return d;
+}
+
+Diagnostic diag_ir_unknown_function(Arena *a, Span at, const char *name) {
+    Diagnostic d = {0};
+    d.code = "E0232";
+    d.severity = DIAG_ERROR;
+    d.message = arena_sprintf(a, "unknown function '%s'", name);
+    d.span = at;
+    return d;
+}
+
+Diagnostic diag_ir_wrong_arity(Arena *a, Span at, const char *name, size_t params, size_t args) {
+    Diagnostic d = {0};
+    d.code = "E0233";
+    d.severity = DIAG_ERROR;
+    d.message = arena_sprintf(a, "'%s' takes %zu argument%s, found %zu", name, params, params == 1 ? "" : "s", args);
+    d.span = at;
+    return d;
+}
+
+Diagnostic diag_ir_named_args_to_function(Arena *a, Span at, const char *name) {
+    Diagnostic d = {0};
+    d.code = "E0234";
+    d.severity = DIAG_ERROR;
+    d.message = arena_sprintf(a, "'%s' is a function; named arguments are for struct construction", name);
+    d.span = at;
+    return d;
+}
+
+Diagnostic diag_ir_recursion(Span at) {
+    Diagnostic d = {0};
+    d.code = "E0235";
+    d.severity = DIAG_ERROR;
+    d.message = "recursion is not allowed in v0";
+    d.span = at;
+    return d;
+}
+
 Diagnostic diag_ir_outside_loop(Span at, const char *word) {
     Diagnostic d = {0};
     d.code = "E0275";

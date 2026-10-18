@@ -1,0 +1,6 @@
+manna v0;
+fn f() {
+    nope(1, 2, 3);
+    let a = nope2(unknown);
+    let b = a;
+}

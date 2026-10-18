@@ -1,0 +1,9 @@
+manna v0;
+fn add(a: u8, b: u8) -> u8 {
+    return a;
+}
+fn f() {
+    add(nope);
+    let x = add(1);
+    let b: bool = x;
+}

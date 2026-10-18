@@ -188,6 +188,24 @@ Diagnostic diag_ir_unexpected_return_value(Arena *a, Span at, const char *func);
  * place where control runs off the end. */
 Diagnostic diag_ir_may_end_without_return(Arena *a, Span at, const char *func);
 
+/* E0226: "a 'unit' value can't be used here" - a call to a function that returns nothing used as a value
+ * (bound, passed, returned, compared, assigned, a condition). At the call. A unit call on its own as
+ * a statement is fine. */
+Diagnostic diag_ir_unit_value(Span at);
+
+/* E0232: "unknown function 'f'" - at the callee's name. */
+Diagnostic diag_ir_unknown_function(Arena *a, Span at, const char *name);
+
+/* E0233: "'f' takes N argument(s), found M" - at the whole call. */
+Diagnostic diag_ir_wrong_arity(Arena *a, Span at, const char *name, size_t params, size_t args);
+
+/* E0234: "'f' is a function; named arguments are for struct construction" - at the first named
+ * argument of the call. */
+Diagnostic diag_ir_named_args_to_function(Arena *a, Span at, const char *name);
+
+/* E0235: "recursion is not allowed in v0" - once per call-graph cycle (docs/error_codes.md for where). */
+Diagnostic diag_ir_recursion(Span at);
+
 /* E0275: "'break' outside a loop" / "'continue' outside a loop" - at the statement. */
 Diagnostic diag_ir_outside_loop(Span at, const char *word);
 

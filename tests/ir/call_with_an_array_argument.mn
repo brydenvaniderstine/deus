@@ -1,0 +1,7 @@
+manna v0;
+fn sum(a: [3]u8) -> u8 {
+    return 0;
+}
+fn f(a: [3]u8) -> u8 {
+    return sum(a);
+}

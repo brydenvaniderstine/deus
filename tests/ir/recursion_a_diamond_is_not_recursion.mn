@@ -1,0 +1,13 @@
+manna v0;
+fn top() {
+    left();
+    right();
+}
+fn left() {
+    bottom();
+}
+fn right() {
+    bottom();
+}
+fn bottom() {
+}

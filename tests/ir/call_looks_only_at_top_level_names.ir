@@ -1,0 +1,20 @@
+(fn@2:1-4:2 fn:g
+  (params)
+  (returns bool)
+  (block@2:16-4:2
+    (return@3:5-3:17
+      (bool@3:12-3:16 true bool))))
+(fn@5:1-8:2 fn:f
+  (params)
+  (returns bool)
+  (block@5:16-8:2
+    (let@6:5-6:19 g #0 bool
+      (bool@6:13-6:18 false bool))
+    (return@7:5-7:14
+      (local@7:12-7:13 g #0 bool))))
+(fn@9:1-11:2 fn:h
+  (params)
+  (returns bool)
+  (block@9:16-11:2
+    (return@10:5-10:16
+      (call@10:12-10:15 fn:g bool))))

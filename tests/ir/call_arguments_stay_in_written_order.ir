@@ -1,0 +1,15 @@
+(fn@2:1-4:2 fn:mix
+  (params (param@2:8-2:13 a #0 u8) (param@2:15-2:22 b #1 bool) (param@2:24-2:30 c #2 i64))
+  (returns i64)
+  (block@2:39-4:2
+    (return@3:5-3:14
+      (local@3:12-3:13 c #2 i64))))
+(fn@5:1-7:2 fn:f
+  (params (param@5:6-5:11 x #0 u8) (param@5:13-5:20 y #1 bool) (param@5:22-5:28 z #2 i64))
+  (returns i64)
+  (block@5:37-7:2
+    (return@6:5-6:25
+      (call@6:12-6:24 fn:mix i64
+        (local@6:16-6:17 x #0 u8)
+        (local@6:19-6:20 y #1 bool)
+        (local@6:22-6:23 z #2 i64)))))

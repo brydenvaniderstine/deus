@@ -1,0 +1,11 @@
+manna v0;
+fn g() -> bool {
+    return true;
+}
+fn f() -> bool {
+    let g = false;
+    return g;
+}
+fn h() -> bool {
+    return g();
+}

@@ -1,0 +1,6 @@
+manna v0;
+fn f(c: bool) {
+    if c {
+        f(true);
+    }
+}

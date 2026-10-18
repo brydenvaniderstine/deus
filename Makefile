@@ -273,7 +273,7 @@ test-determinism:
 MANNAC_CC      ?= clang
 IR_TEST_DIR    := $(BUILD)/ir_test
 IR_TEST_SRCS   := tools/mannac/arena.c tools/mannac/ast.c tools/mannac/diag.c \
-                  tools/mannac/ir.c tools/mannac/ir_dump.c tools/mannac/ir_build.c tools/mannac/ir_decls.c tools/mannac/ir_expr.c tools/mannac/ir_body.c \
+                  tools/mannac/ir.c tools/mannac/ir_dump.c tools/mannac/ir_build.c tools/mannac/ir_decls.c tools/mannac/ir_expr.c tools/mannac/ir_body.c tools/mannac/ir_calls.c \
                   tools/mannac/parser_state.c tools/mannac/parser.c tools/mannac/lexer.c \
                   tools/mannac/ir_test.c
 
@@ -283,7 +283,7 @@ IR_TEST_SRCS   := tools/mannac/arena.c tools/mannac/ast.c tools/mannac/diag.c \
 IR_DUMP_DIR  := $(BUILD)/ir_dump
 IR_DUMP_SRCS := tools/mannac/arena.c tools/mannac/ast.c tools/mannac/diag.c \
                 tools/mannac/parser_state.c tools/mannac/parser.c tools/mannac/lexer.c \
-                tools/mannac/ir.c tools/mannac/ir_dump.c tools/mannac/ir_build.c tools/mannac/ir_decls.c tools/mannac/ir_expr.c tools/mannac/ir_body.c \
+                tools/mannac/ir.c tools/mannac/ir_dump.c tools/mannac/ir_build.c tools/mannac/ir_decls.c tools/mannac/ir_expr.c tools/mannac/ir_body.c tools/mannac/ir_calls.c \
                 tools/mannac/ir_main.c
 
 test-ir:
@@ -298,14 +298,14 @@ test-ir-asan:
 
 test-ir-unit:
 	@mkdir -p $(IR_TEST_DIR)
-	$(MANNAC_CC) -std=c11 -Wall -Wextra -O2 -g -o $(IR_TEST_DIR)/ir_test $(IR_TEST_SRCS)
+	$(MANNAC_CC) -std=c11 -Wall -Wextra -O2 -g -pthread -o $(IR_TEST_DIR)/ir_test $(IR_TEST_SRCS)
 	sh -c 'ulimit -s 8192 && $(IR_TEST_DIR)/ir_test'
 	sh -c 'ulimit -s 2048 && $(IR_TEST_DIR)/ir_test --stack'
 	sh -c 'ulimit -s 2048 && $(IR_TEST_DIR)/ir_test --build-stack'
 
 test-ir-unit-asan:
 	@mkdir -p $(IR_TEST_DIR)
-	$(MANNAC_CC) -std=c11 -Wall -Wextra -g -fsanitize=address,undefined -o $(IR_TEST_DIR)/ir_test-asan $(IR_TEST_SRCS)
+	$(MANNAC_CC) -std=c11 -Wall -Wextra -g -fsanitize=address,undefined -pthread -o $(IR_TEST_DIR)/ir_test-asan $(IR_TEST_SRCS)
 	sh -c 'ulimit -s 8192 && $(IR_TEST_DIR)/ir_test-asan'
 	sh -c 'ulimit -s 2048 && $(IR_TEST_DIR)/ir_test-asan --stack'
 	sh -c 'ulimit -s 2048 && $(IR_TEST_DIR)/ir_test-asan --build-stack'
@@ -335,7 +335,7 @@ coverage:
 	LLVM_PROFILE_FILE=$(COVERAGE_DIR)/parser_fixes-%p.profraw $(COVERAGE_DIR)/parser_fixes_test
 	clang -std=c11 -Wall -Wextra -g $(COVERAGE_FLAGS) -o $(COVERAGE_DIR)/parser_dump $(PARSER_DUMP_SRCS)
 	LLVM_PROFILE_FILE=$(COVERAGE_DIR)/parser-%p.profraw ./tools/run_parser_tests.sh $(COVERAGE_DIR)/parser_dump
-	clang -std=c11 -Wall -Wextra -g $(COVERAGE_FLAGS) -o $(COVERAGE_DIR)/ir_test $(IR_TEST_SRCS)
+	clang -std=c11 -Wall -Wextra -g $(COVERAGE_FLAGS) -pthread -o $(COVERAGE_DIR)/ir_test $(IR_TEST_SRCS)
 	LLVM_PROFILE_FILE=$(COVERAGE_DIR)/ir_test-%p.profraw sh -c 'ulimit -s 8192 && $(COVERAGE_DIR)/ir_test'
 	clang -std=c11 -Wall -Wextra -g $(COVERAGE_FLAGS) -o $(COVERAGE_DIR)/ir_dump $(IR_DUMP_SRCS)
 	LLVM_PROFILE_FILE=$(COVERAGE_DIR)/ir-%p.profraw ./tools/run_ir_tests.sh $(COVERAGE_DIR)/ir_dump
