@@ -1,0 +1,12 @@
+manna v0;
+struct P { x: u8, y: u16, }
+fn get_x(p: P) -> u8 {
+    return p.x;
+}
+fn next_y(p: P) -> u16 {
+    let y = p.y;
+    return y + 1;
+}
+fn plus(p: P) -> u8 {
+    return 1 + p.x;
+}

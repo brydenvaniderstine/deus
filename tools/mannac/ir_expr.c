@@ -36,8 +36,7 @@ _Noreturn void ir_unimplemented(IrState *st, const char *what) {
 /* Which later step owns an expression kind this step does not check. */
 static _Noreturn void unimplemented_kind(IrState *st, const Expr *e) {
     switch (e->kind) {
-        case EXPR_NAMED_ARG:    ir_unimplemented(st, "struct construction (step 11)"); /* only ever inside a call's arguments */
-        case EXPR_FIELD_ACCESS: ir_unimplemented(st, "field access (step 11)");
+        case EXPR_NAMED_ARG:    ir_unimplemented(st, "a named argument outside a call's arguments"); /* the parser never builds one */
         case EXPR_INDEX:
         case EXPR_SLICE:
         case EXPR_ARRAY:
@@ -49,9 +48,10 @@ static _Noreturn void unimplemented_kind(IrState *st, const Expr *e) {
         case EXPR_UNARY:
         case EXPR_BINARY:
         case EXPR_CALL:
+        case EXPR_FIELD_ACCESS:
             break;
     }
-    ir_unimplemented(st, "this expression (steps 11-13)");
+    ir_unimplemented(st, "this expression (steps 12-13)");
 }
 
 static bool is_int(const IrType *t) {
@@ -365,7 +365,7 @@ static Synth synth_binary(BodyCtx *bc, const Expr *e) {
 /* ---- calls (typed-IR step 10, docs/M2_PLAN.md "Calls and struct construction") ----
  * The callee is looked up among the TOP-LEVEL names only (a local of the same name is irrelevant;
  * forward references are legal). Unknown: E0232 at the name, the arguments still checked for their
- * own mistakes, arity not compared, the call ERROR. A struct is construction (step 11). Otherwise the
+ * own mistakes, arity not compared, the call ERROR. A struct is construction (below). Otherwise the
  * call has the function's declared return type whatever is wrong with its arguments, so an argument
  * mistake never spreads to the code around the call. Arguments are positional only (E0234 for a
  * named one, once, at the first), their count must match (E0233, at the call) and each is checked
@@ -395,17 +395,14 @@ static IR_NOINLINE void record_call(BodyCtx *bc, size_t callee, Span span) {
     cx->edges[cx->n_edges++] = (CallEdge){(uint32_t)bc->fn_index, (uint32_t)callee, span};
 }
 
-/* The function a call names, or NULL after reporting E0232. A struct stops the build. */
-static IR_NOINLINE const IrFunc *call_target(BodyCtx *bc, const Expr *e) {
+/* The top-level name a call names (a function or a struct), or NULL after reporting E0232. */
+static IR_NOINLINE const SymEntry *call_target(BodyCtx *bc, const Expr *e) {
     const SymEntry *t = symtab_lookup(&bc->decls->top, e->as.call.name);
     if (!t) {
         report_unknown_function(bc, e);
         silently_check_args(bc, e);
-        return NULL;
     }
-    if (t->is_struct) ir_unimplemented(bc->st, "struct construction (step 11)");
-    record_call(bc, t->index, e->span);
-    return bc->decls->fns[t->index];
+    return t;
 }
 
 /* True if the arguments are positional and as many as the parameters, i.e. each is to be checked
@@ -429,9 +426,127 @@ static IR_NOINLINE bool call_shape_ok(BodyCtx *bc, const Expr *e, const IrFunc *
     return true;
 }
 
+/* ---- struct construction (typed-IR step 11, docs/M2_PLAN.md "Calls and struct construction") ----
+ * `S(a: 1, b: 2)`: every argument is `name: value` (E0240 otherwise, once, at the first positional
+ * argument - alone or mixed - and nothing else about the arguments is checked, like E0234); the name is
+ * a bare, unparenthesized identifier (E0241), a declared field (E0242), given once (E0244) and in
+ * declaration order (E0245, once per construction: reversing three fields is one mistake); every
+ * field is given (E0243, one per missing field, at the construction - but not when an argument could
+ * not be attributed to a field, E0241/E0242, since the missing field is that argument's echo). Each
+ * value is checked against its field's type, in written order. Whatever is wrong, the construction
+ * has the struct's type, so a mistake in it never spreads to the code around it. The IR keeps the
+ * values in declaration order (which a valid construction also writes them in). */
+
+typedef struct {
+    const IrStruct *s;
+    IrExpr        **slots;         /* per field: its checked value, NULL = not given */
+    size_t          highest;       /* 1 + the index of the last-declared field written so far (0 = none) */
+    bool            order_reported;
+    bool            unrecognized;  /* E0240, E0241 or E0242 was reported: E0243 would only echo it */
+} Construct;
+
+/* The index of the field called `name`, or SIZE_MAX. The search starts at `hint` (the field a
+ * well-ordered construction names next) and wraps, so the usual case is one comparison. */
+static size_t field_index(const IrStruct *s, const char *name, size_t hint) {
+    for (size_t i = 0; i < s->n_fields; i++) {
+        size_t k = hint + i < s->n_fields ? hint + i : hint + i - s->n_fields;
+        if (strcmp(s->fields[k].name, name) == 0) return k;
+    }
+    return SIZE_MAX;
+}
+
+static IR_NOINLINE void construct_begin(BodyCtx *bc, Construct *c, size_t struct_index) {
+    c->s = bc->decls->structs[struct_index].ir;
+    c->slots = NULL;
+    if (c->s->n_fields) {
+        c->slots = arena_alloc(bc->st->arena, c->s->n_fields * sizeof(IrExpr *), alignof(IrExpr *));
+        memset(c->slots, 0, c->s->n_fields * sizeof(IrExpr *));
+    }
+    c->highest = 0;
+    c->order_reported = false;
+    c->unrecognized = false;
+}
+
+/* True if every argument is `name: value`; otherwise E0240 at the first one that is not, with the
+ * values checked for their own mistakes only. */
+static IR_NOINLINE bool construct_shape_ok(BodyCtx *bc, const Expr *e) {
+    const NodeList *args = &e->as.call.args;
+    for (size_t i = 0; i < args->len; i++) {
+        const Expr *a = args->items[i];
+        if (a->kind == EXPR_NAMED_ARG) continue;
+        ir_error(bc->st, diag_ir_positional_construction(a->span));
+        silently_check_args(bc, e);
+        return false;
+    }
+    return true;
+}
+
+/* The field a named argument gives, or -1 after reporting why it gives none (its value is then
+ * checked for its own mistakes only). */
+static IR_NOINLINE long construct_field(BodyCtx *bc, Construct *c, const Expr *a) {
+    IrState *st = bc->st;
+    const Expr *n = a->as.named_arg.name;
+    if (n->kind != EXPR_IDENT || n->parenthesized) {
+        ir_error(st, diag_ir_not_a_field_name(n->span));
+        c->unrecognized = true;
+        return -1;
+    }
+    const char *name = n->as.ident.name;
+    size_t k = field_index(c->s, name, c->highest < c->s->n_fields ? c->highest : 0);
+    if (k == SIZE_MAX) {
+        ir_error(st, diag_ir_no_such_field(st->arena, n->span, c->s->name, name));
+        c->unrecognized = true;
+        return -1;
+    }
+    if (c->slots[k]) {
+        ir_error(st, diag_ir_field_given_twice(st->arena, n->span, name));
+        return -1;
+    }
+    if (k + 1 < c->highest && !c->order_reported) {
+        c->order_reported = true;
+        ir_error(st, diag_ir_field_out_of_order(st->arena, n->span, name, c->s->fields[c->highest - 1].name));
+    }
+    if (k + 1 > c->highest) c->highest = k + 1;
+    return (long)k;
+}
+
+static IR_NOINLINE Synth construct_finish(BodyCtx *bc, Construct *c, const Expr *e) {
+    IrState *st = bc->st;
+    NodeList values;
+    node_list_init(&values);
+    for (size_t k = 0; k < c->s->n_fields; k++) {
+        if (!c->slots[k]) {
+            if (!c->unrecognized) ir_error(st, diag_ir_missing_field(st->arena, e->span, c->s->fields[k].name, c->s->name));
+            node_list_push(st->arena, &values, error_node(st, e->span)); /* a placeholder: the module is never produced */
+        } else {
+            node_list_push(st->arena, &values, c->slots[k]);
+        }
+    }
+    return is_node(ir_expr_struct_new(st, e->span, ir_type_struct(st, c->s), values));
+}
+
+static IR_NOINLINE Synth synth_construct(BodyCtx *bc, const Expr *e, size_t struct_index) {
+    Construct c;
+    construct_begin(bc, &c, struct_index);
+    if (!construct_shape_ok(bc, e)) {
+        c.unrecognized = true;
+    } else {
+        for (size_t i = 0; i < e->as.call.args.len; i++) {
+            const Expr *a = e->as.call.args.items[i];
+            long k = construct_field(bc, &c, a);
+            if (k < 0) ir_check_silent(bc, a->as.named_arg.value);
+            else c.slots[k] = ir_check_expr(bc, a->as.named_arg.value, c.s->fields[k].type);
+        }
+    }
+    return construct_finish(bc, &c, e);
+}
+
 static Synth synth_call(BodyCtx *bc, const Expr *e) {
-    const IrFunc *f = call_target(bc, e);
-    if (!f) return is_error(bc->st, e->span);
+    const SymEntry *t = call_target(bc, e);
+    if (!t) return is_error(bc->st, e->span);
+    if (t->is_struct) return synth_construct(bc, e, t->index);
+    record_call(bc, t->index, e->span);
+    const IrFunc *f = bc->decls->fns[t->index];
     NodeList args;
     node_list_init(&args);
     if (call_shape_ok(bc, e, f)) {
@@ -441,6 +556,52 @@ static Synth synth_call(BodyCtx *bc, const Expr *e) {
         }
     }
     return is_node(ir_expr_call(bc->st, e->span, f->ret, f, args));
+}
+
+/* ---- field access (typed-IR step 11) ----
+ * `base.name`: the base must be a struct (E0251 otherwise, at the base) with a field of that name
+ * (E0242 at the name, struct zero-field included); the result is the field's type. A literal group
+ * as a base has no type (E0225), a unit call is not a value (E0226). There are no pseudo-fields:
+ * `x.len` is E0251 / E0242 like any other name. */
+
+static IR_COLD void report_no_fields(IrState *st, Span at, const IrType *t) {
+    ir_error(st, diag_ir_type_has_no_fields(st->arena, at, ir_type_text(st, t)));
+}
+
+static IR_COLD void report_no_such_field(IrState *st, const Expr *e, const IrStruct *s) {
+    ir_error(st, diag_ir_no_such_field(st->arena, e->as.field_access.name_span, s->name, e->as.field_access.name));
+}
+
+static IR_NOINLINE Synth finish_field(BodyCtx *bc, const Expr *e, Synth b) {
+    IrState *st = bc->st;
+    const Expr *base = e->as.field_access.base;
+    if (b.group) { /* `(1).x`: a literal with no expected type */
+        report_cannot_infer(st, base->span);
+        return is_error(st, e->span);
+    }
+    if (is_unit(b)) {
+        report_unit(st, base->span);
+        return is_error(st, e->span);
+    }
+    if (has_error(b)) return is_error(st, e->span);
+    const IrType *t = b.node->type;
+    if (t->kind != IR_T_STRUCT) {
+        report_no_fields(st, base->span, t);
+        return is_error(st, e->span);
+    }
+    const IrStruct *s = t->as.strukt.decl;
+    for (size_t k = 0; k < s->n_fields; k++) {
+        if (strcmp(s->fields[k].name, e->as.field_access.name) == 0) {
+            return is_node(ir_expr_field(st, e->span, s->fields[k].type, b.node, (uint32_t)k));
+        }
+    }
+    report_no_such_field(st, e, s);
+    return is_error(st, e->span);
+}
+
+static Synth synth_field(BodyCtx *bc, const Expr *e) {
+    Synth b = synth(bc, e->as.field_access.base);
+    return finish_field(bc, e, b);
 }
 
 static IR_NOINLINE Synth synth_leaf(BodyCtx *bc, const Expr *e) {
@@ -463,6 +624,7 @@ static Synth synth(BodyCtx *bc, const Expr *e) {
     if (e->kind == EXPR_BINARY) return synth_binary(bc, e);
     if (e->kind == EXPR_UNARY) return synth_unary(bc, e);
     if (e->kind == EXPR_CALL) return synth_call(bc, e);
+    if (e->kind == EXPR_FIELD_ACCESS) return synth_field(bc, e);
     return synth_leaf(bc, e);
 }
 

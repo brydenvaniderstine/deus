@@ -377,6 +377,69 @@ Diagnostic diag_ir_named_args_to_function(Arena *a, Span at, const char *name) {
     return d;
 }
 
+Diagnostic diag_ir_positional_construction(Span at) {
+    Diagnostic d = {0};
+    d.code = "E0240";
+    d.severity = DIAG_ERROR;
+    d.message = "struct construction names every field: use 'field: value'";
+    d.span = at;
+    return d;
+}
+
+Diagnostic diag_ir_not_a_field_name(Span at) {
+    Diagnostic d = {0};
+    d.code = "E0241";
+    d.severity = DIAG_ERROR;
+    d.message = "left of ':' must be a field name";
+    d.span = at;
+    return d;
+}
+
+Diagnostic diag_ir_no_such_field(Arena *a, Span at, const char *strukt, const char *field) {
+    Diagnostic d = {0};
+    d.code = "E0242";
+    d.severity = DIAG_ERROR;
+    d.message = arena_sprintf(a, "struct '%s' has no field '%s'", strukt, field);
+    d.span = at;
+    return d;
+}
+
+Diagnostic diag_ir_missing_field(Arena *a, Span at, const char *field, const char *strukt) {
+    Diagnostic d = {0};
+    d.code = "E0243";
+    d.severity = DIAG_ERROR;
+    d.message = arena_sprintf(a, "missing field '%s' in construction of '%s'", field, strukt);
+    d.span = at;
+    return d;
+}
+
+Diagnostic diag_ir_field_given_twice(Arena *a, Span at, const char *field) {
+    Diagnostic d = {0};
+    d.code = "E0244";
+    d.severity = DIAG_ERROR;
+    d.message = arena_sprintf(a, "field '%s' given twice", field);
+    d.span = at;
+    return d;
+}
+
+Diagnostic diag_ir_field_out_of_order(Arena *a, Span at, const char *field, const char *before) {
+    Diagnostic d = {0};
+    d.code = "E0245";
+    d.severity = DIAG_ERROR;
+    d.message = arena_sprintf(a, "fields must be given in declaration order: '%s' before '%s'", field, before);
+    d.span = at;
+    return d;
+}
+
+Diagnostic diag_ir_type_has_no_fields(Arena *a, Span at, const char *type) {
+    Diagnostic d = {0};
+    d.code = "E0251";
+    d.severity = DIAG_ERROR;
+    d.message = arena_sprintf(a, "type %s has no fields", type);
+    d.span = at;
+    return d;
+}
+
 Diagnostic diag_ir_recursion(Span at) {
     Diagnostic d = {0};
     d.code = "E0235";

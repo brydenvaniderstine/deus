@@ -1,0 +1,7 @@
+ERRORS:
+4:15 E0240 struct construction names every field: use 'field: value'
+5:21 E0240 struct construction names every field: use 'field: value'
+6:15 E0240 struct construction names every field: use 'field: value'
+7:15 E0240 struct construction names every field: use 'field: value'
+7:15 E0230 unknown name 'nope'
+7:24 E0230 unknown name 'nope2'

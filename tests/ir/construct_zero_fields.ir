@@ -1,0 +1,7 @@
+(struct@2:1-2:17 Empty size=0 align=1)
+(fn@3:1-5:2 fn:make
+  (params)
+  (returns Empty)
+  (block@3:20-5:2
+    (return@4:5-4:20
+      (struct_new@4:12-4:19 Empty))))

@@ -1,0 +1,11 @@
+(struct@2:1-2:28 S size=16 align=8
+  (field@2:12-2:18 v i8 +0)
+  (field@2:19-2:26 w u64 +8))
+(fn@3:1-5:2 fn:make
+  (params)
+  (returns S)
+  (block@3:16-5:2
+    (return@4:5-4:48
+      (struct_new@4:12-4:47 S
+        (int@4:17-4:21 -128 i8)
+        (int@4:26-4:46 18446744073709551615 u64)))))

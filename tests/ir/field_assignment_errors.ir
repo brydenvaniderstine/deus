@@ -1,0 +1,8 @@
+ERRORS:
+6:7 E0242 struct 'P' has no field 'zz'
+6:12 E0230 unknown name 'nope'
+7:11 E0223 type mismatch: expected u8, found bool
+8:5 E0251 type u8 has no fields
+9:12 E0223 type mismatch: expected bool, found integer literal
+10:11 E0226 a 'unit' value can't be used here
+11:11 E0224 integer literal 300 does not fit in u8

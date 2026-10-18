@@ -1,0 +1,9 @@
+ERRORS:
+4:21 E0245 fields must be given in declaration order: 'x' before 'y'
+5:21 E0245 fields must be given in declaration order: 'y' before 'z'
+6:18 E0224 integer literal 300 does not fit in u8
+6:23 E0245 fields must be given in declaration order: 'x' before 'y'
+7:21 E0245 fields must be given in declaration order: 'x' before 'z'
+7:13 E0243 missing field 'y' in construction of 'P'
+8:21 E0245 fields must be given in declaration order: 'x' before 'y'
+8:24 E0223 type mismatch: expected u8, found bool

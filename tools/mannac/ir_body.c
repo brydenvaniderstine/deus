@@ -153,8 +153,9 @@ static IR_NOINLINE IrStmt *build_assign(BodyCtx *bc, const Stmt *s) {
         return ir_stmt_assign(st, s->span, ir_expr_int(st, target->span, ir_type_error(st), 0),
                               ir_expr_int(st, value->span, ir_type_error(st), 0));
     }
-    if (target->kind != EXPR_IDENT) ir_unimplemented(st, "assignment to a field or an element (steps 11-12)");
-    IrExpr *place = ir_infer_expr(bc, target); /* the local, or E0230/E0231 and ERROR */
+    /* The place: the local, or a chain of fields over it (an element, step 12, still stops the build in
+     * the checker); on a mistake in it (E0230/E0231, E0242, E0251) the place is ERROR. */
+    IrExpr *place = ir_infer_expr(bc, target);
     IrExpr *v = ir_check_expr(bc, value, place->type);
     return ir_stmt_assign(st, s->span, place, v);
 }

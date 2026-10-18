@@ -1,0 +1,7 @@
+ERRORS:
+4:21 E0244 field 'x' given twice
+5:27 E0244 field 'x' given twice
+6:21 E0244 field 'x' given twice
+6:24 E0230 unknown name 'nope'
+7:21 E0244 field 'x' given twice
+7:13 E0243 missing field 'y' in construction of 'P'

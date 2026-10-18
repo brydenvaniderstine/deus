@@ -1,0 +1,4 @@
+ERRORS:
+6:18 E0226 a 'unit' value can't be used here
+7:13 E0226 a 'unit' value can't be used here
+8:15 E0242 struct 'P' has no field 'zz'

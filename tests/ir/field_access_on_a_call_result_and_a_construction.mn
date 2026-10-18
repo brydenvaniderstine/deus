@@ -1,0 +1,11 @@
+manna v0;
+struct P { x: u8, y: u8, }
+fn make(a: u8) -> P {
+    return P(x: a, y: a);
+}
+fn f() -> u8 {
+    return make(7).y;
+}
+fn g() -> u8 {
+    return P(x: 1, y: 2).x;
+}

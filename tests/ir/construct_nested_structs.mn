@@ -1,0 +1,9 @@
+manna v0;
+struct Inner { a: u8, }
+struct Outer { inner: Inner, b: u8, }
+fn make() -> Outer {
+    return Outer(inner: Inner(a: 1), b: 2);
+}
+fn get(o: Outer) -> u8 {
+    return o.inner.a;
+}

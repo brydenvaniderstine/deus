@@ -1,0 +1,5 @@
+manna v0;
+struct S { v: i8, w: u64, }
+fn make() -> S {
+    return S(v: -128, w: 18446744073709551615);
+}

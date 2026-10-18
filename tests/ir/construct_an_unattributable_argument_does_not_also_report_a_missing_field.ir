@@ -1,0 +1,4 @@
+ERRORS:
+4:21 E0242 struct 'P' has no field 'yy'
+5:15 E0240 struct construction names every field: use 'field: value'
+6:15 E0241 left of ':' must be a field name

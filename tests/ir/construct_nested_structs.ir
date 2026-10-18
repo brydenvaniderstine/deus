@@ -1,0 +1,22 @@
+(struct@2:1-2:24 Inner size=1 align=1
+  (field@2:16-2:22 a u8 +0))
+(struct@3:1-3:38 Outer size=2 align=1
+  (field@3:16-3:29 inner Inner +0)
+  (field@3:30-3:36 b u8 +1))
+(fn@4:1-6:2 fn:make
+  (params)
+  (returns Outer)
+  (block@4:20-6:2
+    (return@5:5-5:44
+      (struct_new@5:12-5:43 Outer
+        (struct_new@5:25-5:36 Inner
+          (int@5:34-5:35 1 u8))
+        (int@5:41-5:42 2 u8)))))
+(fn@7:1-9:2 fn:get
+  (params (param@7:8-7:16 o #0 Outer))
+  (returns u8)
+  (block@7:24-9:2
+    (return@8:5-8:22
+      (field@8:12-8:21 a #0 u8
+        (field@8:12-8:19 inner #0 Inner
+          (local@8:12-8:13 o #0 Outer))))))

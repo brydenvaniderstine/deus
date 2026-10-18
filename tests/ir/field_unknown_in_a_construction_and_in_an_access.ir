@@ -1,0 +1,7 @@
+ERRORS:
+5:21 E0242 struct 'P' has no field 'z'
+6:21 E0242 struct 'P' has no field 'yy'
+7:15 E0242 struct 'P' has no field 'z'
+8:17 E0242 struct 'E' has no field 'q'
+9:15 E0242 struct 'E' has no field 'q'
+9:18 E0230 unknown name 'nope'

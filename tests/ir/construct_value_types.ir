@@ -1,0 +1,7 @@
+ERRORS:
+5:18 E0224 integer literal 256 does not fit in u8
+6:18 E0223 type mismatch: expected u8, found bool
+6:28 E0223 type mismatch: expected bool, found integer literal
+7:18 E0223 type mismatch: expected u8, found u16
+8:16 E0223 type mismatch: expected P, found Q
+9:18 E0230 unknown name 'nope'

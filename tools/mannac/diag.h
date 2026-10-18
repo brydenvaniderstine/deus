@@ -203,6 +203,30 @@ Diagnostic diag_ir_wrong_arity(Arena *a, Span at, const char *name, size_t param
  * argument of the call. */
 Diagnostic diag_ir_named_args_to_function(Arena *a, Span at, const char *name);
 
+/* E0240: "struct construction names every field: use 'field: value'" - at the first positional
+ * argument of a construction (alone or mixed with named ones). */
+Diagnostic diag_ir_positional_construction(Span at);
+
+/* E0241: "left of ':' must be a field name" - at the expression written left of the ':' (anything
+ * but a bare, unparenthesized identifier). */
+Diagnostic diag_ir_not_a_field_name(Span at);
+
+/* E0242: "struct 'S' has no field 'x'" - at the field's name, in a construction and in an access. */
+Diagnostic diag_ir_no_such_field(Arena *a, Span at, const char *strukt, const char *field);
+
+/* E0243: "missing field 'x' in construction of 'S'" - at the whole construction, one per missing field. */
+Diagnostic diag_ir_missing_field(Arena *a, Span at, const char *field, const char *strukt);
+
+/* E0244: "field 'x' given twice" - at the repeat's name. */
+Diagnostic diag_ir_field_given_twice(Arena *a, Span at, const char *field);
+
+/* E0245: "fields must be given in declaration order: 'x' before 'y'" - at the field written too
+ * late (x), naming the field written before it that comes later in the declaration (y). */
+Diagnostic diag_ir_field_out_of_order(Arena *a, Span at, const char *field, const char *before);
+
+/* E0251: "type T has no fields" - at the base of a field access whose type is not a struct. */
+Diagnostic diag_ir_type_has_no_fields(Arena *a, Span at, const char *type);
+
 /* E0235: "recursion is not allowed in v0" - once per call-graph cycle (docs/error_codes.md for where). */
 Diagnostic diag_ir_recursion(Span at);
 

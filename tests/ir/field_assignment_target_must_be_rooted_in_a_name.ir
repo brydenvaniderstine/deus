@@ -1,0 +1,6 @@
+ERRORS:
+7:5 E0270 can't assign to this expression
+8:5 E0270 can't assign to this expression
+9:5 E0270 can't assign to this expression
+10:5 E0251 type u8 has no fields
+10:13 E0230 unknown name 'nope'

@@ -739,14 +739,12 @@ static void test_unimplemented(void) {
     static IrState st;
     ir_state_init(&st, 1 << 20);
     static const struct { const char *src, *what; } cases[] = {
-        {"manna v0;\nstruct P { x: u8, }\nfn f() { let p = P(x: 1); }\n", "struct construction"},
-        {"manna v0;\nstruct P { x: u8, }\nfn f(p: P) { p.x = 1; }\n", "assignment to a field or an element"},
-        {"manna v0;\nfn f(a: [2]u8) { a[0] = 1; }\n", "assignment to a field or an element"},
-        {"manna v0;\nstruct P { x: u8, }\nfn f(p: P) { p.x; }\n", "field access"},
+        {"manna v0;\nfn f(a: [2]u8) { a[0] = 1; }\n", "arrays, indexing and slicing"},       /* an element target (step 12) */
+        {"manna v0;\nstruct P { x: u8, }\nfn f(p: P, a: [2]u8) { p.x = a[0]; }\n", "arrays, indexing and slicing"}, /* a field place, an element value */
         {"manna v0;\nfn f(a: [2]u8) { a[0]; }\n", "arrays, indexing and slicing"},
         {"manna v0;\nfn f() { [1, 2]; }\n", "arrays, indexing and slicing"},
         {"manna v0;\nfn f() -> u8 { return u8(1); }\n", "conversions"},
-        {"manna v0;\nstruct P { x: u8, }\nfn f(x: u8) { let y = x + P(x: 1).x; }\n", "field access"},   /* an operand the builder cannot type */
+        {"manna v0;\nstruct P { x: u8, }\nfn f(a: [2]u8) { let y = P(x: a[0]).x; }\n", "arrays, indexing and slicing"},  /* inside a construction's value */
     };
     for (size_t i = 0; i < sizeof cases / sizeof cases[0]; i++) {
         parse_src(cases[i].src);
@@ -768,7 +766,7 @@ static void test_unimplemented(void) {
     assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_BUILT && m != NULL && st.unimplemented == NULL);
     parse_done();
     ir_state_destroy(&st);
-    pass("IR_UNIMPLEMENTED: what is not built yet (struct construction, fields, arrays, conversions), no diagnostic, no module; real errors win; state reusable");
+    pass("IR_UNIMPLEMENTED: what is not built yet (arrays, indexing, slicing, conversions), no diagnostic, no module; real errors win; state reusable");
 }
 
 /* `fn f() -> T { return <expr>; }` for one case of the range matrix. Returns the build status;
@@ -1267,6 +1265,25 @@ static void test_operator_result_types(void) {
 /* E0261's fix (D4), pinned: which operand is wrapped, in what, and the exact edits - two
  * zero-width inserts, `T(` before the operand and `)` after it. Applied to the source the text is
  * the expected one (the file then PARSES; re-checking it waits for conversions, step 13). */
+/* Step 11: the FULL span (start and end) of two diagnostics whose goldens print only the start:
+ * E0243 covers the whole construction, E0251 the base expression (not the whole access). */
+static void test_construction_and_access_spans(void) {
+    static IrState st;
+    ir_state_init(&st, 1 << 20);
+    parse_src("manna v0;\nstruct P { x: u8, y: u8, }\nfn f(n: u8) {\n    let a = P(x: 1);\n    let b = (n + 1).v;\n}\n");
+    assert(g_ps.diags.len == 0);
+    IrModule *m = NULL;
+    assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_ERRORS && st.diags.len == 2);
+    const Diagnostic *miss = &st.diags.items[0], *nofields = &st.diags.items[1];
+    assert(strcmp(miss->code, "E0243") == 0);
+    assert(miss->span.start_line == 4 && miss->span.start_col == 13 && miss->span.end_line == 4 && miss->span.end_col == 20); /* `P(x: 1)` */
+    assert(strcmp(nofields->code, "E0251") == 0);
+    assert(nofields->span.start_line == 5 && nofields->span.start_col == 13 && nofields->span.end_line == 5 && nofields->span.end_col == 20); /* `(n + 1)`, not `(n + 1).v` */
+    parse_done();
+    ir_state_destroy(&st);
+    pass("E0243 spans the whole construction, E0251 the base expression (start and end)");
+}
+
 static void test_e0261_fix(void) {
     static IrState st;
     ir_state_init(&st, 1 << 20);
@@ -1514,14 +1531,31 @@ static void test_deepest_array_type(void) {
 typedef struct { const char *name; int live_step; /* 0 = live now, else the step that makes it live */ } BuildShape;
 static const BuildShape build_shapes[] = {
     {"binary", 0}, {"mixed_prec", 0}, {"neg_chain", 0}, {"in_ifs", 0}, {"name_chain", 0}, {"and_chain", 0},
-    {"in_calls", 0}, {"field", 11}, {"index", 12}, {"postfix_mix", 12},
+    {"in_calls", 0}, {"field", 0}, {"in_construct", 0}, {"index", 12}, {"postfix_mix", 12},
 };
 enum { N_BUILD_SHAPES = sizeof build_shapes / sizeof build_shapes[0] };
+
+/* Struct declarations a shape needs, malloc'd ("" for the others). `field`: s.f.f...f needs a
+ * chain of distinct types (a struct cannot contain itself): N0 { f: N1 }, ..., the last { f: u64 }.
+ * `in_construct`: one struct per nesting level, the same chain. k = the number of structs. */
+static char *gen_decls(const char *shape, int height) {
+    bool field = strcmp(shape, "field") == 0, construct = strcmp(shape, "in_construct") == 0;
+    int k = field ? (height > 2 ? height - 1 : 1) : construct ? height : 0;
+    char *out = malloc((size_t)k * 40 + 8);
+    assert(out);
+    char *w = out;
+    *w = 0;
+    for (int i = 0; i < k; i++) {
+        if (i + 1 < k) w += sprintf(w, "struct N%d { f: N%d, }\n", i, i + 1);
+        else w += sprintf(w, "struct N%d { f: u64, }\n", i);
+    }
+    return out;
+}
 
 /* Source of the expression for `shape` with `height` levels (neg_chain: height = number of
  * minus signs). malloc'd. */
 static char *gen_expr(const char *shape, int height) {
-    char *out = malloc((size_t)height * 8 + 16);
+    char *out = malloc((size_t)height * 16 + 16); /* in_construct writes ~10 bytes per level */
     assert(out);
     char *w = out;
     if (strcmp(shape, "neg_chain") == 0) {
@@ -1532,6 +1566,13 @@ static char *gen_expr(const char *shape, int height) {
         for (int i = 0; i < height - 2; i++) w += sprintf(w, "+2*3"); /* tree height = adds + 2 */
     } else if (strcmp(shape, "in_calls") == 0) { /* g(g(g(...g(1)...))): `height` nested calls */
         for (int i = 0; i < height; i++) w += sprintf(w, "g(");
+        w += sprintf(w, "1");
+        for (int i = 0; i < height; i++) *w++ = ')';
+    } else if (strcmp(shape, "field") == 0) { /* s.f.f.f...: `height` levels = the name and height-1 accesses */
+        w += sprintf(w, height > 2 ? "s" : "x");
+        if (height > 2) for (int i = 0; i < height - 1; i++) w += sprintf(w, ".f");
+    } else if (strcmp(shape, "in_construct") == 0) { /* N0(f: N1(f: ...N_k(f: 1)...)): `height` constructions */
+        for (int i = 0; i < height; i++) w += sprintf(w, "N%d(f: ", i);
         w += sprintf(w, "1");
         for (int i = 0; i < height; i++) *w++ = ')';
     } else if (strcmp(shape, "name_chain") == 0) { /* x+1+1+... : a typed name under a literal chain */
@@ -1548,18 +1589,42 @@ static char *gen_expr(const char *shape, int height) {
     return out;
 }
 
+/* The whole program for one shape: the struct declarations it needs, `g`, and `f` returning
+ * the expression. The `int` variant matches the expression's type; the `bool` variant
+ * mismatches it (one E0223). */
+static char *make_src(const char *shape, const char *expr, int levels, bool as_bool) {
+    bool neg = strcmp(shape, "neg_chain") == 0, construct = strcmp(shape, "in_construct") == 0;
+    bool is_and = strcmp(shape, "and_chain") == 0, field = strcmp(shape, "field") == 0;
+    char *decls = gen_decls(shape, levels);
+    char *src = malloc(strlen(expr) + strlen(decls) + 4096); /* the 120-deep wrapper alone is ~1.5 KB */
+    assert(src);
+    const char *rt = construct ? (as_bool ? "bool" : "N0") : is_and ? (as_bool ? "u64" : "bool") : (as_bool ? "bool" : (neg ? "i64" : "u64"));
+    const char *extra = field && levels > 2 ? ", s: N0" : "";
+    if (strcmp(shape, "in_ifs") == 0) { /* the chain inside 120 nested ifs (the parser allows 127 levels) */
+        char *w = src + sprintf(src, "manna v0;\nfn g(a: u64) -> u64 { return a; }\nfn f(x: u64, p: bool) -> %s { ", rt);
+        for (int i = 0; i < 120; i++) w += sprintf(w, "if true { ");
+        w += sprintf(w, "return %s; ", expr);
+        for (int i = 0; i < 120; i++) w += sprintf(w, "} ");
+        /* the return inside the ifs is conditional, so the function also needs one at its end (E0277) */
+        sprintf(w, "return %s; }\n", strcmp(rt, "bool") == 0 ? "true" : "0");
+    } else {
+        sprintf(src, "manna v0;\n%sfn g(a: u64) -> u64 { return a; }\nfn f(x: u64, p: bool%s) -> %s { return %s; }\n", decls, extra, rt, expr);
+    }
+    free(decls);
+    return src;
+}
+
 /* Runs one shape: parse, then (unless parse_only) build. Returns 0 if everything came out as
  * expected; the caller treats any crash as a stack failure. */
 static int run_build_shape(const char *shape, int height, bool as_bool, bool parse_only) {
     bool neg = strcmp(shape, "neg_chain") == 0;
-    bool calls = strcmp(shape, "in_calls") == 0;
+    bool calls = strcmp(shape, "in_calls") == 0 || strcmp(shape, "in_construct") == 0;
     char *expr = NULL;
     int levels = height;
     if ((neg || calls) && height == 0) { /* the deepest the nesting bound accepts */
         for (int k = 255; k >= 200 && !expr; k--) {
             char *e = gen_expr(shape, k);
-            char *src = malloc(strlen(e) + 128);
-            sprintf(src, "manna v0;\nfn g(a: u64) -> u64 { return a; }\nfn f(x: u64, p: bool) -> %s { return %s; }\n", neg ? "i64" : "u64", e);
+            char *src = make_src(shape, e, k, false);
             parse_src_big_stack(src);
             bool ok = g_ps.diags.len == 0;
             parse_done();
@@ -1570,21 +1635,7 @@ static int run_build_shape(const char *shape, int height, bool as_bool, bool par
     } else {
         expr = gen_expr(shape, height);
     }
-    char *src = malloc(strlen(expr) + 4096); /* the 120-deep wrapper alone is ~1.5 KB */
-    assert(src);
-    /* the `int` variant matches the expression's type; the `bool` variant mismatches it (one E0223) */
-    bool is_and = strcmp(shape, "and_chain") == 0;
-    const char *rt = is_and ? (as_bool ? "u64" : "bool") : (as_bool ? "bool" : (neg ? "i64" : "u64"));
-    if (strcmp(shape, "in_ifs") == 0) { /* the chain inside 120 nested ifs (the parser allows 127 levels) */
-        char *w = src + sprintf(src, "manna v0;\nfn g(a: u64) -> u64 { return a; }\nfn f(x: u64, p: bool) -> %s { ", rt);
-        for (int i = 0; i < 120; i++) w += sprintf(w, "if true { ");
-        w += sprintf(w, "return %s; ", expr);
-        for (int i = 0; i < 120; i++) w += sprintf(w, "} ");
-        /* the return inside the ifs is conditional, so the function also needs one at its end (E0277) */
-        sprintf(w, "return %s; }\n", strcmp(rt, "bool") == 0 ? "true" : "0");
-    } else {
-        sprintf(src, "manna v0;\nfn g(a: u64) -> u64 { return a; }\nfn f(x: u64, p: bool) -> %s { return %s; }\n", rt, expr);
-    }
+    char *src = make_src(shape, expr, levels, as_bool);
     printf("levels=%d\n", levels); /* neg_chain / in_calls: the deepest nesting the parser accepted */
     /* parse-only measures the PARSER on the process stack; otherwise the parse happens on a big-stack thread
      * so that what is measured afterwards is the builder alone */
@@ -1614,7 +1665,8 @@ static void test_builder_stack(void) {
             printf("PENDING: builder stack: %s (becomes live at step %d)\n", build_shapes[i].name, build_shapes[i].live_step);
             continue;
         }
-        int height = (strcmp(build_shapes[i].name, "neg_chain") == 0 || strcmp(build_shapes[i].name, "in_calls") == 0) ? 0 : MAX_EXPR_HEIGHT;
+        int height = (strcmp(build_shapes[i].name, "neg_chain") == 0 || strcmp(build_shapes[i].name, "in_calls") == 0 ||
+                      strcmp(build_shapes[i].name, "in_construct") == 0) ? 0 : MAX_EXPR_HEIGHT;
         run_build_shape(build_shapes[i].name, height, false, false);
         run_build_shape(build_shapes[i].name, height, true, false);
         printf("PASS: builder stack: %s, built and mismatch-walked at the maximal height\n", build_shapes[i].name);
@@ -1669,6 +1721,7 @@ int main(int argc, char **argv) {
     test_operator_matrix();
     test_operator_result_types();
     test_e0261_fix();
+    test_construction_and_access_spans();
     test_checker_is_linear();
     test_call_ir();
     test_call_graph_scale();

@@ -1,0 +1,19 @@
+(struct@2:1-2:27 P size=2 align=1
+  (field@2:12-2:18 x u8 +0)
+  (field@2:19-2:25 y u8 +1))
+(fn@3:1-5:2 fn:take
+  (params (param@3:9-3:13 p #0 P))
+  (returns u8)
+  (block@3:21-5:2
+    (return@4:5-4:16
+      (field@4:12-4:15 y #1 u8
+        (local@4:12-4:13 p #0 P)))))
+(fn@6:1-8:2 fn:f
+  (params)
+  (returns u8)
+  (block@6:14-8:2
+    (return@7:5-7:32
+      (call@7:12-7:31 fn:take u8
+        (struct_new@7:17-7:30 P
+          (int@7:22-7:23 1 u8)
+          (int@7:28-7:29 2 u8))))))

@@ -73,7 +73,7 @@ stop=0
 printf '%-5s %-11s %-4s %9s %9s %8s %12s %7s\n' build shape var "S_full KB" "S_base KB" levels "B/level (<=)" margin
 for build in plain asan; do
     bin="$BUILD/t"; [ "$build" = asan ] && bin="$BUILD/t-asan"
-    for shape in binary mixed_prec neg_chain in_ifs name_chain and_chain in_calls; do
+    for shape in binary mixed_prec neg_chain in_ifs name_chain and_chain in_calls field in_construct; do
         case "$shape" in
             binary) full=512; base=1 ;;
             mixed_prec) full=512; base=2 ;;
@@ -82,6 +82,8 @@ for build in plain asan; do
             name_chain) full=512; base=1 ;;
             and_chain) full=512; base=1 ;;
             in_ifs) full=512; base=1 ;;   # the chain inside 120 nested ifs; the base keeps the 120 ifs, so B/level is the expression's
+            field) full=512; base=1 ;;    # s.f.f.f... over 511 distinct struct types (step 11); the base is `x` over one struct
+            in_construct) full=0; base=1 ;; # N0(f: N1(f: ...)) at the deepest nesting the parser accepts (~254; step 11)
         esac
         for var in int bool; do
             sf=$(bisect "$bin" "$shape" $full $var)
@@ -103,8 +105,8 @@ echo "THE PARSER ALONE (the same inputs, parse only, on the process stack): its 
 printf '%-5s %-11s %9s %7s\n' build shape "S_parse KB" margin
 for build in plain asan; do
     bin="$BUILD/t"; [ "$build" = asan ] && bin="$BUILD/t-asan"
-    for shape in binary neg_chain in_ifs and_chain in_calls; do
-        case "$shape" in neg_chain|in_calls) full=0 ;; *) full=512 ;; esac
+    for shape in binary neg_chain in_ifs and_chain in_calls field in_construct; do
+        case "$shape" in neg_chain|in_calls|in_construct) full=0 ;; *) full=512 ;; esac
         sp=$(bisect "$bin" "$shape" $full int parse-only)
         case "$sp" in FAIL|crash|ERROR|error) echo "$build $shape: parse-only $sp"; stop=1; continue ;; esac
         margin=$(awk -v f=$FULL -v h=$sp 'BEGIN{printf "%.1f", f/h}')
@@ -113,6 +115,6 @@ for build in plain asan; do
         printf '%-5s %-11s %9d %6sx%s\n' "$build" "$shape" "$sp" "$margin" "$verdict"
     done
 done
-echo "pending shapes (live when their constructs land): field (step 11), index and postfix_mix (step 12)"
+echo "pending shapes (live when their constructs land): index and postfix_mix (step 12)"
 [ $stop -eq 0 ] || { echo "STOP: a case is under the 4x gate (or failed outright); do not proceed"; exit 1; }
 echo "all live cases keep >= 4x"

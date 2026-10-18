@@ -1,0 +1,12 @@
+manna v0;
+fn nothing() {
+}
+struct P { x: u8, ok: bool, }
+fn f(p: P, n: u8) {
+    p.zz = nope;
+    p.x = true;
+    n.x = 1;
+    p.ok = 1;
+    p.x = nothing();
+    p.x = 300;
+}
