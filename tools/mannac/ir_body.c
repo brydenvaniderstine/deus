@@ -110,7 +110,7 @@ static IrStmt *build_block(BodyCtx *bc, const Stmt *block) {
  * AFTER its own statement, so `let x: u32 = x;` does not see the new x. A let whose annotation
  * or initializer failed still declares its name, typed ERROR, so later uses stay silent. A
  * redeclared name binds nothing: the first binding stays. */
-static IrStmt *build_let(BodyCtx *bc, const Stmt *s) {
+static IR_NOINLINE IrStmt *build_let(BodyCtx *bc, const Stmt *s) {
     IrState *st = bc->st;
     const char *name = s->as.let_stmt.name;
     Span name_span = s->as.let_stmt.name_span;
@@ -142,7 +142,7 @@ static bool lvalue_shape(const Expr *e) {
     }
 }
 
-static IrStmt *build_assign(BodyCtx *bc, const Stmt *s) {
+static IR_NOINLINE IrStmt *build_assign(BodyCtx *bc, const Stmt *s) {
     IrState *st = bc->st;
     const Expr *target = s->as.assign_stmt.target;
     const Expr *value = s->as.assign_stmt.value;
@@ -198,7 +198,7 @@ static IrStmt *build_for(BodyCtx *bc, const Stmt *s) {
  * returns nothing ("unexpected", reported at the value, which is still checked for its OWN mistakes
  * against no type). A value is checked against the return type like any other expectation. Any
  * `return`, mistaken or not, counts as returning for E0277: one mistake, one error. */
-static IrStmt *build_return(BodyCtx *bc, const Stmt *s) {
+static IR_NOINLINE IrStmt *build_return(BodyCtx *bc, const Stmt *s) {
     IrState *st = bc->st;
     const IrFunc *f = bc->func;
     const Expr *v = s->as.return_stmt.value;
@@ -214,33 +214,35 @@ static IrStmt *build_return(BodyCtx *bc, const Stmt *s) {
     return ir_stmt_return(st, s->span, ir_check_expr(bc, v, f->ret));
 }
 
-static IrStmt *build_stmt(BodyCtx *bc, const Stmt *s) {
+/* `break` / `continue`: legal only inside a loop body (E0275); the statement is built either way. */
+static IR_NOINLINE IrStmt *build_jump(BodyCtx *bc, const Stmt *s) {
     IrState *st = bc->st;
+    bool is_break = s->kind == STMT_BREAK;
+    if (bc->loop_depth == 0) ir_error(st, diag_ir_outside_loop(s->span, is_break ? "break" : "continue"));
+    return is_break ? ir_stmt_break(st, s->span) : ir_stmt_continue(st, s->span);
+}
+
+static IR_NOINLINE IrStmt *build_expr_stmt(BodyCtx *bc, const Stmt *s) {
+    return ir_stmt_expr(bc->st, s->span, ir_infer_expr(bc, s->as.expr_stmt.expr));
+}
+
+/* A thin dispatcher: it is live across every level of statement nesting (build_stmt -> build_if /
+ * build_while / build_for -> build_block -> build_stmt), so each kind's work is in a function of its
+ * own and this frame holds nothing. */
+static IrStmt *build_stmt(BodyCtx *bc, const Stmt *s) {
     switch (s->kind) {
-        case STMT_LET:
-            return build_let(bc, s);
-        case STMT_ASSIGN:
-            return build_assign(bc, s);
-        case STMT_EXPR:
-            return ir_stmt_expr(st, s->span, ir_infer_expr(bc, s->as.expr_stmt.expr));
-        case STMT_IF:
-            return build_if(bc, s);
-        case STMT_WHILE:
-            return build_while(bc, s);
-        case STMT_FOR:
-            return build_for(bc, s);
+        case STMT_LET:      return build_let(bc, s);
+        case STMT_ASSIGN:   return build_assign(bc, s);
+        case STMT_EXPR:     return build_expr_stmt(bc, s);
+        case STMT_IF:       return build_if(bc, s);
+        case STMT_WHILE:    return build_while(bc, s);
+        case STMT_FOR:      return build_for(bc, s);
         case STMT_BREAK:
-            if (bc->loop_depth == 0) ir_error(st, diag_ir_outside_loop(s->span, "break"));
-            return ir_stmt_break(st, s->span);
-        case STMT_CONTINUE:
-            if (bc->loop_depth == 0) ir_error(st, diag_ir_outside_loop(s->span, "continue"));
-            return ir_stmt_continue(st, s->span);
-        case STMT_RETURN:
-            return build_return(bc, s);
-        case STMT_BLOCK:
-            break;
+        case STMT_CONTINUE: return build_jump(bc, s);
+        case STMT_RETURN:   return build_return(bc, s);
+        case STMT_BLOCK:    break;
     }
-    ir_unimplemented(st, "a bare block statement"); /* the parser never builds one */
+    ir_unimplemented(bc->st, "a bare block statement"); /* the parser never builds one */
 }
 
 /* ---- missing return (E0277) ---- */

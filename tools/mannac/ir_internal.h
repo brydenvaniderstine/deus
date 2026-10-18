@@ -4,6 +4,17 @@
 #include <string.h>
 #include "ir.h"
 
+/* Attributes for keeping the frames of the recursive checker small (docs/TYPED_IR.md step 9, the
+ * stack trend): IR_NOINLINE keeps a function's locals out of its caller's frame; IR_COLD is the
+ * same for an error path. No effect on behavior; other compilers just ignore them. */
+#if defined(__GNUC__) || defined(__clang__)
+#define IR_NOINLINE __attribute__((noinline))
+#define IR_COLD     __attribute__((noinline, cold))
+#else
+#define IR_NOINLINE
+#define IR_COLD
+#endif
+
 /* Shared between the declaration pass (ir_decls.c), the expression checker (ir_expr.c) and
  * the statement builder (ir_body.c); not a public interface. */
 
