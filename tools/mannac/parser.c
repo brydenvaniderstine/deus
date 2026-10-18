@@ -292,6 +292,35 @@ static Expr *guard_height(Parser *p, Expr *e) {
     return e;
 }
 
+/* Stack trim (typed-IR step 10b; docs/TYPED_IR.md): nested constructs recurse through the whole precedence
+ * chain, so the frame of every function on that chain is paid once per nesting level, and parsing 254 nested
+ * calls needed 4.9 MB under macOS ASan. Nothing below changes what is parsed or reported; it only keeps
+ * the frames of the recursive functions small:
+ *  - a Diagnostic is 64 bytes, and every inline `parser_error(p->ps, diag_expected(...))` put a 64-byte
+ *    temporary (plus an ASan redzone) into the frame of the function containing it: they are built in cold,
+ *    non-inlined helpers instead;
+ *  - node construction (span_merge + the AST constructor + guard_height) is in non-inlined helpers;
+ *  - the recursive functions are thin, and whatever happens AFTER a recursive call returned is in a function
+ *    of its own, so its locals exist only once the recursion is over (ASan allocates every local of a
+ *    function at entry, even one declared after the recursive call). */
+#if defined(__GNUC__) || defined(__clang__)
+#define PARSER_NOINLINE __attribute__((noinline))
+#define PARSER_COLD     __attribute__((noinline, cold))
+#else
+#define PARSER_NOINLINE
+#define PARSER_COLD
+#endif
+
+/* E0105 at the current token: "expected <expected>, found <it>[ <context>]". */
+static PARSER_COLD void err_expected(Parser *p, const char *expected, const char *context) {
+    parser_error(p->ps, diag_expected(p->ps->arena, token_span(p->cur), expected,
+                                       token_describe(p->ps->arena, p->cur), context));
+}
+
+static PARSER_NOINLINE Expr *bin_node(Parser *p, Expr *lhs, Expr *rhs, BinOp op) {
+    return guard_height(p, expr_binary(p->ps->arena, span_merge(lhs->span, rhs->span), op, lhs, rhs));
+}
+
 static Expr *parse_expression(Parser *p);
 static Expr *parse_logic_or(Parser *p, Expr *given_lhs);
 static Expr *parse_logic_and(Parser *p, Expr *given_lhs);
@@ -373,7 +402,7 @@ static Expr *parse_logic_or(Parser *p, Expr *given_lhs) {
         advance(p);
         Expr *rhs = parse_logic_and(p, NULL);
         if (!rhs) return NULL;
-        lhs = guard_height(p, expr_binary(p->ps->arena, span_merge(lhs->span, rhs->span), BINOP_OR, lhs, rhs));
+        lhs = bin_node(p, lhs, rhs, BINOP_OR);
     }
     return lhs;
 }
@@ -385,7 +414,7 @@ static Expr *parse_logic_and(Parser *p, Expr *given_lhs) {
         advance(p);
         Expr *rhs = parse_relational(p, NULL);
         if (!rhs) return NULL;
-        lhs = guard_height(p, expr_binary(p->ps->arena, span_merge(lhs->span, rhs->span), BINOP_AND, lhs, rhs));
+        lhs = bin_node(p, lhs, rhs, BINOP_AND);
     }
     return lhs;
 }
@@ -433,6 +462,28 @@ static BinOp relational_binop(TokenKind k) {
     }
 }
 
+/* The second comparison/equality operator after one (E0101 same class, E0108 mixed). Reached only on an
+ * error, always returns NULL; cold so its Token, Spans and Diagnostic do not sit in parse_relational's frame. */
+static PARSER_COLD Expr *relational_second_operator(Parser *p, TokenKind first_op, Span first_left, Span first_right) {
+    Token second = p->cur;
+    if (is_equality_op(first_op) == is_equality_op(second.kind)) {
+        parser_error(p->ps, diag_chained_comparison(token_span(second)));
+        return NULL;
+    }
+    Span pair_left = first_left, pair_right = first_right; /* comparison op came first */
+    if (is_equality_op(first_op)) {
+        /* equality first, comparison second: the pair to parenthesize
+         * is (first right operand, the comparison's right operand) */
+        advance(p);
+        Expr *third = parse_bitor(p, NULL);
+        if (!third) return NULL;
+        pair_left = first_right;
+        pair_right = third->span;
+    }
+    parser_error(p->ps, diag_mixed_comparison(p->ps->arena, token_span(second), pair_left, pair_right));
+    return NULL;
+}
+
 static Expr *parse_relational(Parser *p, Expr *given_lhs) {
     Expr *lhs = given_lhs ? given_lhs : parse_bitor(p, NULL);
     if (!lhs) return NULL;
@@ -445,26 +496,10 @@ static Expr *parse_relational(Parser *p, Expr *given_lhs) {
     Expr *rhs = parse_bitor(p, NULL);
     if (!rhs) return NULL;
     Span first_right = rhs->span;
-    lhs = guard_height(p, expr_binary(p->ps->arena, span_merge(lhs->span, rhs->span), relational_binop(first_op), lhs, rhs));
+    lhs = bin_node(p, lhs, rhs, relational_binop(first_op));
 
     if (is_comparison_or_equality_op(p->cur.kind)) {
-        Token second = p->cur;
-        if (is_equality_op(first_op) == is_equality_op(second.kind)) {
-            parser_error(p->ps, diag_chained_comparison(token_span(second)));
-            return NULL;
-        }
-        Span pair_left = first_left, pair_right = first_right; /* comparison op came first */
-        if (is_equality_op(first_op)) {
-            /* equality first, comparison second: the pair to parenthesize
-             * is (first right operand, the comparison's right operand) */
-            advance(p);
-            Expr *third = parse_bitor(p, NULL);
-            if (!third) return NULL;
-            pair_left = first_right;
-            pair_right = third->span;
-        }
-        parser_error(p->ps, diag_mixed_comparison(p->ps->arena, token_span(second), pair_left, pair_right));
-        return NULL;
+        return relational_second_operator(p, first_op, first_left, first_right);
     }
     return lhs;
 }
@@ -476,7 +511,7 @@ static Expr *parse_bitor(Parser *p, Expr *given_lhs) {
         advance(p);
         Expr *rhs = parse_bitxor(p, NULL);
         if (!rhs) return NULL;
-        lhs = guard_height(p, expr_binary(p->ps->arena, span_merge(lhs->span, rhs->span), BINOP_BITOR, lhs, rhs));
+        lhs = bin_node(p, lhs, rhs, BINOP_BITOR);
     }
     return lhs;
 }
@@ -488,7 +523,7 @@ static Expr *parse_bitxor(Parser *p, Expr *given_lhs) {
         advance(p);
         Expr *rhs = parse_bitand(p, NULL);
         if (!rhs) return NULL;
-        lhs = guard_height(p, expr_binary(p->ps->arena, span_merge(lhs->span, rhs->span), BINOP_BITXOR, lhs, rhs));
+        lhs = bin_node(p, lhs, rhs, BINOP_BITXOR);
     }
     return lhs;
 }
@@ -500,7 +535,7 @@ static Expr *parse_bitand(Parser *p, Expr *given_lhs) {
         advance(p);
         Expr *rhs = parse_shift(p, NULL);
         if (!rhs) return NULL;
-        lhs = guard_height(p, expr_binary(p->ps->arena, span_merge(lhs->span, rhs->span), BINOP_BITAND, lhs, rhs));
+        lhs = bin_node(p, lhs, rhs, BINOP_BITAND);
     }
     return lhs;
 }
@@ -513,7 +548,7 @@ static Expr *parse_shift(Parser *p, Expr *given_lhs) {
         advance(p);
         Expr *rhs = parse_additive(p, NULL);
         if (!rhs) return NULL;
-        lhs = guard_height(p, expr_binary(p->ps->arena, span_merge(lhs->span, rhs->span), op, lhs, rhs));
+        lhs = bin_node(p, lhs, rhs, op);
     }
     return lhs;
 }
@@ -526,7 +561,7 @@ static Expr *parse_additive(Parser *p, Expr *given_lhs) {
         advance(p);
         Expr *rhs = parse_multiplicative(p, NULL);
         if (!rhs) return NULL;
-        lhs = guard_height(p, expr_binary(p->ps->arena, span_merge(lhs->span, rhs->span), op, lhs, rhs));
+        lhs = bin_node(p, lhs, rhs, op);
     }
     return lhs;
 }
@@ -539,9 +574,13 @@ static Expr *parse_multiplicative(Parser *p, Expr *given_lhs) {
         advance(p);
         Expr *rhs = parse_unary(p);
         if (!rhs) return NULL;
-        lhs = guard_height(p, expr_binary(p->ps->arena, span_merge(lhs->span, rhs->span), op, lhs, rhs));
+        lhs = bin_node(p, lhs, rhs, op);
     }
     return lhs;
+}
+
+static PARSER_NOINLINE Expr *unary_node(Parser *p, Span op_span, UnOp op, Expr *operand) {
+    return guard_height(p, expr_unary(p->ps->arena, span_merge(op_span, operand->span), op, operand));
 }
 
 static Expr *parse_unary(Parser *p) {
@@ -554,16 +593,20 @@ static Expr *parse_unary(Parser *p) {
             return parse_postfix(p);
     }
     depth_enter(p->ps, token_span(p->cur));
-    Token op_tok = p->cur;
+    Span op_span = token_span(p->cur);
     advance(p);
     Expr *operand = parse_unary(p);
     if (!operand) {
         depth_exit(p->ps);
         return NULL;
     }
-    Expr *result = guard_height(p, expr_unary(p->ps->arena, span_merge(token_span(op_tok), operand->span), op, operand));
+    Expr *result = unary_node(p, op_span, op, operand);
     depth_exit(p->ps);
     return result;
+}
+
+static PARSER_NOINLINE Expr *named_arg_node(Parser *p, Expr *name, Expr *value) {
+    return guard_height(p, expr_named_arg(p->ps->arena, span_merge(name->span, value->span), name, value));
 }
 
 static bool parse_arg_list(Parser *p, NodeList *out_args) {
@@ -586,7 +629,7 @@ static bool parse_arg_list(Parser *p, NodeList *out_args) {
             if (!value) {
                 return false;
             }
-            arg = guard_height(p, expr_named_arg(p->ps->arena, span_merge(arg->span, value->span), arg, value));
+            arg = named_arg_node(p, arg, value);
         }
         node_list_push(p->ps->arena, out_args, arg);
         if (p->cur.kind == TOK_COMMA) {
@@ -616,202 +659,187 @@ static bool parse_index_or_slice(Parser *p, Expr **out_lo, Expr **out_hi) {
     return true;
 }
 
-static Expr *parse_primary(Parser *p) {
-    Expr *result = NULL;
+static PARSER_NOINLINE Expr *primary_literal(Parser *p) {
     Token t = p->cur;
+    advance(p);
+    if (t.kind == TOK_NUMBER) return expr_number(p->ps->arena, token_span(t), t.number_value);
+    return expr_bool(p->ps->arena, token_span(t), t.kind == TOK_KW_TRUE);
+}
 
-    switch (t.kind) {
-        case TOK_NUMBER:
-            advance(p);
-            result = expr_number(p->ps->arena, token_span(t), t.number_value);
-            break;
-
-        case TOK_KW_TRUE:
-            advance(p);
-            result = expr_bool(p->ps->arena, token_span(t), true);
-            break;
-
-        case TOK_KW_FALSE:
-            advance(p);
-            result = expr_bool(p->ps->arena, token_span(t), false);
-            break;
-
-        case TOK_IDENT:
-            advance(p);
-            if (p->cur.kind == TOK_LPAREN) {
-                advance(p); /* consume '(' */
-                NodeList args;
-                bool ok = true;
-                if (p->cur.kind == TOK_RPAREN) {
-                    node_list_init(&args);
-                } else {
-                    ok = parse_arg_list(p, &args);
-                }
-                if (ok) {
-                    if (p->cur.kind == TOK_RPAREN) {
-                        Token rparen = p->cur;
-                        advance(p);
-                        result = guard_height(p, expr_call(p->ps->arena, span_merge(token_span(t), token_span(rparen)),
-                                                           token_span(t), t.lexeme, t.lexeme_len, args));
-                    } else {
-                        parser_error(p->ps, diag_expected(p->ps->arena, token_span(p->cur), "')'",
-                                                           token_describe(p->ps->arena, p->cur), "after arguments"));
-                    }
-                }
-            } else {
-                result = expr_ident(p->ps->arena, token_span(t), t.lexeme, t.lexeme_len);
-            }
-            break;
-
-        case TOK_LPAREN:
-            advance(p); /* consume '(' */
-            result = parse_expression(p);
-            if (result) {
-                if (p->cur.kind == TOK_RPAREN) {
-                    /* No Paren AST node (the grammar deliberately doesn't
-                     * have one - M2_PLAN.md's compact rendering), so the
-                     * only place to record "this was parenthesized" is on
-                     * the inner expression itself: widen its span to cover
-                     * the parens too (an inner literal's span would
-                     * otherwise under-report where the expression it's
-                     * part of actually starts/ends), and set the flag the
-                     * IR stage needs to tell "-9223372036854775808" (a
-                     * literal directly negated - i64::MIN) apart from
-                     * "-(9223372036854775808)" (the same magnitude, but
-                     * through a parenthesized sub-expression - an overflow
-                     * error instead, docs/M2_PLAN.md records why). Mutating
-                     * in place is safe and correct even through nested
-                     * parens, e.g. "((42))": each layer's RPAREN handling
-                     * widens the span a little further and the flag is
-                     * already true after the first, a no-op to set again. */
-                    Token rparen = p->cur;
-                    advance(p);
-                    result->span = span_merge(token_span(t), token_span(rparen));
-                    result->parenthesized = true;
-                } else {
-                    parser_error(p->ps, diag_expected(p->ps->arena, token_span(p->cur), "')'",
-                                                       token_describe(p->ps->arena, p->cur), "after expression"));
-                    result = NULL;
-                }
-            }
-            break;
-
-        case TOK_LBRACKET: {
-            /* '[' array_body ']' : array_body ::= expression
-             * ( { ',' expression } | ';' NUMBER ). Both forms re-enter
-             * parse_expression (counted) - back-edge 9
-             * (row 9 of docs/M2_PLAN.md's depth table). No trailing comma, and `[]` is an
-             * error (no element to infer a type from): both fall out of
-             * parse_expression failing on ']'. N in `[v; N]` is a NUMBER
-             * token, not an expression (v0 has no constant evaluation), so
-             * `[v; x]` and `[v; -1]` are errors; N == 0 and N == 1 are
-             * legal here (the IR stage and the formatter own the rest). */
-            advance(p); /* consume '[' */
-            Expr *first = parse_expression(p);
-            if (!first) {
-                break;
-            }
-            if (p->cur.kind == TOK_SEMI) {
-                advance(p);
-                if (p->cur.kind != TOK_NUMBER) {
-                    parser_error(p->ps, diag_expected(p->ps->arena, token_span(p->cur), "array repeat count (integer)",
-                                                       token_describe(p->ps->arena, p->cur), NULL));
-                    break;
-                }
-                uint64_t count = p->cur.number_value;
-                advance(p);
-                if (p->cur.kind != TOK_RBRACKET) {
-                    parser_error(p->ps, diag_expected(p->ps->arena, token_span(p->cur), "']'",
-                                                       token_describe(p->ps->arena, p->cur), "after repeat count"));
-                    break;
-                }
-                Token rb = p->cur;
-                advance(p);
-                result = guard_height(p, expr_array_repeat(p->ps->arena, span_merge(token_span(t), token_span(rb)), first, count));
-                break;
-            }
-            NodeList elems;
-            node_list_init(&elems);
-            node_list_push(p->ps->arena, &elems, first);
-            bool ok = true;
-            while (p->cur.kind == TOK_COMMA) {
-                advance(p);
-                Expr *next = parse_expression(p);
-                if (!next) {
-                    ok = false;
-                    break;
-                }
-                node_list_push(p->ps->arena, &elems, next);
-            }
-            if (!ok) {
-                break;
-            }
-            if (p->cur.kind != TOK_RBRACKET) {
-                parser_error(p->ps, diag_expected(p->ps->arena, token_span(p->cur), "']'",
-                                                   token_describe(p->ps->arena, p->cur), "after array elements"));
-                break;
-            }
-            Token rb = p->cur;
-            advance(p);
-            result = guard_height(p, expr_array(p->ps->arena, span_merge(token_span(t), token_span(rb)), elems));
-            break;
-        }
-
-        case TOK_KW_U8: case TOK_KW_U16: case TOK_KW_U32: case TOK_KW_U64:
-        case TOK_KW_I8: case TOK_KW_I16: case TOK_KW_I32: case TOK_KW_I64:
-        case TOK_KW_BOOL: {
-            /* PRIM_TYPE '(' expression ')' - explicit conversion, exactly one
-             * operand. The keyword alone is not an expression, and (unlike
-             * IDENT) it never takes an arg_list: `u8()` and `u8(a, b)` are
-             * syntax errors here. Which conversions are legal (bool <-> int
-             * is not) is an IR-stage decision, so `bool(x)` and `u8(true)`
-             * parse. Re-enters parse_expression (counted) - back-edge 8
-             * (row 10 of docs/M2_PLAN.md's depth table). */
-            advance(p);
-            if (p->cur.kind != TOK_LPAREN) {
-                parser_error(p->ps, diag_expected(p->ps->arena, token_span(p->cur), "'('",
-                                                   token_describe(p->ps->arena, p->cur),
-                                                   arena_sprintf(p->ps->arena, "after '%.*s'", (int)t.lexeme_len, t.lexeme)));
-                break;
-            }
-            advance(p); /* consume '(' */
-            Expr *operand = parse_expression(p);
-            if (!operand) {
-                break;
-            }
-            if (p->cur.kind != TOK_RPAREN) {
-                parser_error(p->ps, diag_expected(p->ps->arena, token_span(p->cur), "')'",
-                                                   token_describe(p->ps->arena, p->cur), "after conversion operand"));
-                break;
-            }
-            Token rparen = p->cur;
-            advance(p);
-            result = guard_height(p, expr_convert(p->ps->arena, span_merge(token_span(t), token_span(rparen)),
-                                                  token_span(t), t.lexeme, t.lexeme_len, operand));
-            break;
-        }
-
-        default:
-            parser_error(p->ps, diag_expected(p->ps->arena, token_span(t), "expression",
-                                               token_describe(p->ps->arena, t), NULL));
-            break;
+/* IDENT or IDENT '(' arg_list ')'. The part after the arguments is in finish_call. */
+static PARSER_NOINLINE Expr *finish_call(Parser *p, const Token *t, NodeList *args) {
+    if (p->cur.kind != TOK_RPAREN) {
+        err_expected(p, "')'", "after arguments");
+        return NULL;
     }
+    Token rparen = p->cur;
+    advance(p);
+    return guard_height(p, expr_call(p->ps->arena, span_merge(token_span(*t), token_span(rparen)),
+                                     token_span(*t), t->lexeme, t->lexeme_len, *args));
+}
 
+static Expr *primary_ident_or_call(Parser *p) {
+    Token t = p->cur;
+    advance(p);
+    if (p->cur.kind != TOK_LPAREN) {
+        return expr_ident(p->ps->arena, token_span(t), t.lexeme, t.lexeme_len);
+    }
+    advance(p); /* consume '(' */
+    NodeList args;
+    bool ok = true;
+    if (p->cur.kind == TOK_RPAREN) {
+        node_list_init(&args);
+    } else {
+        ok = parse_arg_list(p, &args);
+    }
+    if (!ok) return NULL;
+    return finish_call(p, &t, &args);
+}
+
+/* '(' expression ')'. No Paren AST node (the grammar deliberately doesn't have one - M2_PLAN.md's compact
+ * rendering), so the only place to record "this was parenthesized" is on the inner expression itself: widen
+ * its span to cover the parens too (an inner literal's span would otherwise under-report where the
+ * expression it's part of actually starts/ends), and set the flag the IR stage needs to tell
+ * "-9223372036854775808" (a literal directly negated - i64::MIN) apart from "-(9223372036854775808)" (the
+ * same magnitude, but through a parenthesized sub-expression - an overflow error instead, docs/M2_PLAN.md
+ * records why). Mutating in place is safe and correct even through nested parens, e.g. "((42))": each
+ * layer's RPAREN handling widens the span a little further and the flag is already true after the first, a
+ * no-op to set again. */
+static PARSER_NOINLINE Expr *finish_paren(Parser *p, Span lparen, Expr *result) {
+    if (p->cur.kind != TOK_RPAREN) {
+        err_expected(p, "')'", "after expression");
+        return NULL;
+    }
+    Token rparen = p->cur;
+    advance(p);
+    result->span = span_merge(lparen, token_span(rparen));
+    result->parenthesized = true;
     return result;
 }
 
-static Expr *parse_postfix(Parser *p) {
-    Expr *base = parse_primary(p);
-    if (!base) {
+static Expr *primary_paren(Parser *p) {
+    Span lparen = token_span(p->cur);
+    advance(p); /* consume '(' */
+    Expr *result = parse_expression(p);
+    if (!result) return NULL;
+    return finish_paren(p, lparen, result);
+}
+
+/* '[' array_body ']' : array_body ::= expression ( { ',' expression } | ';' NUMBER ). Both forms re-enter
+ * parse_expression (counted) - back-edge 9 (row 9 of docs/M2_PLAN.md's depth table). No trailing comma, and
+ * `[]` is an error (no element to infer a type from): both fall out of parse_expression failing on ']'. N in
+ * `[v; N]` is a NUMBER token, not an expression (v0 has no constant evaluation), so `[v; x]` and `[v; -1]`
+ * are errors; N == 0 and N == 1 are legal here (the IR stage and the formatter own the rest). */
+static PARSER_NOINLINE Expr *finish_array(Parser *p, Span lbracket, Expr *first) {
+    if (p->cur.kind == TOK_SEMI) {
+        advance(p);
+        if (p->cur.kind != TOK_NUMBER) {
+            err_expected(p, "array repeat count (integer)", NULL);
+            return NULL;
+        }
+        uint64_t count = p->cur.number_value;
+        advance(p);
+        if (p->cur.kind != TOK_RBRACKET) {
+            err_expected(p, "']'", "after repeat count");
+            return NULL;
+        }
+        Token rb = p->cur;
+        advance(p);
+        return guard_height(p, expr_array_repeat(p->ps->arena, span_merge(lbracket, token_span(rb)), first, count));
+    }
+    NodeList elems;
+    node_list_init(&elems);
+    node_list_push(p->ps->arena, &elems, first);
+    while (p->cur.kind == TOK_COMMA) {
+        advance(p);
+        Expr *next = parse_expression(p);
+        if (!next) return NULL;
+        node_list_push(p->ps->arena, &elems, next);
+    }
+    if (p->cur.kind != TOK_RBRACKET) {
+        err_expected(p, "']'", "after array elements");
         return NULL;
     }
+    Token rb = p->cur;
+    advance(p);
+    return guard_height(p, expr_array(p->ps->arena, span_merge(lbracket, token_span(rb)), elems));
+}
 
+static Expr *primary_array(Parser *p) {
+    Span lbracket = token_span(p->cur);
+    advance(p); /* consume '[' */
+    Expr *first = parse_expression(p);
+    if (!first) return NULL;
+    return finish_array(p, lbracket, first);
+}
+
+/* PRIM_TYPE '(' expression ')' - explicit conversion, exactly one operand. The keyword alone is not an
+ * expression, and (unlike IDENT) it never takes an arg_list: `u8()` and `u8(a, b)` are syntax errors here.
+ * Which conversions are legal (bool <-> int is not) is an IR-stage decision, so `bool(x)` and `u8(true)`
+ * parse. Re-enters parse_expression (counted) - back-edge 8 (row 10 of docs/M2_PLAN.md's depth table). */
+static PARSER_COLD void err_paren_after_conversion(Parser *p, const Token *kw) {
+    err_expected(p, "'('", arena_sprintf(p->ps->arena, "after '%.*s'", (int)kw->lexeme_len, kw->lexeme));
+}
+
+static PARSER_NOINLINE Expr *finish_conversion(Parser *p, const Token *t, Expr *operand) {
+    if (p->cur.kind != TOK_RPAREN) {
+        err_expected(p, "')'", "after conversion operand");
+        return NULL;
+    }
+    Token rparen = p->cur;
+    advance(p);
+    return guard_height(p, expr_convert(p->ps->arena, span_merge(token_span(*t), token_span(rparen)),
+                                        token_span(*t), t->lexeme, t->lexeme_len, operand));
+}
+
+static Expr *primary_conversion(Parser *p) {
+    Token t = p->cur;
+    advance(p);
+    if (p->cur.kind != TOK_LPAREN) {
+        err_paren_after_conversion(p, &t);
+        return NULL;
+    }
+    advance(p); /* consume '(' */
+    Expr *operand = parse_expression(p);
+    if (!operand) return NULL;
+    return finish_conversion(p, &t, operand);
+}
+
+static PARSER_COLD Expr *primary_expected_expression(Parser *p) {
+    err_expected(p, "expression", NULL);
+    return NULL;
+}
+
+static Expr *parse_primary(Parser *p) {
+    switch (p->cur.kind) {
+        case TOK_NUMBER:
+        case TOK_KW_TRUE:
+        case TOK_KW_FALSE:
+            return primary_literal(p);
+        case TOK_IDENT:
+            return primary_ident_or_call(p);
+        case TOK_LPAREN:
+            return primary_paren(p);
+        case TOK_LBRACKET:
+            return primary_array(p);
+        case TOK_KW_U8: case TOK_KW_U16: case TOK_KW_U32: case TOK_KW_U64:
+        case TOK_KW_I8: case TOK_KW_I16: case TOK_KW_I32: case TOK_KW_I64:
+        case TOK_KW_BOOL:
+            return primary_conversion(p);
+        default:
+            return primary_expected_expression(p);
+    }
+}
+
+/* Everything after the primary: `.field` and `[index]` / `[lo..hi]` in a loop. Split from parse_postfix so that the
+ * frame that is live while the PRIMARY recurses (a call's arguments, a parenthesized expression...) is the
+ * thin one. */
+static PARSER_NOINLINE Expr *parse_postfix_tail(Parser *p, Expr *base) {
     for (;;) {
         if (p->cur.kind == TOK_DOT) {
             advance(p);
             if (p->cur.kind != TOK_IDENT) {
-                parser_error(p->ps, diag_expected(p->ps->arena, token_span(p->cur), "field name",
-                                                   token_describe(p->ps->arena, p->cur), "after '.'"));
+                err_expected(p, "field name", "after '.'");
                 return NULL;
             }
             Token name = p->cur;
@@ -825,8 +853,7 @@ static Expr *parse_postfix(Parser *p) {
                 return NULL;
             }
             if (p->cur.kind != TOK_RBRACKET) {
-                parser_error(p->ps, diag_expected(p->ps->arena, token_span(p->cur), "']'",
-                                                   token_describe(p->ps->arena, p->cur), "after index"));
+                err_expected(p, "']'", "after index");
                 return NULL;
             }
             Token rbracket = p->cur;
@@ -840,6 +867,14 @@ static Expr *parse_postfix(Parser *p) {
     }
 
     return base;
+}
+
+static Expr *parse_postfix(Parser *p) {
+    Expr *base = parse_primary(p);
+    if (!base) {
+        return NULL;
+    }
+    return parse_postfix_tail(p, base);
 }
 
 static bool is_prim_type_keyword(TokenKind k) {
