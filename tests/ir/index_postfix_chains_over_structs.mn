@@ -1,0 +1,8 @@
+manna v0;
+struct Q { x: u8, }
+struct R { qs: [2]Q, }
+fn f(r: R, ps: [3]Q) -> u8 {
+    ps[1].x = 4;
+    r.qs[0].x = 5;
+    return r.qs[1].x + ps[2].x;
+}

@@ -1,0 +1,14 @@
+manna v0;
+struct P { x: u8, }
+fn one() -> u8 {
+    return 1;
+}
+fn f(n: u8, b: bool, p: P) {
+    let a = n[0];
+    let c = b[1..2];
+    let d = p[0];
+    let e = one()[0];
+    let g = (1)[0];
+    let h = nope[0];
+    let i = n[nope];
+}

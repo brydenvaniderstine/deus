@@ -739,12 +739,9 @@ static void test_unimplemented(void) {
     static IrState st;
     ir_state_init(&st, 1 << 20);
     static const struct { const char *src, *what; } cases[] = {
-        {"manna v0;\nfn f(a: [2]u8) { a[0] = 1; }\n", "arrays, indexing and slicing"},       /* an element target (step 12) */
-        {"manna v0;\nstruct P { x: u8, }\nfn f(p: P, a: [2]u8) { p.x = a[0]; }\n", "arrays, indexing and slicing"}, /* a field place, an element value */
-        {"manna v0;\nfn f(a: [2]u8) { a[0]; }\n", "arrays, indexing and slicing"},
-        {"manna v0;\nfn f() { [1, 2]; }\n", "arrays, indexing and slicing"},
         {"manna v0;\nfn f() -> u8 { return u8(1); }\n", "conversions"},
-        {"manna v0;\nstruct P { x: u8, }\nfn f(a: [2]u8) { let y = P(x: a[0]).x; }\n", "arrays, indexing and slicing"},  /* inside a construction's value */
+        {"manna v0;\nfn f(a: [2]u8) { a[u8(1)] = 1; }\n", "conversions"},                              /* inside an index */
+        {"manna v0;\nstruct P { x: u8, }\nfn f(p: P) { let y = [P(x: u8(1)).x; 2]; }\n", "conversions"},  /* inside a repeat inside a construction */
     };
     for (size_t i = 0; i < sizeof cases / sizeof cases[0]; i++) {
         parse_src(cases[i].src);
@@ -766,7 +763,7 @@ static void test_unimplemented(void) {
     assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_BUILT && m != NULL && st.unimplemented == NULL);
     parse_done();
     ir_state_destroy(&st);
-    pass("IR_UNIMPLEMENTED: what is not built yet (arrays, indexing, slicing, conversions), no diagnostic, no module; real errors win; state reusable");
+    pass("IR_UNIMPLEMENTED: what is not built yet (conversions), no diagnostic, no module; real errors win; state reusable");
 }
 
 /* `fn f() -> T { return <expr>; }` for one case of the range matrix. Returns the build status;
@@ -1284,6 +1281,46 @@ static void test_construction_and_access_spans(void) {
     pass("E0243 spans the whole construction, E0251 the base expression (start and end)");
 }
 
+/* Step 12: the FULL span of E0252 (the base expression, not the whole index), E0253 (the index) and E0222
+ * on a literal (the whole literal): the goldens print the start only. */
+static void test_array_spans(void) {
+    static IrState st;
+    ir_state_init(&st, 1 << 20);
+    parse_src("manna v0;\nfn f(a: [2]u8, n: u8, b: bool) {\n    let x = (n + 1)[0];\n    let y = a[b];\n    let z = [n; 2147483648];\n}\n");
+    assert(g_ps.diags.len == 0);
+    IrModule *m = NULL;
+    assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_ERRORS && st.diags.len == 3);
+    const Diagnostic *d0 = &st.diags.items[0], *d1 = &st.diags.items[1], *d2 = &st.diags.items[2];
+    assert(strcmp(d0->code, "E0252") == 0 && d0->span.start_line == 3 && d0->span.start_col == 13 && d0->span.end_line == 3 && d0->span.end_col == 20); /* `(n + 1)` */
+    assert(strcmp(d1->code, "E0253") == 0 && d1->span.start_line == 4 && d1->span.start_col == 15 && d1->span.end_line == 4 && d1->span.end_col == 16); /* `b` */
+    assert(strcmp(d2->code, "E0222") == 0 && d2->span.start_line == 5 && d2->span.start_col == 13 && d2->span.end_line == 5 && d2->span.end_col == 28); /* `[n; 2147483648]` */
+    parse_done();
+    ir_state_destroy(&st);
+    pass("E0252 spans the base, E0253 the index, E0222 the whole literal (start and end)");
+}
+
+/* The checker stays linear on array shapes: every node visited at most twice, on 512-high chains. */
+static void test_array_checker_is_linear(void) {
+    static IrState st;
+    ir_state_init(&st, 16 << 20);
+    char *src = malloc(8192);
+    char *w;
+    w = src + sprintf(src, "manna v0;\nfn f(a: [1][1][1][1][1][1][1][1]u64) -> u64 { return a");
+    for (int i = 0; i < 8; i++) w += sprintf(w, "[0]");
+    sprintf(w, "; }\n");
+    parse_src(src);
+    assert(g_ps.diags.len == 0);
+    IrModule *m = NULL;
+    assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_BUILT);
+    /* return value: 1 local + 8 indexes + 8 literal indexes; each visited once by synth, each literal index
+     * resolved once more by group_against */
+    assert(st.expr_visits <= 2 * 17);
+    parse_done();
+    free(src);
+    ir_state_destroy(&st);
+    pass("array checker: index chains are visited at most twice per node");
+}
+
 static void test_e0261_fix(void) {
     static IrState st;
     ir_state_init(&st, 1 << 20);
@@ -1531,22 +1568,33 @@ static void test_deepest_array_type(void) {
 typedef struct { const char *name; int live_step; /* 0 = live now, else the step that makes it live */ } BuildShape;
 static const BuildShape build_shapes[] = {
     {"binary", 0}, {"mixed_prec", 0}, {"neg_chain", 0}, {"in_ifs", 0}, {"name_chain", 0}, {"and_chain", 0},
-    {"in_calls", 0}, {"field", 0}, {"in_construct", 0}, {"index", 12}, {"postfix_mix", 12},
+    {"in_calls", 0}, {"field", 0}, {"in_construct", 0}, {"index", 0}, {"postfix_mix", 0}, {"in_index", 0}, {"in_array", 0},
 };
 enum { N_BUILD_SHAPES = sizeof build_shapes / sizeof build_shapes[0] };
+
+/* The shapes whose size is "the deepest the parser accepts" (height 0 in the harness): their depth is
+ * bounded by the nesting bound (E0103), not by the height bound. `index` is one of them because its
+ * base must be a nested ARRAY TYPE `[1][1]...u64` of the same depth, and a type nests only ~250 deep. */
+static bool deepest_shape(const char *shape) {
+    return strcmp(shape, "neg_chain") == 0 || strcmp(shape, "in_calls") == 0 || strcmp(shape, "in_construct") == 0 ||
+           strcmp(shape, "index") == 0 || strcmp(shape, "in_index") == 0 || strcmp(shape, "in_array") == 0;
+}
 
 /* Struct declarations a shape needs, malloc'd ("" for the others). `field`: s.f.f...f needs a
  * chain of distinct types (a struct cannot contain itself): N0 { f: N1 }, ..., the last { f: u64 }.
  * `in_construct`: one struct per nesting level, the same chain. k = the number of structs. */
 static char *gen_decls(const char *shape, int height) {
-    bool field = strcmp(shape, "field") == 0, construct = strcmp(shape, "in_construct") == 0;
-    int k = field ? (height > 2 ? height - 1 : 1) : construct ? height : 0;
+    bool field = strcmp(shape, "field") == 0, construct = strcmp(shape, "in_construct") == 0, mix = strcmp(shape, "postfix_mix") == 0;
+    int k = field ? (height > 2 ? height - 1 : 1) : construct ? height : mix ? (height > 3 ? (height - 1) / 2 : 1) : 0;
     char *out = malloc((size_t)k * 40 + 8);
     assert(out);
     char *w = out;
     *w = 0;
     for (int i = 0; i < k; i++) {
-        if (i + 1 < k) w += sprintf(w, "struct N%d { f: N%d, }\n", i, i + 1);
+        if (mix) { /* each level an array of the next struct: a[0].f[0].f... */
+            if (i + 1 < k) w += sprintf(w, "struct N%d { f: [1]N%d, }\n", i, i + 1);
+            else w += sprintf(w, "struct N%d { f: u64, }\n", i);
+        } else if (i + 1 < k) w += sprintf(w, "struct N%d { f: N%d, }\n", i, i + 1);
         else w += sprintf(w, "struct N%d { f: u64, }\n", i);
     }
     return out;
@@ -1575,6 +1623,21 @@ static char *gen_expr(const char *shape, int height) {
         for (int i = 0; i < height; i++) w += sprintf(w, "N%d(f: ", i);
         w += sprintf(w, "1");
         for (int i = 0; i < height; i++) *w++ = ')';
+    } else if (strcmp(shape, "index") == 0) { /* a[0][0]...[0]: `height` indexings of a nested array */
+        w += sprintf(w, "a");
+        for (int i = 0; i < height; i++) w += sprintf(w, "[0]");
+    } else if (strcmp(shape, "postfix_mix") == 0) { /* a[0].f[0].f...: height = 1 + 2 * pairs */
+        int pairs = height > 3 ? (height - 1) / 2 : 1;
+        w += sprintf(w, "a");
+        for (int i = 0; i < pairs; i++) w += sprintf(w, "[0].f");
+    } else if (strcmp(shape, "in_index") == 0) { /* a[a[a[...a[0]...]]]: `height` nested indexings */
+        for (int i = 0; i < height; i++) w += sprintf(w, "a[");
+        w += sprintf(w, "0");
+        for (int i = 0; i < height; i++) *w++ = ']';
+    } else if (strcmp(shape, "in_array") == 0) { /* [[[...[x]...]]]: `height` nested array literals */
+        for (int i = 0; i < height; i++) *w++ = '[';
+        *w++ = 'x';
+        for (int i = 0; i < height; i++) *w++ = ']';
     } else if (strcmp(shape, "name_chain") == 0) { /* x+1+1+... : a typed name under a literal chain */
         w += sprintf(w, "x");
         for (int i = 0; i < height - 1; i++) w += sprintf(w, "+1");
@@ -1599,7 +1662,25 @@ static char *make_src(const char *shape, const char *expr, int levels, bool as_b
     char *src = malloc(strlen(expr) + strlen(decls) + 4096); /* the 120-deep wrapper alone is ~1.5 KB */
     assert(src);
     const char *rt = construct ? (as_bool ? "bool" : "N0") : is_and ? (as_bool ? "u64" : "bool") : (as_bool ? "bool" : (neg ? "i64" : "u64"));
+    char extra_buf[2048], rt_buf[2048];
     const char *extra = field && levels > 2 ? ", s: N0" : "";
+    if (strcmp(shape, "index") == 0) { /* a: [1][1]...[1]u64, `levels` deep */
+        char *w = extra_buf + sprintf(extra_buf, ", a: ");
+        for (int i = 0; i < levels; i++) w += sprintf(w, "[1]");
+        sprintf(w, "u64");
+        extra = extra_buf;
+    } else if (strcmp(shape, "postfix_mix") == 0) {
+        extra = ", a: [1]N0";
+    } else if (strcmp(shape, "in_index") == 0) {
+        extra = ", a: [1]u64";
+    } else if (strcmp(shape, "in_array") == 0 && !as_bool) { /* the literal is [1][1]...[1]u64, `levels` deep */
+        char *w = rt_buf;
+        for (int i = 0; i < levels; i++) w += sprintf(w, "[1]");
+        sprintf(w, "u64");
+        rt = rt_buf;
+    } else if (strcmp(shape, "in_array") == 0) {
+        rt = "bool";
+    }
     if (strcmp(shape, "in_ifs") == 0) { /* the chain inside 120 nested ifs (the parser allows 127 levels) */
         char *w = src + sprintf(src, "manna v0;\nfn g(a: u64) -> u64 { return a; }\nfn f(x: u64, p: bool) -> %s { ", rt);
         for (int i = 0; i < 120; i++) w += sprintf(w, "if true { ");
@@ -1618,7 +1699,8 @@ static char *make_src(const char *shape, const char *expr, int levels, bool as_b
  * expected; the caller treats any crash as a stack failure. */
 static int run_build_shape(const char *shape, int height, bool as_bool, bool parse_only) {
     bool neg = strcmp(shape, "neg_chain") == 0;
-    bool calls = strcmp(shape, "in_calls") == 0 || strcmp(shape, "in_construct") == 0;
+    bool calls = strcmp(shape, "in_calls") == 0 || strcmp(shape, "in_construct") == 0 || strcmp(shape, "index") == 0 ||
+                 strcmp(shape, "in_index") == 0 || strcmp(shape, "in_array") == 0;
     char *expr = NULL;
     int levels = height;
     if ((neg || calls) && height == 0) { /* the deepest the nesting bound accepts */
@@ -1665,12 +1747,27 @@ static void test_builder_stack(void) {
             printf("PENDING: builder stack: %s (becomes live at step %d)\n", build_shapes[i].name, build_shapes[i].live_step);
             continue;
         }
-        int height = (strcmp(build_shapes[i].name, "neg_chain") == 0 || strcmp(build_shapes[i].name, "in_calls") == 0 ||
-                      strcmp(build_shapes[i].name, "in_construct") == 0) ? 0 : MAX_EXPR_HEIGHT;
+        int height = deepest_shape(build_shapes[i].name) ? 0 : MAX_EXPR_HEIGHT;
         run_build_shape(build_shapes[i].name, height, false, false);
         run_build_shape(build_shapes[i].name, height, true, false);
         printf("PASS: builder stack: %s, built and mismatch-walked at the maximal height\n", build_shapes[i].name);
     }
+    /* The `index` shape is bounded by how deep a TYPE nests (~255); the recursion itself is not. A 512-high index
+     * chain over an unknown name recurses the full height through the same frames and reports one error. */
+    char *src = malloc((size_t)MAX_EXPR_HEIGHT * 3 + 128);
+    char *w = src + sprintf(src, "manna v0;\nfn f() -> u64 { return nope");
+    for (int i = 0; i < MAX_EXPR_HEIGHT - 1; i++) w += sprintf(w, "[0]");
+    sprintf(w, "; }\n");
+    parse_src_big_stack(src);
+    assert(g_ps.diags.len == 0);
+    static IrState st;
+    ir_state_init(&st, 16 << 20);
+    IrModule *m = NULL;
+    assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_ERRORS && st.diags.len == 1 && strcmp(st.diags.items[0].code, "E0230") == 0);
+    ir_state_destroy(&st);
+    parse_done();
+    free(src);
+    printf("PASS: builder stack: a 512-high index chain over an unknown base recurses the full height, one error\n");
 }
 
 int main(int argc, char **argv) {
@@ -1722,6 +1819,8 @@ int main(int argc, char **argv) {
     test_operator_result_types();
     test_e0261_fix();
     test_construction_and_access_spans();
+    test_array_spans();
+    test_array_checker_is_linear();
     test_checker_is_linear();
     test_call_ir();
     test_call_graph_scale();

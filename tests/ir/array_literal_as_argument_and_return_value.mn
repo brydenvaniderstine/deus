@@ -1,0 +1,10 @@
+manna v0;
+fn take(a: [2]u8) -> u8 {
+    return a[0];
+}
+fn make() -> [2]u8 {
+    return [3, 4];
+}
+fn f() -> u8 {
+    return take([5, 6]);
+}

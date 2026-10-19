@@ -1,0 +1,6 @@
+manna v0;
+fn f(ss: [2][]u8, s: []u8) {
+    let a = ss[0..1];
+    let b = ss[1];
+    let c = s[0..1];
+}

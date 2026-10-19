@@ -440,6 +440,24 @@ Diagnostic diag_ir_type_has_no_fields(Arena *a, Span at, const char *type) {
     return d;
 }
 
+Diagnostic diag_ir_cannot_index(Arena *a, Span at, const char *type) {
+    Diagnostic d = {0};
+    d.code = "E0252";
+    d.severity = DIAG_ERROR;
+    d.message = arena_sprintf(a, "can't index/slice type %s", type);
+    d.span = at;
+    return d;
+}
+
+Diagnostic diag_ir_index_not_integer(Arena *a, Span at, const char *type) {
+    Diagnostic d = {0};
+    d.code = "E0253";
+    d.severity = DIAG_ERROR;
+    d.message = arena_sprintf(a, "index/bound must be an integer, found %s", type);
+    d.span = at;
+    return d;
+}
+
 Diagnostic diag_ir_recursion(Span at) {
     Diagnostic d = {0};
     d.code = "E0235";

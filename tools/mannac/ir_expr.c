@@ -37,10 +37,6 @@ _Noreturn void ir_unimplemented(IrState *st, const char *what) {
 static _Noreturn void unimplemented_kind(IrState *st, const Expr *e) {
     switch (e->kind) {
         case EXPR_NAMED_ARG:    ir_unimplemented(st, "a named argument outside a call's arguments"); /* the parser never builds one */
-        case EXPR_INDEX:
-        case EXPR_SLICE:
-        case EXPR_ARRAY:
-        case EXPR_ARRAY_REPEAT: ir_unimplemented(st, "arrays, indexing and slicing (step 12)");
         case EXPR_CONVERT:      ir_unimplemented(st, "conversions (step 13)");
         case EXPR_NUMBER:
         case EXPR_BOOL:
@@ -49,9 +45,13 @@ static _Noreturn void unimplemented_kind(IrState *st, const Expr *e) {
         case EXPR_BINARY:
         case EXPR_CALL:
         case EXPR_FIELD_ACCESS:
+        case EXPR_INDEX:
+        case EXPR_SLICE:
+        case EXPR_ARRAY:
+        case EXPR_ARRAY_REPEAT:
             break;
     }
-    ir_unimplemented(st, "this expression (steps 12-13)");
+    ir_unimplemented(st, "this expression (step 13)");
 }
 
 static bool is_int(const IrType *t) {
@@ -604,6 +604,195 @@ static Synth synth_field(BodyCtx *bc, const Expr *e) {
     return finish_field(bc, e, b);
 }
 
+/* ---- arrays, indexing, slicing (typed-IR step 12, docs/M2_PLAN.md "Arrays, slices, storage") ----
+ * `a[i]`: a base of array or slice type (E0252 otherwise, at the base), an index of ANY integer type
+ * (E0253 otherwise); the result is the element type. `a[lo..hi]`: the same base rule and integer bounds;
+ * the result is `[]T`, which is an error (E0227) when T itself contains a slice. An integer LITERAL
+ * index or bound has no type of its own, so it takes u64 (an out-of-range value is the verifier's, not
+ * an error here). Errors come out in source order: the base is validated before the index is read.
+ * Array literals and `[v; N]` take their element type from the expected array/slice type, else from the
+ * first element / the value; an expected-length mismatch is one E0223; a literal whose type exceeds the
+ * size limit is E0222 at the literal. `v` of `[v; N]` is evaluated exactly once, N == 0 included (the IR
+ * keeps it). */
+
+static IR_COLD void report_cannot_index(IrState *st, Span at, const IrType *t) {
+    ir_error(st, diag_ir_cannot_index(st->arena, at, ir_type_text(st, t)));
+}
+
+static IR_COLD void report_index_type(IrState *st, Span at, const IrType *t) {
+    ir_error(st, diag_ir_index_not_integer(st->arena, at, ir_type_text(st, t)));
+}
+
+static IR_COLD void report_too_large(IrState *st, Span at) {
+    ir_error(st, diag_ir_type_too_large(at));
+}
+
+static const IrType *element_type(const IrType *t) {
+    return t->kind == IR_T_ARRAY ? t->as.array.elem : t->as.slice.elem;
+}
+
+/* An index or a slice bound: an integer of any type; a literal takes u64. */
+static IR_NOINLINE IrExpr *check_index_operand(BodyCtx *bc, const Expr *e) {
+    IrState *st = bc->st;
+    Synth s = synth(bc, e);
+    if (s.group) return group_against(st, e, ir_type_int(st, 64, false));
+    if (is_unit(s)) {
+        report_unit(st, e->span);
+        return error_node(st, e->span);
+    }
+    if (has_error(s)) return s.node;
+    if (!is_int(s.node->type)) {
+        report_index_type(st, e->span, s.node->type);
+        return error_node(st, e->span);
+    }
+    return s.node;
+}
+
+/* The element type of an indexable base, or NULL after reporting why it is not one (a literal group
+ * has no type to name, a unit call is not a value, an ERROR base is silent). */
+static IR_NOINLINE const IrType *indexable_element(BodyCtx *bc, const Expr *base, Synth b) {
+    IrState *st = bc->st;
+    if (b.group) { report_cannot_infer(st, base->span); return NULL; }
+    if (is_unit(b)) { report_unit(st, base->span); return NULL; }
+    if (has_error(b)) return NULL;
+    const IrType *t = b.node->type;
+    if (t->kind != IR_T_ARRAY && t->kind != IR_T_SLICE) {
+        report_cannot_index(st, base->span, t);
+        return NULL;
+    }
+    return element_type(t);
+}
+
+static IR_NOINLINE Synth finish_index(BodyCtx *bc, const Expr *e, Synth b, const IrType *elem) {
+    IrState *st = bc->st;
+    if (!elem) { /* the base is at fault: the index is checked for its own mistakes only */
+        ir_check_silent(bc, e->as.index.index);
+        return is_error(st, e->span);
+    }
+    IrExpr *i = check_index_operand(bc, e->as.index.index);
+    return is_node(ir_expr_index(st, e->span, elem, b.node, i));
+}
+
+static Synth synth_index(BodyCtx *bc, const Expr *e) {
+    Synth b = synth(bc, e->as.index.base);
+    return finish_index(bc, e, b, indexable_element(bc, e->as.index.base, b));
+}
+
+static bool contains_slice(const IrType *t) {
+    while (t->kind == IR_T_ARRAY) t = t->as.array.elem;
+    return t->kind == IR_T_SLICE;
+}
+
+static IR_NOINLINE Synth finish_slice(BodyCtx *bc, const Expr *e, Synth b, const IrType *elem) {
+    IrState *st = bc->st;
+    if (!elem) {
+        ir_check_silent(bc, e->as.slice.lo);
+        ir_check_silent(bc, e->as.slice.hi);
+        return is_error(st, e->span);
+    }
+    IrExpr *lo = check_index_operand(bc, e->as.slice.lo);
+    IrExpr *hi = check_index_operand(bc, e->as.slice.hi);
+    if (contains_slice(elem)) { /* `[][]T` is not a type (a slice's element may not contain a slice) */
+        ir_error(st, diag_ir_slice_of_slice(e->span));
+        return is_error(st, e->span);
+    }
+    return is_node(ir_expr_slice(st, e->span, ir_type_slice(st, elem), b.node, lo, hi));
+}
+
+static Synth synth_slice(BodyCtx *bc, const Expr *e) {
+    Synth b = synth(bc, e->as.slice.base);
+    return finish_slice(bc, e, b, indexable_element(bc, e->as.slice.base, b));
+}
+
+/* The type `[len]elem` of a literal, or NULL after E0222. */
+static IR_NOINLINE const IrType *literal_array_type(IrState *st, Span at, uint64_t len, const IrType *elem) {
+    const IrType *t = ir_type_array(st, len, elem);
+    if (ir_type_exceeds_limit(t)) {
+        report_too_large(st, at);
+        return NULL;
+    }
+    return t;
+}
+
+static IR_NOINLINE Synth array_done(BodyCtx *bc, const Expr *e, const IrType *elem, NodeList elems) {
+    const IrType *t = literal_array_type(bc->st, e->span, elems.len, elem);
+    if (!t) return is_error(bc->st, e->span);
+    return is_node(ir_expr_array(bc->st, e->span, t, elems));
+}
+
+/* The type a first element / a repeated value decides, or NULL after reporting. */
+static IR_NOINLINE const IrType *deciding_type(BodyCtx *bc, const Expr *at, Synth s) {
+    if (s.group) { report_cannot_infer(bc->st, at->span); return NULL; }
+    if (is_unit(s)) { report_unit(bc->st, at->span); return NULL; }
+    if (has_error(s)) return NULL;
+    return s.node->type;
+}
+
+/* No expectation: the first element decides the element type. */
+static Synth synth_array(BodyCtx *bc, const Expr *e) {
+    const NodeList *src = &e->as.array.elems;
+    NodeList out;
+    node_list_init(&out);
+    Synth first = synth(bc, src->items[0]);
+    const IrType *t = deciding_type(bc, src->items[0], first);
+    if (!t) {
+        for (size_t i = 1; i < src->len; i++) ir_check_silent(bc, src->items[i]);
+        return is_error(bc->st, e->span);
+    }
+    node_list_push(bc->st->arena, &out, first.node);
+    for (size_t i = 1; i < src->len; i++) node_list_push(bc->st->arena, &out, ir_check_expr(bc, src->items[i], t));
+    return array_done(bc, e, t, out);
+}
+
+static IR_NOINLINE Synth repeat_done(BodyCtx *bc, const Expr *e, IrExpr *v) {
+    const IrType *t = literal_array_type(bc->st, e->span, e->as.array_repeat.count, v->type);
+    if (!t) return is_error(bc->st, e->span);
+    return is_node(ir_expr_repeat(bc->st, e->span, t, v, e->as.array_repeat.count));
+}
+
+static Synth synth_repeat(BodyCtx *bc, const Expr *e) {
+    const Expr *ve = e->as.array_repeat.value;
+    Synth v = synth(bc, ve);
+    const IrType *t = deciding_type(bc, ve, v);
+    if (!t) return is_error(bc->st, e->span);
+    return repeat_done(bc, e, v.node);
+}
+
+/* An array literal or `[v; N]` against an expected type. An expected array or slice type hands
+ * its element type down to the elements; the result then has the literal's OWN length, and a
+ * length that differs from the expected array's (or any array where a slice is expected) is the
+ * one mismatch. Any other expected type: the literal is typed on its own and compared. An ERROR
+ * expectation silences everything about types. */
+static IR_NOINLINE IrExpr *check_array_literal(BodyCtx *bc, const Expr *e, const IrType *expected) {
+    IrState *st = bc->st;
+    bool repeat = e->kind == EXPR_ARRAY_REPEAT;
+    if (expected->kind != IR_T_ARRAY && expected->kind != IR_T_SLICE && expected->kind != IR_T_ERROR) {
+        Synth s = repeat ? synth_repeat(bc, e) : synth_array(bc, e);
+        if (s.node->type->kind != IR_T_ERROR) report_mismatch_types(st, e->span, expected, s.node->type);
+        return error_node(st, e->span);
+    }
+    const IrType *hint = expected->kind == IR_T_ERROR ? expected : element_type(expected);
+    uint64_t len = repeat ? e->as.array_repeat.count : e->as.array.elems.len;
+    NodeList out;
+    node_list_init(&out);
+    IrExpr *rv = NULL;
+    if (repeat) {
+        rv = ir_check_expr(bc, e->as.array_repeat.value, hint);
+    } else {
+        for (size_t i = 0; i < e->as.array.elems.len; i++) {
+            node_list_push(st->arena, &out, ir_check_expr(bc, e->as.array.elems.items[i], hint));
+        }
+    }
+    if (expected->kind == IR_T_ERROR || hint->kind == IR_T_ERROR) return error_node(st, e->span);
+    const IrType *t = literal_array_type(st, e->span, len, hint);
+    if (!t) return error_node(st, e->span);
+    if (t != expected) {
+        report_mismatch_types(st, e->span, expected, t);
+        return error_node(st, e->span);
+    }
+    return repeat ? ir_expr_repeat(st, e->span, t, rv, len) : ir_expr_array(st, e->span, t, out);
+}
+
 static IR_NOINLINE Synth synth_leaf(BodyCtx *bc, const Expr *e) {
     IrState *st = bc->st;
     switch (e->kind) {
@@ -625,6 +814,10 @@ static Synth synth(BodyCtx *bc, const Expr *e) {
     if (e->kind == EXPR_UNARY) return synth_unary(bc, e);
     if (e->kind == EXPR_CALL) return synth_call(bc, e);
     if (e->kind == EXPR_FIELD_ACCESS) return synth_field(bc, e);
+    if (e->kind == EXPR_INDEX) return synth_index(bc, e);
+    if (e->kind == EXPR_SLICE) return synth_slice(bc, e);
+    if (e->kind == EXPR_ARRAY) return synth_array(bc, e);
+    if (e->kind == EXPR_ARRAY_REPEAT) return synth_repeat(bc, e);
     return synth_leaf(bc, e);
 }
 
@@ -632,6 +825,7 @@ static Synth synth(BodyCtx *bc, const Expr *e) {
 
 IrExpr *ir_check_expr(BodyCtx *bc, const Expr *e, const IrType *expected) {
     IrState *st = bc->st;
+    if (e->kind == EXPR_ARRAY || e->kind == EXPR_ARRAY_REPEAT) return check_array_literal(bc, e, expected);
     Synth s = synth(bc, e);
     if (s.group) return group_against(st, e, expected);
     if (is_unit(s)) { /* nothing is expected to BE unit: a call that returns nothing is not a value */

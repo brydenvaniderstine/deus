@@ -247,6 +247,12 @@ Diagnostic diag_ir_type_mismatch(Arena *a, Span at, const char *expected, const 
  * plain form at the parenthesized literal. */
 Diagnostic diag_ir_literal_range(Arena *a, Span at, uint64_t value, bool negated, const char *type);
 
+/* E0252: "can't index/slice type T" - at the base expression of an index or a slice. */
+Diagnostic diag_ir_cannot_index(Arena *a, Span at, const char *type);
+
+/* E0253: "index/bound must be an integer, found T" - at the index or bound. */
+Diagnostic diag_ir_index_not_integer(Arena *a, Span at, const char *type);
+
 /* E0260: "operator 'op' is not defined for T" - at the whole operator expression. */
 Diagnostic diag_ir_operator_undefined(Arena *a, Span at, const char *op, const char *type);
 

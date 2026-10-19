@@ -1,0 +1,10 @@
+ERRORS:
+5:10 E0223 type mismatch: expected []u8, found [3]u8
+8:20 E0223 type mismatch: expected [3]u8, found [2]u8
+9:19 E0223 type mismatch: expected []u8, found [2]u8
+10:20 E0223 type mismatch: expected [2]u8, found [3]u8
+11:17 E0223 type mismatch: expected u8, found [2]u32
+12:17 E0223 type mismatch: expected u32, found bool
+13:20 E0223 type mismatch: expected [2]u8, found [3]u8
+14:24 E0224 integer literal 300 does not fit in u8
+15:20 E0223 type mismatch: expected [2]u8, found []u8

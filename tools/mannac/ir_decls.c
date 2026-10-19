@@ -345,6 +345,32 @@ void ir_check_type_size(Ctx *cx, const Type *ast, const IrType *t) {
     }
 }
 
+/* Size of a type built from an EXPRESSION (an array literal, `[v; N]`): false if it exceeds the
+ * limit, including by overflow. Every struct has its layout by the time bodies are checked. Recursion
+ * is once per nested array level (bounded by the parser's nesting bound). */
+static bool type_size_in_limit(const IrType *t, uint64_t *size) {
+    switch (t->kind) {
+        case IR_T_INT:    *size = t->as.integer.bits / 8; return true;
+        case IR_T_BOOL:   *size = 1; return true;
+        case IR_T_SLICE:  *size = 16; return true; /* the size-check convention, "Layout and limits" */
+        case IR_T_STRUCT: *size = t->as.strukt.decl->size; return true;
+        case IR_T_ARRAY: {
+            uint64_t es;
+            if (!type_size_in_limit(t->as.array.elem, &es)) return false;
+            if (es == 0 || t->as.array.len == 0) { *size = 0; return true; }
+            if (t->as.array.len > IR_MAX_TYPE_SIZE / es) return false;
+            *size = t->as.array.len * es;
+            return true;
+        }
+        default:          *size = 0; return true;
+    }
+}
+
+bool ir_type_exceeds_limit(const IrType *t) {
+    uint64_t size;
+    return !type_size_in_limit(t, &size);
+}
+
 /* One function's signature: attributes, then parameters in order, then the return
  * type. The first `kernel_hook` sets the flag; a repeat is E0215 (with a fix that
  * deletes it); any other name is E0214 and gets no further check, so `[Kernel_hook]`

@@ -1,0 +1,25 @@
+(fn@2:1-4:2 fn:take
+  (params (param@2:9-2:17 a #0 [2]u8))
+  (returns u8)
+  (block@2:25-4:2
+    (return@3:5-3:17
+      (index@3:12-3:16 u8
+        (local@3:12-3:13 a #0 [2]u8)
+        (int@3:14-3:15 0 u64)))))
+(fn@5:1-7:2 fn:make
+  (params)
+  (returns [2]u8)
+  (block@5:20-7:2
+    (return@6:5-6:19
+      (array@6:12-6:18 [2]u8
+        (int@6:13-6:14 3 u8)
+        (int@6:16-6:17 4 u8)))))
+(fn@8:1-10:2 fn:f
+  (params)
+  (returns u8)
+  (block@8:14-10:2
+    (return@9:5-9:25
+      (call@9:12-9:24 fn:take u8
+        (array@9:17-9:23 [2]u8
+          (int@9:18-9:19 5 u8)
+          (int@9:21-9:22 6 u8))))))

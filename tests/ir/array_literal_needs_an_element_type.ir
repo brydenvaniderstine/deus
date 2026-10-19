@@ -1,0 +1,5 @@
+ERRORS:
+3:14 E0225 cannot infer the type of this integer literal; annotate it
+4:14 E0225 cannot infer the type of this integer literal; annotate it
+5:14 E0225 cannot infer the type of this integer literal; annotate it
+5:17 E0230 unknown name 'nope'

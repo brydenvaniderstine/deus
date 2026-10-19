@@ -131,6 +131,10 @@ const IrType *ir_resolve_type(Ctx *cx, const Type *t, TypeCtx ctx);
  * unsized struct). */
 void ir_check_type_size(Ctx *cx, const Type *ast, const IrType *t);
 
+/* True if a type built from an expression (an array literal, `[v; N]`) is larger than the limit
+ * (E0222 at the expression; the type written in a declaration is checked by ir_check_type_size). */
+bool ir_type_exceeds_limit(const IrType *t);
+
 /* The top-level declaration pass: declares every struct and function name (E0210), builds each
  * struct's fields (E0211), resolves their types (E0220, E0227), analyzes containment and layout
  * (E0221, E0222) and checks every function signature (E0212, E0214, E0215, E0220, E0222, E0227).

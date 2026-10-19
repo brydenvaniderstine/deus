@@ -1,0 +1,11 @@
+manna v0;
+fn one() -> u32 {
+    return 7;
+}
+fn f(n: u32) {
+    let a: [4]u8 = [3; 4];
+    let b = [n; 5];
+    let c: [0]u8 = [2; 0];
+    let d = [n; 0];
+    let e = [one(); 2];
+}

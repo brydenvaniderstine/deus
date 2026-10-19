@@ -1,0 +1,7 @@
+ERRORS:
+4:15 E0253 index/bound must be an integer, found bool
+5:15 E0253 index/bound must be an integer, found P
+6:15 E0253 index/bound must be an integer, found [2]u8
+7:15 E0253 index/bound must be an integer, found bool
+8:18 E0253 index/bound must be an integer, found P
+9:15 E0230 unknown name 'nope'
