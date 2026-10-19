@@ -53,7 +53,7 @@ An LLM-based tool could emit a Manna AST directly for generated code, skipping t
 
 ### Agent service on Deus
 
-A user-space Wasm service that runs AI tasks under explicit, capability-limited permissions (Manna declared effects). Model output and fetched web content are untrusted data and can never trigger an action by themselves. The model never runs in the kernel; it is reached off-box (API) or, later, run as a local model. The kernel stays provider-neutral.
+A user-space Wasm service that runs AI tasks under explicit, capability-limited permissions (Manna declared effects). Model output and fetched web content are untrusted data and can never trigger an action by themselves. The model never runs in the kernel; it is reached off-box (API) or, later, run as a local model. The kernel stays provider-neutral. Boot, security and recovery must work with AI disabled; the AI is never part of the trusted base.
 
 **Design inputs (parked):**
 

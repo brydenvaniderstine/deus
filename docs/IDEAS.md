@@ -143,6 +143,7 @@ Problem it solves: code can reach anything global; effects alone say what kind o
 Helps humans how / helps AI how: a reviewer sees every power a program has in main's inputs; an AI agent can only use what it was handed.
 Shape: no mutable globals and no global clock; access to I/O, time and hardware is an unforgeable value passed in; an app manifest decides what main receives; declared effects (M2_PLAN §6) are checked against the capabilities held.
 Relation: extends the 2026-10-09 "Capability grants (post-M3)" entry; does not replace it.
+Open questions for the Admission Test: (a) the revocation model; (b) narrowing (attenuation) and delegation rules; (c) how Wasm imports map to capabilities; (d) initial types to consider: file, device, net, memory, task.
 Earliest milestone boundary: v1, decided together with effects.
 Admission Test status: not run (watch P21 tokens; supports P3 local reasoning).
 Status: candidate
@@ -236,6 +237,20 @@ Options: (a) protection keys (supervisor keys, PKS, since Deus code runs in ring
 HARD CONSTRAINT AREA: any option is Bryden's decision; nothing here changes CLAUDE.md.
 Earliest milestone boundary: the Spectre mitigation plan CLAUDE.md requires before networking.
 Admission Test status: not applicable (OS design).
+Status: candidate
+
+## 2026-10-18: Small trusted checker, untrusted compiler
+
+Title: Small trusted checker, untrusted compiler
+Date: 2026-10-18
+Source: Claude
+Problem it solves: CLAUDE.md lists the compiler, verifier and Wasm runtime as the TCB (open risk "TCB"), with no size budget; a bug in any of them bypasses LBS.
+Helps humans how / helps AI how: a reviewer audits one small checker instead of a compiler; an AI-written program is accepted only on the checker's say-so, however it was produced.
+Shape: only the verifier (and the Wasm runtime's validator) is trusted. mannac's output is re-checked before it runs, so a compiler bug cannot bypass LBS. The trusted checker gets its own line budget, separate from the kernel's 120k LOC; long term it is a candidate for formal proof.
+Prior art: the Wasm validator, seL4, proof-carrying code.
+Alternatives rejected: trust the whole compiler (TCB too large); fully verified compiler, CompCert-style (cost too high for now).
+Earliest milestone boundary: before the verifier is designed (M2).
+Admission Test status: not applicable (security architecture, not a language feature).
 Status: candidate
 
 ## 2026-10-09: Considered and rejected ("Omni/AetherOS" brainstorm)
