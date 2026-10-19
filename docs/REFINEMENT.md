@@ -47,6 +47,9 @@ The first entries recorded under this loop. The entries themselves live in `docs
 | 2026-10-15 | Deterministic simulation testing of kernel logic | Claude | M3 (when IPC exists) | not applicable | candidate |
 | 2026-10-15 | Hardware backstop for Spectre | lesson | the Spectre mitigation plan CLAUDE.md requires before networking | not applicable | candidate |
 | 2026-10-18 | Small trusted checker, untrusted compiler | Claude | before the verifier is designed (M2) | not applicable | candidate |
+| 2026-10-19 | Supervised restart of trapped tasks | outside AI | M3 (Wasm runtime + IPC) | not applicable | candidate |
+| 2026-10-19 | Live component replacement | outside AI | post-M3 | not applicable | candidate |
+| 2026-10-19 | Provenance on every module | outside AI | M3 (Wasm loader) | not applicable | candidate |
 
 **Review 2026-10-13 (`m2-parser-v0.1`):** the six 2026-10-11 candidates are **Parked** (reason: none belongs in the IR skeleton); none promoted, none rejected. §2 says "pick at most 3 candidates"; reviewing all six is a deliberate deviation: the cap exists to limit promotions and Admission Test runs, and neither happened (no Admission Test was run, nothing entered the next stage's plan). Recorded in each entry's status line in `docs/IDEAS.md`.
 

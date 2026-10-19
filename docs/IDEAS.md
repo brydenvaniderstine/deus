@@ -254,6 +254,54 @@ Earliest milestone boundary: before the verifier is designed (M2).
 Admission Test status: not applicable (security architecture, not a language feature).
 Status: candidate
 
+## 2026-10-19: Supervised restart of trapped tasks
+
+Title: Supervised restart of trapped tasks
+Date: 2026-10-19
+Source: outside AI (brainstorm reviewed 2026-10-19)
+Problem it solves: the "Bugs trap the sandbox; errors are values" entry says a bug traps its task but not what happens next.
+Helps humans how / helps AI how: one stated policy for a crashed task, so a service survives its own bugs without hiding them; an AI-written task that traps is restarted or reported by rule, not by hand.
+Shape: a supervisor policy per task: restart, give up after N restarts in a time window, or escalate to the parent. State is not carried over; a restarted task starts clean.
+Prior art: Erlang/OTP supervision trees.
+Open questions: who owns the restart policy; what capabilities a restarted task gets; host-call side effects completed before the trap (kept, rolled back, or logged); how restarts interact with record and replay ("Deterministic record and replay of apps").
+Alternatives rejected: panic the system (one bug kills everything); silent auto-restart with no limit (hides crash loops).
+Earliest milestone boundary: M3 (Wasm runtime + IPC).
+Admission Test status: not applicable (runtime, not language).
+Status: candidate
+
+## 2026-10-19: Live component replacement
+
+Title: Live component replacement
+Date: 2026-10-19
+Source: outside AI (brainstorm reviewed 2026-10-19)
+Problem it solves: updating a component means rebooting the system, so every update is downtime.
+Helps humans how / helps AI how: a fixed service can be swapped in while the system runs; a new module is accepted only on the trusted checker's say-so, however it was produced.
+Shape: swap a Wasm module without rebooting; the new module must pass the trusted checker before it is swapped in.
+Prior art: Theseus, Erlang hot code loading.
+Open questions: state handoff between the old and new versions; what happens to in-flight IPC; rollback if the new module traps.
+Alternatives rejected: reboot-to-update (downtime); swapping unchecked code (bypasses LBS).
+Depends on: "Small trusted checker, untrusted compiler".
+Earliest milestone boundary: post-M3.
+Admission Test status: not applicable (runtime, not language).
+Status: candidate
+
+## 2026-10-19: Provenance on every module
+
+Title: Provenance on every module
+Date: 2026-10-19
+Source: outside AI (brainstorm reviewed 2026-10-19)
+Problem it solves: nothing records what built a loaded module, so the loader cannot tell a module from the trusted toolchain from any other.
+Helps humans how / helps AI how: every module can be traced to its source and builder; the loader can refuse unknown provenance, which matters most for AI-written modules.
+Shape: each loaded module records its source hash, compiler hash and builder; the loader can refuse unknown provenance.
+Prior art: reproducible-builds attestations, SLSA.
+Pairs with: "Deterministic record and replay of apps".
+Open questions: signing keys and who holds them; verify by independent rebuild?; extending it to stored objects once storage exists.
+Alternatives rejected: trust by filename or path (spoofable).
+Depends on: deterministic builds (principle 12).
+Earliest milestone boundary: M3 (Wasm loader).
+Admission Test status: not applicable (runtime, not language).
+Status: candidate
+
 ## 2026-10-09: Considered and rejected ("Omni/AetherOS" brainstorm)
 
 One line of why each, so they aren't re-proposed:
