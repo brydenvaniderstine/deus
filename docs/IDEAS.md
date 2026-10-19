@@ -179,10 +179,11 @@ Date: 2026-10-15
 Source: Claude
 Problem it solves: a bug or a bad AI action that happened once can't be reproduced exactly.
 Helps humans how / helps AI how: any run can be replayed step by step; an AI debugging loop gets an exact reproduction instead of a guess.
-Shape: all nondeterminism (clock, input, randomness, IPC messages) reaches a Wasm app only through capabilities ("Capabilities instead of ambient authority" entry), so the runtime logs those inputs per instance and replays them identically. Known gaps to spec: Wasm NaN bit patterns, resource exhaustion, and any future threads.
+Shape: all nondeterminism (clock, input, randomness, IPC messages) reaches a Wasm app only through capabilities ("Capabilities instead of ambient authority" entry), so the runtime logs those inputs per instance and replays them identically. Known gaps to spec: Wasm NaN bit patterns, resource exhaustion, and any future threads. Added 2026-10-18: `memory.grow` outcomes, preemption points (Deus is preemptive, so the runtime must log where each task was preempted), and relaxed SIMD.
 Prior art: Determinator (https://dedis.cs.yale.edu/2010/det/papers/osdi10-abs), Hermit (https://developers.facebook.com/blog/post/2022/11/22/hermit-deterministic-linux-testing/), Midori (no global clock).
 Cost (P10): log size per captured input; measure before any claim.
 Depends on: the capabilities entry.
+Updated 2026-10-18: (a) M3 workshop tooling, no Deus code: QEMU record/replay with GDB reverse-stepping. Limits to know first: TCG only (no HVF, so slow on a Mac), limited device support, block I/O goes through blkreplay, and reverse-stepping needs a snapshot, so the boot image needs a writable qcow2 overlay. Verify it with the Limine boot setup before relying on it. Earliest milestone for (a): M3 kickoff. (b) is the runtime logging described under Shape, after the Wasm runtime exists.
 Earliest milestone boundary: M3 (Wasm runtime design).
 Admission Test status: not run.
 Status: candidate
