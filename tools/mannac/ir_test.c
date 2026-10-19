@@ -1450,6 +1450,36 @@ static void test_naming_predicates_and_converter(void) {
     printf("PASS: naming: predicates and the case converter (%ld identifiers checked exhaustively: valid, idempotent, conforming names unchanged)\n", checked);
 }
 
+/* Step 14b: the fix's edit list is a flexible array: any number of edits in one allocation; the six old
+ * constructors keep their edits. */
+static void test_diag_fix_edit_list(void) {
+    Arena *a = arena_create(16 << 20);
+    _Static_assert(sizeof(DiagFix) <= 16, "DiagFix is a header; its edits follow it");
+    enum { N = 20000 };
+    DiagFix *fix = diag_fix_new(a, N);
+    assert(fix->n_edits == 0);
+    fix->title = "many";
+    for (int i = 0; i < N; i++) {
+        fix->edits[i].span = (Span){i + 1, 1, i + 1, 4};
+        fix->edits[i].text = "x";
+    }
+    fix->n_edits = N;
+    for (int i = 0; i < N; i++) assert(fix->edits[i].span.start_line == i + 1 && fix->edits[i].span.end_col == 4);
+    assert((char *)&fix->edits[N] - (char *)fix == (long)(sizeof(DiagFix) + N * sizeof(DiagEdit))); /* contiguous, no hidden padding */
+    /* the old constructors */
+    Span s1 = {1, 1, 1, 2}, s2 = {1, 5, 1, 6};
+    Diagnostic d = diag_mixed_comparison(a, s1, s1, s2);
+    assert(d.fix && d.fix->n_edits == 2 && strcmp(d.fix->edits[0].text, "(") == 0 && strcmp(d.fix->edits[1].text, ")") == 0);
+    d = diag_assignment_as_condition(a, s1, "'{'");
+    assert(d.fix && d.fix->n_edits == 1 && strcmp(d.fix->edits[0].text, "==") == 0);
+    d = diag_return_unit(a, s1, s2, true);
+    assert(d.fix && d.fix->n_edits == 1);
+    d = diag_return_unit(a, s1, s2, false);
+    assert(d.fix && d.fix->n_edits == 2);
+    arena_destroy(a);
+    pass("DiagFix: a flexible edit list (20,000 edits in one allocation); the old constructors keep their edits");
+}
+
 static void test_e0261_fix(void) {
     static IrState st;
     ir_state_init(&st, 1 << 20);
@@ -1955,6 +1985,7 @@ int main(int argc, char **argv) {
     test_array_spans();
     test_len_spans();
     test_convert_spans();
+    test_diag_fix_edit_list();
     test_naming_predicates_and_converter();
     test_array_checker_is_linear();
     test_checker_is_linear();

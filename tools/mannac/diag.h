@@ -17,16 +17,21 @@ typedef struct {
 } DiagEdit;
 
 /* One machine-applicable fix suggestion (error JSON schema, docs/M2_PLAN.md
- * §7 item 4: a fix carries an `edits` array) - one to MAX_FIX_EDITS edits
- * applied together. Most diagnostics have no fix. At most one fix per
- * diagnostic for now. E0108 is the only two-edit fix (the `(` and `)` of its
- * parenthesization); the rest have one. */
-#define MAX_FIX_EDITS 2
+ * §7 item 4: a fix carries an `edits` array) - `n_edits` edits applied together,
+ * stored right after the header (a flexible array member: one allocation, any
+ * number of edits; a rename of a name with many uses has one edit per use). Most
+ * diagnostics have no fix. At most one fix per diagnostic for now. Allocate only
+ * with diag_fix_new: sizeof(DiagFix) is the header alone. E0108 and E0261 have two
+ * edits, E0109 one or two, a rename (E0280/E0281) 1 + its uses; the rest have one. */
 typedef struct {
     const char *title;
     int         n_edits;
-    DiagEdit    edits[MAX_FIX_EDITS];
+    DiagEdit    edits[];
 } DiagFix;
+
+/* A fix with room for `capacity` edits (arena-allocated); n_edits starts at 0, the
+ * caller fills edits[0..n) and sets n_edits. */
+DiagFix *diag_fix_new(Arena *a, int capacity);
 
 typedef struct {
     const char    *code;      /* stable, e.g. "E0102" - see the two dedicated

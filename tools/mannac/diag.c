@@ -8,6 +8,13 @@ void diag_list_init(DiagList *list) {
     list->cap = 0;
 }
 
+DiagFix *diag_fix_new(Arena *a, int capacity) {
+    DiagFix *fix = arena_alloc(a, sizeof(DiagFix) + (size_t)capacity * sizeof(DiagEdit), alignof(DiagFix));
+    fix->title = NULL;
+    fix->n_edits = 0;
+    return fix;
+}
+
 void diag_add(Arena *a, DiagList *list, Diagnostic d) {
     if (list->len == list->cap) {
         size_t new_cap = list->cap == 0 ? 4 : list->cap * 2;
@@ -34,7 +41,7 @@ Diagnostic diag_chained_comparison(Span second_operator_span) {
 }
 
 Diagnostic diag_mixed_comparison(Arena *a, Span second_operator_span, Span pair_left, Span pair_right) {
-    DiagFix *fix = arena_alloc(a, sizeof(DiagFix), alignof(DiagFix));
+    DiagFix *fix = diag_fix_new(a, 2);
     fix->title = "add parentheses";
     fix->n_edits = 2;
     fix->edits[0].span.start_line = pair_left.start_line;
@@ -60,7 +67,7 @@ Diagnostic diag_mixed_comparison(Arena *a, Span second_operator_span, Span pair_
 }
 
 Diagnostic diag_return_unit(Arena *a, Span arrow, Span unit, bool blanks_only_between) {
-    DiagFix *fix = arena_alloc(a, sizeof(DiagFix), alignof(DiagFix));
+    DiagFix *fix = diag_fix_new(a, 2);
     fix->title = "remove the return type";
     if (blanks_only_between) {
         fix->n_edits = 1;
@@ -90,7 +97,7 @@ Diagnostic diag_return_unit(Arena *a, Span arrow, Span unit, bool blanks_only_be
 }
 
 Diagnostic diag_assignment_as_condition(Arena *a, Span equals_span, const char *expected) {
-    DiagFix *fix = arena_alloc(a, sizeof(DiagFix), alignof(DiagFix));
+    DiagFix *fix = diag_fix_new(a, 1);
     fix->title = "use comparison";
     fix->n_edits = 1;
     fix->edits[0].span = equals_span;
@@ -241,7 +248,7 @@ Diagnostic diag_ir_unknown_attribute(Arena *a, Span at, const char *name) {
 }
 
 Diagnostic diag_ir_duplicate_attribute(Arena *a, Span at, Span attribute_span, const char *name) {
-    DiagFix *fix = arena_alloc(a, sizeof(DiagFix), alignof(DiagFix));
+    DiagFix *fix = diag_fix_new(a, 1);
     fix->title = "delete the repeated attribute";
     fix->n_edits = 1;
     fix->edits[0].span = attribute_span;
@@ -302,7 +309,7 @@ Diagnostic diag_ir_operand_types_differ(Arena *a, Span at, const char *left, con
     d.span = at;
     if (fix_to_type) {
         Span op = wrap_left ? left_span : right_span;
-        DiagFix *fix = arena_alloc(a, sizeof(DiagFix), alignof(DiagFix));
+        DiagFix *fix = diag_fix_new(a, 2);
         fix->title = arena_sprintf(a, "convert the %s operand to %s", wrap_left ? "left" : "right", fix_to_type);
         fix->n_edits = 2;
         fix->edits[0].span = (Span){op.start_line, op.start_col, op.start_line, op.start_col}; /* zero-width, before */
@@ -617,7 +624,7 @@ Diagnostic diag_unsupported_version(Arena *a, Span span, const char *version, si
 Diagnostic diag_missing_version_header(Arena *a, Span found_span) {
     static const Span insert_at_start = {1, 1, 1, 1};
 
-    DiagFix *fix = arena_alloc(a, sizeof(DiagFix), alignof(DiagFix));
+    DiagFix *fix = diag_fix_new(a, 1);
     fix->title = "add version header";
     fix->n_edits = 1;
     fix->edits[0].span = insert_at_start;
