@@ -202,3 +202,8 @@ if __name__ == "__main__":
     # covers the bool element size in the literal size check
     L = ["manna v0;", "fn f(b: bool) {", "    let a = [b; 2147483648];", "    let c = [b; 2147483647];", "}"]
     g.errors("array_literal_size_limit_bool_elements", L, [e(L, 3, "[b; 2147483648]", "E0222", big)])
+
+    # 12d: an array literal where a non-array type is expected is ONE mismatch, even when its elements are bare literals
+    L = ["manna v0;", "fn f(n: u32) {", "    let x: u8 = [1, 2];", "    let y: bool = [3; 2];", "    let z: u8 = [1, n];", "    let w: u8 = [n, n];", "}"]
+    g.errors("array_literal_where_a_non_array_is_expected", L, [e(L, 3, "[1, 2]", "E0223", mismatch("u8", "array literal")), e(L, 4, "[3; 2]", "E0223", mismatch("bool", "array literal")),
+        e(L, 5, "[1, n]", "E0223", mismatch("u8", "array literal")), e(L, 6, "[n, n]", "E0223", mismatch("u8", "[2]u32"))])

@@ -209,7 +209,11 @@ static IR_NOINLINE IrExpr *check_ident(BodyCtx *bc, const Expr *e) {
     if (!l) {
         const SymEntry *top = symtab_lookup(&bc->decls->top, e->as.ident.name);
         if (strcmp(e->as.ident.name, "len") == 0) { /* the builtin: E0256 only if no declaration named len exists (else E0257 said it) */
-            if (!top) ir_error(st, diag_ir_len_not_called(e->span));
+            /* A struct, function or parameter named len is E0257, which stops the build in the declaration
+             * pass before any body is read; only a local or loop variable can be named len here, and that
+             * was found above. So no top-level declaration named len exists in a body. */
+            assert(!top);
+            ir_error(st, diag_ir_len_not_called(e->span));
             return error_node(st, e->span);
         }
         report_name(st, e, top);
@@ -769,21 +773,28 @@ static IR_NOINLINE Synth array_done(BodyCtx *bc, const Expr *e, const IrType *el
     return is_node(ir_expr_array(bc->st, e->span, t, elems));
 }
 
-/* The type a first element / a repeated value decides, or NULL after reporting. */
-static IR_NOINLINE const IrType *deciding_type(BodyCtx *bc, const Expr *at, Synth s) {
-    if (s.group) { report_cannot_infer(bc->st, at->span); return NULL; }
+/* The type a first element / a repeated value decides, or NULL after reporting. A literal group has no
+ * type: E0225 at it, or - when the literal is expected to be something that is not an array at all
+ * (`let x: u8 = [1, 2];`, `expected` non-NULL) - the one mismatch at the whole literal, which is the
+ * mistake the author made. */
+static IR_NOINLINE const IrType *deciding_type(BodyCtx *bc, const Expr *at, Synth s, const Expr *whole, const IrType *expected) {
+    if (s.group) {
+        if (expected) report_mismatch(bc->st, whole->span, expected, "array literal");
+        else report_cannot_infer(bc->st, at->span);
+        return NULL;
+    }
     if (is_unit(s)) { report_unit(bc->st, at->span); return NULL; }
     if (has_error(s)) return NULL;
     return s.node->type;
 }
 
-/* No expectation: the first element decides the element type. */
-static Synth synth_array(BodyCtx *bc, const Expr *e) {
+/* The first element decides the element type. `expected`: see deciding_type (NULL = no expectation). */
+static Synth array_infer(BodyCtx *bc, const Expr *e, const IrType *expected) {
     const NodeList *src = &e->as.array.elems;
     NodeList out;
     node_list_init(&out);
     Synth first = synth(bc, src->items[0]);
-    const IrType *t = deciding_type(bc, src->items[0], first);
+    const IrType *t = deciding_type(bc, src->items[0], first, e, expected);
     if (!t) {
         for (size_t i = 1; i < src->len; i++) ir_check_silent(bc, src->items[i]);
         return is_error(bc->st, e->span);
@@ -799,13 +810,16 @@ static IR_NOINLINE Synth repeat_done(BodyCtx *bc, const Expr *e, IrExpr *v) {
     return is_node(ir_expr_repeat(bc->st, e->span, t, v, e->as.array_repeat.count));
 }
 
-static Synth synth_repeat(BodyCtx *bc, const Expr *e) {
+static Synth repeat_infer(BodyCtx *bc, const Expr *e, const IrType *expected) {
     const Expr *ve = e->as.array_repeat.value;
     Synth v = synth(bc, ve);
-    const IrType *t = deciding_type(bc, ve, v);
+    const IrType *t = deciding_type(bc, ve, v, e, expected);
     if (!t) return is_error(bc->st, e->span);
     return repeat_done(bc, e, v.node);
 }
+
+static Synth synth_array(BodyCtx *bc, const Expr *e) { return array_infer(bc, e, NULL); }
+static Synth synth_repeat(BodyCtx *bc, const Expr *e) { return repeat_infer(bc, e, NULL); }
 
 /* An array literal or `[v; N]` against an expected type. An expected array or slice type hands
  * its element type down to the elements; the result then has the literal's OWN length, and a
@@ -816,7 +830,7 @@ static IR_NOINLINE IrExpr *check_array_literal(BodyCtx *bc, const Expr *e, const
     IrState *st = bc->st;
     bool repeat = e->kind == EXPR_ARRAY_REPEAT;
     if (expected->kind != IR_T_ARRAY && expected->kind != IR_T_SLICE && expected->kind != IR_T_ERROR) {
-        Synth s = repeat ? synth_repeat(bc, e) : synth_array(bc, e);
+        Synth s = repeat ? repeat_infer(bc, e, expected) : array_infer(bc, e, expected);
         if (s.node->type->kind != IR_T_ERROR) report_mismatch_types(st, e->span, expected, s.node->type);
         return error_node(st, e->span);
     }

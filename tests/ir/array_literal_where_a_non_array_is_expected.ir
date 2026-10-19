@@ -1,0 +1,5 @@
+ERRORS:
+3:17 E0223 type mismatch: expected u8, found array literal
+4:19 E0223 type mismatch: expected bool, found array literal
+5:17 E0223 type mismatch: expected u8, found array literal
+6:17 E0223 type mismatch: expected u8, found [2]u32
