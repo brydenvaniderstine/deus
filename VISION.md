@@ -6,7 +6,7 @@ This document is forward-looking context, not a spec. `CLAUDE.md` is the source 
 
 **Claim (design intent, not a result; quote it as a result only once M3 boots and runs Manna end to end):**
 
-> Deus combines ideas proven separately in Singularity, Theseus and Nebulet (language-enforced isolation in a single address space, with WebAssembly apps) with Manna, a small language designed from the start for AI authors to write and machine-check. Related agent-safety work (tacit, AgenticOS) pairs language or capability checks with AI agents as a library or a paper design; Deus aims to build that pairing into a real kernel.
+> Deus is designed to combine ideas proven separately in research systems (Singularity, Theseus, Nebulet: language-enforced isolation in a single address space, with WebAssembly apps) with Manna, a small language designed from the start for AI authors to write and machine-check. We know of no other OS that pairs the two. Related agent-safety work (tacit, AgenticOS) pairs language or capability checks with AI agents as a library or a paper design; Deus aims to build that pairing into a real kernel.
 
 - Singularity (Microsoft Research): https://pdos.csail.mit.edu/6.828/2018/lec/l-singularity.pdf
 - Theseus (Rust, OSDI 2020): https://www.usenix.org/conference/osdi20/presentation/boos
