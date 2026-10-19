@@ -1,0 +1,3 @@
+ERRORS:
+2:6 E0280 'Bad' is not snake_case
+8:12 E0230 unknown name 'Bad'

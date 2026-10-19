@@ -1,0 +1,2 @@
+ERRORS:
+3:9 E0280 'myVar' is not snake_case

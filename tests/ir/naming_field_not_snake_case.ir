@@ -1,0 +1,3 @@
+ERRORS:
+2:12 E0280 'fooBar' is not snake_case
+2:24 E0280 'Baz' is not snake_case

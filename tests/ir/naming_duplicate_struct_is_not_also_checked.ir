@@ -1,0 +1,3 @@
+ERRORS:
+2:8 E0281 'my_s' is not PascalCase
+3:8 E0210 'my_s' is already declared at 2:8

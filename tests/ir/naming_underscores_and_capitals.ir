@@ -1,0 +1,6 @@
+ERRORS:
+2:6 E0280 '_x' is not snake_case
+2:14 E0280 'y_' is not snake_case
+2:22 E0280 'a__b' is not snake_case
+2:32 E0280 'X' is not snake_case
+2:39 E0280 '_' is not snake_case

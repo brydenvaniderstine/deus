@@ -1,0 +1,5 @@
+ERRORS:
+2:12 E0280 'Ab' is not snake_case
+2:20 E0211 duplicate field 'Ab' in struct 'P'
+3:6 E0280 'Cd' is not snake_case
+3:14 E0212 duplicate parameter 'Cd'

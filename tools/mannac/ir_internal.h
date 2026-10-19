@@ -114,6 +114,7 @@ typedef struct {
      * (a SymEntry of a function holds its position in fns[] as `index`). Caller order = body order. */
     struct CallEdge *edges;
     size_t      n_edges, cap_edges;
+    int         naming_errors; /* E0280/E0281 reported by the declaration pass: they alone do not stop the build */
 } Ctx;
 
 /* Where a type is being written, which decides what a slice may do there
@@ -140,6 +141,10 @@ const char *ir_to_snake_case(Arena *a, const char *name);
 const char *ir_to_pascal_case(Arena *a, const char *name);
 /* A lexer keyword or the builtin `len`: a name a rename must not produce. */
 bool ir_is_reserved_name(const char *name);
+/* Reports E0280 (snake_case) or E0281 (PascalCase) for a declared name that violates its convention, once,
+ * at the declaration. The caller has already ruled out the declarations that bind nothing (duplicates) and
+ * `len` (E0257 owns it). Counts the error in cx->naming_errors when `cx` is given (the declaration pass). */
+void ir_check_naming(IrState *st, Ctx *cx, bool pascal, const char *name, Span at);
 
 /* The type of a primitive keyword (`u8`..`i64`, `bool`), or NULL (ir_decls.c). */
 const IrType *ir_prim_type(IrState *st, const char *name);

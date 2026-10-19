@@ -1480,6 +1480,46 @@ static void test_diag_fix_edit_list(void) {
     pass("DiagFix: a flexible edit list (20,000 edits in one allocation); the old constructors keep their edits");
 }
 
+/* Step 14c: naming errors. Full spans; they alone do not stop the build; a `len`-named struct (E0257) still does,
+ * even next to a naming error: the bare-`len` `assert(!top)` in check_ident depends on that. */
+static void test_naming_errors(void) {
+    static IrState st;
+    ir_state_init(&st, 1 << 20);
+    IrModule *m = NULL;
+    /* spans: the declared name only */
+    parse_src("manna v0;\nstruct my_point { fooBar: u8, }\nfn doIt(Count: u8) {\n    let myVar: u8 = 1;\n}\n");
+    assert(g_ps.diags.len == 0);
+    assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_ERRORS && st.diags.len == 5);
+    static const struct { const char *code; int line, c0, c1; } want[] = {
+        {"E0281", 2, 8, 16}, {"E0280", 3, 4, 8}, {"E0280", 2, 19, 25}, {"E0280", 3, 9, 14}, {"E0280", 4, 9, 14}, /* my_point, doIt (the names pass), fooBar (fields), Count (signatures), myVar (bodies) */
+    };
+    for (int i = 0; i < 5; i++) {
+        const Diagnostic *d = &st.diags.items[i];
+        assert(strcmp(d->code, want[i].code) == 0 && d->span.start_line == want[i].line && d->span.end_line == want[i].line);
+        assert(d->span.start_col == want[i].c0 && d->span.end_col == want[i].c1);
+    }
+    parse_done();
+    /* naming-only declaration errors: the bodies are still checked */
+    size_t before = st.diags.len;
+    parse_src("manna v0;\nstruct bad_name { }\nfn f() {\n    let x = nope;\n}\n");
+    assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_ERRORS);
+    assert(st.diags.len == before + 2 && strcmp(st.diags.items[before].code, "E0281") == 0 && strcmp(st.diags.items[before + 1].code, "E0230") == 0);
+    parse_done();
+    /* any other declaration error stops it, E0257 included, also next to a naming error */
+    before = st.diags.len;
+    parse_src("manna v0;\nstruct len { }\nstruct bad_name { }\nfn f() {\n    let x = nope;\n    let y = len;\n}\n");
+    assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_ERRORS);
+    assert(st.diags.len == before + 2 && strcmp(st.diags.items[before].code, "E0257") == 0 && strcmp(st.diags.items[before + 1].code, "E0281") == 0);
+    parse_done();
+    before = st.diags.len;
+    parse_src("manna v0;\nstruct P { x: u8, x: u8, }\nstruct bad_name { }\nfn f() {\n    let x = nope;\n}\n");
+    assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_ERRORS);
+    assert(st.diags.len == before + 2 && strcmp(st.diags.items[before].code, "E0281") == 0 && strcmp(st.diags.items[before + 1].code, "E0211") == 0); /* the names pass comes first */
+    parse_done();
+    ir_state_destroy(&st);
+    pass("naming: E0280/E0281 spans; naming-only errors keep the bodies in; E0257 or any other declaration error stops the build");
+}
+
 static void test_e0261_fix(void) {
     static IrState st;
     ir_state_init(&st, 1 << 20);
@@ -1987,6 +2027,7 @@ int main(int argc, char **argv) {
     test_convert_spans();
     test_diag_fix_edit_list();
     test_naming_predicates_and_converter();
+    test_naming_errors();
     test_array_checker_is_linear();
     test_checker_is_linear();
     test_call_ir();

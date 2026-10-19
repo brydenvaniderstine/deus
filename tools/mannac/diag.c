@@ -457,6 +457,24 @@ Diagnostic diag_ir_cannot_convert(Arena *a, Span at, const char *from, const cha
     return d;
 }
 
+Diagnostic diag_ir_not_snake_case(Arena *a, Span at, const char *name) {
+    Diagnostic d = {0};
+    d.code = "E0280";
+    d.severity = DIAG_ERROR;
+    d.message = arena_sprintf(a, "'%s' is not snake_case", name);
+    d.span = at;
+    return d;
+}
+
+Diagnostic diag_ir_not_pascal_case(Arena *a, Span at, const char *name) {
+    Diagnostic d = {0};
+    d.code = "E0281";
+    d.severity = DIAG_ERROR;
+    d.message = arena_sprintf(a, "'%s' is not PascalCase", name);
+    d.span = at;
+    return d;
+}
+
 Diagnostic diag_ir_cannot_index(Arena *a, Span at, const char *type) {
     Diagnostic d = {0};
     d.code = "E0252";

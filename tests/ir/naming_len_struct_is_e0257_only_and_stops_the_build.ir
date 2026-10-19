@@ -1,0 +1,3 @@
+ERRORS:
+2:8 E0257 'len' is a builtin and can't be declared
+4:8 E0281 'bad_name' is not PascalCase

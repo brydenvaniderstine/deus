@@ -84,6 +84,7 @@ static void declare_names(Ctx *cx, const NodeList *items) {
         const SymEntry *e = symtab_insert(&cx->top, decl_name(d), decl_name_span(d), is_struct, is_struct ? si : fi, &inserted);
         if (!inserted) ir_error(st, diag_ir_duplicate_decl(st->arena, decl_name_span(d), decl_name(d), e->name_span));
         if (strcmp(decl_name(d), "len") == 0) ir_error(st, diag_ir_len_declared(decl_name_span(d))); /* the builtin (Admission #15) */
+        else if (inserted) ir_check_naming(st, cx, is_struct, decl_name(d), decl_name_span(d)); /* a duplicate binds nothing: not also checked */
         if (is_struct) si++; else fi++;
     }
 }
@@ -112,6 +113,7 @@ static void build_fields(Ctx *cx, StructInfo *s) {
         bool inserted;
         symtab_insert(&seen, f->name, f->name_span, false, 0, &inserted);
         if (!inserted) ir_error(st, diag_ir_duplicate_field(st->arena, f->name_span, f->name, ir->name));
+        else ir_check_naming(st, cx, false, f->name, f->name_span);
         const IrType *t = ir_resolve_type(cx, f->type, CTX_FIELD);
         if (t->kind == IR_T_ERROR) s->poisoned = true;
         if (!inserted) continue;
@@ -408,6 +410,7 @@ static void build_signature(Ctx *cx, const Decl *d) {
         symtab_insert(&seen, p->name, p->name_span, false, 0, &inserted);
         if (!inserted) ir_error(st, diag_ir_duplicate_param(st->arena, p->name_span, p->name));
         if (strcmp(p->name, "len") == 0) ir_error(st, diag_ir_len_declared(p->name_span));
+        else if (inserted) ir_check_naming(st, cx, false, p->name, p->name_span);
         const IrType *t = ir_resolve_type(cx, p->type, CTX_PARAM);
         ir_check_type_size(cx, p->type, t);
         if (!inserted) continue;
@@ -459,7 +462,10 @@ bool ir_declare_items(IrState *st, const NodeList *items, IrModule *m, Ctx **out
         if (d->kind == DECL_FUNCTION) build_signature(&cx, d);
     }
 
-    if (st->error_count != errors_before) return false;
+    /* Naming errors (E0280/E0281) bind everything normally, so they alone do not stop the build: the bodies are
+     * still checked, which also finds every use of a misnamed declaration. Any other error stops it here (and
+     * `len` named by a struct, function or parameter is one of them, which the bare-`len` assert relies on). */
+    if (st->error_count - cx.naming_errors != errors_before) return false;
     for (size_t i = 0; i < n; i++) node_list_push(st->arena, &m->structs, cx.structs[i].ir);
     for (size_t i = 0; i < cx.n_fns; i++) node_list_push(st->arena, &m->funcs, cx.fns[i]);
     *cxp = cx;

@@ -117,6 +117,7 @@ static IR_NOINLINE IrStmt *build_let(BodyCtx *bc, const Stmt *s) {
     bool dup = body_lookup(bc, name) != NULL;
     if (dup) ir_error(st, diag_ir_already_declared(st->arena, name_span, name));
     if (strcmp(name, "len") == 0) ir_error(st, diag_ir_len_declared(name_span)); /* the declaration still binds */
+    else if (!dup) ir_check_naming(st, NULL, false, name, name_span);
 
     const IrType *annot = NULL;
     if (s->as.let_stmt.type) {
