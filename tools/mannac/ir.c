@@ -325,6 +325,12 @@ IrExpr *ir_expr_repeat(IrState *st, Span span, const IrType *type, IrExpr *value
     return e;
 }
 
+IrExpr *ir_expr_len(IrState *st, Span span, const IrType *type, IrExpr *operand) {
+    IrExpr *e = new_expr(st, IR_E_LEN, span, type);
+    e->as.len.operand = operand;
+    return e;
+}
+
 static IrStmt *new_stmt(IrState *st, IrStmtKind kind, Span span) {
     IrStmt *s = node_alloc(st, sizeof(IrStmt), alignof(IrStmt));
     s->kind = kind;

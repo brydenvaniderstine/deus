@@ -1,0 +1,12 @@
+manna v0;
+fn make() -> [3]u8 {
+    return [1, 2, 3];
+}
+fn f(a: [4]u8, s: []u8) -> u64 {
+    let x = len(a);
+    let y = len(s);
+    let z = len(make());
+    let w = a[0..len(a)];
+    let v = a[len(a) - 1];
+    return x + y + z;
+}

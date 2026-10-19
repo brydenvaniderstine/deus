@@ -207,7 +207,12 @@ static IR_NOINLINE IrExpr *check_ident(BodyCtx *bc, const Expr *e) {
     IrState *st = bc->st;
     IrLocal *l = body_lookup(bc, e->as.ident.name);
     if (!l) {
-        report_name(st, e, symtab_lookup(&bc->decls->top, e->as.ident.name));
+        const SymEntry *top = symtab_lookup(&bc->decls->top, e->as.ident.name);
+        if (strcmp(e->as.ident.name, "len") == 0) { /* the builtin: E0256 only if no declaration named len exists (else E0257 said it) */
+            if (!top) ir_error(st, diag_ir_len_not_called(e->span));
+            return error_node(st, e->span);
+        }
+        report_name(st, e, top);
         return error_node(st, e->span);
     }
     return ir_expr_local(st, e->span, l);
@@ -541,7 +546,51 @@ static IR_NOINLINE Synth synth_construct(BodyCtx *bc, const Expr *e, size_t stru
     return construct_finish(bc, &c, e);
 }
 
+/* ---- len(x) (typed-IR step 12, Admission #15) ----
+ * A builtin, resolved BEFORE the top-level lookup (so a function or struct named len, E0257, never
+ * captures the call). Exactly one positional argument of array or slice type; the result is u64 whatever
+ * is wrong with the argument. The IR keeps the operand (LEN{operand}) so it is evaluated exactly once,
+ * for an array too, whose length is a constant. */
+
+static IR_NOINLINE Synth len_node(BodyCtx *bc, const Expr *e, IrExpr *operand) {
+    return is_node(ir_expr_len(bc->st, e->span, ir_type_int(bc->st, 64, false), operand));
+}
+
+static IR_NOINLINE Synth len_bad_arity(BodyCtx *bc, const Expr *e) {
+    const NodeList *args = &e->as.call.args;
+    bool named = false;
+    for (size_t i = 0; i < args->len; i++) named = named || ((const Expr *)args->items[i])->kind == EXPR_NAMED_ARG;
+    ir_error(bc->st, diag_ir_len_arity(bc->st->arena, e->span, args->len, named));
+    silently_check_args(bc, e);
+    return len_node(bc, e, error_node(bc->st, e->span));
+}
+
+static IR_NOINLINE Synth finish_len(BodyCtx *bc, const Expr *e, Synth a) {
+    IrState *st = bc->st;
+    const Expr *arg = e->as.call.args.items[0];
+    if (a.group) { /* a literal has no type to name */
+        report_cannot_infer(st, arg->span);
+        return len_node(bc, e, error_node(st, e->span));
+    }
+    if (is_unit(a)) {
+        report_unit(st, arg->span);
+        return len_node(bc, e, error_node(st, e->span));
+    }
+    if (!has_error(a) && a.node->type->kind != IR_T_ARRAY && a.node->type->kind != IR_T_SLICE) {
+        ir_error(st, diag_ir_len_argument(st->arena, arg->span, ir_type_text(st, a.node->type)));
+    }
+    return len_node(bc, e, a.node);
+}
+
+static Synth synth_len(BodyCtx *bc, const Expr *e) {
+    const NodeList *args = &e->as.call.args;
+    if (args->len != 1 || ((const Expr *)args->items[0])->kind == EXPR_NAMED_ARG) return len_bad_arity(bc, e);
+    Synth a = synth(bc, args->items[0]);
+    return finish_len(bc, e, a);
+}
+
 static Synth synth_call(BodyCtx *bc, const Expr *e) {
+    if (strcmp(e->as.call.name, "len") == 0) return synth_len(bc, e);
     const SymEntry *t = call_target(bc, e);
     if (!t) return is_error(bc->st, e->span);
     if (t->is_struct) return synth_construct(bc, e, t->index);

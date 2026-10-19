@@ -253,6 +253,18 @@ Diagnostic diag_ir_cannot_index(Arena *a, Span at, const char *type);
 /* E0253: "index/bound must be an integer, found T" - at the index or bound. */
 Diagnostic diag_ir_index_not_integer(Arena *a, Span at, const char *type);
 
+/* E0254: "len takes exactly one argument, found N" (or "found a named argument") - at the call. */
+Diagnostic diag_ir_len_arity(Arena *a, Span at, size_t found, bool named);
+
+/* E0255: "len needs an array or a slice, found T" - at the argument. */
+Diagnostic diag_ir_len_argument(Arena *a, Span at, const char *type);
+
+/* E0256: "len is a builtin function; call it as len(x)" - at the name. */
+Diagnostic diag_ir_len_not_called(Span at);
+
+/* E0257: "'len' is a builtin and can't be declared" - at the declaration's name. */
+Diagnostic diag_ir_len_declared(Span at);
+
 /* E0260: "operator 'op' is not defined for T" - at the whole operator expression. */
 Diagnostic diag_ir_operator_undefined(Arena *a, Span at, const char *op, const char *type);
 

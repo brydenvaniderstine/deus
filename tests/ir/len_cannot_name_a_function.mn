@@ -1,0 +1,6 @@
+manna v0;
+fn len() {
+}
+fn f(a: [2]u8) {
+    let n = len(a);
+}

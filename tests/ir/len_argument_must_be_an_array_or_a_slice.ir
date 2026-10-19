@@ -1,0 +1,10 @@
+ERRORS:
+4:17 E0255 len needs an array or a slice, found u8
+5:17 E0255 len needs an array or a slice, found bool
+6:17 E0255 len needs an array or a slice, found P
+7:17 E0225 cannot infer the type of this integer literal; annotate it
+8:17 E0230 unknown name 'nope'
+9:23 E0255 len needs an array or a slice, found bool
+9:19 E0223 type mismatch: expected bool, found u64
+10:23 E0230 unknown name 'nope'
+10:19 E0223 type mismatch: expected bool, found u64

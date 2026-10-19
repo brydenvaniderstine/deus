@@ -1,0 +1,4 @@
+manna v0;
+fn f(len: u8) -> u8 {
+    return len;
+}

@@ -1,0 +1,7 @@
+manna v0;
+fn nothing() {
+}
+fn f() {
+    let x = len(nothing());
+    let y: u64 = x;
+}

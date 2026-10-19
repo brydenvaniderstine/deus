@@ -1,0 +1,2 @@
+ERRORS:
+3:9 E0257 'len' is a builtin and can't be declared

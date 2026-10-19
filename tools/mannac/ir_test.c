@@ -379,6 +379,7 @@ static void test_dump_expressions(void) {
     expect(capture(dump_e, ir_expr_slice(&st, sp, s8, larr, i0, i2)),
            "(slice@1:1-1:4 []u8\n  (local@1:1-1:4 arr #1 [3]u8)\n  (int@1:1-1:4 0 u32)\n  (int@1:1-1:4 2 u32))");
     expect(capture(dump_e, ir_expr_convert(&st, sp, u8, la)), "(convert@1:1-1:4 u8\n  (local@3:12-3:13 a #0 u32))");
+    expect(capture(dump_e, ir_expr_len(&st, sp, ir_type_int(&st, 64, false), larr)), "(len@1:1-1:4 u64\n  (local@1:1-1:4 arr #1 [3]u8))");
 
     ir_state_destroy(&st);
     pass("dump: every expression kind, every operator, integer edges (i64::MIN, u64::MAX, i8 -128)");
@@ -1321,6 +1322,31 @@ static void test_array_checker_is_linear(void) {
     pass("array checker: index chains are visited at most twice per node");
 }
 
+/* Step 12b: full spans of E0254 (the call), E0255 (the argument), E0256 (the name), E0257 (the name). */
+static void test_len_spans(void) {
+    static IrState st;
+    ir_state_init(&st, 1 << 20);
+    parse_src("manna v0;\nfn f(a: [2]u8, n: u8) {\n    let x = len(a, a);\n    let y = len(n);\n    let z = len;\n    let len: u8 = 1;\n}\n");
+    assert(g_ps.diags.len == 0);
+    IrModule *m = NULL;
+    assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_ERRORS && st.diags.len == 4);
+    static const struct { const char *code; int line, c0, c1; } want[] = {
+        {"E0254", 3, 13, 22}, /* `len(a, a)` */
+        {"E0255", 4, 17, 18}, /* `n` */
+        {"E0256", 5, 13, 16}, /* `len` */
+        {"E0257", 6, 9, 12},  /* the declared name */
+    };
+    for (int i = 0; i < 4; i++) {
+        const Diagnostic *d = &st.diags.items[i];
+        assert(strcmp(d->code, want[i].code) == 0);
+        assert(d->span.start_line == want[i].line && d->span.end_line == want[i].line);
+        assert(d->span.start_col == want[i].c0 && d->span.end_col == want[i].c1);
+    }
+    parse_done();
+    ir_state_destroy(&st);
+    pass("E0254-E0257: full spans (call, argument, name, declared name)");
+}
+
 static void test_e0261_fix(void) {
     static IrState st;
     ir_state_init(&st, 1 << 20);
@@ -1820,6 +1846,7 @@ int main(int argc, char **argv) {
     test_e0261_fix();
     test_construction_and_access_spans();
     test_array_spans();
+    test_len_spans();
     test_array_checker_is_linear();
     test_checker_is_linear();
     test_call_ir();

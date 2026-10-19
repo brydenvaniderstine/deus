@@ -139,3 +139,66 @@ if __name__ == "__main__":
     L = ["manna v0;", "fn f(a: [2]u8, n: u8, b: bool) {", "    a[0] = true;", "    a[b] = 1;", "    n[0] = 1;", "    a[0..1] = a;", "    [1, 2][0] = 3;", "    a[0] = 300;", "}"]
     g.errors("index_assignment_errors", L, [e(L, 3, "true", "E0223", mismatch("u8", "bool")), e(L, 4, "b", "E0253", notint("bool")), e(L, 5, "n", "E0252", noindex("u8")),
         e(L, 6, "a[0..1]", "E0270", notassign), e(L, 7, "[1, 2][0]", "E0270", notassign), e(L, 8, "300", "E0224", "integer literal 300 does not fit in u8")])
+
+    # ---------- pins for the mutation survivors (A07, A15, A22, A23) ----------
+    L = ["manna v0;", "struct Q { x: u32, }", "fn f(a: [4]u32, q: [3]Q) {", "    let b = a[0..2];", "    let c = q[1..3];", "}"]
+    def slcT(L, ln, text, t, base, lo, hi):
+        return g.N("slice", g.sp(L, ln, text), t, base, lo, hi)
+    g.put("slice_element_type_follows_the_base", L, sdecl(L, 2, 2, "Q", 4, 4, [(2, "x: u32", "x", "u32", 0)]) + plain(L, 3, 6, "f", [("a: [4]u32", "a", "[4]u32"), ("q: [3]Q", "q", "[3]Q")], "",
+          let(L, 4, "let b = a[0..2];", "b", 2, "[]u32", slcT(L, 4, "a[0..2]", "[]u32", cl(L, 4, "a", 0, "[4]u32"), nm(L, 4, "0", "u64"), nm(L, 4, "2", "u64"))),
+          let(L, 5, "let c = q[1..3];", "c", 3, "[]Q", slcT(L, 5, "q[1..3]", "[]Q", cl(L, 5, "q", 1, "[3]Q"), nm(L, 5, "1", "u64"), nm(L, 5, "3", "u64")))))
+    L = ["manna v0;", "fn f() {", "    let a: Nope = [1, 2];", "    let b: Nope = [3; 4];", "}"]
+    g.errors("array_literal_against_a_failed_annotation_is_silent", L, [e(L, 3, "Nope", "E0220", "unknown type 'Nope'"), e(L, 4, "Nope", "E0220", "unknown type 'Nope'")])
+    L = ["manna v0;", "struct P { a: [1073741824]u8, }", "fn f(s: []u8, p: P) {", "    let a = [s; 134217728];", "    let b = [s; 134217727];", "    let c = [p; 2];", "    let d = [p; 1];", "}"]
+    g.errors("array_literal_size_limit_slices_and_structs", L, [e(L, 4, "[s; 134217728]", "E0222", big), e(L, 6, "[p; 2]", "E0222", big)])
+
+    # ================= step 12b: len(x), E0254-E0257 =================
+    def ln(L, n, text, arg):
+        return g.N("len", g.sp(L, n, text), "u64", arg)
+
+    L = ["manna v0;", "fn make() -> [3]u8 {", "    return [1, 2, 3];", "}", "fn f(a: [4]u8, s: []u8) -> u64 {", "    let x = len(a);", "    let y = len(s);", "    let z = len(make());",
+         "    let w = a[0..len(a)];", "    let v = a[len(a) - 1];", "    return x + y + z;", "}"]
+    mk = call(L, 8, "make()", "[3]u8", "make")
+    g.put("len_of_array_slice_and_call_result", L,
+        plain(L, 2, 4, "make", [], "[3]u8", ret(L, 3, "return [1, 2, 3];", arr(L, 3, "[1, 2, 3]", "[3]u8", nm(L, 3, "1", "u8"), nm(L, 3, "2", "u8"), nm(L, 3, "3", "u8")))) +
+        plain(L, 5, 12, "f", [("a: [4]u8", "a", "[4]u8"), ("s: []u8", "s", "[]u8")], "u64",
+            let(L, 6, "let x = len(a);", "x", 2, "u64", ln(L, 6, "len(a)", cl(L, 6, "a", 0, "[4]u8"))),
+            let(L, 7, "let y = len(s);", "y", 3, "u64", ln(L, 7, "len(s)", cl(L, 7, "s", 1, "[]u8"))),
+            let(L, 8, "let z = len(make());", "z", 4, "u64", ln(L, 8, "len(make())", mk)),
+            let(L, 9, "let w = a[0..len(a)];", "w", 5, "[]u8", slc(L, 9, "a[0..len(a)]", cl(L, 9, "a", 0, "[4]u8", 0), nm(L, 9, "0", "u64"), ln(L, 9, "len(a)", cl(L, 9, "a", 0, "[4]u8", 1)))),
+            let(L, 10, "let v = a[len(a) - 1];", "v", 6, "u8", idx(L, 10, "a[len(a) - 1]", "u8", cl(L, 10, "a", 0, "[4]u8", 0),
+                g.N("binary", g.sp(L, 10, "len(a) - 1"), "- u64", ln(L, 10, "len(a)", cl(L, 10, "a", 0, "[4]u8", 1)), nm(L, 10, "1", "u64")))),
+            ret(L, 11, "return x + y + z;", g.N("binary", g.sp(L, 11, "x + y + z"), "+ u64", g.N("binary", g.sp(L, 11, "x + y"), "+ u64", cl(L, 11, "x", 2, "u64"), cl(L, 11, "y", 3, "u64")), cl(L, 11, "z", 4, "u64")))))
+
+    L = ["manna v0;", "fn f(a: [2]u8) {", "    let x = len();", "    let y = len(a, a);", "    let z = len(v: a);", "    let w = len(nope, nope2);", "}"]
+    one = lambda found: "len takes exactly one argument, found %s" % found
+    g.errors("len_wrong_argument_count_or_named_argument", L, [e(L, 3, "len()", "E0254", one(0)), e(L, 4, "len(a, a)", "E0254", one(2)), e(L, 5, "len(v: a)", "E0254", one("a named argument")),
+        e(L, 6, "len(nope, nope2)", "E0254", one(2)), e(L, 6, "nope", "E0230", unk("nope")), e(L, 6, "nope2", "E0230", unk("nope2"))])
+    needs = lambda t: "len needs an array or a slice, found %s" % t
+    L = ["manna v0;", "struct P { x: u8, }", "fn f(n: u8, b: bool, p: P) {", "    let x = len(n);", "    let y = len(b);", "    let z = len(p);", "    let w = len(1);", "    let v = len(nope);",
+         "    let u: bool = len(b);", "    let t: bool = len(nope);", "}"]
+    g.errors("len_argument_must_be_an_array_or_a_slice", L, [e(L, 4, "n", "E0255", needs("u8")), e(L, 5, "b", "E0255", needs("bool")), e(L, 6, "p", "E0255", needs("P")), e(L, 7, "1", "E0225", infer),
+        e(L, 8, "nope", "E0230", unk("nope")), e(L, 9, "b", "E0255", needs("bool"), 0), e(L, 9, "len(b)", "E0223", mismatch("bool", "u64")),
+        e(L, 10, "nope", "E0230", unk("nope")), e(L, 10, "len(nope)", "E0223", mismatch("bool", "u64"))])
+    nc = "len is a builtin function; call it as len(x)"
+    L = ["manna v0;", "fn f(a: [2]u8) {", "    let x = len;", "    let y = len + 1;", "    len = 3;", "}"]
+    g.errors("len_is_not_a_value", L, [e(L, 3, "len", "E0256", nc), e(L, 4, "len", "E0256", nc), e(L, 5, "len", "E0256", nc)])
+    dc = "'len' is a builtin and can't be declared"
+    L = ["manna v0;", "struct len { x: u8, }"]
+    g.errors("len_cannot_name_a_struct", L, [e(L, 2, "len", "E0257", dc)])
+    L = ["manna v0;", "fn len() {", "}", "fn f(a: [2]u8) {", "    let n = len(a);", "}"]
+    g.errors("len_cannot_name_a_function", L, [e(L, 2, "len", "E0257", dc)])
+    L = ["manna v0;", "fn f(len: u8) -> u8 {", "    return len;", "}"]
+    g.errors("len_cannot_name_a_parameter", L, [e(L, 2, "len", "E0257", dc)])
+    L = ["manna v0;", "fn f(a: [2]u8) -> u64 {", "    let len: u64 = 5;", "    let n = len(a);", "    return len + n;", "}"]
+    g.errors("len_cannot_name_a_local_but_the_call_stays_the_builtin", L, [e(L, 3, "len", "E0257", dc)])
+    L = ["manna v0;", "fn f() {", "    for let len: u8 = 0; len < 3; len = len + 1 {", "    }", "}"]
+    g.errors("len_cannot_name_a_loop_variable", L, [e(L, 3, "len", "E0257", dc)])
+
+    # pin for the mutation survivor B07
+    L = ["manna v0;", "fn nothing() {", "}", "fn f() {", "    let x = len(nothing());", "    let y: u64 = x;", "}"]
+    g.errors("len_unit_argument_is_not_a_value", L, [e(L, 5, "nothing()", "E0226", msg_unit)])
+
+    # covers the bool element size in the literal size check
+    L = ["manna v0;", "fn f(b: bool) {", "    let a = [b; 2147483648];", "    let c = [b; 2147483647];", "}"]
+    g.errors("array_literal_size_limit_bool_elements", L, [e(L, 3, "[b; 2147483648]", "E0222", big)])

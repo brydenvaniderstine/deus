@@ -144,7 +144,7 @@ typedef struct {
 typedef enum {
     IR_E_INT, IR_E_BOOL, IR_E_LOCAL, IR_E_UNARY, IR_E_BINARY, IR_E_CALL,
     IR_E_STRUCT_NEW, IR_E_FIELD, IR_E_INDEX, IR_E_SLICE, IR_E_CONVERT,
-    IR_E_ARRAY, IR_E_REPEAT,
+    IR_E_ARRAY, IR_E_REPEAT, IR_E_LEN,
 } IrExprKind;
 
 /* Every expression has a type (never ERROR in a built module) and the span of
@@ -169,6 +169,7 @@ struct IrExpr {
         struct { IrExpr *operand; } convert;                     /* target type == expr type */
         struct { NodeList elems; } array;                        /* elems: IrExpr* */
         struct { IrExpr *value; uint64_t count; } repeat;       /* count == the array type's length */
+        struct { IrExpr *operand; } len;                         /* len(x), type u64; the operand is kept so it is evaluated exactly once */
     } as;
 };
 
@@ -224,6 +225,7 @@ IrExpr *ir_expr_slice(IrState *st, Span span, const IrType *type, IrExpr *base, 
 IrExpr *ir_expr_convert(IrState *st, Span span, const IrType *type, IrExpr *operand);
 IrExpr *ir_expr_array(IrState *st, Span span, const IrType *type, NodeList elems);
 IrExpr *ir_expr_repeat(IrState *st, Span span, const IrType *type, IrExpr *value, uint64_t count);
+IrExpr *ir_expr_len(IrState *st, Span span, const IrType *type, IrExpr *operand);
 IrStmt *ir_stmt_let(IrState *st, Span span, const IrLocal *local, IrExpr *init);
 IrStmt *ir_stmt_assign(IrState *st, Span span, IrExpr *place, IrExpr *value);
 IrStmt *ir_stmt_if(IrState *st, Span span, IrExpr *cond, IrStmt *then_branch, IrStmt *else_branch);

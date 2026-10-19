@@ -86,6 +86,9 @@ static void expr_header(FILE *out, const IrExpr *e) {
             open_form(out, "repeat", e->span);
             fprintf(out, " %llu", (unsigned long long)e->as.repeat.count);
             break;
+        case IR_E_LEN:
+            open_form(out, "len", e->span);
+            break;
     }
     /* struct_new's type IS the struct, so it carries the one type scalar every
      * expression ends its header with. */
@@ -144,6 +147,9 @@ void ir_dump_expr(FILE *out, const IrExpr *e, int depth) {
             break;
         case IR_E_REPEAT:
             child_expr(out, e->as.repeat.value, depth);
+            break;
+        case IR_E_LEN:
+            child_expr(out, e->as.len.operand, depth);
             break;
     }
     fputc(')', out);

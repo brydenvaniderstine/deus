@@ -1,0 +1,4 @@
+ERRORS:
+3:13 E0256 len is a builtin function; call it as len(x)
+4:13 E0256 len is a builtin function; call it as len(x)
+5:5 E0256 len is a builtin function; call it as len(x)

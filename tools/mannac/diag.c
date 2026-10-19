@@ -458,6 +458,43 @@ Diagnostic diag_ir_index_not_integer(Arena *a, Span at, const char *type) {
     return d;
 }
 
+Diagnostic diag_ir_len_arity(Arena *a, Span at, size_t found, bool named) {
+    Diagnostic d = {0};
+    d.code = "E0254";
+    d.severity = DIAG_ERROR;
+    d.message = named ? "len takes exactly one argument, found a named argument"
+                      : arena_sprintf(a, "len takes exactly one argument, found %zu", found);
+    d.span = at;
+    return d;
+}
+
+Diagnostic diag_ir_len_argument(Arena *a, Span at, const char *type) {
+    Diagnostic d = {0};
+    d.code = "E0255";
+    d.severity = DIAG_ERROR;
+    d.message = arena_sprintf(a, "len needs an array or a slice, found %s", type);
+    d.span = at;
+    return d;
+}
+
+Diagnostic diag_ir_len_not_called(Span at) {
+    Diagnostic d = {0};
+    d.code = "E0256";
+    d.severity = DIAG_ERROR;
+    d.message = "len is a builtin function; call it as len(x)";
+    d.span = at;
+    return d;
+}
+
+Diagnostic diag_ir_len_declared(Span at) {
+    Diagnostic d = {0};
+    d.code = "E0257";
+    d.severity = DIAG_ERROR;
+    d.message = "'len' is a builtin and can't be declared";
+    d.span = at;
+    return d;
+}
+
 Diagnostic diag_ir_recursion(Span at) {
     Diagnostic d = {0};
     d.code = "E0235";

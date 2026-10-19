@@ -1,0 +1,5 @@
+manna v0;
+fn f() {
+    for let len: u8 = 0; len < 3; len = len + 1 {
+    }
+}

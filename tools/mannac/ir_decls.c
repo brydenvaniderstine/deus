@@ -82,6 +82,7 @@ static void declare_names(Ctx *cx, const NodeList *items) {
         bool inserted;
         const SymEntry *e = symtab_insert(&cx->top, decl_name(d), decl_name_span(d), is_struct, is_struct ? si : fi, &inserted);
         if (!inserted) ir_error(st, diag_ir_duplicate_decl(st->arena, decl_name_span(d), decl_name(d), e->name_span));
+        if (strcmp(decl_name(d), "len") == 0) ir_error(st, diag_ir_len_declared(decl_name_span(d))); /* the builtin (Admission #15) */
         if (is_struct) si++; else fi++;
     }
 }
@@ -405,6 +406,7 @@ static void build_signature(Ctx *cx, const Decl *d) {
         bool inserted;
         symtab_insert(&seen, p->name, p->name_span, false, 0, &inserted);
         if (!inserted) ir_error(st, diag_ir_duplicate_param(st->arena, p->name_span, p->name));
+        if (strcmp(p->name, "len") == 0) ir_error(st, diag_ir_len_declared(p->name_span));
         const IrType *t = ir_resolve_type(cx, p->type, CTX_PARAM);
         ir_check_type_size(cx, p->type, t);
         if (!inserted) continue;
