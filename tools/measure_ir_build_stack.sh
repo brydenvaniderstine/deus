@@ -73,7 +73,7 @@ stop=0
 printf '%-5s %-11s %-4s %9s %9s %8s %12s %7s\n' build shape var "S_full KB" "S_base KB" levels "B/level (<=)" margin
 for build in plain asan; do
     bin="$BUILD/t"; [ "$build" = asan ] && bin="$BUILD/t-asan"
-    for shape in binary mixed_prec neg_chain in_ifs name_chain and_chain in_calls field in_construct index postfix_mix in_index in_array; do
+    for shape in binary mixed_prec neg_chain in_ifs name_chain and_chain in_calls field in_construct index postfix_mix in_index in_array in_convert; do
         case "$shape" in
             binary) full=512; base=1 ;;
             mixed_prec) full=512; base=2 ;;
@@ -88,6 +88,7 @@ for build in plain asan; do
             postfix_mix) full=512; base=3 ;; # a[0].f[0].f... over 255 struct types (step 12); the base is one pair
             in_index) full=0; base=1 ;;     # a[a[a[...]]] at the deepest nesting the parser accepts (step 12)
             in_array) full=0; base=1 ;;     # [[[...[x]...]]] at the deepest nesting the parser accepts (step 12)
+            in_convert) full=0; base=1 ;;   # u64(u64(...u64(x)...)) at the deepest nesting the parser accepts (step 13)
         esac
         for var in int bool; do
             sf=$(bisect "$bin" "$shape" $full $var)
@@ -109,8 +110,8 @@ echo "THE PARSER ALONE (the same inputs, parse only, on the process stack): its 
 printf '%-5s %-11s %9s %7s\n' build shape "S_parse KB" margin
 for build in plain asan; do
     bin="$BUILD/t"; [ "$build" = asan ] && bin="$BUILD/t-asan"
-    for shape in binary neg_chain in_ifs and_chain in_calls field in_construct index postfix_mix in_index in_array; do
-        case "$shape" in neg_chain|in_calls|in_construct|index|in_index|in_array) full=0 ;; *) full=512 ;; esac
+    for shape in binary neg_chain in_ifs and_chain in_calls field in_construct index postfix_mix in_index in_array in_convert; do
+        case "$shape" in neg_chain|in_calls|in_construct|index|in_index|in_array|in_convert) full=0 ;; *) full=512 ;; esac
         sp=$(bisect "$bin" "$shape" $full int parse-only)
         case "$sp" in FAIL|crash|ERROR|error) echo "$build $shape: parse-only $sp"; stop=1; continue ;; esac
         margin=$(awk -v f=$FULL -v h=$sp 'BEGIN{printf "%.1f", f/h}')

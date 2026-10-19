@@ -247,6 +247,10 @@ Diagnostic diag_ir_type_mismatch(Arena *a, Span at, const char *expected, const 
  * plain form at the parenthesized literal. */
 Diagnostic diag_ir_literal_range(Arena *a, Span at, uint64_t value, bool negated, const char *type);
 
+/* E0265: "can't convert T to U; conversions are between integer types only" - at the whole conversion. `compare_hint`
+ * (an integer converted to bool) appends "(write 'x != 0')". */
+Diagnostic diag_ir_cannot_convert(Arena *a, Span at, const char *from, const char *to, bool compare_hint);
+
 /* E0252: "can't index/slice type T" - at the base expression of an index or a slice. */
 Diagnostic diag_ir_cannot_index(Arena *a, Span at, const char *type);
 

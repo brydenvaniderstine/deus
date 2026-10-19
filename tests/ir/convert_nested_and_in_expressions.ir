@@ -1,0 +1,42 @@
+(fn@2:1-4:2 fn:take
+  (params (param@2:9-2:15 a #0 u32))
+  (returns u32)
+  (block@2:24-4:2
+    (return@3:5-3:14
+      (local@3:12-3:13 a #0 u32))))
+(fn@5:1-13:2 fn:f
+  (params (param@5:6-5:11 x #0 u8) (param@5:13-5:19 y #1 u16) (param@5:21-5:27 i #2 u32))
+  (returns u64)
+  (block@5:36-13:2
+    (let@6:5-6:29 a #3 u32
+      (convert@6:13-6:28 u32
+        (convert@6:17-6:27 u16
+          (convert@6:21-6:26 u8
+            (local@6:24-6:25 x #0 u8)))))
+    (let@7:5-7:29 b #4 u8
+      (convert@7:13-7:28 u8
+        (convert@7:16-7:27 u16
+          (convert@7:20-7:26 u32
+            (local@7:24-7:25 i #2 u32)))))
+    (let@8:5-8:24 c #5 u16
+      (binary@8:13-8:23 + u16
+        (convert@8:13-8:19 u16
+          (local@8:17-8:18 x #0 u8))
+        (local@8:22-8:23 y #1 u16)))
+    (let@9:5-9:26 d #6 u32
+      (call@9:13-9:25 fn:take u32
+        (convert@9:18-9:24 u32
+          (local@9:22-9:23 x #0 u8))))
+    (let@10:5-10:25 e #7 bool
+      (binary@10:13-10:24 == bool
+        (convert@10:13-10:19 u32
+          (local@10:17-10:18 y #1 u16))
+        (local@10:23-10:24 i #2 u32)))
+    (let@11:5-11:29 h #8 u64
+      (binary@11:13-11:28 + u64
+        (convert@11:13-11:19 u64
+          (local@11:17-11:18 x #0 u8))
+        (convert@11:22-11:28 u64
+          (local@11:26-11:27 i #2 u32))))
+    (return@12:5-12:14
+      (local@12:12-12:13 h #8 u64))))

@@ -20,7 +20,8 @@ static Span decl_name_span(const Decl *d) {
     return d->kind == DECL_STRUCT ? d->as.struct_decl.name_span : d->as.function_decl.name_span;
 }
 
-static const IrType *prim_type(IrState *st, const char *name) {
+/* The IR type of a primitive keyword (`u8`..`i64`, `bool`), or NULL for any other name. */
+const IrType *ir_prim_type(IrState *st, const char *name) {
     static const struct { const char *name; int bits; bool sg; } ints[] = {
         {"u8", 8, false}, {"i8", 8, true}, {"u16", 16, false}, {"i16", 16, true},
         {"u32", 32, false}, {"i32", 32, true}, {"u64", 64, false}, {"i64", 64, true},
@@ -40,7 +41,7 @@ const IrType *ir_resolve_type(Ctx *cx, const Type *t, TypeCtx ctx) {
     IrState *st = cx->st;
     switch (t->kind) {
         case TYPE_IDENT: {
-            const IrType *p = prim_type(st, t->as.ident.name);
+            const IrType *p = ir_prim_type(st, t->as.ident.name);
             if (p) return p;
             const SymEntry *e = symtab_lookup(&cx->top, t->as.ident.name);
             if (e && e->is_struct) return ir_type_struct(st, &cx->irs[e->index]);

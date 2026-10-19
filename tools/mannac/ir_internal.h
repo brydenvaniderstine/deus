@@ -131,6 +131,9 @@ const IrType *ir_resolve_type(Ctx *cx, const Type *t, TypeCtx ctx);
  * unsized struct). */
 void ir_check_type_size(Ctx *cx, const Type *ast, const IrType *t);
 
+/* The type of a primitive keyword (`u8`..`i64`, `bool`), or NULL (ir_decls.c). */
+const IrType *ir_prim_type(IrState *st, const char *name);
+
 /* True if a type built from an expression (an array literal, `[v; N]`) is larger than the limit
  * (E0222 at the expression; the type written in a declaration is checked by ir_check_type_size). */
 bool ir_type_exceeds_limit(const IrType *t);

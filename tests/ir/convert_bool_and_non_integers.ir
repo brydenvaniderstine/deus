@@ -1,0 +1,9 @@
+ERRORS:
+4:13 E0265 can't convert u8 to bool; conversions are between integer types only (write 'x != 0')
+5:13 E0265 can't convert bool to u8; conversions are between integer types only
+6:13 E0265 can't convert bool to bool; conversions are between integer types only
+7:13 E0265 can't convert P to u8; conversions are between integer types only
+8:13 E0265 can't convert [2]u8 to u16; conversions are between integer types only
+9:13 E0265 can't convert []u8 to i8; conversions are between integer types only
+10:13 E0265 can't convert bool to u8; conversions are between integer types only
+11:18 E0225 cannot infer the type of this integer literal; annotate it

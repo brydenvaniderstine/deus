@@ -37,7 +37,6 @@ _Noreturn void ir_unimplemented(IrState *st, const char *what) {
 static _Noreturn void unimplemented_kind(IrState *st, const Expr *e) {
     switch (e->kind) {
         case EXPR_NAMED_ARG:    ir_unimplemented(st, "a named argument outside a call's arguments"); /* the parser never builds one */
-        case EXPR_CONVERT:      ir_unimplemented(st, "conversions (step 13)");
         case EXPR_NUMBER:
         case EXPR_BOOL:
         case EXPR_IDENT:
@@ -45,13 +44,14 @@ static _Noreturn void unimplemented_kind(IrState *st, const Expr *e) {
         case EXPR_BINARY:
         case EXPR_CALL:
         case EXPR_FIELD_ACCESS:
+        case EXPR_CONVERT:
         case EXPR_INDEX:
         case EXPR_SLICE:
         case EXPR_ARRAY:
         case EXPR_ARRAY_REPEAT:
             break;
     }
-    ir_unimplemented(st, "this expression (step 13)");
+    ir_unimplemented(st, "this expression"); /* every kind has a case above; kept so a new ExprKind stops the build instead of falling through */
 }
 
 static bool is_int(const IrType *t) {
@@ -657,6 +657,44 @@ static Synth synth_field(BodyCtx *bc, const Expr *e) {
     return finish_field(bc, e, b);
 }
 
+/* ---- conversions (typed-IR step 13, docs/M2_PLAN.md "Conversions") ----
+ * `u8(x)`: target and operand must both be INTEGER types. The operand is typed on its own, never from the
+ * target (a conversion supplies no type): a bare literal operand (`u8(255)`, `u8(300)`, `u32(-1)`) has no type
+ * and is E0225 at the operand. `bool` on either side, and a struct, array or slice operand, are E0265 at the
+ * whole conversion (an integer converted to bool also suggests `x != 0`; there is no spelling for bool to
+ * integer); a unit call is E0226. A same-type conversion is legal and kept (CONVERT). Whatever is wrong, the
+ * result has the TARGET type, so a mistake in the operand never spreads. The IR only records the conversion;
+ * the runtime rule (the value itself if it fits, else a trap) is the backends'. */
+
+static IR_COLD void report_cannot_convert(IrState *st, Span at, const IrType *from, const IrType *to) {
+    ir_error(st, diag_ir_cannot_convert(st->arena, at, ir_type_text(st, from), ir_type_text(st, to),
+                                        to->kind == IR_T_BOOL && is_int(from)));
+}
+
+static IR_NOINLINE Synth finish_convert(BodyCtx *bc, const Expr *e, Synth o) {
+    IrState *st = bc->st;
+    const IrType *target = ir_prim_type(st, e->as.convert.target);
+    assert(target); /* the parser only builds a conversion for one of the nine primitive keywords */
+    IrExpr *operand;
+    if (o.group) { /* a literal has no type of its own and a conversion gives it none */
+        report_cannot_infer(st, e->as.convert.operand->span);
+        operand = error_node(st, e->span);
+    } else if (is_unit(o)) {
+        report_unit(st, e->as.convert.operand->span);
+        operand = error_node(st, e->span);
+    } else {
+        operand = o.node;
+        const IrType *from = operand->type;
+        if (from->kind != IR_T_ERROR && !(is_int(from) && is_int(target))) report_cannot_convert(st, e->span, from, target);
+    }
+    return is_node(ir_expr_convert(st, e->span, target, operand));
+}
+
+static Synth synth_convert(BodyCtx *bc, const Expr *e) {
+    Synth o = synth(bc, e->as.convert.operand);
+    return finish_convert(bc, e, o);
+}
+
 /* ---- arrays, indexing, slicing (typed-IR step 12, docs/M2_PLAN.md "Arrays, slices, storage") ----
  * `a[i]`: a base of array or slice type (E0252 otherwise, at the base), an index of ANY integer type
  * (E0253 otherwise); the result is the element type. `a[lo..hi]`: the same base rule and integer bounds;
@@ -877,6 +915,7 @@ static Synth synth(BodyCtx *bc, const Expr *e) {
     if (e->kind == EXPR_UNARY) return synth_unary(bc, e);
     if (e->kind == EXPR_CALL) return synth_call(bc, e);
     if (e->kind == EXPR_FIELD_ACCESS) return synth_field(bc, e);
+    if (e->kind == EXPR_CONVERT) return synth_convert(bc, e);
     if (e->kind == EXPR_INDEX) return synth_index(bc, e);
     if (e->kind == EXPR_SLICE) return synth_slice(bc, e);
     if (e->kind == EXPR_ARRAY) return synth_array(bc, e);

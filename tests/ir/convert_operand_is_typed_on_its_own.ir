@@ -1,0 +1,18 @@
+(fn@2:1-4:2 fn:f
+  (params (param@2:6-2:11 x #0 u8))
+  (returns u32)
+  (block@2:20-4:2
+    (return@3:5-3:23
+      (convert@3:12-3:22 u32
+        (binary@3:16-3:21 + u8
+          (local@3:16-3:17 x #0 u8)
+          (int@3:20-3:21 1 u8))))))
+(fn@5:1-7:2 fn:g
+  (params (param@5:6-5:11 x #0 u8))
+  (returns u32)
+  (block@5:20-7:2
+    (return@6:5-6:25
+      (convert@6:12-6:24 u32
+        (binary@6:16-6:23 + u8
+          (int@6:16-6:19 255 u8)
+          (local@6:22-6:23 x #0 u8))))))

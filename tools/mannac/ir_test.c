@@ -735,28 +735,37 @@ static void test_build_empty_functions(void) {
     pass("build: empty module and empty functions (unit return, AST spans, source order)");
 }
 
-/* Fix 2 (review): IR_UNIMPLEMENTED is a status, never a diagnostic and never a dump. */
+/* Fix 2 (review): IR_UNIMPLEMENTED is a status, never a diagnostic and never a dump. Since step 13 no
+ * construct the parser can build reaches it: what remains are two states the parser never produces, so the
+ * trees are made by moving a node (a named argument out of its call) or by hand. */
+static void unimplemented_named_arg_as_init(void) {
+    /* `let x = g(a: 1);` with the let's initializer replaced by the call's named argument itself */
+    const Decl *d = g_items.items[0];
+    Stmt *let = d->as.function_decl.body->as.block.stmts.items[0];
+    Expr *call = let->as.let_stmt.init;
+    let->as.let_stmt.init = call->as.call.args.items[0];
+}
+
 static void test_unimplemented(void) {
     static IrState st;
     ir_state_init(&st, 1 << 20);
-    static const struct { const char *src, *what; } cases[] = {
-        {"manna v0;\nfn f() -> u8 { return u8(1); }\n", "conversions"},
-        {"manna v0;\nfn f(a: [2]u8) { a[u8(1)] = 1; }\n", "conversions"},                              /* inside an index */
-        {"manna v0;\nstruct P { x: u8, }\nfn f(p: P) { let y = [P(x: u8(1)).x; 2]; }\n", "conversions"},  /* inside a repeat inside a construction */
-    };
-    for (size_t i = 0; i < sizeof cases / sizeof cases[0]; i++) {
-        parse_src(cases[i].src);
-        assert(g_ps.diags.len == 0);
-        IrModule *m = (IrModule *)0x1;
-        assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_UNIMPLEMENTED);
-        assert(m == NULL && st.diags.len == 0);
-        assert(st.unimplemented && strstr(st.unimplemented, cases[i].what));
-        parse_done();
-    }
+    parse_src("manna v0;\nfn f() { let x = g(a: 1); }\n");
+    assert(g_ps.diags.len == 0);
+    unimplemented_named_arg_as_init();
+    IrModule *m = (IrModule *)0x1;
+    assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_UNIMPLEMENTED);
+    assert(m == NULL && st.diags.len == 0);
+    assert(st.unimplemented && strstr(st.unimplemented, "named argument outside a call"));
+    parse_done();
 
     /* Errors found before the unwind win over IR_UNIMPLEMENTED, and the state is reusable. */
-    parse_src("manna v0;\nfn a() -> i8 { return 128; }\nfn b() -> u8 { return u8(1); }\n");
-    IrModule *m = NULL;
+    parse_src("manna v0;\nfn a() -> i8 { return 128; }\nfn b() { let x = g(a: 1); }\n");
+    assert(g_ps.diags.len == 0);
+    {
+        const Decl *d = g_items.items[1];
+        Stmt *let = d->as.function_decl.body->as.block.stmts.items[0];
+        let->as.let_stmt.init = ((Expr *)let->as.let_stmt.init)->as.call.args.items[0];
+    }
     assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_ERRORS && m == NULL);
     assert(st.diags.len == 1 && strcmp(st.diags.items[0].code, "E0224") == 0);
     parse_done();
@@ -764,7 +773,7 @@ static void test_unimplemented(void) {
     assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_BUILT && m != NULL && st.unimplemented == NULL);
     parse_done();
     ir_state_destroy(&st);
-    pass("IR_UNIMPLEMENTED: what is not built yet (conversions), no diagnostic, no module; real errors win; state reusable");
+    pass("IR_UNIMPLEMENTED: only the states the parser never produces reach it, no diagnostic, no module; real errors win; state reusable");
 }
 
 /* `fn f() -> T { return <expr>; }` for one case of the range matrix. Returns the build status;
@@ -1347,6 +1356,30 @@ static void test_len_spans(void) {
     pass("E0254-E0257: full spans (call, argument, name, declared name)");
 }
 
+/* Step 13: the FULL span of E0265 (the whole conversion) and of E0225 on a conversion's literal operand (the operand). */
+static void test_convert_spans(void) {
+    static IrState st;
+    ir_state_init(&st, 1 << 20);
+    parse_src("manna v0;\nfn f(x: u8, b: bool) {\n    let a = bool(x);\n    let c = u8(300);\n    let d = u16(b);\n}\n");
+    assert(g_ps.diags.len == 0);
+    IrModule *m = NULL;
+    assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_ERRORS && st.diags.len == 3);
+    static const struct { const char *code; int c0, c1; const char *msg; } want[] = {
+        {"E0265", 13, 20, "can't convert u8 to bool; conversions are between integer types only (write 'x != 0')"}, /* `bool(x)` */
+        {"E0225", 16, 19, "cannot infer the type of this integer literal; annotate it"},                                /* `300` */
+        {"E0265", 13, 19, "can't convert bool to u16; conversions are between integer types only"},                    /* `u16(b)` */
+    };
+    for (int i = 0; i < 3; i++) {
+        const Diagnostic *d = &st.diags.items[i];
+        assert(strcmp(d->code, want[i].code) == 0 && strcmp(d->message, want[i].msg) == 0);
+        assert(d->span.start_line == 3 + i && d->span.end_line == 3 + i);
+        assert(d->span.start_col == want[i].c0 && d->span.end_col == want[i].c1);
+    }
+    parse_done();
+    ir_state_destroy(&st);
+    pass("E0265 spans the whole conversion, E0225 its literal operand (start and end, exact messages)");
+}
+
 static void test_e0261_fix(void) {
     static IrState st;
     ir_state_init(&st, 1 << 20);
@@ -1594,7 +1627,7 @@ static void test_deepest_array_type(void) {
 typedef struct { const char *name; int live_step; /* 0 = live now, else the step that makes it live */ } BuildShape;
 static const BuildShape build_shapes[] = {
     {"binary", 0}, {"mixed_prec", 0}, {"neg_chain", 0}, {"in_ifs", 0}, {"name_chain", 0}, {"and_chain", 0},
-    {"in_calls", 0}, {"field", 0}, {"in_construct", 0}, {"index", 0}, {"postfix_mix", 0}, {"in_index", 0}, {"in_array", 0},
+    {"in_calls", 0}, {"field", 0}, {"in_construct", 0}, {"index", 0}, {"postfix_mix", 0}, {"in_index", 0}, {"in_array", 0}, {"in_convert", 0},
 };
 enum { N_BUILD_SHAPES = sizeof build_shapes / sizeof build_shapes[0] };
 
@@ -1603,7 +1636,7 @@ enum { N_BUILD_SHAPES = sizeof build_shapes / sizeof build_shapes[0] };
  * base must be a nested ARRAY TYPE `[1][1]...u64` of the same depth, and a type nests only ~250 deep. */
 static bool deepest_shape(const char *shape) {
     return strcmp(shape, "neg_chain") == 0 || strcmp(shape, "in_calls") == 0 || strcmp(shape, "in_construct") == 0 ||
-           strcmp(shape, "index") == 0 || strcmp(shape, "in_index") == 0 || strcmp(shape, "in_array") == 0;
+           strcmp(shape, "index") == 0 || strcmp(shape, "in_index") == 0 || strcmp(shape, "in_array") == 0 || strcmp(shape, "in_convert") == 0;
 }
 
 /* Struct declarations a shape needs, malloc'd ("" for the others). `field`: s.f.f...f needs a
@@ -1660,6 +1693,10 @@ static char *gen_expr(const char *shape, int height) {
         for (int i = 0; i < height; i++) w += sprintf(w, "a[");
         w += sprintf(w, "0");
         for (int i = 0; i < height; i++) *w++ = ']';
+    } else if (strcmp(shape, "in_convert") == 0) { /* u64(u64(...u64(x)...)): `height` nested conversions */
+        for (int i = 0; i < height; i++) w += sprintf(w, "u64(");
+        w += sprintf(w, "x");
+        for (int i = 0; i < height; i++) *w++ = ')';
     } else if (strcmp(shape, "in_array") == 0) { /* [[[...[x]...]]]: `height` nested array literals */
         for (int i = 0; i < height; i++) *w++ = '[';
         *w++ = 'x';
@@ -1726,7 +1763,7 @@ static char *make_src(const char *shape, const char *expr, int levels, bool as_b
 static int run_build_shape(const char *shape, int height, bool as_bool, bool parse_only) {
     bool neg = strcmp(shape, "neg_chain") == 0;
     bool calls = strcmp(shape, "in_calls") == 0 || strcmp(shape, "in_construct") == 0 || strcmp(shape, "index") == 0 ||
-                 strcmp(shape, "in_index") == 0 || strcmp(shape, "in_array") == 0;
+                 strcmp(shape, "in_index") == 0 || strcmp(shape, "in_array") == 0 || strcmp(shape, "in_convert") == 0;
     char *expr = NULL;
     int levels = height;
     if ((neg || calls) && height == 0) { /* the deepest the nesting bound accepts */
@@ -1847,6 +1884,7 @@ int main(int argc, char **argv) {
     test_construction_and_access_spans();
     test_array_spans();
     test_len_spans();
+    test_convert_spans();
     test_array_checker_is_linear();
     test_checker_is_linear();
     test_call_ir();

@@ -440,6 +440,16 @@ Diagnostic diag_ir_type_has_no_fields(Arena *a, Span at, const char *type) {
     return d;
 }
 
+Diagnostic diag_ir_cannot_convert(Arena *a, Span at, const char *from, const char *to, bool compare_hint) {
+    Diagnostic d = {0};
+    d.code = "E0265";
+    d.severity = DIAG_ERROR;
+    d.message = arena_sprintf(a, "can't convert %s to %s; conversions are between integer types only%s", from, to,
+                              compare_hint ? " (write 'x != 0')" : "");
+    d.span = at;
+    return d;
+}
+
 Diagnostic diag_ir_cannot_index(Arena *a, Span at, const char *type) {
     Diagnostic d = {0};
     d.code = "E0252";
