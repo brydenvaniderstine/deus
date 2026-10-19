@@ -1,0 +1,10 @@
+manna v0;
+fn f(count: u8) -> u8 {
+    let my_var: u8 = count;
+    for let idx: u8 = 0; idx < count; idx = idx + 1 {
+        if idx == my_var {
+            my_var = my_var + count;
+        }
+    }
+    return my_var + count;
+}

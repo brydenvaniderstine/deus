@@ -42,6 +42,7 @@ IrStatus ir_build(IrState *st, const DiagList *parse_diags, const NodeList *item
         f->body = ir_build_body(st, decls, f, fi - 1, body);
     }
     ir_check_recursion(st, decls); /* E0235, once per cycle, after every body */
+    ir_finalize_renames(st, decls); /* rename fixes: every use is known only now (not reached when the build unwound) */
     if (st->diags.len > base) return IR_ERRORS;
     *out = m;
     return IR_BUILT;

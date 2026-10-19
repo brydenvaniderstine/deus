@@ -44,7 +44,10 @@ const IrType *ir_resolve_type(Ctx *cx, const Type *t, TypeCtx ctx) {
             const IrType *p = ir_prim_type(st, t->as.ident.name);
             if (p) return p;
             const SymEntry *e = symtab_lookup(&cx->top, t->as.ident.name);
-            if (e && e->is_struct) return ir_type_struct(st, &cx->irs[e->index]);
+            if (e && e->is_struct) {
+                if (cx->struct_renames) ir_note_use(st, cx->struct_renames[e->index], t->span);
+                return ir_type_struct(st, &cx->irs[e->index]);
+            }
             ir_error(st, diag_ir_unknown_type(st->arena, t->span, t->as.ident.name));
             return ir_type_error(st);
         }
@@ -84,7 +87,10 @@ static void declare_names(Ctx *cx, const NodeList *items) {
         const SymEntry *e = symtab_insert(&cx->top, decl_name(d), decl_name_span(d), is_struct, is_struct ? si : fi, &inserted);
         if (!inserted) ir_error(st, diag_ir_duplicate_decl(st->arena, decl_name_span(d), decl_name(d), e->name_span));
         if (strcmp(decl_name(d), "len") == 0) ir_error(st, diag_ir_len_declared(decl_name_span(d))); /* the builtin (Admission #15) */
-        else if (inserted) ir_check_naming(st, cx, is_struct, decl_name(d), decl_name_span(d)); /* a duplicate binds nothing: not also checked */
+        else if (inserted) { /* a duplicate binds nothing: not also checked */
+            Rename *r = ir_check_naming(st, cx, REN_TOP, 0, is_struct, decl_name(d), decl_name_span(d));
+            if (r) (is_struct ? ir_struct_rename_table(st, cx) : ir_fn_rename_table(st, cx))[is_struct ? si : fi] = r;
+        }
         if (is_struct) si++; else fi++;
     }
 }
@@ -113,7 +119,16 @@ static void build_fields(Ctx *cx, StructInfo *s) {
         bool inserted;
         symtab_insert(&seen, f->name, f->name_span, false, 0, &inserted);
         if (!inserted) ir_error(st, diag_ir_duplicate_field(st->arena, f->name_span, f->name, ir->name));
-        else ir_check_naming(st, cx, false, f->name, f->name_span);
+        else {
+            Rename *r = ir_check_naming(st, cx, REN_FIELD, (size_t)(s - cx->structs), false, f->name, f->name_span);
+            if (r) {
+                if (!s->field_renames) {
+                    s->field_renames = arena_alloc(st->arena, fl->len * sizeof(Rename *), alignof(Rename *));
+                    for (size_t k = 0; k < fl->len; k++) s->field_renames[k] = NULL;
+                }
+                s->field_renames[ir->n_fields] = r; /* the field about to be kept at this position */
+            }
+        }
         const IrType *t = ir_resolve_type(cx, f->type, CTX_FIELD);
         if (t->kind == IR_T_ERROR) s->poisoned = true;
         if (!inserted) continue;
@@ -410,7 +425,20 @@ static void build_signature(Ctx *cx, const Decl *d) {
         symtab_insert(&seen, p->name, p->name_span, false, 0, &inserted);
         if (!inserted) ir_error(st, diag_ir_duplicate_param(st->arena, p->name_span, p->name));
         if (strcmp(p->name, "len") == 0) ir_error(st, diag_ir_len_declared(p->name_span));
-        else if (inserted) ir_check_naming(st, cx, false, p->name, p->name_span);
+        else if (inserted) {
+            Rename *r = ir_check_naming(st, cx, REN_LOCAL, cx->n_fns, false, p->name, p->name_span);
+            if (r) {
+                if (!cx->param_renames) {
+                    cx->param_renames = arena_alloc(st->arena, (cx->cap_decl_items ? cx->cap_decl_items : 1) * sizeof(Rename **), alignof(Rename **));
+                    for (size_t k = 0; k < cx->cap_decl_items; k++) cx->param_renames[k] = NULL;
+                }
+                if (!cx->param_renames[cx->n_fns]) {
+                    cx->param_renames[cx->n_fns] = arena_alloc(st->arena, params->len * sizeof(Rename *), alignof(Rename *));
+                    for (size_t k = 0; k < params->len; k++) cx->param_renames[cx->n_fns][k] = NULL;
+                }
+                cx->param_renames[cx->n_fns][locals.len] = r; /* the parameter about to take this slot */
+            }
+        }
         const IrType *t = ir_resolve_type(cx, p->type, CTX_PARAM);
         ir_check_type_size(cx, p->type, t);
         if (!inserted) continue;
@@ -434,6 +462,7 @@ bool ir_declare_items(IrState *st, const NodeList *items, IrModule *m, Ctx **out
     size_t n = 0;
     for (size_t i = 0; i < items->len; i++) n += ((const Decl *)items->items[i])->kind == DECL_STRUCT;
     cx.n_structs = n;
+    cx.cap_decl_items = items->len;
     symtab_init(st, &cx.top, items->len);
     cx.structs = arena_alloc(st->arena, (n ? n : 1) * sizeof(StructInfo), alignof(StructInfo));
     cx.irs = arena_alloc(st->arena, (n ? n : 1) * sizeof(IrStruct), alignof(IrStruct));

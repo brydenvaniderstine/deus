@@ -1,0 +1,9 @@
+manna v0;
+fn Let() {
+}
+fn Len() {
+}
+fn BOOL() {
+}
+fn f(_: u8, U8: u8) {
+}

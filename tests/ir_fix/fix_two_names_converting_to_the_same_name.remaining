@@ -1,0 +1,2 @@
+ERRORS:
+2:19 E0280 'foo_Bar' is not snake_case

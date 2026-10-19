@@ -117,7 +117,9 @@ static IR_NOINLINE IrStmt *build_let(BodyCtx *bc, const Stmt *s) {
     bool dup = body_lookup(bc, name) != NULL;
     if (dup) ir_error(st, diag_ir_already_declared(st->arena, name_span, name));
     if (strcmp(name, "len") == 0) ir_error(st, diag_ir_len_declared(name_span)); /* the declaration still binds */
-    else if (!dup) ir_check_naming(st, NULL, false, name, name_span);
+
+    Rename *rename = NULL;
+    if (!dup && strcmp(name, "len") != 0) rename = ir_check_naming(st, bc->decls, REN_LOCAL, bc->fn_index, false, name, name_span);
 
     const IrType *annot = NULL;
     if (s->as.let_stmt.type) {
@@ -128,6 +130,7 @@ static IR_NOINLINE IrStmt *build_let(BodyCtx *bc, const Stmt *s) {
     const IrType *t = annot ? annot : init->type;
     IrLocal *l = dup ? ir_local_new(st, UINT32_MAX, name, t, name_span, false) /* bound to nothing */
                      : body_declare(bc, name, t, name_span);
+    if (rename) body_set_rename(bc, l->slot, rename);
     return ir_stmt_let(st, s->span, l, init);
 }
 
@@ -287,6 +290,11 @@ IrStmt *ir_build_body(IrState *st, Ctx *decls, IrFunc *f, size_t fn_index, const
     BodyCtx bc;
     body_init(&bc, st, decls, f);
     bc.fn_index = fn_index;
+    if (decls->param_renames && decls->param_renames[fn_index]) {
+        for (size_t i = 0; i < f->n_params; i++) {
+            if (decls->param_renames[fn_index][i]) body_set_rename(&bc, i, decls->param_renames[fn_index][i]);
+        }
+    }
     IrStmt *blk = build_block(&bc, body);
     if (f->ret->kind != IR_T_UNIT && !block_returns(blk)) {
         Span end = body->span;

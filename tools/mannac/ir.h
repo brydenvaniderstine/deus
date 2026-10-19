@@ -280,6 +280,11 @@ typedef enum {
 IrStatus ir_build(IrState *st, const DiagList *parse_diags, const NodeList *items, IrModule **out);
 
 
+/* Applies every fix attached to `diags` to the source text: all edits sorted by position and applied together
+ * (the edits of one fix, and of different fixes, never overlap). Returns a malloc'd NUL-terminated copy
+ * (typed-IR step 14, ir_rename.c). */
+char *ir_apply_fixes(const char *src, size_t len, const DiagList *diags);
+
 /* ---- Expressions (ir_expr.c, typed-IR step 6) ---- */
 
 /* Stops the build with IR_UNIMPLEMENTED (st->unimplemented names the construct): unwinds

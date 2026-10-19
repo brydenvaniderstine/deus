@@ -1,0 +1,7 @@
+manna v0;
+fn g() -> u8 {
+    return do_it(1);
+}
+fn do_it(x: u8) -> u8 {
+    return x;
+}

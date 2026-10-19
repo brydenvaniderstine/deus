@@ -1,0 +1,9 @@
+manna v0;
+struct P { foo_bar: u8, other: u8, }
+fn make() -> P {
+    return P(foo_bar: 1, other: 2);
+}
+fn f(p: P) -> u8 {
+    p.foo_bar = 3;
+    return p.foo_bar + p.other;
+}

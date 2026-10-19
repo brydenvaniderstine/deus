@@ -1,0 +1,6 @@
+manna v0;
+struct P { ok: u8, bad_name: u8, }
+fn f(p: P) -> u8 {
+    let q = P(ok: 1, bad_name: 2);
+    return p.ok + q.bad_name;
+}

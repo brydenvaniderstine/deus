@@ -1,0 +1,11 @@
+manna v0;
+fn doIt(x: u8) -> u8 {
+    return x;
+}
+fn a() -> u8 {
+    return doIt(1);
+}
+fn b() -> u8 {
+    let v: u8 = doIt(2);
+    return doIt(v);
+}

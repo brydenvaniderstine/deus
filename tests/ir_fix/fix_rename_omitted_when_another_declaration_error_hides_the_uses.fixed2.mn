@@ -1,0 +1,6 @@
+manna v0;
+[kernel_hook]  fn do_it() {
+}
+fn g() {
+    do_it();
+}

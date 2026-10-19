@@ -219,6 +219,7 @@ static IR_NOINLINE IrExpr *check_ident(BodyCtx *bc, const Expr *e) {
         report_name(st, e, top);
         return error_node(st, e->span);
     }
+    ir_note_use(st, body_rename(bc, l->slot), e->span);
     return ir_expr_local(st, e->span, l);
 }
 
@@ -371,6 +372,13 @@ static Synth synth_binary(BodyCtx *bc, const Expr *e) {
     return finish_binary(bc, e, l, r);
 }
 
+/* A resolved use of field `k` of `s` (a field access name or a construction argument name): recorded only for
+ * a misnamed field. */
+static void ir_note_field_use(BodyCtx *bc, const IrStruct *s, size_t k, Span at) {
+    const StructInfo *si = &bc->decls->structs[s - bc->decls->irs];
+    if (si->field_renames) ir_note_use(bc->st, si->field_renames[k], at);
+}
+
 /* ---- calls (typed-IR step 10, docs/M2_PLAN.md "Calls and struct construction") ----
  * The callee is looked up among the TOP-LEVEL names only (a local of the same name is irrelevant;
  * forward references are legal). Unknown: E0232 at the name, the arguments still checked for their
@@ -511,6 +519,7 @@ static IR_NOINLINE long construct_field(BodyCtx *bc, Construct *c, const Expr *a
         ir_error(st, diag_ir_field_given_twice(st->arena, n->span, name));
         return -1;
     }
+    ir_note_field_use(bc, c->s, k, n->span);
     if (k + 1 < c->highest && !c->order_reported) {
         c->order_reported = true;
         ir_error(st, diag_ir_field_out_of_order(st->arena, n->span, name, c->s->fields[c->highest - 1].name));
@@ -536,6 +545,7 @@ static IR_NOINLINE Synth construct_finish(BodyCtx *bc, Construct *c, const Expr 
 
 static IR_NOINLINE Synth synth_construct(BodyCtx *bc, const Expr *e, size_t struct_index) {
     Construct c;
+    if (bc->decls->struct_renames) ir_note_use(bc->st, bc->decls->struct_renames[struct_index], e->as.call.name_span);
     construct_begin(bc, &c, struct_index);
     if (!construct_shape_ok(bc, e)) {
         c.unrecognized = true;
@@ -599,6 +609,7 @@ static Synth synth_call(BodyCtx *bc, const Expr *e) {
     if (!t) return is_error(bc->st, e->span);
     if (t->is_struct) return synth_construct(bc, e, t->index);
     record_call(bc, t->index, e->span);
+    if (bc->decls->fn_renames) ir_note_use(bc->st, bc->decls->fn_renames[t->index], e->as.call.name_span);
     const IrFunc *f = bc->decls->fns[t->index];
     NodeList args;
     node_list_init(&args);
@@ -645,6 +656,7 @@ static IR_NOINLINE Synth finish_field(BodyCtx *bc, const Expr *e, Synth b) {
     const IrStruct *s = t->as.strukt.decl;
     for (size_t k = 0; k < s->n_fields; k++) {
         if (strcmp(s->fields[k].name, e->as.field_access.name) == 0) {
+            ir_note_field_use(bc, s, k, e->as.field_access.name_span);
             return is_node(ir_expr_field(st, e->span, s->fields[k].type, b.node, (uint32_t)k));
         }
     }

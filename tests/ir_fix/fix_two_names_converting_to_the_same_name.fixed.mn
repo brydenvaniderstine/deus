@@ -1,0 +1,4 @@
+manna v0;
+fn a(foo_bar: u8, foo_Bar: u8) -> u8 {
+    return foo_bar + foo_Bar;
+}

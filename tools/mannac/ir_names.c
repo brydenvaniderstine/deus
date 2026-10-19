@@ -101,9 +101,3 @@ bool ir_is_reserved_name(const char *n) {
     Token t = lexer_next(&lx);
     return t.kind != TOK_IDENT || t.lexeme_len != len;
 }
-
-void ir_check_naming(IrState *st, Ctx *cx, bool pascal, const char *name, Span at) {
-    if (pascal ? ir_is_pascal_case(name) : ir_is_snake_case(name)) return;
-    if (cx) cx->naming_errors++;
-    ir_error(st, pascal ? diag_ir_not_pascal_case(st->arena, at, name) : diag_ir_not_snake_case(st->arena, at, name));
-}

@@ -52,7 +52,7 @@ QEMU_FLAGS   := -machine q35 -m 8G -cpu qemu64,+apic,+pdpe1gb \
                 -serial file:serial.log -monitor stdio -no-reboot \
                 -d int,cpu_reset -D qemu.log
 
-.PHONY: all image run debug clean limine stage-esp test-wx test-lexer test-lexer-asan test-arena test-arena-asan test-ast test-ast-asan test-parser-state test-parser-state-asan test-parser-fixes test-parser-fixes-asan test-parser test-parser-asan test-determinism test-ir test-ir-asan test-ir-unit test-ir-unit-asan coverage fuzz fuzz-lexer fuzz-parser measure-height measure-ir-stack measure-ir-build-stack
+.PHONY: all image run debug clean limine stage-esp test-wx test-lexer test-lexer-asan test-arena test-arena-asan test-ast test-ast-asan test-parser-state test-parser-state-asan test-parser-fixes test-parser-fixes-asan test-parser test-parser-asan test-determinism test-ir test-ir-asan test-ir-unit test-ir-unit-asan test-ir-fix test-ir-fix-asan coverage fuzz fuzz-lexer fuzz-parser measure-height measure-ir-stack measure-ir-build-stack
 
 all: $(KERNEL_ELF)
 
@@ -273,7 +273,7 @@ test-determinism:
 MANNAC_CC      ?= clang
 IR_TEST_DIR    := $(BUILD)/ir_test
 IR_TEST_SRCS   := tools/mannac/arena.c tools/mannac/ast.c tools/mannac/diag.c \
-                  tools/mannac/ir.c tools/mannac/ir_dump.c tools/mannac/ir_build.c tools/mannac/ir_decls.c tools/mannac/ir_expr.c tools/mannac/ir_body.c tools/mannac/ir_calls.c tools/mannac/ir_names.c \
+                  tools/mannac/ir.c tools/mannac/ir_dump.c tools/mannac/ir_build.c tools/mannac/ir_decls.c tools/mannac/ir_expr.c tools/mannac/ir_body.c tools/mannac/ir_calls.c tools/mannac/ir_names.c tools/mannac/ir_rename.c \
                   tools/mannac/parser_state.c tools/mannac/parser.c tools/mannac/lexer.c \
                   tools/mannac/ir_test.c
 
@@ -283,7 +283,7 @@ IR_TEST_SRCS   := tools/mannac/arena.c tools/mannac/ast.c tools/mannac/diag.c \
 IR_DUMP_DIR  := $(BUILD)/ir_dump
 IR_DUMP_SRCS := tools/mannac/arena.c tools/mannac/ast.c tools/mannac/diag.c \
                 tools/mannac/parser_state.c tools/mannac/parser.c tools/mannac/lexer.c \
-                tools/mannac/ir.c tools/mannac/ir_dump.c tools/mannac/ir_build.c tools/mannac/ir_decls.c tools/mannac/ir_expr.c tools/mannac/ir_body.c tools/mannac/ir_calls.c tools/mannac/ir_names.c \
+                tools/mannac/ir.c tools/mannac/ir_dump.c tools/mannac/ir_build.c tools/mannac/ir_decls.c tools/mannac/ir_expr.c tools/mannac/ir_body.c tools/mannac/ir_calls.c tools/mannac/ir_names.c tools/mannac/ir_rename.c \
                 tools/mannac/ir_main.c
 
 test-ir:
@@ -295,6 +295,18 @@ test-ir-asan:
 	@mkdir -p $(IR_DUMP_DIR)
 	$(MANNAC_CC) -std=c11 -Wall -Wextra -g -fsanitize=address,undefined -o $(IR_DUMP_DIR)/ir_dump-asan $(IR_DUMP_SRCS)
 	@./tools/run_ir_tests.sh $(IR_DUMP_DIR)/ir_dump-asan
+
+# Typed-IR step 14: every rename fix applied to tests/ir_fix/*.mn must give tests/ir_fix/*.fixed.mn, and the
+# fixed source must re-check clean (or give *.remaining); tools/run_ir_fix_tests.sh.
+test-ir-fix:
+	@mkdir -p $(IR_DUMP_DIR)
+	$(MANNAC_CC) -std=c11 -Wall -Wextra -O2 -g -o $(IR_DUMP_DIR)/ir_dump $(IR_DUMP_SRCS)
+	@./tools/run_ir_fix_tests.sh $(IR_DUMP_DIR)/ir_dump
+
+test-ir-fix-asan:
+	@mkdir -p $(IR_DUMP_DIR)
+	$(MANNAC_CC) -std=c11 -Wall -Wextra -g -fsanitize=address,undefined -o $(IR_DUMP_DIR)/ir_dump-asan $(IR_DUMP_SRCS)
+	@./tools/run_ir_fix_tests.sh $(IR_DUMP_DIR)/ir_dump-asan
 
 test-ir-unit:
 	@mkdir -p $(IR_TEST_DIR)

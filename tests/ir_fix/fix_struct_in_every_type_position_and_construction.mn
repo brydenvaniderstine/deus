@@ -1,0 +1,10 @@
+manna v0;
+struct my_point { x: u8, }
+struct Holder { p: my_point, ps: [2]my_point, }
+fn make() -> my_point {
+    return my_point(x: 1);
+}
+fn take(a: my_point, s: []my_point) -> my_point {
+    let b: my_point = a;
+    return b;
+}

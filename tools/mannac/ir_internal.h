@@ -79,6 +79,23 @@ static inline const SymEntry *symtab_insert(Symtab *t, const char *name, Span na
     }
 }
 
+/* ---- renames (typed-IR step 14: the fix of E0280/E0281 renames a declaration and every resolved use) ---- */
+
+typedef struct { Span *spans; size_t len, cap; } UseList;
+
+typedef enum { REN_TOP, REN_FIELD, REN_LOCAL } RenameKind;
+
+/* One misnamed declaration. Only misnamed declarations get one (so conforming programs record nothing). */
+typedef struct Rename {
+    RenameKind  kind;
+    bool        pascal;    /* PascalCase (a struct) rather than snake_case */
+    size_t      scope;     /* REN_FIELD: the struct's index; REN_LOCAL: the function's index; REN_TOP: unused */
+    const char *name;
+    Span        decl_span; /* the declared name */
+    size_t      diag;      /* index of its E0280/E0281 in IrState.diags: the fix is attached there at the end */
+    UseList     uses;      /* every resolved use, in checking order */
+} Rename;
+
 /* ---- declarations ---- */
 
 /* Largest size of any single type (docs/M2_PLAN.md "Layout and limits": Wasm MVP
@@ -95,6 +112,7 @@ typedef struct {
     bool          cycle_error; /* this member is where E0221 is reported (lowest declaration index) */
     bool          size_error;  /* E0222 to report at size_error_span */
     Span          size_error_span;
+    Rename      **field_renames; /* per kept field, NULL entries for the well-named; the array itself NULL if none */
 } StructInfo;
 
 typedef struct CallEdge {
@@ -115,6 +133,14 @@ typedef struct {
     struct CallEdge *edges;
     size_t      n_edges, cap_edges;
     int         naming_errors; /* E0280/E0281 reported by the declaration pass: they alone do not stop the build */
+    /* Misnamed declarations (step 14), in declaration order. Each table is allocated on its first entry, so a
+     * program with no naming error allocates none of them. */
+    Rename    **renames;       /* every Rename, in the order created */
+    size_t      n_renames, cap_renames;
+    Rename    **struct_renames; /* per struct, NULL entries for the well-named */
+    Rename    **fn_renames;     /* per function */
+    Rename   ***param_renames;  /* per function, an array per misnamed-parameter function (indexed by slot) */
+    size_t      cap_decl_items; /* size of the per-item tables above (the number of top-level items) */
 } Ctx;
 
 /* Where a type is being written, which decides what a slice may do there
@@ -144,7 +170,14 @@ bool ir_is_reserved_name(const char *name);
 /* Reports E0280 (snake_case) or E0281 (PascalCase) for a declared name that violates its convention, once,
  * at the declaration. The caller has already ruled out the declarations that bind nothing (duplicates) and
  * `len` (E0257 owns it). Counts the error in cx->naming_errors when `cx` is given (the declaration pass). */
-void ir_check_naming(IrState *st, Ctx *cx, bool pascal, const char *name, Span at);
+Rename *ir_check_naming(IrState *st, Ctx *cx, RenameKind kind, size_t scope, bool pascal, const char *name, Span at);
+/* Records a resolved use of a misnamed declaration (a no-op for NULL). */
+void ir_note_use(IrState *st, Rename *r, Span at);
+/* After every body is built: decides each rename (converted name, collisions) and attaches its fix to the
+ * diagnostic. Not called when the build did not run to the end: the uses are then incomplete. */
+void ir_finalize_renames(IrState *st, Ctx *cx);
+Rename **ir_struct_rename_table(IrState *st, Ctx *cx);
+Rename **ir_fn_rename_table(IrState *st, Ctx *cx);
 
 /* The type of a primitive keyword (`u8`..`i64`, `bool`), or NULL (ir_decls.c). */
 const IrType *ir_prim_type(IrState *st, const char *name);
@@ -186,7 +219,15 @@ typedef struct {
     size_t    scope_cap;
     size_t    fn_index;  /* this function's position among the functions (the call graph's caller) */
     size_t    loop_depth; /* enclosing `while`/`for` bodies: `break`/`continue` are legal only inside one */
+    Rename  **renames;    /* by slot: the misnamed locals and parameters (NULL until the first) */
+    size_t    renames_cap;
 } BodyCtx;
+
+/* The Rename of a local slot (NULL if the local is well named). */
+static inline Rename *body_rename(const BodyCtx *bc, size_t slot) {
+    return bc->renames && slot < bc->renames_cap ? bc->renames[slot] : NULL;
+}
+void body_set_rename(BodyCtx *bc, size_t slot, Rename *r);
 
 /* Starts a body: registers the parameters (already in func->locals, slots 0..n_params-1). */
 void body_init(BodyCtx *bc, IrState *st, Ctx *decls, IrFunc *func);

@@ -1,6 +1,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "ir.h"
 #include "lexer.h"
 #include "parser.h"
@@ -16,7 +17,10 @@
  *     `IR: skipped (parse errors)`;
  *   - `IR: unimplemented` and exit status 3 (IR_UNIMPLEMENTED: the skeleton cannot
  *     build this construct yet - no golden can record that, because the runner
- *     requires status 0). */
+ *     requires status 0).
+ * `ir_dump --fixed <file.mn>` prints the source with EVERY fix the diagnostics carry applied (typed-IR step 14;
+ * tests/ir_fix): the file unchanged if it has none, and for a file the parser or the IR could not accept at all.
+ * The runner re-checks the printed source. */
 
 static char *read_file(const char *path, size_t *out_len) {
     FILE *f = fopen(path, "rb");
@@ -46,12 +50,13 @@ static void print_diags(const DiagList *diags) {
 }
 
 int main(int argc, char **argv) {
-    if (argc != 2) {
-        fprintf(stderr, "usage: ir_dump <file.mn>\n");
+    bool fixed = argc == 3 && strcmp(argv[1], "--fixed") == 0;
+    if (argc != 2 && !fixed) {
+        fprintf(stderr, "usage: ir_dump [--fixed] <file.mn>\n");
         return 1;
     }
     size_t len;
-    char *src = read_file(argv[1], &len);
+    char *src = read_file(argv[fixed ? 2 : 1], &len);
 
     /* static: modified after setjmp and read after the longjmp (C11 7.13.2.1; see
      * parser_main.c). */
@@ -70,6 +75,15 @@ int main(int argc, char **argv) {
     IrModule *m = NULL;
     IrStatus status = ir_build(&st, &ps.diags, &items, &m);
     int rc = 0;
+    if (fixed) {
+        char *out = status == IR_ERRORS ? ir_apply_fixes(src, len, &st.diags) : NULL;
+        fwrite(out ? out : src, 1, out ? strlen(out) : len, stdout);
+        free(out);
+        ir_state_destroy(&st);
+        parser_state_destroy(&ps);
+        free(src);
+        return 0;
+    }
     switch (status) {
         case IR_BUILT:
             ir_dump_module(stdout, m);

@@ -1,0 +1,6 @@
+ERRORS:
+2:4 E0280 'Let' is not snake_case
+4:4 E0280 'Len' is not snake_case
+6:4 E0280 'BOOL' is not snake_case
+8:6 E0280 '_' is not snake_case
+8:13 E0280 'U8' is not snake_case

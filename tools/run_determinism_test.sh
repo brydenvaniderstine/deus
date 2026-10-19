@@ -49,6 +49,25 @@ check_one() {
     echo "PASS $input"
 }
 
+check_one_fixed() {
+    local plain_bin="$1" asan_bin="$2" input="$3"
+    local run1 run2 run_asan
+    run1=$("$plain_bin" --fixed "$input" 2>&1)
+    run2=$("$plain_bin" --fixed "$input" 2>&1)
+    run_asan=$("$asan_bin" --fixed "$input" 2>&1)
+    if [ "$run1" != "$run2" ]; then
+        echo "FAIL (--fixed: non-deterministic across two plain runs) $input"
+        fail=1
+        return
+    fi
+    if [ "$run1" != "$run_asan" ]; then
+        echo "FAIL (--fixed: plain vs ASan output differs) $input"
+        fail=1
+        return
+    fi
+    echo "PASS $input (--fixed)"
+}
+
 for f in tests/lexer/*.mn; do
     check_one "$LEXER_PLAIN" "$LEXER_ASAN" "$f"
 done
@@ -60,6 +79,11 @@ done
 if [ -n "$IR_PLAIN" ] && [ -n "$IR_ASAN" ]; then
     for f in tests/ir/*.mn; do
         check_one "$IR_PLAIN" "$IR_ASAN" "$f"
+    done
+    # Typed-IR step 14: the sources with every rename fix applied (`ir_dump --fixed`) must be just as stable.
+    for f in tests/ir_fix/*.mn; do
+        case "$f" in *.fixed.mn|*.fixed2.mn) continue ;; esac
+        check_one_fixed "$IR_PLAIN" "$IR_ASAN" "$f"
     done
 fi
 

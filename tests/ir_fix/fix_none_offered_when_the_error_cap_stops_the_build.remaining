@@ -1,0 +1,22 @@
+ERRORS:
+2:4 E0280 'badA' is not snake_case
+4:4 E0280 'badB' is not snake_case
+6:4 E0280 'badC' is not snake_case
+8:4 E0280 'badD' is not snake_case
+10:4 E0280 'badE' is not snake_case
+12:4 E0280 'badF' is not snake_case
+14:4 E0280 'badG' is not snake_case
+16:4 E0280 'badH' is not snake_case
+18:4 E0280 'badI' is not snake_case
+20:4 E0280 'badJ' is not snake_case
+22:4 E0280 'badK' is not snake_case
+24:4 E0280 'badL' is not snake_case
+26:4 E0280 'badM' is not snake_case
+28:4 E0280 'badN' is not snake_case
+30:4 E0280 'badO' is not snake_case
+32:4 E0280 'badP' is not snake_case
+34:4 E0280 'badQ' is not snake_case
+36:4 E0280 'badR' is not snake_case
+38:4 E0280 'badS' is not snake_case
+40:4 E0280 'badT' is not snake_case
+40:4 E0203 too many errors, stopping

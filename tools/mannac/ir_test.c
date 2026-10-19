@@ -949,7 +949,7 @@ static void test_build_e0201_and_reuse(void) {
     assert(strcmp(d->code, "E0201") == 0);
     assert(d->span.start_col == 1 && d->span.start_line > 2 && d->span.start_line <= N + 1);
     /* Pinned (like the parser's G5): the line of the function being built when the cap is hit. */
-    assert(d->span.start_line == 13504); /* function #13502, in the SIGNATURE pass (one earlier than before step 7: the body context' Ctx, ~104 bytes, is now allocated first): the 4 MiB cap less the 16 KiB reserve, the 2.6 MB name table and the 160 KB signature array leaves ~1.4 MB, and each signature (IrFunc 88 + "fn:fNNNN" + alignment) is ~103 bytes: 1.4 MB / 103 ~ 13500 */
+    assert(d->span.start_line == 13503); /* function #13501, in the SIGNATURE pass (one earlier again at step 14: Ctx grew by the rename tables, ~56 bytes; before that 13504, one earlier than before step 7: the body context' Ctx, ~104 bytes, is now allocated first): the 4 MiB cap less the 16 KiB reserve, the 2.6 MB name table and the 160 KB signature array leaves ~1.4 MB, and each signature (IrFunc 88 + "fn:fNNNN" + alignment) is ~103 bytes: 1.4 MB / 103 ~ 13500 */
 
     /* The state stays exhausted (the arena is not reset): a second build reports E0201
      * again - the hook is re-armed, so reuse is never silent (the parser's G4 lesson). */
@@ -1520,6 +1520,105 @@ static void test_naming_errors(void) {
     pass("naming: E0280/E0281 spans; naming-only errors keep the bodies in; E0257 or any other declaration error stops the build");
 }
 
+/* Step 14d: the rename fixes. */
+
+/* 1-based line and column of the `occ`-th occurrence of `needle` on 1-based `line` of `src`, as a Span. */
+static Span span_in(const char *src, int line, const char *needle, int occ) {
+    const char *p = src;
+    for (int l = 1; l < line; l++) p = strchr(p, '\n') + 1;
+    const char *eol = strchr(p, '\n');
+    const char *hit = p - 1;
+    for (int k = 0; k <= occ; k++) {
+        hit = strstr(hit + 1, needle);
+        assert(hit && hit < eol);
+    }
+    int col = (int)(hit - p) + 1;
+    return (Span){line, col, line, col + (int)strlen(needle)};
+}
+
+static bool same_span(Span a, Span b) {
+    return a.start_line == b.start_line && a.start_col == b.start_col && a.end_line == b.end_line && a.end_col == b.end_col;
+}
+
+static void test_rename_fixes(void) {
+    static IrState st;
+    ir_state_init(&st, 4 << 20);
+    IrModule *m = NULL;
+    const char *src = "manna v0;\nstruct my_point { fooBar: u8, }\nfn doIt(Count: u8) -> u8 {\n    let p: my_point = my_point(fooBar: Count);\n    return p.fooBar + Count;\n}\nfn g() -> u8 {\n    return doIt(1);\n}\n";
+    parse_src(src);
+    assert(g_ps.diags.len == 0);
+    assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_ERRORS && st.diags.len == 4);
+    /* order: the names pass (my_point, doIt), the fields (fooBar), the signatures (Count) */
+    struct { const char *code, *title, *text; int n; Span spans[6]; } want[] = {
+        {"E0281", "rename 'my_point' to 'MyPoint'", "MyPoint", 3, {span_in(src, 2, "my_point", 0), span_in(src, 4, "my_point", 0), span_in(src, 4, "my_point", 1)}},
+        {"E0280", "rename 'doIt' to 'do_it'", "do_it", 2, {span_in(src, 3, "doIt", 0), span_in(src, 8, "doIt", 0)}},
+        {"E0280", "rename 'fooBar' to 'foo_bar'", "foo_bar", 3, {span_in(src, 2, "fooBar", 0), span_in(src, 4, "fooBar", 0), span_in(src, 5, "fooBar", 0)}},
+        {"E0280", "rename 'Count' to 'count'", "count", 3, {span_in(src, 3, "Count", 0), span_in(src, 4, "Count", 0), span_in(src, 5, "Count", 0)}},
+    };
+    for (int i = 0; i < 4; i++) {
+        const Diagnostic *d = &st.diags.items[i];
+        assert(strcmp(d->code, want[i].code) == 0 && d->fix);
+        assert(strcmp(d->fix->title, want[i].title) == 0 && d->fix->n_edits == want[i].n);
+        for (int k = 0; k < want[i].n; k++) {
+            assert(same_span(d->fix->edits[k].span, want[i].spans[k]) && strcmp(d->fix->edits[k].text, want[i].text) == 0);
+            if (k) { /* sorted, non-overlapping */
+                Span a = d->fix->edits[k - 1].span, b = d->fix->edits[k].span;
+                assert(a.end_line < b.start_line || (a.end_line == b.start_line && a.end_col <= b.start_col));
+            }
+        }
+    }
+    /* applying all of them gives the expected source, which then checks clean */
+    char *fixed = ir_apply_fixes(src, strlen(src), &st.diags);
+    assert(strstr(fixed, "struct MyPoint { foo_bar: u8, }") && strstr(fixed, "fn do_it(count: u8) -> u8 {"));
+    assert(strstr(fixed, "let p: MyPoint = MyPoint(foo_bar: count);") && strstr(fixed, "return p.foo_bar + count;") && strstr(fixed, "return do_it(1);"));
+    parse_done();
+    parse_src(fixed);
+    size_t before = st.diags.len;
+    assert(g_ps.diags.len == 0 && ir_build(&st, &g_ps.diags, &g_items, &m) == IR_BUILT && st.diags.len == before);
+    parse_done();
+    free(fixed);
+    /* a use before the declaration: the edit list is still in source order (use first, declaration second) */
+    {
+        const char *src2 = "manna v0;\nfn g() -> u8 {\n    return doIt(1);\n}\nfn doIt(x: u8) -> u8 {\n    return x;\n}\n";
+        parse_src(src2);
+        assert(g_ps.diags.len == 0);
+        size_t b2 = st.diags.len;
+        assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_ERRORS && st.diags.len == b2 + 1);
+        const DiagFix *fx = st.diags.items[b2].fix;
+        assert(fx && fx->n_edits == 2);
+        assert(same_span(fx->edits[0].span, span_in(src2, 3, "doIt", 0)) && same_span(fx->edits[1].span, span_in(src2, 5, "doIt", 0)));
+        parse_done();
+    }
+
+    /* no fix: another declaration error hides the uses; a keyword target; the error cap */
+    before = st.diags.len;
+    parse_src("manna v0;\n[kernel_hook] [kernel_hook] fn doIt() {\n}\n");
+    assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_ERRORS && st.diags.len == before + 2);
+    assert(strcmp(st.diags.items[before].code, "E0280") == 0 && st.diags.items[before].fix == NULL);   /* its uses are unknown */
+    assert(strcmp(st.diags.items[before + 1].code, "E0215") == 0 && st.diags.items[before + 1].fix);   /* the other fix stays */
+    parse_done();
+    before = st.diags.len;
+    parse_src("manna v0;\nfn Let() {\n}\n");
+    assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_ERRORS && st.diags.len == before + 1 && st.diags.items[before].fix == NULL);
+    parse_done();
+    /* the cap: 25 misnamed functions; the build unwinds at the 20th error and offers no fix; the state is reusable */
+    char big[4096];
+    char *w = big + sprintf(big, "manna v0;\n");
+    for (int i = 0; i < 25; i++) w += sprintf(w, "fn bad%c() {\n}\n", 'A' + i);
+    before = st.diags.len;
+    parse_src(big);
+    assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_ERRORS && st.diags.len == before + 21);
+    for (size_t i = before; i < st.diags.len; i++) assert(st.diags.items[i].fix == NULL);
+    assert(strcmp(st.diags.items[st.diags.len - 1].code, "E0203") == 0);
+    parse_done();
+    before = st.diags.len;
+    parse_src("manna v0;\nfn badName() {\n}\n");
+    assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_ERRORS && st.diags.len == before + 1 && st.diags.items[before].fix && st.diags.items[before].fix->n_edits == 1);
+    parse_done();
+    ir_state_destroy(&st);
+    pass("rename fixes: declaration + every use (sorted, non-overlapping, exact spans and titles), applied source checks clean; none when the uses are unknown, the target is a keyword or the cap unwound; state reusable");
+}
+
 static void test_e0261_fix(void) {
     static IrState st;
     ir_state_init(&st, 1 << 20);
@@ -2028,6 +2127,7 @@ int main(int argc, char **argv) {
     test_diag_fix_edit_list();
     test_naming_predicates_and_converter();
     test_naming_errors();
+    test_rename_fixes();
     test_array_checker_is_linear();
     test_checker_is_linear();
     test_call_ir();
