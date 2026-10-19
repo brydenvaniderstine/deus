@@ -131,6 +131,16 @@ const IrType *ir_resolve_type(Ctx *cx, const Type *t, TypeCtx ctx);
  * unsized struct). */
 void ir_check_type_size(Ctx *cx, const Type *ast, const IrType *t);
 
+/* ---- naming conventions (ir_names.c, typed-IR step 14) ---- */
+bool ir_is_snake_case(const char *name);
+bool ir_is_pascal_case(const char *name);
+/* The name rewritten in the convention, or NULL when no valid name can be made (empty after dropping
+ * underscores, or it would start with a digit). Arena-allocated. */
+const char *ir_to_snake_case(Arena *a, const char *name);
+const char *ir_to_pascal_case(Arena *a, const char *name);
+/* A lexer keyword or the builtin `len`: a name a rename must not produce. */
+bool ir_is_reserved_name(const char *name);
+
 /* The type of a primitive keyword (`u8`..`i64`, `bool`), or NULL (ir_decls.c). */
 const IrType *ir_prim_type(IrState *st, const char *name);
 

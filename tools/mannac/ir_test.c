@@ -1380,6 +1380,76 @@ static void test_convert_spans(void) {
     pass("E0265 spans the whole conversion, E0225 its literal operand (start and end, exact messages)");
 }
 
+/* Step 14a: the predicates and the case converter (ir_names.c). */
+static void test_naming_predicates_and_converter(void) {
+    static const struct { const char *name; bool snake, pascal; } preds[] = {
+        {"x", true, false}, {"foo", true, false}, {"foo_bar", true, false}, {"x1", true, false}, {"a_1", true, false}, {"a_1_b", true, false},
+        {"foo2", true, false}, {"X", false, true}, {"Foo", false, true}, {"FooBar", false, true}, {"HTTPServer", false, true}, {"POINT", false, true}, {"A1b", false, true},
+        {"_", false, false}, {"_x", false, false}, {"x_", false, false}, {"a__b", false, false}, {"fooBar", false, false}, {"Foo_bar", false, false},
+        {"foo_Bar", false, false}, {"1x", false, false}, {"_X", false, false}, {"X_", false, false}, {"x_Y", false, false},
+    };
+    for (size_t i = 0; i < sizeof preds / sizeof preds[0]; i++) {
+        assert(ir_is_snake_case(preds[i].name) == preds[i].snake);
+        assert(ir_is_pascal_case(preds[i].name) == preds[i].pascal);
+    }
+    Arena *a = arena_create(1 << 20);
+    static const struct { const char *in, *snake, *pascal; } conv[] = {
+        {"fooBar", "foo_bar", "FooBar"}, {"HTTPServer", "http_server", "HTTPServer"}, {"X", "x", "X"}, {"getHTTPResponse2", "get_http_response2", "GetHTTPResponse2"},
+        {"FOO_BAR", "foo_bar", "FOOBAR"}, {"a__b", "a_b", "AB"}, {"_x", "x", "X"}, {"__x", "x", "X"}, {"x_", "x", "X"}, {"foo_Bar", "foo_bar", "FooBar"},
+        {"ABC", "abc", "ABC"}, {"x1Y", "x1_y", "X1Y"}, {"my_struct", "my_struct", "MyStruct"}, {"point", "point", "Point"}, {"my_HTTP_server", "my_http_server", "MyHTTPServer"},
+        {"HTTP_server", "http_server", "HTTPServer"}, {"X1_y", "x1_y", "X1Y"}, {"XMLHttp2", "xml_http2", "XMLHttp2"}, {"a_1b", "a_1b", "A1b"}, {"ab12cd", "ab12cd", "Ab12cd"},
+        {"foo2Bar", "foo2_bar", "Foo2Bar"}, {"_point", "point", "Point"}, {"point_", "point", "Point"}, {"Foo", "foo", "Foo"}, {"fooBarBaz", "foo_bar_baz", "FooBarBaz"},
+    };
+    for (size_t i = 0; i < sizeof conv / sizeof conv[0]; i++) {
+        const char *sn = ir_to_snake_case(a, conv[i].in), *pa = ir_to_pascal_case(a, conv[i].in);
+        if (!sn || !pa || strcmp(sn, conv[i].snake) != 0 || strcmp(pa, conv[i].pascal) != 0) {
+            fprintf(stderr, "convert %s: snake %s pascal %s\n", conv[i].in, sn ? sn : "(null)", pa ? pa : "(null)");
+            abort();
+        }
+    }
+    /* no valid name: empty after dropping underscores, or it would start with a digit */
+    static const char *const none[] = {"_", "__", "___", "_1x", "__9"};
+    for (size_t i = 0; i < sizeof none / sizeof none[0]; i++) {
+        assert(ir_to_snake_case(a, none[i]) == NULL && ir_to_pascal_case(a, none[i]) == NULL);
+    }
+    /* reserved: the lexer's keywords and the builtin */
+    static const char *const reserved[] = {"fn", "let", "if", "else", "for", "while", "return", "struct", "true", "false", "break", "continue", "manna",
+                                           "u8", "u16", "u32", "u64", "i8", "i16", "i32", "i64", "bool", "unit", "len"};
+    for (size_t i = 0; i < sizeof reserved / sizeof reserved[0]; i++) assert(ir_is_reserved_name(reserved[i]));
+    static const char *const free_names[] = {"x", "length", "u8x", "bool_", "fnn", "Len", "lenx", "unit_"};
+    for (size_t i = 0; i < sizeof free_names / sizeof free_names[0]; i++) assert(!ir_is_reserved_name(free_names[i]));
+    arena_destroy(a);
+
+    /* Exhaustive property test: every identifier over {a, B, _, 1} up to length 7. A non-NULL result satisfies
+     * its predicate; converting it again returns it unchanged (idempotent); a conforming name converts to
+     * itself; the two results never disagree on emptiness. */
+    static const char alphabet[4] = {'a', 'B', '_', '1'};
+    Arena *pa = arena_create(64 << 20);
+    long checked = 0;
+    for (int len = 1; len <= 7; len++) {
+        long total = 1;
+        for (int k = 0; k < len; k++) total *= 4;
+        for (long code = 0; code < total; code++) {
+            char name[8];
+            long c = code;
+            for (int k = 0; k < len; k++) { name[k] = alphabet[c % 4]; c /= 4; }
+            name[len] = '\0';
+            if (name[0] >= '0' && name[0] <= '9') continue; /* the lexer never produces a leading digit */
+            const char *sn = ir_to_snake_case(pa, name), *pc = ir_to_pascal_case(pa, name);
+            assert((sn == NULL) == (pc == NULL));
+            if (sn) {
+                assert(ir_is_snake_case(sn) && strcmp(ir_to_snake_case(pa, sn), sn) == 0);
+                assert(ir_is_pascal_case(pc) && strcmp(ir_to_pascal_case(pa, pc), pc) == 0);
+            }
+            if (ir_is_snake_case(name)) assert(sn && strcmp(sn, name) == 0);
+            if (ir_is_pascal_case(name)) assert(pc && strcmp(pc, name) == 0);
+            checked++;
+        }
+    }
+    arena_destroy(pa);
+    printf("PASS: naming: predicates and the case converter (%ld identifiers checked exhaustively: valid, idempotent, conforming names unchanged)\n", checked);
+}
+
 static void test_e0261_fix(void) {
     static IrState st;
     ir_state_init(&st, 1 << 20);
@@ -1885,6 +1955,7 @@ int main(int argc, char **argv) {
     test_array_spans();
     test_len_spans();
     test_convert_spans();
+    test_naming_predicates_and_converter();
     test_array_checker_is_linear();
     test_checker_is_linear();
     test_call_ir();

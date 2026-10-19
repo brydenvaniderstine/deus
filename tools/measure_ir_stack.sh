@@ -21,7 +21,7 @@ export ASAN_OPTIONS="${ASAN_OPTIONS:+$ASAN_OPTIONS:}abort_on_error=1"
 CC="${CC:-clang}"
 BUILD="${BUILD:-build/measure_ir}"
 SRC="tools/mannac"
-SRCS="$SRC/arena.c $SRC/ast.c $SRC/diag.c $SRC/parser_state.c $SRC/parser.c $SRC/lexer.c $SRC/ir.c $SRC/ir_dump.c $SRC/ir_build.c $SRC/ir_decls.c $SRC/ir_expr.c $SRC/ir_body.c $SRC/ir_calls.c $SRC/ir_test.c"
+SRCS="$SRC/arena.c $SRC/ast.c $SRC/diag.c $SRC/parser_state.c $SRC/parser.c $SRC/lexer.c $SRC/ir.c $SRC/ir_dump.c $SRC/ir_build.c $SRC/ir_decls.c $SRC/ir_expr.c $SRC/ir_body.c $SRC/ir_calls.c $SRC/ir_names.c $SRC/ir_test.c"
 SHAPES="binary mixed_prec field index postfix_mix in_calls in_ifs"
 FULL=8192
 GATE=2048
