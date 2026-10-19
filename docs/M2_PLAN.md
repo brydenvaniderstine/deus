@@ -732,7 +732,7 @@ A function with no return type prints `(returns)`, matching `(return_type)`. A u
 - **Indexing and slicing.** `a[i]` requires an array or slice base and an index of **any integer type**; the result is the element type. `a[lo..hi]` requires an array or slice base and integer bounds (both mandatory in the grammar); the result is `[]T`. A negative or too-large value is a runtime/verifier out-of-bounds trap, not a type error. A literal out-of-range index is likewise the verifier's (§3).
 - **Array literals.** At least one element, all one type (the first element, or the expected element type, decides); the result is `[len]T`. `[v; N]` has type `[N]T`; `v` is evaluated exactly once even for `N == 0`.
 - **Backend requirement: every local lives until its function returns.** Every local - parameters and `let`s alike, including those declared in inner blocks - has storage that lasts until the function returns. A name's visibility ends at its block's `}`; its storage does not. The Wasm and native backends (and the verifier's model of them) **must not** reuse, pop or overwrite an inner block's slot before the function returns (in Wasm: slots allocated per function frame, not per block). Together with the rules that slices exist only as parameters and locals and that recursion is rejected, a slice of an inner-block array can never outlive the array, even when it is stored in a local declared in an outer block. The IR stage cannot check this and the dump does not show it; it is a requirement on the backends. Its cost: a frame is the sum of all its locals, with no slot reuse across sibling blocks.
-- **No length operation yet.** Nothing in v0 produces `len(x)` or `x.len`, so a `[]T` parameter cannot be iterated to its end, and an array becomes a slice only by writing its length literally (`a[0..4]`). Whether and how to add one is a separate Admission Test item (#15, **open**), to be decided before the IR's array step.
+- **`len(x)` (Admission #15, decided 2026-10-18).** A function-like builtin: `len(x)` takes **exactly one** argument, of type `[N]T` or `[]T`, and returns `u64`. For `[N]T` the result is the constant `N`, but `x` is still evaluated exactly once (the `[v; N]` rule: a call returning an array runs); for `[]T` it reads the stored length, O(1). Any other argument type is `E0255`; any other argument count, or a named argument, is `E0254`. `len` is **not a keyword**: the lexer and parser are unchanged and it parses as an ordinary call (`call.name == "len"`); the IR resolves the name before the top-level lookup. Declaring a function, struct, local or parameter named `len` is `E0257` (consistent with Q3, no shadowing: a name means one thing; a struct *field* named `len` stays legal, it is reached by `p.len`, never confused with the builtin). `len` used other than as a direct call (`let f = len;`, `len + 1`) is `E0256`, **but only when no declaration named `len` exists**: a bare `len` that resolves to a declaration made despite `E0257` (a local, parameter, function or struct) is quiet (its mistake was reported once, at the declaration), and `len(...)` always means the builtin whatever else is named `len`. An argument that is already ERROR-typed gives no `E0255` (one mistake, one error) and the call still has type `u64`; with `E0254` the arguments are still checked for their own mistakes (names, operators, nested calls), not against any type. `a[0..len(a)]` and `a[0..N]` both stay legal and mean the same slice (Admission #15 item 5). The IR keeps the operand so its evaluation is not dropped (a `LEN{operand}` expression, added at step 12). Principle 18's `len` can later move into the stdlib with no source change.
 
 #### Layout and limits
 
@@ -760,7 +760,7 @@ The v0 grammar and AST have no pointer type, dereference or intrinsic syntax (§
 | F8 evaluation order and short-circuit unstated | **Resolved**: "Operators and statements". |
 | F9 division by zero and shift counts not covered by "arithmetic overflow traps" | **Resolved**: same table. |
 | F10 no scoping, shadowing, recursion or slice-lifetime rules | **Resolved**: "Names, scopes, items" and "Arrays, slices, storage". |
-| F11 no way to read a length | **Restated, open**: "No length operation yet"; Admission item #15. |
+| F11 no way to read a length | **Resolved (2026-10-18)**: `len(x)`, "Arrays, slices, storage"; Admission #15 decided. |
 | F12 named args to a function / positional struct construction | **Resolved**: "Calls and struct construction". |
 | F13 naming predicates undefined | **Resolved**: "Naming conventions". |
 | F14 "never a host-stack overflow" is true of the parser only | **Restated**: the sentence in "Universal nesting-depth bound" now says so and points at the planned parser bound (E0111). |
@@ -853,7 +853,7 @@ The five-item test is `docs/MANNA_PRINCIPLES.md`'s "Feature Admission Test". One
 4. **Machine cost:** none - no runtime construct.
 5. **Second way?** It removes one: `fn f() {}` and `fn f() -> unit {}` can no longer both be written.
 
-**Second batch: typed IR records (#7-#15).** The second batch, from the typed-IR plan (`docs/TYPED_IR.md`), decided 2026-10-11. Every record is **pending admission**: the spec entry exists ("Typed IR (stage 3): decided rules", §4), the goldens do not - they are due in the IR step named in each record, and a record is upgraded to "admitted" only with its goldens cited. #15 is **open** (not yet decided).
+**Second batch: typed IR records (#7-#15).** The second batch, from the typed-IR plan (`docs/TYPED_IR.md`), decided 2026-10-11. Every record is **pending admission**: the spec entry exists ("Typed IR (stage 3): decided rules", §4), the goldens do not - they are due in the IR step named in each record, and a record is upgraded to "admitted" only with its goldens cited. #15 was decided 2026-10-18 (pending admission like the rest: goldens due at IR step 12).
 
 ### #7 - integer literals have no default type; the negative-minimum rule at every signed width
 
@@ -935,15 +935,15 @@ The five-item test is `docs/MANNA_PRINCIPLES.md`'s "Feature Admission Test". One
 4. **Machine cost:** none at runtime; one compare per non-leaf expression node at parse time, and a `uint16_t` in existing padding (`sizeof(Expr)` unchanged at 72).
 5. **Second way?** No.
 
-### #15 - a length operation (`len`) - OPEN
+### #15 - a length operation (`len`) - DECIDED 2026-10-18
 
-**Status: OPEN - not decided, no spec entry. Must be decided before IR step 12 (arrays), which is blocked until then.**
+**Status: DECIDED 2026-10-18 (Bryden): a function-like builtin `len(x)`. Pending admission: the goldens are due in IR step 12, which is no longer blocked.**
 
-1. **Principles / locked decisions:** principle 18 names `len` as the stdlib convention, but v0 has no stdlib or builtins; the real design question is the first builtin mechanism (function-like `len(x)`, a pseudo-field `x.len`, or none). Not evaluated here.
-2. **Spec / goldens / errors:** none yet.
-3. **Scope:** a language addition; must be argued as v0 scope (item 3 of the test).
-4. **Machine cost:** a slice carries its length (pointer + length, §2), so reading it is O(1); an array's length is a compile-time constant.
-5. **Second way?** Without it an array becomes a slice only by writing its length literally (`a[0..4]`); with it, `a[0..len(a)]` would be a second spelling of the same slice, which the record must address.
+1. **Principles / locked decisions:** principle 18 names `len` as the stdlib convention (never `length`/`size`/`count`); v0 has no stdlib, so `len` is the first builtin, and being a function-like call it adds no syntax (principle 7, small core; LL(1) untouched). It is not a keyword: the lexer and parser are unchanged and no lexer or parser golden changes, so the tagged parser (`m2-parser-v0.1`) is untouched. It can later move into the stdlib with no source change. No locked decision touched. A pseudo-field `x.len` was not chosen: it would make `len` a field name the IR must special-case on array and slice types.
+2. **Spec / goldens / errors:** spec = "Arrays, slices, storage", the `len(x)` bullet. Errors (registered in `docs/error_codes.md`, emitted from step 12): `E0254` wrong argument count or a named argument, `E0255` argument is not an array or slice, `E0256` `len` used other than as a direct call, `E0257` a function, struct, local or parameter named `len`; each with a documented no-fix-it exception. Goldens due at step 12: `len` of an array (constant, operand still evaluated once, including a call returning an array), of a slice, in `a[0..len(a)]`, zero or two arguments, a named argument, an integer / `bool` / struct argument, `len` as a value, and each of the four declaration kinds named `len`.
+3. **Scope:** v0. Without it a `[]T` parameter can never be iterated to its end (the one-way-to-use-a-slice hole), so slices would be half a feature.
+4. **Machine cost:** a slice carries its length (pointer + length, §2), so reading it is O(1); for an array the result is a compile-time constant. No allocation, no trap.
+5. **Second way?** Without `len` an array becomes a slice only by writing its length literally (`a[0..4]`). With it, `a[0..len(a)]` and `a[0..N]` are both legal and mean the same slice. Accepted: the second is a constant spelling of the same length, not a different mechanism (one operation, slicing; `len` only reads a number), so it is not a competing way to do the same thing.
 
 ## Working log
 
