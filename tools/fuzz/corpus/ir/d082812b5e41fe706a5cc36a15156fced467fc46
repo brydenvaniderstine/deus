@@ -1,0 +1,12 @@
+manna v0;
+st8 {
+    re/turn a;
+}
+fn t() {
+    let z: [2eturn tru 2];
+    let  a;
+}
+fn t() {
+    let a: [2eturn tru 2];
+    let v = a[true];
+}

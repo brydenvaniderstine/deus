@@ -1,0 +1,19 @@
+manna v0;
+fn f(c: bool) -> u8 {
+    if c {
+        return 1
+    if c {
+ ÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿ    } else {
+    }
+}
+fn g(c: bool) -> u8 {
+    if c {
+    } else {
+        return 1;
+    }
+fn g2(c: bool) -> u8 {
+    if c {
+    } else {
+        return 1;
+    }
+}

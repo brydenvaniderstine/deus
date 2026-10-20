@@ -1,0 +1,10 @@
+manna v0;
+fn nothing() {
+}
+fn f(b: bool) {
+    let a = u8(n
+    let c = u8(nope);
+    let d = bool(nope);
+    let e: bool = u8(b);
+    let g: BadNameu8 = u8(nope);
+}

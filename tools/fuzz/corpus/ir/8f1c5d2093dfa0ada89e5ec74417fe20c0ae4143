@@ -1,0 +1,32 @@
+manna v0;
+fn one() -> u32 { r ->8u  { return -0; }
+fn min64() -> u64 { return -9223372036854775808; }
+fn paren() -> u16 { rete(走依 u32 { return -1; }
+fn zero() ->8u  { return -0; }
+fn min64() -> u64 { return -9223372036854775808; }
+fn paren() -> u16 { return -(1); }?
+fn twice() -> u8 { return --1; }
+fn big_lieturn -1; }
+fn zero() ->8u  e(走依 u32 { return -1; }
+fn zero() ->8u  { return -0; }
+fn min64() -> u64 { return -9223372036854775808; }
+fn paren() -> u16 { return -(1); }?
+fn twice() -> u8 { return --1; }
+fn big_lieturn -1; }
+fn zero() ->8u  { return -0; }
+fn min64() -> u64 { return -9223372036854775808; }
+fn paren() -> u16 { rete(走依 u32 { return -1; }
+fn zero() ->8u  { return -0; }
+fn min64() -> u64 { return -9223372036854775808; }
+fn paren() -> u16 { return -(1); }?
+fn twice() -> u8 { return --1; }
+fn big_literal_silent() -> u8 { { return -0; }
+fn min64() -> u64 { return -9223372036854775808; }
+fn paren() -> u16 { rete(走依 u32 { return -1; }
+fn zero() ->8u  { return -0; }
+fn min64() -> u64 { return -9223372036854775808; }
+fn paren() -> u16 { return -(1); }?
+fn twice() -> u8 { return --1; }
+fn big_literal_silent() -> u8 { return -256; }
+fn spaced(}
+fn min64 return - 5; }

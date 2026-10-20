@@ -1,0 +1,8 @@
+manna v0;
+struct P { x: u8, y: u8, }
+fn noth{
+    return a;
+}
+fn t() {
+    let v = nope.x;
+}

@@ -1,0 +1,9 @@
+manna v0;
+struct  }
+fn f(n: u16) {
+    let a = P(x: 256, ok: true);
+    let b = P(x: true, ok: 1);
+    let cX = P(x: n, ok: false);
+    let d: P = Q(x: 1/ ok: true);
+    let e = P e;
+}

@@ -1,0 +1,6 @@
+manna v0;
+stcA rut { a: unit, }
+struct B { b: [4]unit, }
+struct C { c: []unit, }
+fn p1 }
+fn l2() { let y: [3][]unit = 2; }

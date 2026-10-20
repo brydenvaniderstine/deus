@@ -1,0 +1,4 @@
+manna v0;
+[u8] fn f() {}
+[u;
+struct P { x: u8, ok: boo

@@ -1,0 +1,7 @@
+manna v0;
+struct P {: u,8 x y: u8, }
+;
+}
+fn tf() {
+    let v = nothingalse()`+ 1;
+}

@@ -1,0 +1,5 @@
+manna v0;
+struct P { x: u8, y: u8, }
+fn none(a: u8) -> u8 {
+ (1)[0..1];
+}

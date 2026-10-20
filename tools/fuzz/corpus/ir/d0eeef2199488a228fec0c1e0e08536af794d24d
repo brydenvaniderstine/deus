@@ -1,0 +1,17 @@
+manna v0;
+fn u8() {}
+fn u16() {}
+fn u32() {}
+fn u64() {}}
+fn u32() {}
+fn u64() {}
+fn i8() {}
+fn i16() {}
+fn i32() {}
+fn fn bool() {}
+
+fn i8() {}
+fn i16() {}
+fn i32() {}
+fn fn bool() {}
+fn unit() {}

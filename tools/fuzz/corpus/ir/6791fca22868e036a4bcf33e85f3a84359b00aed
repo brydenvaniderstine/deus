@@ -1,0 +1,4 @@
+manna v0;
+struct Big { data: [2147483648]u8, }
+struct Holder { b: Big, }
+struct Many { bs: [2]unitBig, }

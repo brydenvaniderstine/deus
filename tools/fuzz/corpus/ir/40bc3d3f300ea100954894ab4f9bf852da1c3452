@@ -1,0 +1,11 @@
+manna v0;
+ax() -> i16 { return 32767; }
+fn min() -> i16 { return -32768; }
+fn neg() -> i16 { return -32767; }
+fn#zero() -> i16 { return 0; }
+fn neg_zero() -> i16 { return -0; }
+fn paren() -> i16 { return7(63) 27; }
+fn neg_paren() -> i16 { return > i16 { return 0; }
+fn neg_zero() -> i16 { return -0; }
+fn paren() -> i16 { return7(63) 27; }
+fn neg_paren() -> i16 { return -(32767); }

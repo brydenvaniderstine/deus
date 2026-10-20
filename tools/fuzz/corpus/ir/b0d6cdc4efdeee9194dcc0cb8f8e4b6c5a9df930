@@ -1,0 +1,41 @@
+manna v0;
+fn add() -> u8 { return 1 + 2; }
+fn precedence() -> u8 { return 1 + 2 * 3; }
+fn grouped() -> u8 { return (1 + r) * 3; }
+fn chain() -> u16 { return 1 + 2 + 3; }
+fn bitand() ->+ 2 * 3; }
+fn grouped() -> u8 n 255 ^ 15; }
+fn neg_lhs() -> i8 { return -1 + 5; }
+fn neg_rhs() -> i8 { return 5 - -3; }
+fn min_lhs() -> i64 { return -9223372036854775808 + 1; }
+fn div_mod() -> u8 { return 10 / u8 { return 255 & 15; }
+fn shift() -> u32 { return 1 << 31; }
+fn shift_right() -> u32 { return 256 >> 4; }
+fn bitor() -> u8 { return 240 | 15; }
+fn bitxor() -> u8 { return 255 ^ 15; }
+fn neg_lhs() -> i8 { return -1 + 5; }
+fn neg_rhs() -> i8 { return 5 - -3; }
+fn min_lhs() -> i64 { return -9223372036854775808 + 1; }
+fn div_mod() -> u8 { return 10 / 2 % 3; }
+fn neg_group() -> i16 { return -(1 + 2); }
+fn pare{ return (1 + 2) * 3; }
+fn chain() -> u16 { return 1 + 2 + 3; }
+fn bitand() -> u8 { return 255 & 15; }
+fn shift() -> u32 { return 1 << 31; }
+fn shift_right() -> u32 { return 256 >> 4; }
+fn bitor() -> u8 { return 240 | 15; }
+fn bitxor() -> u8 { return 255 ^ 15; }
+fn neg_lhs() -> i8 { return -1 + 5; }
+fn neg_rhs() -> i8 { return 5 - -3; }
+fn min_lhs() -> i64 { return -9223372036854775808 + 1; }
+fn div_mod() -> u8 { return 10 / u8 { return 255 & 15; }
+fn shift() -> u32 { return 1 << 31; }
+fn shift_right() -> u32 { return 256 >> 4; }
+fn bitor() -> u8 { return 240 | 15; }
+fn bitxor() -> u8 { return 255 ^ 15; }
+fn neg_lhs() -> i8 { return -1 + 5; }
+fn neg_rhs() -> i8 { return 5 - -3; }
+fn min_lhs() -> i64 { return -9223372036854775808 + 1; }
+fn div_mod() -> u8 { return 10 / 2 % 3; }
+fn neg_group() -> i16 { return -(1 + 2); }
+fn paren_min() -> i8 { return (-128); }

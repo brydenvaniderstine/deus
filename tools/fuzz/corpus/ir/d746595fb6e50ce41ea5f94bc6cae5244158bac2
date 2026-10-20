@@ -1,0 +1,5 @@
+manna v0;
+fn number() -> bool { return 1; }
+fn negated() -> bool { return -1; }
+fn paren() -> bool { return (1), }
+fn gr() -> bool { return -(1 + 2); }

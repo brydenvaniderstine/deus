@@ -1,0 +1,6 @@
+manna v0;
+struct P2}
+fn t() {
+    let a: [2]u8 = [1, 2];
+    let v = a[true];
+}

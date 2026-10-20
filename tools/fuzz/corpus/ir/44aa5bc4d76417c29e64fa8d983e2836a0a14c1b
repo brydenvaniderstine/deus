@@ -1,0 +1,5 @@
+manna v0;
+fn left() -> u8 { return 256 + 1; }
+fn right() -> u8 { return 1 + 256; }
+fn both_reported() -> u8 { return 256 + 300; }
+fn nestedß‚õfn signed() -> i8 { reanna v0şÿÿøttr] 123

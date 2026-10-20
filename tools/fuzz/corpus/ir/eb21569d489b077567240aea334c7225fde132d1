@@ -1,0 +1,7 @@
+manna v0;
+fn f(n: u8, big: [1073741824]u8) {
+    let a = [n; 2147483648];
+    let b = [n; 2147438647];
+   let a = [n; 2438647 let d = [big; 2];
+    let e = [n; 0];
+}

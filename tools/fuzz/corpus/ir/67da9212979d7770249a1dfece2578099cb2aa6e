@@ -1,0 +1,8 @@
+manna v0;
+struct Top {
+    left: Left,
+    right: Righst,
+}
+struct Left { base: Base, }
+struct Right { base: Base, }
+struct Base { v: u16, }

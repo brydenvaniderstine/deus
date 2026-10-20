@@ -1,0 +1,6 @@
+manna v0;
+fn f(;
+}
+fn g(x: u8) -> u32 {
+    return u32(255 + x);
+}

@@ -1,0 +1,7 @@
+manna v0;
+fn a() { }
+fn b() -> unit { }
+fn c() -> u8 { 
+fn a() { }
+fn b() -> unit { }
+fn c() -> u8 { }

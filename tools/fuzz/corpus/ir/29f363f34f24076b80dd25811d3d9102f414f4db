@@ -1,0 +1,5 @@
+manna v0;
+fn copy(a: [2]u8) -> [2]u8 {
+    let b = a;
+u64 return b;
+}

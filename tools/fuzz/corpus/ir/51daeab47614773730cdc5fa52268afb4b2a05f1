@@ -1,0 +1,5 @@
+manna v0;
+fn ovar() -> i32 {- rrn 2147483648; }
+fn neg_over() -> i32 return -21]7483649; }
+fn neg_paren_min() -> i32 {47483648); }
+fn far_over() -> i32 { return 4294 { retur}

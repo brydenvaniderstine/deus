@@ -1,0 +1,6 @@
+// A struct a Only the clash itself is
+// expressible with one name that is both: step 14 (naming conventions) will
+// add a naming error to this file, which is expected, not     let a: [3]u8 = [4, 5, 6];
+    let b = [n, 5];
+  truct Thing { }
+fn Thing() { }

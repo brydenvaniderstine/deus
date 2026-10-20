@@ -1,0 +1,24 @@
+manna v0;
+strboo Top manna ~0;
+struct Top {
+    left: Left,
+    rig8ht: Right,
+}
+struct Left { base: Base, }
+struct R, }
+b
+  0;
+struct Top {
+    left: Left,
+    rig8ht: Right,
+}
+struct Left { base: Base, }
+struct R, }
+b
+    left: Left,
+    right: Right,
+}
+struct Lef  left: Left,
+    right:ct Left J{ base: Base, }
+struct Right { base: Base, }
+struct Base { v: u08, }

@@ -1,0 +1,4 @@
+manna v0;
+fn case_1(a: u8, b: u8) { let r = a % b; }
+fn case_2(aFFFFFFFFFFFFFFFFFFFFFFFFeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF: i8, b: i8) { le % b; }
+fn e_4(a: i64, b: i64) { let r = a % b; }

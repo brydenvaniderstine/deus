@@ -1,0 +1,8 @@
+manna v0;
+struct u8 { x: u8, }
+struct u16 { x: u8, }
+st { x,8u : }
+struct u64 { x: u8,32 {  u8, }
+struct i28 { x: u8, }
+struct bool { x: u8, }
+rtruct unit { x: u8, }

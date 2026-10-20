@@ -1,0 +1,9 @@
+manna v0;
+struct S { u8: u8, }
+struct S { u16: u8, }
+struct S { u32: u8, }
+struct S { u64: if, }
+struct S { i8:
+struct S { i64 if, }
+struct S { bool: u8, }
+struct S { unit: u8, }

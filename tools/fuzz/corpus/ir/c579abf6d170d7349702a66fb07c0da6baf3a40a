@@ -1,0 +1,6 @@
+manna v0;
+fn nothing() {
+    let a = P(x: nothing());
+    let b = nothing().x;
+    let c = P(zz: nothing());
+}

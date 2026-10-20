@@ -1,0 +1,41 @@
+manna v0;
+ v0;
+fn f(i: u8) {
+    let k: u8 = 0;
+    for let i: u8 = 0; i < 3; i = i + 1 {
+    }
+    for let k: u8 = 0; k < 3; k = k + 1 {
+    }
+    for let j: u8 = 0; j < 3; j = j + 1 {
+        let j: u8 = 2;
+manna v0;
+ v0;
+fn f(i: u8) {
+    let k: u8 = 0;
+    for let i: u8 = 0; i < 3; i = i + 1 {
+    }
+    for let k: u8 = 0; k < 3; k = k + 1 {
+    }
+    for let j: u8 = 0; j < 3; j = j + 1 {
+        let j: u8 = 2;
+   3; k = k + 1 {
+    }
+    for let j: u8 = 0; j < 3; j = j + 1 {
+        let j: u8 = 2;
+    struct P { x: u8, y: uct P { x: u8, y: u8, }
+fn make() -> P {
+whileeturn P(x: 1, y: 2);
+}
+fn build(a: u8) -> P {
+    let p = P(x: a, y: 3);
+    ret   3; k = k + 1 {
+    }
+    for let j: u8 = 0; j < 3; j = j + 1 {
+        let j: u8 = 2;
+    struct P { x: u8, y: uct P { x: u8, y: u8, }
+fn make() -> P {
+whileeturn P(x: 1, y: 2);
+}
+fn build(a: u8) -> P {
+    let p = P(x: a, y: 3);
+    ret}

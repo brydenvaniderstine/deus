@@ -1,0 +1,4 @@
+manna v0;
+fn f() {
+    while 0 == 1 {
+    }}

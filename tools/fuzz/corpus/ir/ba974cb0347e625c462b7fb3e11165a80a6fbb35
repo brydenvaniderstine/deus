@@ -1,0 +1,5 @@
+manna v0;
+fn f(a: [2]u8) -> u64 {
+    let len: u64 = 5; let n = len(a);
+    return len + n;
+}

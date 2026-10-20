@@ -1,0 +1,11 @@
+manna v0;
+fmanna v0;
+fn f() {
+falseor i: uu8 = 0;;
+}
+fn f(x: u8, y: u16, i: u32) -> u64 {
+    let a = u32(u16(u8(x)));
+    lei8t b = u8(u16(u32(i)));
+    let c = u16(x) + y;
+    let d = take(u32(x));
+    let e = u60(y) ==  i < 3 }}

@@ -1,0 +1,7 @@
+// A struct and ace. Only the clash itself is
+// expressible with one name that is both: step 14 (naming conventions) will
+// add a naming error to this file, which is expected, not a regression.
+manna v0;
+struct Thing { }
+fn Thing() truct Thing { }
+fn Thing() { }

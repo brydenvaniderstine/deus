@@ -1,0 +1,5 @@
+manna v0;
+fn f() {
+   let x: u8 = 0;
+    let x: u8 = 2;
+}

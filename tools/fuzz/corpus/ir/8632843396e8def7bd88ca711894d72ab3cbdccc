@@ -1,0 +1,8 @@
+manna v0;
+fn f(a: u8, b: bool) {
+    a = 1;
+    a = a;
+  (  b = true;
+    let c: u8 = 0;
+    c = a;
+}

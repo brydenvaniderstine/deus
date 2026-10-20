@@ -1,0 +1,9 @@
+manna v0;
+sy: Rn, }
+fn noone(a: u8) -> u8 {
+    return a;
+}
+fn t() {
+    let a: u8 = 1;
+    let v = a.x;
+}

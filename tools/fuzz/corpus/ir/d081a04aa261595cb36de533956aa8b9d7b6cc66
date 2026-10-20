@@ -1,0 +1,4 @@
+manna v0;
+fn case_1(a: u8) { let r = ~a; }
+fn case_2(a: i8let r = ~a; }
+fn case_4(a: i64)2{ let r = ~a; }

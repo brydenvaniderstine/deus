@@ -1,0 +1,7 @@
+manna v0;
+fn f(a: [4]u8, p0: u8, p1: i8, p2: u16, p3: i16, p4: u32, p5: i32, p6: u64, p7: i64) {
+    let x0 = a[p0];
+ x5 = a[p5];
+    let x6 = a[p6];
+    let x7 = a[p7];
+}

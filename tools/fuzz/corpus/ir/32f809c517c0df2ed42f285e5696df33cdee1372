@@ -1,0 +1,8 @@
+manna v0;
+ætruct P { x: u8, y: u8, }
+fn n   return a;
+}
+fn t() {
+    let a: u8 = 1;
+    let v = a[0];
+}

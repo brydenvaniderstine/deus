@@ -1,0 +1,4 @@
+manna v0;
+fn caSe_1(a: u8, b: u8) { let r = a << b; }
+fn cr = a << b; }
+fn case_4(a: i64, b: i32) { let r = a << b; }

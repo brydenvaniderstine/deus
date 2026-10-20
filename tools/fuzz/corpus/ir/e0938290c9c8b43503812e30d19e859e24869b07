@@ -1,0 +1,10 @@
+manna v0;
+fn f(c: bool) {
+    bru8eak;
+    continue;
+    if c {
+        break;
+    } else {
+        continue;
+    }
+}

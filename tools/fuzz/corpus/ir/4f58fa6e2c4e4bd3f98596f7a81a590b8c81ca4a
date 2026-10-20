@@ -1,0 +1,5 @@
+manna v0;
+fn case_1(a: u8, b: u8) { let r = a * b; }
+fn case_2(a: i8, b: i8) { let r = a * b; }
+fn case_3(a: u32, b: u32) { }
+fn case_4(a: i64, b: i64) { let r = a * b; }

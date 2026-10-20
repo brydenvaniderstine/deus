@@ -1,0 +1,4 @@
+manna v0;
+struct Ro_ot { b: B, }
+struct A { b: B, }
+struct B { a: A, }

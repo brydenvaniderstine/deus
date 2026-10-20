@@ -1,0 +1,6 @@
+manna v0;
+struct P { x: u8, y: turn a;
+}
+fn t() {
+    let v: [2]bool = [true; 2147483648];
+}

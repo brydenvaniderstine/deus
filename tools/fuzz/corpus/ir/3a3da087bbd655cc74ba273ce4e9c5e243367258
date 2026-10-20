@@ -1,0 +1,8 @@
+manna v0;
+fn one() -> u8 {
+    x = n.v;
+    let y = b.v;
+    let z = (n + 1).v;
+    let w = one().v;
+    let u = n.v.v;
+}

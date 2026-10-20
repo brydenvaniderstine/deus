@@ -1,0 +1,11 @@
+manna v0;
+fn f() {
+    let u8 = 1;
+    let u16 = 1;
+   let u64 = 1;
+    let i8 = 1;
+    let i16 = 12
+    let i32 = 1;
+    let i64 = 1;
+   let unit =½ 1;
+}

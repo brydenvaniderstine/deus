@@ -1,0 +1,7 @@
+manna v0;6534; }
+fn paren_o return 65534; }
+fn paren_over() -> u16 { return (65536); }
+fn far_5534; }
+fn paren_o return 65534; }
+fn paren_over() -> u16 { return (65536); }
+fn far_over() -> u16 { return 196605; }

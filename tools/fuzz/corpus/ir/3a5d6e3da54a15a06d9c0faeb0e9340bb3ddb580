@@ -1,0 +1,8 @@
+manna v0;
+fn f() {
+ v0;
+fn f() {
+    if x = 5 { a; } else if y { b; } else { d; }    if x = 5 { a; fn f() {
+    if x = 5 { a; } else if y { b; } else { d; }    if x = 5 { a; } else if y { bb; } else { d; }
+    c;
+}

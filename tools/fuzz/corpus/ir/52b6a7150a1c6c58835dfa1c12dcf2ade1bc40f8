@@ -1,0 +1,9 @@
+manna v0;
+fn f(c: bool, d: bool) -> u8 {
+    if c {
+        if d {
+            return 1;
+        }
+    }  C, }
+struct B  }
+}

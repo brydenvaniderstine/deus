@@ -1,0 +1,15 @@
+manna v0;
+struct P { x: u8, y: u8, }
+struct E { }
+fn f(p: P) {
+    le = P(x: 1, z: 2, y: 3);
+    let b = P(x: 1, yy: 2);
+  let b = P(x: 1, yy: 2);
+    let c = p.z;
+    let d = E(3.q 3);
+    let b = P(x: 1, yy: 2);
+  let b = P(x: 1, yy: 2);
+    let c = p.z;
+    let d = E(3.q;
+    let e = E(q: nope);
+}

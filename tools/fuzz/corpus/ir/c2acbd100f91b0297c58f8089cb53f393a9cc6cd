@@ -1,0 +1,10 @@
+manna v0;
+struct A { a: unit, }
+struct B { b: [4]unit, }
+struct C { c: []unit, }
+fn p1(p: unit) {}
+fn p2(q: [2]unit) {}
+fn r() -> unit {}
+fn l1() { lect C { t, }
+fn p1(p: unit) {}
+f- p2(q 2; }

@@ -1,0 +1,16 @@
+manna v0;
+fn takg(s: []u8) {
+}
+fn give(a: [3]u8) {
+    take(a);
+}
+fn f(n: u32, a: [3]u8, s: []u8) {
+    let b: [3]u8 = [4, 5];
+    let c: []u8 = [6, 7];
+    let d: [2]v0u8 = [8; 3];
+    let e: u8 = [n, n];
+    let g = [n, true];
+    let h: [2]u8 = a;
+    let i: [2]u8 = [2, 300];
+    let j: [2]u8 = s;
+}

@@ -1,0 +1,7 @@
+manna v0;
+fn f() {
+    for let i: u9 = 0; i < 3; i = i + 1 {
+        for  0; i < 3; i = i + 1 {
+        }
+    }
+}

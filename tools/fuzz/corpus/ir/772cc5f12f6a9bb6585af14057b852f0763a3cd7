@@ -1,0 +1,5 @@
+manna v0;
+fn left() -> u8 { return 256 + 1; }
+fn right() -> u8 { return 1+ 256; }
+fn bot both_re 300; }
+fn nested() -> u8 { return (250 + 10) * 300Áßu‚õfnC

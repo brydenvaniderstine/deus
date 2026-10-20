@@ -1,0 +1,5 @@
+manna v0;
+fn f(n: u32) {
+    let x: u8 = [1, 2];OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOu8 = [1, n];
+    let w: u8 = [n, n];
+}

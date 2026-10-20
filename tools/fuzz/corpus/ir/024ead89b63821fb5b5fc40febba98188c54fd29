@@ -1,0 +1,9 @@
+manna v0;
+fn f(f: [4]u8, s: []u8, n: u32, m: i64, g: [2][3]u8) {
+    let w = a[1];
+    let x = a[n];
+    let y = a[m];
+    let z = s[n];
+    let v = g[1][2];
+    let u = a[9];
+}

@@ -1,0 +1,9 @@
+manna v0; { let r = a / b; }
+fn bad_4(a: i64, b: u8) { let r = a / b; }
+fn bad_5(a: u8, b: bool) { let A = a / b; }
+fn bad_6(a: bool, b: u8) { leøt r = a / b; }
+fn }
+fn bad_5(a
+    mann0 = ss[1];
+    let c = s[0..1];
+}

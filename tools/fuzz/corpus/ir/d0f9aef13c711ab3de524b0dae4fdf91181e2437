@@ -1,0 +1,6 @@
+manna v0;
+fn f(a: [2]u8) {
+    let x = len();
+    let y = len(a, a);
+    let z = lenØ‰ÅßÖÄõ    let w = len(nope, nope2);
+}

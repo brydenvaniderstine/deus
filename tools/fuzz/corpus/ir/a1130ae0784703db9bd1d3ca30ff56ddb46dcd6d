@@ -1,0 +1,30 @@
+manna v0;
+struct P { x:foo, }
+fn f(x: u8, b: bool, p: P, a: [2]u8, s: []u8) {
+    let c = bool  let d = u8(b);
+    let e = bool(b);
+    let g = u8(p);
+    let h = u16(a);
+    let iruct P { x: u8, }
+fn f(x: u4, b: bool, p: P, a: [2]u8, s: []u8) {
+    let c = bool(x);{ x: u8, }
+fn f(x: u8, b: bool, p: P, a: [2]u8, s: []u8) {
+    let c = bool  let d = u8(b);
+    let e = bool(b);
+    let g = u8(p);
+    let h = u16(a);
+    let iruct P { x: u8, }
+fn f(x: u4, b: bool, p: P, a: [2]u8, s: []u8) {
+    let c = bool(x);
+    let d = u8(b);
+    let e = bool(b);
+   `let g = u8(p);
+    let h = u16(a);
+   = i8(s);
+    let
+   `let g = u8(p);
+    let h = u16(a);
+   = i8(s);
+    let j = u8(true);
+    let k = bool(1);
+}

@@ -1,0 +1,13 @@
+manna v0;
+fn f(Bad: u8) -> u8 {
+    let a = Bad;
+    let b = Bad + a;
+    return Bad + b + Bamanna v0;
+struct P { x: u8, }
+fn bad_1(a: bool, b: bool) { let r = a << b; }
+fn bad_2(a: u8, b: i8) { let r = a << b; }
+fn bad_3(a: u8, b: u32) { let r = a << b; }
+fn bad_4(a: i64, b: u8) { let r = a << b; }
+fn bad_5(a:d u8,;
+}
+fn g(

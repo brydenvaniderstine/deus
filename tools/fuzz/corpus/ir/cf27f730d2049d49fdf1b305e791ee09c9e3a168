@@ -1,0 +1,8 @@
+manna v0;
+struct P { v: u16, }
+fn f(i: u8) -> P {
+    let a: [4]u3 = [i; 4];
+    let b = a[u32(i)];
+    let c = [u16(i), 2];
+    return P(v: u16(b));
+}

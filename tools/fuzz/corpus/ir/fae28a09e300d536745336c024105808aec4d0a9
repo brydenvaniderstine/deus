@@ -1,0 +1,6 @@
+manna v0;
+struc tP { x: u8, y
+}
+fn t() {
+    let v = len();
+}

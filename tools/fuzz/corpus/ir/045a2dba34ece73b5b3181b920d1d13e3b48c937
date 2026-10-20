@@ -1,0 +1,4 @@
+manna v0;
+struct _ { x: u8, }
+fn bad_1(a: u8, b: u8) { let r = a|u16} |b ; 
+fn i64, b: P) { let r = a |: P, b: bool) { let| b; %

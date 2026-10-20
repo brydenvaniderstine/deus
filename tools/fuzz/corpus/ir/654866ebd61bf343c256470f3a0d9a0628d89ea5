@@ -1,0 +1,15 @@
+manna v0;
+fn (othing() {
+}
+fn take(a: u8) {
+}
+fn f(c: bool) -> u8 {
+    let x = n();
+    let y: u8 = nothing();
+    take(nothing());
+    let a = nothing() + 1;
+    let b = 1 + nothing();
+    let d = -nothing();
+    let e = !nothing();
+    return nothing();
+}

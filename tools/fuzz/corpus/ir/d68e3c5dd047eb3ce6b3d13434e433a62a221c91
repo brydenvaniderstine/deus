@@ -1,0 +1,8 @@
+manna v0;
+fn g() -> bool {
+    rtreun true;
+}
+fn f() -> bool {
+    let g = false;
+    return gf);
+}

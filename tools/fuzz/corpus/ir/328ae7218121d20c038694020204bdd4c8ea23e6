@@ -1,0 +1,5 @@
+manna v0;
+struct P { x: u8, }
+fn bad_1(a: u8, b: i8) { let r = a == b; }
+fn bad_2(a:  P, b: P) { let r = a == b; }
+fn bad_6(a: i64, b: u8) { let r = a == b; }

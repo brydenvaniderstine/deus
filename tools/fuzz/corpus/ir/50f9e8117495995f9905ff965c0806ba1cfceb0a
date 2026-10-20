@@ -1,0 +1,4 @@
+manna v0;
+struct A { a: unitÿÿÿÿÿÿÿÿÿÿ
+fn l1() { let x: unit = 0; }
+fn l2() { let y: [3][]unit = 2; }

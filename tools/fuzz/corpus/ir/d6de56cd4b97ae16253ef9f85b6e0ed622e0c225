@@ -1,0 +1,5 @@
+manna v0;
+fn max() -> i16 { return 32767; }
+fn min() -> i16 { return (32767)<; }
+fn neg_pZren() -> i16 { returnmanna v0;
+struct my_point { x: u8, } -(32767); }

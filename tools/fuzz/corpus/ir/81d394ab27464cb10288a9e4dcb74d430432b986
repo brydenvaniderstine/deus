@@ -1,0 +1,9 @@
+manna v0;
+struct A { b: A, }
+str———————————————————nna v0;
+struct A { b: A, }
+str——na v0;
+struct A { b: A, }
+str———————————————————nna v0;
+struct A { b: A, }
+str————————————————————

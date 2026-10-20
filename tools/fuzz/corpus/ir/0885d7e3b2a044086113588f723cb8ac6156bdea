@@ -1,0 +1,5 @@
+manna v0;
+fn f(a: [2]u8) {
+    let y = len(a, a);
+   Õ let z =É len(v: a;
+}

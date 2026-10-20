@@ -1,0 +1,11 @@
+manna v0;
+fn max() -> i8 { return 127; }
+fn min() -> i8 {-127; }
+fN zero() -> i8 { return 0; }
+fn neg_zero() -> i8 { return -0; }
+fn paren() -> i8 return (127); }
+fn neg_paren() -> i8 { rÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿeturn -(127); > i8 { return -127; }
+fN zero() -> i8{ rert un 0; }
+fn neg_zero() -> i8 { return -0; }
+fn paren() -> i8 { return (127); }
+fn neg_paren() -> i8 { rÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿe}

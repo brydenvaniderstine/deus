@@ -1,0 +1,4 @@
+manna v0;
+struct lfn { }
+struct BadName2 {}
+struct bad_name { }

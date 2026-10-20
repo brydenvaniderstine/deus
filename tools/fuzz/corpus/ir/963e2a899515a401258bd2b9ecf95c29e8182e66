@@ -1,0 +1,15 @@
+manna v0;
+struct P { x: u8, }
+fn f(a: [4]u8, b: bool, p: P, m: [2]u8) {
+    let x = a[b];
+    x = a[b];
+    let y = a[p];
+    let z = m[]a;
+    let w = a[true..2];
+    let v = a[0..p];
+    let u = a[nope let y = a[p];
+    let z = m[]a;
+    let w = a[true..2];
+    let v = a[0..p];
+    let u = a[nope];
+}

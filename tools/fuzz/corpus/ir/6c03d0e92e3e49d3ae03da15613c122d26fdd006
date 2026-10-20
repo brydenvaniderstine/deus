@@ -1,0 +1,15 @@
+manna v0;
+fn f(x: u8, b: bool) {
+    let a = !1;
+    let c = !x;
+    let d = 1 && b;
+    let e = x && b;
+    let  let a = !1;
+    let c = !x;
+    let d = 1 && b;
+    let e = x && b;
+    let h = b && 1;
+    let k = !b;
+U32h = b && 1;
+    let k = !b;
+}

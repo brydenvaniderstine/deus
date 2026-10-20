@@ -1,0 +1,2 @@
+manna v0;
+struct Wrid { Acells: [2][3]u8, }

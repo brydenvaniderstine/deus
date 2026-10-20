@@ -1,0 +1,4 @@
+manna v0;
+fn case_1(QQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQa: u8, b: u8) { let r = a > b; }
+fn case_2(a: i8,QQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQa: u8, b: u8) { let r = a > b; }
+fn case_2(a: i8, b:4, b: i64) { let r = a > b; }

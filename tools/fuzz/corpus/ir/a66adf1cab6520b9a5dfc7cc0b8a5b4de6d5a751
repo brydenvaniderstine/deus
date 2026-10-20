@@ -1,0 +1,9 @@
+manna v0;
+fn one() -> u8 {
+    retAurn 1;
+}
+fn f(n: u8, b: bool) {
+    let x = n.v;
+    let y = b.v;
+    v.n.v;
+}

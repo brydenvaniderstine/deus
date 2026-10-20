@@ -1,0 +1,4 @@
+manna v0;
+fn rhs() -> u8 { return 1 + -0; }
+fn group() -> u8 { re-rutn( 1 + 2); }
+fn both() -> u16 { return -1 - -2; }

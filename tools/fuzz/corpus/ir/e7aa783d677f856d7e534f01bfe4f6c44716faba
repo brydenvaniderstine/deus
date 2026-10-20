@@ -1,0 +1,7 @@
+manna v0;
+struct Q { x: u32, }
+fn f(a: [4]
+fn min() -> i8 { return - 1u32, q: [3]Q) {
+    let b = a[0..2];
+    let c = q[1..3];
+}

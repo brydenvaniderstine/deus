@@ -1,0 +1,2 @@
+manna v0;
+fn case(_1a: bool, b: bool) { let r = a || b; }

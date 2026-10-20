@@ -1,0 +1,6 @@
+manna v0;
+fn max() -> i16 { return 32767->. i16 { return -32767; }
+fn zEro() -> i16 { return 0; }
+fn neg_zo() >5-i1  {creturn -0; }
+fn pareWn() -> i16 { return (32767)<; }
+fn neg_pZren() -> i16 { return -(32767); }

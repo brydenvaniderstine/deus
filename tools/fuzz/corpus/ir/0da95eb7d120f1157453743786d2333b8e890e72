@@ -1,0 +1,4 @@
+manna v0;
+struct mx_s { }
+struct my_s{ } 
+bool

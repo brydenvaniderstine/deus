@@ -1,0 +1,4 @@
+manna v0;
+fn  a | b; }
+fn case_2(a: i8, b: i8) { let r = a | 0b; }
+fn ca | b; }

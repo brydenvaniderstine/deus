@@ -1,0 +1,4 @@
+manna v0;
+struct C { a: A* }
+struct B { c:one C, }
+st}

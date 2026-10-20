@@ -1,0 +1,13 @@
+manna v0;
+struct u8 { x: u8, }
+struct u16 { x: u8, }
+struct u32 { x,8u : }
+struct u64 { x: u8, }
+struct i8 manna v0;
+fn f() -> // none
+    unit {
+}
+i32 { x: u8, }
+struct i64 { x: u8, }
+struct bool { x: u8, }
+struct unit { x: u8, }

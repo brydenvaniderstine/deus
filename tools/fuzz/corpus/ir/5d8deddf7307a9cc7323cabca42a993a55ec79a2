@@ -1,0 +1,8 @@
+manna v0;
+str—————————————————————————————————uct Top {
+    left: Left,
+    right: Right,
+}
+struct Left { base: Base, }
+struct Right { base: Base, }
+struct Base { v: u16, }

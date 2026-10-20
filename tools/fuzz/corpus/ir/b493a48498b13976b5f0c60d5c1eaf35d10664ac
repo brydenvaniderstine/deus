@@ -1,0 +1,10 @@
+manna v0;
+[n, true];
+  
+   ;
+}
+fn f(n: u32, a: [3]u8, s: []u8) {
+    let b: [3]u8 = [4, 5];
+    let c: []u8 = [6, 7];
+    lP, b: P) { let r = a != b; }
+fn bad_2(a: i64, b: u8) { let r = a != b; }

@@ -1,0 +1,6 @@
+manna v0;
+struct P;
+}
+fn t() {
+    let v = [[true; 2147483647], [true; 2147483647]];
+}

@@ -1,0 +1,7 @@
+manna v0;
+;structuct P { x: u8, y: u8,Š}
+fn f(x: bool, y: bool) -> P {
+  0 return P( x: u8, y: u9, }
+fn f(x: bool, y: bool) -> P {
+    return P(x:P(x: ;
+}

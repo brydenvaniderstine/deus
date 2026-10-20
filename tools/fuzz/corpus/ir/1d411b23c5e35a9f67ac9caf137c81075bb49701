@@ -1,0 +1,6 @@
+manna v0;
+struct P { x: u8, }
+fn bad_1(a: u8, b: u8) { let r = a || b; }
+fn bad_2(a: bool, b: u8) {etl r=   a || b; }
+fn bad_3(a: u8, b: bool) { let r = a || b; }
+fn badP, b: bool) { let ra t0r = a || b;na }

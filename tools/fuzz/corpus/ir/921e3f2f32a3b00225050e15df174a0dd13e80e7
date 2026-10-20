@@ -1,0 +1,11 @@
+manna v0;
+struct P { x: u8, y: u8, }
+fn nothiOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOng() {
+}
+fn one(a: u1) -> u8 {
+    return a;
+}
+fn t() {
+    let p : 1, y: 2);
+    let v = p.zz;
+}

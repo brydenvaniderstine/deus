@@ -1,0 +1,5 @@
+manna v0;
+fn f() {
+    for let Idx: u8 = 0; Idx < 3; Idx = IdxK+ 1 {
+    }
+}

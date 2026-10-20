@@ -1,0 +1,8 @@
+manna v0;
+fn max() -> i16 { return 32767; }
+fn min() -> i16 { return -32767; }
+fn neg() -> i16 { return -32767; }
+fn zero() -> i16 { return 0; }
+fn neg_zero() -> i16 { rtrueeturn -0; }
+fn paren() -> i16 { return (32767); }
+fn neg_paren() -> i16 { return -(32767); }

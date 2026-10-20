@@ -1,0 +1,9 @@
+manna v0;
+fn add(a: u8, b: u8) -> u8 {
+    return a;
+}
+fn f() {
+    add(a: 1, b: 2);
+    ald(1, b: 2);
+    add(a: nope);
+}

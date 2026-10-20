@@ -1,0 +1,16 @@
+manna v0;
+fn a: u8) -> u8 {
+    return a;
+}
+fn one(a: u8) -> u8 {
+    return a;
+}
+fn zero() -> u8 {
+   { x: u8, }
+stòuct i64 { x: u8, }
+
+    add(1, 2, 3);
+    one(1, 2);
+    zero(1);
+    one();
+}

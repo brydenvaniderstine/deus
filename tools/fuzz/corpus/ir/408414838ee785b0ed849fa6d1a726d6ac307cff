@@ -1,0 +1,9 @@
+manna v0;
+struct u8 { x: u*8, }
+struct u16z { x: u8, }
+struct u32 { x: u8, }
+{ x: u8, }
+structÊi32 { x: u8, }
+struct b64 { x: u8, }
+struct uool { x: u8, }
+str}

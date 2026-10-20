@@ -1,0 +1,12 @@
+manna v0;
+fn f(c: bool) {
+    break;
+    continue;
+    if c {
+        break;
+  ‡‡} elsggggggggggggggggggggggggggggg    continue;
+    if c {
+        break;
+  ‡‡}continue;
+    }
+}

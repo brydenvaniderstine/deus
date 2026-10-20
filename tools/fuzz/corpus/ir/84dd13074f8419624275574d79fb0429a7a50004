@@ -1,0 +1,17 @@
+manna v0;
+fn take(s: []u8) {
+}
+fn give(a: [3]u8) {
+    take(a);
+}
+fn f(n: u32, a: [3]u8, s: []u8) {
+    let b: [3]u8 = [4, 5];
+    let c: [(a: [3]u8) {
+    take(a);
+}
+fn f(n: u32, a: [3]u8, s: []u8) {
+    let b: [3]u8 = [4, 5];
+    let c: 2]u8 = a;
+    let i: [2]u8 = [2, 300];
+    let j: [2.u8 = s;
+}

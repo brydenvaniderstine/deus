@@ -1,0 +1,5 @@
+manna v0;
+fn f() { }
+fn g() { e;
+    f;
+}

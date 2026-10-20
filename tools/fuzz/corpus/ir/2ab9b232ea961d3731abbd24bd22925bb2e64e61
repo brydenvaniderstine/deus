@@ -1,0 +1,8 @@
+manna v0;
+fn f() {
+  -1);
+    let b: u8 = u8(1 + 2);
+    let c: i8 = i8(-(1));
+    let d: u64 = u64(~0);
+ñ   let e: u8 = u8(true);
+}

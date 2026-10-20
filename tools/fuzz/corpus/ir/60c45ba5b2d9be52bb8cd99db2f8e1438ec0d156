@@ -1,0 +1,15 @@
+manna v0;
+fn nothing() {
+}
+fn f(a: [2]u8, n: u8) {
+    let x = [nothing()];
+    et z = [nothing(); 2];
+    let w = a[nothing()];
+    let v = nothing()[ng(); 2];
+    let w = a[nothing()];
+    let v = nothing()[0];
+    let u = a[0..nothing()];
+    let 0];
+    let u = a[0..nothing()];
+    let t: [2]u8 = [nothing(), 1];
+}

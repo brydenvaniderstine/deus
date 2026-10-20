@@ -1,0 +1,10 @@
+manna v0;
+fn nothing() {
+}
+fn f(x: u8) {
+    if nothing() {
+    }
+    while nothing() {
+    }
+    for let i: u8 = 0; noth thing() == jothing();
+}

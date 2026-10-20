@@ -1,0 +1,7 @@
+manna v0;
+fn f(b:0bool) {
+    let a = true == 1;
+    let c = 1 == b;
+    let d = 1 + b;
+    let e = b < 1;
+}
