@@ -1619,6 +1619,31 @@ static void test_rename_fixes(void) {
     pass("rename fixes: declaration + every use (sorted, non-overlapping, exact spans and titles), applied source checks clean; none when the uses are unknown, the target is a keyword or the cap unwound; state reusable");
 }
 
+/* The finalizer sorts the edits and drops an exact duplicate. The checker never records a use twice and never two
+ * spans with one start, so this feeds ir_note_use directly (the defensive tie-breaks of cmp_span). */
+static void test_rename_edit_order_and_dedupe(void) {
+    static IrState st;
+    ir_state_init(&st, 1 << 20);
+    Ctx cx;
+    memset(&cx, 0, sizeof cx);
+    symtab_init(&st, &cx.top, 1);
+    Rename *r = ir_check_naming(&st, &cx, REN_TOP, 0, false, "doIt", (Span){3, 4, 3, 8});
+    assert(r && st.diags.len == 1);
+    ir_note_use(&st, r, (Span){7, 1, 8, 3});  /* same start as the next two, ends later */
+    ir_note_use(&st, r, (Span){5, 5, 5, 9});
+    ir_note_use(&st, r, (Span){7, 1, 7, 9});
+    ir_note_use(&st, r, (Span){5, 5, 5, 9});  /* the exact duplicate */
+    ir_note_use(&st, r, (Span){7, 1, 7, 5});  /* same start, earliest end */
+    ir_note_use(&st, NULL, (Span){1, 1, 1, 2}); /* a no-op */
+    ir_finalize_renames(&st, &cx);
+    const DiagFix *fx = st.diags.items[0].fix;
+    assert(fx && fx->n_edits == 5);
+    Span want[5] = {{3, 4, 3, 8}, {5, 5, 5, 9}, {7, 1, 7, 5}, {7, 1, 7, 9}, {7, 1, 8, 3}};
+    for (int i = 0; i < 5; i++) assert(same_span(fx->edits[i].span, want[i]) && strcmp(fx->edits[i].text, "do_it") == 0);
+    ir_state_destroy(&st);
+    pass("rename edits: sorted by start then end, an exact duplicate use dropped (ir_note_use fed directly)");
+}
+
 static void test_e0261_fix(void) {
     static IrState st;
     ir_state_init(&st, 1 << 20);
@@ -2128,6 +2153,7 @@ int main(int argc, char **argv) {
     test_naming_predicates_and_converter();
     test_naming_errors();
     test_rename_fixes();
+    test_rename_edit_order_and_dedupe();
     test_array_checker_is_linear();
     test_checker_is_linear();
     test_call_ir();
