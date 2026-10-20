@@ -1,0 +1,2 @@
+ERRORS:
+9:17 E0234 'one' is a function; named arguments are for struct construction

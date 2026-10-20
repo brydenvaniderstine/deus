@@ -1,0 +1,2 @@
+ERRORS:
+10:13 E0252 can't index/slice type u8

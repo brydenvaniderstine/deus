@@ -1,0 +1,2 @@
+ERRORS:
+9:13 E0265 can't convert bool to u8; conversions are between integer types only

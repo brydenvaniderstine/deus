@@ -1,0 +1,2 @@
+ERRORS:
+9:13 E0223 type mismatch: expected bool, found integer literal

@@ -52,7 +52,7 @@ QEMU_FLAGS   := -machine q35 -m 8G -cpu qemu64,+apic,+pdpe1gb \
                 -serial file:serial.log -monitor stdio -no-reboot \
                 -d int,cpu_reset -D qemu.log
 
-.PHONY: all image run debug clean limine stage-esp test-wx test-lexer test-lexer-asan test-arena test-arena-asan test-ast test-ast-asan test-parser-state test-parser-state-asan test-parser-fixes test-parser-fixes-asan test-parser test-parser-asan test-determinism test-ir test-ir-asan test-ir-unit test-ir-unit-asan test-ir-fix test-ir-fix-asan coverage fuzz fuzz-lexer fuzz-parser measure-height measure-ir-stack measure-ir-build-stack
+.PHONY: all image run debug clean limine stage-esp test-wx test-lexer test-lexer-asan test-arena test-arena-asan test-ast test-ast-asan test-parser-state test-parser-state-asan test-parser-fixes test-parser-fixes-asan test-parser test-parser-asan test-determinism test-ir test-ir-asan test-ir-unit test-ir-unit-asan test-ir-fix test-ir-fix-asan test-ir-error-codes audit-ir-poison coverage fuzz fuzz-lexer fuzz-parser measure-height measure-ir-stack measure-ir-build-stack
 
 all: $(KERNEL_ELF)
 
@@ -302,6 +302,17 @@ test-ir-fix:
 	@mkdir -p $(IR_DUMP_DIR)
 	$(MANNAC_CC) -std=c11 -Wall -Wextra -O2 -g -o $(IR_DUMP_DIR)/ir_dump $(IR_DUMP_SRCS)
 	@./tools/run_ir_fix_tests.sh $(IR_DUMP_DIR)/ir_dump
+
+# Typed-IR step 15: every E02xx code docs/error_codes.md calls emitted has a golden or unit test (and a constructor in
+# diag.c, and nothing emitted is undocumented); prints the per-code table.
+test-ir-error-codes:
+	@python3 tools/check_error_code_coverage.py
+
+# Typed-IR step 15: the no-cascade audit. Every poisoning line of the builder (ir_error / is_error / error_node /
+# ir_type_error / the struct `poisoned` flag) is executed by at least one tests/ir golden holding exactly ONE
+# diagnostic (per-golden source coverage; needs Xcode's llvm-cov). Prints the table; fails on an unproven line.
+audit-ir-poison:
+	@python3 tools/audit_ir_poison.py --check
 
 test-ir-fix-asan:
 	@mkdir -p $(IR_DUMP_DIR)

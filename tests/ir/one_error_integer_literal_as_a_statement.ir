@@ -1,0 +1,2 @@
+ERRORS:
+9:5 E0225 cannot infer the type of this integer literal; annotate it
