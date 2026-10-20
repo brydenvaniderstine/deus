@@ -52,7 +52,7 @@ QEMU_FLAGS   := -machine q35 -m 8G -cpu qemu64,+apic,+pdpe1gb \
                 -serial file:serial.log -monitor stdio -no-reboot \
                 -d int,cpu_reset -D qemu.log
 
-.PHONY: all image run debug clean limine stage-esp test-wx test-lexer test-lexer-asan test-arena test-arena-asan test-ast test-ast-asan test-parser-state test-parser-state-asan test-parser-fixes test-parser-fixes-asan test-parser test-parser-asan test-determinism test-ir test-ir-asan test-ir-unit test-ir-unit-asan test-ir-fix test-ir-fix-asan test-ir-error-codes audit-ir-poison coverage fuzz fuzz-lexer fuzz-parser measure-height measure-ir-stack measure-ir-build-stack
+.PHONY: all image run debug clean limine stage-esp test-wx test-lexer test-lexer-asan test-arena test-arena-asan test-ast test-ast-asan test-parser-state test-parser-state-asan test-parser-fixes test-parser-fixes-asan test-parser test-parser-asan test-determinism test-ir test-ir-asan test-ir-unit test-ir-unit-asan test-ir-fix test-ir-fix-asan test-ir-error-codes audit-ir-poison coverage fuzz fuzz-lexer fuzz-parser fuzz-ir fuzz-ir-ungated measure-height measure-ir-stack measure-ir-build-stack
 
 all: $(KERNEL_ELF)
 
@@ -389,6 +389,12 @@ fuzz-lexer:
 
 fuzz-parser:
 	./tools/fuzz/run_fuzzers.sh parser
+
+fuzz-ir:
+	./tools/fuzz/run_fuzzers.sh ir
+
+fuzz-ir-ungated:
+	./tools/fuzz/run_fuzzers.sh ir-ungated
 
 clean:
 	rm -rf $(BUILD) $(IMAGE) serial.log qemu.log

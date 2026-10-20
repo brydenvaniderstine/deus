@@ -12,9 +12,11 @@ IrStatus ir_build(IrState *st, const DiagList *parse_diags, const NodeList *item
     assert(parse_diags && items && out);
     *out = NULL;
     /* The gate. Policy, not a safety dependency (docs/TYPED_IR.md section 2.1):
-     * the fuzz target will compile this line out (MANNA_FUZZ_IR_UNGATED, step
-     * 16) to prove the builder survives whatever tree the parser produced. */
+     * the fuzz target compiles this line out (MANNA_FUZZ_IR_UNGATED, tools/mannac/fuzz_ir.c)
+     * to prove the builder survives whatever tree the parser produced. Compiled in everywhere else. */
+#ifndef MANNA_FUZZ_IR_UNGATED
     if (parse_diags->len > 0) return IR_SKIPPED;
+#endif
 
     ir_state_reset_for_build(st);
     size_t base = st->diags.len; /* diags accumulate across builds; only new ones are this build's */

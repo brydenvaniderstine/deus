@@ -4,7 +4,9 @@ set -euo pipefail
 # Step 12: libFuzzer harness runner (docs/M2_PLAN.md). Not run in CI -
 # invoke locally, for a fixed wall-clock budget per target.
 #
-# Usage: tools/fuzz/run_fuzzers.sh [lexer|parser|both]   (default: both)
+# Usage: tools/fuzz/run_fuzzers.sh [lexer|parser|ir|ir-ungated|both]   (default: both = lexer + parser)
+#   ir / ir-ungated: the typed-IR target (typed-IR step 16), gated as used, and with the parse-diagnostics gate
+#   compiled out (-DMANNA_FUZZ_IR_UNGATED); both grow one corpus, tools/fuzz/corpus/ir, seeded from tests/parser and tests/ir.
 #
 # Apple's Xcode clang does not ship the libFuzzer runtime at all
 # (`-fsanitize=fuzzer` fails to link: "file cannot be open()ed ...
@@ -35,9 +37,11 @@ TARGET="${1:-both}"
 LLVM_CLANG="${LLVM_CLANG:-/usr/local/opt/llvm/bin/clang}"
 DURATION_LEXER="${DURATION_LEXER:-180}"   # seconds
 DURATION_PARSER="${DURATION_PARSER:-600}" # seconds
+DURATION_IR="${DURATION_IR:-600}"         # seconds, per IR mode
 BUILD_DIR="build/fuzz"
 CORPUS_LEXER="tools/fuzz/corpus/lexer"
 CORPUS_PARSER="tools/fuzz/corpus/parser"
+CORPUS_IR="tools/fuzz/corpus/ir"
 ARTIFACTS="$BUILD_DIR/artifacts"
 
 if [ ! -x "$LLVM_CLANG" ]; then
@@ -47,7 +51,7 @@ if [ ! -x "$LLVM_CLANG" ]; then
     exit 1
 fi
 
-mkdir -p "$ARTIFACTS" "$CORPUS_LEXER" "$CORPUS_PARSER"
+mkdir -p "$ARTIFACTS" "$CORPUS_LEXER" "$CORPUS_PARSER" "$CORPUS_IR"
 
 run_lexer() {
     echo "==> Building fuzz_lexer ($LLVM_CLANG)"
@@ -71,11 +75,29 @@ run_parser() {
         -artifact_prefix="$ARTIFACTS/parser_" "$CORPUS_PARSER" tests/parser || true
 }
 
+run_ir() { # $1 = gated | ungated
+    local flags=""
+    [ "$1" = ungated ] && flags="-DMANNA_FUZZ_IR_UNGATED"
+    echo "==> Building fuzz_ir_$1 ($LLVM_CLANG)"
+    "$LLVM_CLANG" -std=c11 -g -O1 -fsanitize=fuzzer,address,undefined $flags \
+        -o "$BUILD_DIR/fuzz_ir_$1" \
+        tools/mannac/arena.c tools/mannac/ast.c tools/mannac/diag.c \
+        tools/mannac/parser_state.c tools/mannac/parser.c tools/mannac/lexer.c \
+        tools/mannac/ir.c tools/mannac/ir_dump.c tools/mannac/ir_build.c tools/mannac/ir_decls.c \
+        tools/mannac/ir_expr.c tools/mannac/ir_body.c tools/mannac/ir_calls.c tools/mannac/ir_names.c \
+        tools/mannac/ir_rename.c tools/mannac/fuzz_ir.c
+    echo "==> Fuzzing the IR ($1) for ${DURATION_IR}s"
+    "$BUILD_DIR/fuzz_ir_$1" -max_total_time="$DURATION_IR" \
+        -artifact_prefix="$ARTIFACTS/ir_$1_" "$CORPUS_IR" tests/parser tests/ir 2>&1 | tee "$BUILD_DIR/fuzz_ir_$1.log" || true
+}
+
 case "$TARGET" in
     lexer)  run_lexer ;;
     parser) run_parser ;;
+    ir)     run_ir gated ;;
+    ir-ungated) run_ir ungated ;;
     both)   run_lexer; run_parser ;;
-    *) echo "usage: $0 [lexer|parser|both]" >&2; exit 1 ;;
+    *) echo "usage: $0 [lexer|parser|ir|ir-ungated|both]" >&2; exit 1 ;;
 esac
 
 echo "==> Done."
