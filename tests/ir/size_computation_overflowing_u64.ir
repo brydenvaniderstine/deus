@@ -1,0 +1,5 @@
+ERRORS:
+2:27 E0222 type is too large (size exceeds the limit)
+3:27 E0222 type is too large (size exceeds the limit)
+4:15 E0222 type is too large (size exceeds the limit)
+5:15 E0222 type is too large (size exceeds the limit)

@@ -52,7 +52,7 @@ QEMU_FLAGS   := -machine q35 -m 8G -cpu qemu64,+apic,+pdpe1gb \
                 -serial file:serial.log -monitor stdio -no-reboot \
                 -d int,cpu_reset -D qemu.log
 
-.PHONY: all image run debug clean limine stage-esp test-wx test-lexer test-lexer-asan test-arena test-arena-asan test-ast test-ast-asan test-parser-state test-parser-state-asan test-parser-fixes test-parser-fixes-asan test-parser test-parser-asan test-determinism test-ir test-ir-asan test-ir-unit test-ir-unit-asan test-ir-fix test-ir-fix-asan test-ir-error-codes audit-ir-poison coverage fuzz fuzz-lexer fuzz-parser fuzz-ir fuzz-ir-ungated measure-height measure-ir-stack measure-ir-build-stack
+.PHONY: all image run debug clean limine stage-esp test-wx test-lexer test-lexer-asan test-arena test-arena-asan test-ast test-ast-asan test-parser-state test-parser-state-asan test-parser-fixes test-parser-fixes-asan test-parser test-parser-asan test-determinism test-ir test-ir-asan test-ir-unit test-ir-unit-asan test-ir-ndebug test-ir-ndebug test-ir-fix test-ir-fix-asan test-ir-error-codes audit-ir-poison coverage fuzz fuzz-lexer fuzz-parser fuzz-ir fuzz-ir-ungated measure-height measure-ir-stack measure-ir-build-stack
 
 all: $(KERNEL_ELF)
 
@@ -326,6 +326,18 @@ test-ir-unit:
 	sh -c 'ulimit -s 2048 && $(IR_TEST_DIR)/ir_test --stack'
 	sh -c 'ulimit -s 2048 && $(IR_TEST_DIR)/ir_test --build-stack'
 
+# The IR with asserts compiled out (-DNDEBUG): the code after the two asserts that replaced IR_UNIMPLEMENTED raisers
+# must still stop the build (tools/mannac/ir_ndebug_test.c). Uses the IR sources only, no ir_test.c.
+IR_NDEBUG_SRCS := tools/mannac/arena.c tools/mannac/ast.c tools/mannac/diag.c \
+                  tools/mannac/ir.c tools/mannac/ir_dump.c tools/mannac/ir_build.c tools/mannac/ir_decls.c tools/mannac/ir_expr.c tools/mannac/ir_body.c tools/mannac/ir_calls.c tools/mannac/ir_names.c tools/mannac/ir_rename.c \
+                  tools/mannac/parser_state.c tools/mannac/parser.c tools/mannac/lexer.c \
+                  tools/mannac/ir_ndebug_test.c
+
+test-ir-ndebug:
+	@mkdir -p $(IR_TEST_DIR)
+	$(MANNAC_CC) -std=c11 -Wall -Wextra -O2 -DNDEBUG -o $(IR_TEST_DIR)/ir_ndebug_test $(IR_NDEBUG_SRCS)
+	$(IR_TEST_DIR)/ir_ndebug_test
+
 test-ir-unit-asan:
 	@mkdir -p $(IR_TEST_DIR)
 	$(MANNAC_CC) -std=c11 -Wall -Wextra -g -fsanitize=address,undefined -pthread -o $(IR_TEST_DIR)/ir_test-asan $(IR_TEST_SRCS)
@@ -362,6 +374,7 @@ coverage:
 	LLVM_PROFILE_FILE=$(COVERAGE_DIR)/ir_test-%p.profraw sh -c 'ulimit -s 8192 && $(COVERAGE_DIR)/ir_test'
 	clang -std=c11 -Wall -Wextra -g $(COVERAGE_FLAGS) -o $(COVERAGE_DIR)/ir_dump $(IR_DUMP_SRCS)
 	LLVM_PROFILE_FILE=$(COVERAGE_DIR)/ir-%p.profraw ./tools/run_ir_tests.sh $(COVERAGE_DIR)/ir_dump
+	LLVM_PROFILE_FILE=$(COVERAGE_DIR)/ir_fix-%p.profraw ./tools/run_ir_fix_tests.sh $(COVERAGE_DIR)/ir_dump
 	xcrun llvm-profdata merge -sparse $(COVERAGE_DIR)/*.profraw -o $(COVERAGE_DIR)/merged.profdata
 	xcrun llvm-cov report \
 		$(COVERAGE_DIR)/mannac \

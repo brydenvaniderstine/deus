@@ -1,0 +1,6 @@
+manna v0;
+fn f(a: [2]u8, b: [2]u8, s: []u8, t: []u8) {
+    let r = a == b;
+    let q = s == t;
+    let w = a != b;
+}

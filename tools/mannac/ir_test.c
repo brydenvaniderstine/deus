@@ -1636,8 +1636,15 @@ static void test_rename_edit_order_and_dedupe(void) {
     assert(fx && fx->n_edits == 5);
     Span want[5] = {{3, 4, 3, 8}, {5, 5, 5, 9}, {7, 1, 7, 5}, {7, 1, 7, 9}, {7, 1, 8, 3}};
     for (int i = 0; i < 5; i++) assert(same_span(fx->edits[i].span, want[i]) && strcmp(fx->edits[i].text, "do_it") == 0);
+    /* The three edits that start at 7:1 overlap each other. The builder never produces that (the uses of one name are
+     * disjoint), but ir_apply_fixes takes any DiagList: it applies the first and skips the other two rather than
+     * corrupt the text (ir_rename.c, the `a < pos` skip). */
+    const char *src = "manna v0;\nxx\nabcdoItZ\nl4\n1234doIt9\nl6\ndoItzzzz\nl8\n";
+    char *fixed = ir_apply_fixes(src, strlen(src), &st.diags);
+    assert(strcmp(fixed, "manna v0;\nxx\nabcdo_itZ\nl4\n1234do_it9\nl6\ndo_itzzzz\nl8\n") == 0);
+    free(fixed);
     ir_state_destroy(&st);
-    pass("rename edits: sorted by start then end, an exact duplicate use dropped (ir_note_use fed directly)");
+    pass("rename edits: sorted by start then end, an exact duplicate use dropped (ir_note_use fed directly); overlapping edits are skipped, not applied");
 }
 
 static void test_e0261_fix(void) {
