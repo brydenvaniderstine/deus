@@ -178,7 +178,7 @@ Diagnostic diag_ir_not_a_value(Arena *a, Span at, const char *name, bool is_stru
  * expression. When BOTH are integer types a fix is attached: wrap one operand in the conversion
  * to the other's type, as two zero-width inserts (`T(` before the operand, `)` after it - the
  * E0108 mechanism; no source text needed). `wrap_left` picks the operand, `to_type` the target
- * (docs/TYPED_IR.md D4). With a non-integer operand (bool, a struct) no conversion exists and
+ * (docs/history/TYPED_IR.md D4). With a non-integer operand (bool, a struct) no conversion exists and
  * there is no fix (`fix_to_type` NULL). */
 Diagnostic diag_ir_operand_types_differ(Arena *a, Span at, const char *left, const char *right,
                                         Span left_span, Span right_span, bool wrap_left, const char *fix_to_type);

@@ -5,13 +5,13 @@
 /* AST -> typed IR (typed-IR steps 3-5): the parse-diagnostics gate, the module,
  * the top-level declarations and function signatures (ir_decls.c), and function
  * bodies that are empty. Statements, the one thing still to come
- * (docs/TYPED_IR.md section 7), are refused with IR_UNIMPLEMENTED rather than
+ * (docs/history/TYPED_IR.md section 7), are refused with IR_UNIMPLEMENTED rather than
  * half-built, so no golden can record a half-checked IR. */
 
 IrStatus ir_build(IrState *st, const DiagList *parse_diags, const NodeList *items, IrModule **out) {
     assert(parse_diags && items && out);
     *out = NULL;
-    /* The gate. Policy, not a safety dependency (docs/TYPED_IR.md section 2.1):
+    /* The gate. Policy, not a safety dependency (docs/history/TYPED_IR.md section 2.1):
      * the fuzz target compiles this line out (MANNA_FUZZ_IR_UNGATED, tools/mannac/fuzz_ir.c)
      * to prove the builder survives whatever tree the parser produced. Compiled in everywhere else. */
 #ifndef MANNA_FUZZ_IR_UNGATED

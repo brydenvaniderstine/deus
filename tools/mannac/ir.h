@@ -11,7 +11,7 @@
 /* Typed IR (docs/M2_PLAN.md "Typed IR (stage 3): decided rules", "IR shape").
  * A separate structured tree with its OWN arena and hard cap; the AST is never
  * mutated and must outlive the IR (names are pointers into the AST arena's
- * strings). Working checklist: docs/TYPED_IR.md.
+ * strings). Working checklist: docs/history/TYPED_IR.md.
  *
  * This header is built up across typed-IR step 3: 3a (this part) is types,
  * interning and IrState; 3b adds the node vocabulary and the dumper; 3c adds
@@ -240,7 +240,7 @@ IrFunc *ir_func_new(IrState *st, Span span, const char *name, bool kernel_hook, 
                     size_t n_params, const IrType *ret, IrStmt *body);
 
 /* True if the AST expression respects the parser's E0111 bound. The IR stage
- * ASSERTS the bound, it enforces none of its own (docs/TYPED_IR.md Q14): the
+ * ASSERTS the bound, it enforces none of its own (docs/history/TYPED_IR.md Q14): the
  * builder will `assert(ir_ast_height_ok(e))` at every expression root. O(1):
  * it reads Expr.height, the constructors having computed it. */
 bool ir_ast_height_ok(const Expr *e);

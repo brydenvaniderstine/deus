@@ -2,7 +2,7 @@
 # Typed-IR step 3b: how little host stack does the IR dumper need on a maximal
 # (MAX_EXPR_HEIGHT = 512) tree, per shape, plain and ASan+UBSan builds? Bisects
 # `ulimit -s` (KB) over `ir_test --shape NAME` and reports, per shape, the
-# smallest stack that passed and the margin 8192 / that. The gate (docs/TYPED_IR.md
+# smallest stack that passed and the margin 8192 / that. The gate (docs/history/TYPED_IR.md
 # plan, review fix 3): every shape keeps a margin of at least 4x (passes at 2048
 # KB); under 4x in ANY shape prints STOP and exits 1.
 #

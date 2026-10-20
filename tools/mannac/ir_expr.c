@@ -85,7 +85,7 @@ static IrExpr *error_node(IrState *st, Span span) {
  * A Diagnostic is 64 bytes, and every `ir_error(st, diag_x(...))` written inline puts a 64-byte
  * temporary (plus its ASan redzone) into the frame of the function containing it; the functions
  * below are live once per tree level, so those temporaries were multiplied by the height
- * (measured: docs/TYPED_IR.md step 9). Here they live only while an error is being reported. */
+ * (measured: docs/history/TYPED_IR.md step 9). Here they live only while an error is being reported. */
 
 static IR_COLD void report_range(IrState *st, Span at, uint64_t v, bool negated, const IrType *t) {
     ir_error(st, diag_ir_literal_range(st->arena, at, v, negated, ir_type_text(st, t)));

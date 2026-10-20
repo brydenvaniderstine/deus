@@ -13,7 +13,7 @@
 #include "parser.h"
 #include "parser_state.h"
 
-/* Unit tests for the typed IR (docs/TYPED_IR.md step 3): types and interning,
+/* Unit tests for the typed IR (docs/history/TYPED_IR.md step 3): types and interning,
  * IrState (caps, E0201, E0203, reuse). Grows in 3b (dump, stack) and 3c (gate,
  * build). Plain assert(): the Makefile builds without NDEBUG. */
 
@@ -642,7 +642,7 @@ static void parse_done(void) {
 /* Parses on a thread with a 256 MB stack, then returns: the parser's frames are gone before the caller builds.
  * The builder-stack harness uses it so the stack the builder is measured on is the builder's own, not the
  * parser's (parsing 254 nested calls needs 4-8 MB under ASan by itself: measured, reported in
- * docs/TYPED_IR.md step 10). Everything the parse produces lives in statics and the parser's arena. */
+ * docs/history/TYPED_IR.md step 10). Everything the parse produces lives in statics and the parser's arena. */
 static const char *g_big_src;
 static void *parse_thread(void *unused) {
     (void)unused;

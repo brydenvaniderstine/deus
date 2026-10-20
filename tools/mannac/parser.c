@@ -292,7 +292,7 @@ static Expr *guard_height(Parser *p, Expr *e) {
     return e;
 }
 
-/* Stack trim (typed-IR step 10b; docs/TYPED_IR.md): nested constructs recurse through the whole precedence
+/* Stack trim (typed-IR step 10b; docs/history/TYPED_IR.md): nested constructs recurse through the whole precedence
  * chain, so the frame of every function on that chain is paid once per nesting level, and parsing 254 nested
  * calls needed 4.9 MB under macOS ASan. Nothing below changes what is parsed or reported; it only keeps
  * the frames of the recursive functions small:

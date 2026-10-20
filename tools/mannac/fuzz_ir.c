@@ -8,7 +8,7 @@
 #include "parser.h"
 #include "parser_state.h"
 
-/* libFuzzer entry point for the typed IR (typed-IR step 16, docs/TYPED_IR.md section 6): lexer -> parser -> IR, whole-file
+/* libFuzzer entry point for the typed IR (typed-IR step 16, docs/history/TYPED_IR.md section 6): lexer -> parser -> IR, whole-file
  * mode only (the IR takes a file). Two builds of the same harness:
  *   - gated (default): ir_build refuses a parse that reported any diagnostic, exactly as in use. Mutated inputs rarely
  *     survive the parser, so this mostly exercises the front of the pipeline.

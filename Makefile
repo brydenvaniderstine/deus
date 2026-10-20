@@ -264,7 +264,7 @@ test-determinism:
 	$(MANNAC_CC) -std=c11 -Wall -Wextra -g -fsanitize=address,undefined -o $(IR_DUMP_DIR)/ir_dump-asan $(IR_DUMP_SRCS)
 	@./tools/run_determinism_test.sh $(MANNAC_BIN) $(MANNAC_ASAN_BIN) $(PARSER_DUMP_DIR)/parser_dump $(PARSER_DUMP_DIR)/parser_dump-asan $(IR_DUMP_DIR)/ir_dump $(IR_DUMP_DIR)/ir_dump-asan
 
-# Typed IR (docs/TYPED_IR.md step 3). The IR targets honor MANNAC_CC so a
+# Typed IR (docs/history/TYPED_IR.md step 3). The IR targets honor MANNAC_CC so a
 # Linux/gcc reviewer run is `make MANNAC_CC=gcc test-ir-unit-asan` (the older
 # targets above hardcode clang and are left as they are). ir_test.c runs under
 # an 8 MB stack, the host default the stack tests are about, and the stack
