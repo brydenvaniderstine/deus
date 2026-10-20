@@ -738,34 +738,30 @@ static void test_build_empty_functions(void) {
 /* Fix 2 (review): IR_UNIMPLEMENTED is a status, never a diagnostic and never a dump. Since step 13 no
  * construct the parser can build reaches it: what remains are two states the parser never produces, so the
  * trees are made by moving a node (a named argument out of its call) or by hand. */
-static void unimplemented_named_arg_as_init(void) {
-    /* `let x = g(a: 1);` with the let's initializer replaced by the call's named argument itself */
-    const Decl *d = g_items.items[0];
+/* The one remaining IR_UNIMPLEMENTED raiser (ir_expr.c unimplemented_kind): an ExprKind no case handles. The parser
+ * cannot produce one, so the state is built by overwriting a node's kind. (A named argument outside a call and a
+ * bare block statement are asserts now: the parser never builds them, parser.c:632 and parser.c:1755,1765.) */
+static void corrupt_let_init_kind(const Decl *d) {
     Stmt *let = d->as.function_decl.body->as.block.stmts.items[0];
-    Expr *call = let->as.let_stmt.init;
-    let->as.let_stmt.init = call->as.call.args.items[0];
+    ((Expr *)let->as.let_stmt.init)->kind = (ExprKind)99;
 }
 
 static void test_unimplemented(void) {
     static IrState st;
     ir_state_init(&st, 1 << 20);
-    parse_src("manna v0;\nfn f() { let x = g(a: 1); }\n");
+    parse_src("manna v0;\nfn f() { let x = 1; }\n");
     assert(g_ps.diags.len == 0);
-    unimplemented_named_arg_as_init();
+    corrupt_let_init_kind(g_items.items[0]);
     IrModule *m = (IrModule *)0x1;
     assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_UNIMPLEMENTED);
     assert(m == NULL && st.diags.len == 0);
-    assert(st.unimplemented && strstr(st.unimplemented, "named argument outside a call"));
+    assert(st.unimplemented && strcmp(st.unimplemented, "this expression") == 0);
     parse_done();
 
     /* Errors found before the unwind win over IR_UNIMPLEMENTED, and the state is reusable. */
-    parse_src("manna v0;\nfn a() -> i8 { return 128; }\nfn b() { let x = g(a: 1); }\n");
+    parse_src("manna v0;\nfn a() -> i8 { return 128; }\nfn b() { let x = 1; }\n");
     assert(g_ps.diags.len == 0);
-    {
-        const Decl *d = g_items.items[1];
-        Stmt *let = d->as.function_decl.body->as.block.stmts.items[0];
-        let->as.let_stmt.init = ((Expr *)let->as.let_stmt.init)->as.call.args.items[0];
-    }
+    corrupt_let_init_kind(g_items.items[1]);
     assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_ERRORS && m == NULL);
     assert(st.diags.len == 1 && strcmp(st.diags.items[0].code, "E0224") == 0);
     parse_done();
@@ -773,7 +769,7 @@ static void test_unimplemented(void) {
     assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_BUILT && m != NULL && st.unimplemented == NULL);
     parse_done();
     ir_state_destroy(&st);
-    pass("IR_UNIMPLEMENTED: only the states the parser never produces reach it, no diagnostic, no module; real errors win; state reusable");
+    pass("IR_UNIMPLEMENTED: only an ExprKind no case handles (a state the parser never produces) reaches it, no diagnostic, no module; real errors win; state reusable");
 }
 
 /* `fn f() -> T { return <expr>; }` for one case of the range matrix. Returns the build status;

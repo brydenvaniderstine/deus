@@ -250,7 +250,10 @@ static IrStmt *build_stmt(BodyCtx *bc, const Stmt *s) {
         case STMT_RETURN:   return build_return(bc, s);
         case STMT_BLOCK:    break;
     }
-    ir_unimplemented(bc->st, "a bare block statement"); /* the parser never builds one */
+    /* The parser never builds this: a STMT_BLOCK is made only as a body by parse_block (parser.c:1755, 1765), and
+     * `{` at the start of a statement is E0105 (a bare block is not v0 syntax). */
+    assert(!"a bare block statement");
+    __builtin_unreachable();
 }
 
 /* ---- missing return (E0277) ---- */

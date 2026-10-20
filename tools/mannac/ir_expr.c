@@ -36,7 +36,11 @@ _Noreturn void ir_unimplemented(IrState *st, const char *what) {
 /* Which later step owns an expression kind this step does not check. */
 static _Noreturn void unimplemented_kind(IrState *st, const Expr *e) {
     switch (e->kind) {
-        case EXPR_NAMED_ARG:    ir_unimplemented(st, "a named argument outside a call's arguments"); /* the parser never builds one */
+        case EXPR_NAMED_ARG:
+            /* The parser never builds this: it makes a named argument only as an element of a call's arguments
+             * (parser.c:632), and the call and construction checks consume those themselves. */
+            assert(!"a named argument outside a call's arguments");
+            break;
         case EXPR_NUMBER:
         case EXPR_BOOL:
         case EXPR_IDENT:
