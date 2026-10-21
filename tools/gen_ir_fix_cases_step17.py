@@ -29,3 +29,27 @@ if __name__ == "__main__":
     L = ["manna v0;", "struct P { aB: u8, }", "fn f() {", "    let p = P(aB: 1, aB: 2);", "}"]
     F = rename(L, {"aB": "a_b"})
     write("fix_field_given_twice_in_a_construction", L, F, [g.err(F, 4, "a_b", "E0244", "field 'a_b' given twice", 1)])
+
+    # Finding 4: E0261's fix, when the expression has an expected type, must make the result that type by one lossless widening.
+    L = ["manna v0;", "fn take(x: u32) -> u32 {", "    return x;", "}",
+         "fn ret(a: u8, b: u32) -> u32 {", "    return a + b;", "}",
+         "fn ann(a: u8, b: u32) {", "    let r: u32 = a * b;", "}",
+         "fn arg(a: u8, b: u32) -> u32 {", "    return take(a & b);", "}",
+         "fn asg(a: u32, b: u8) {", "    let r: u32 = 0;", "    r = a | b;", "}",
+         "fn shl(a: u32, b: u8) -> u32 {", "    return a << b;", "}",
+         "fn cmp(a: i8, b: i32) {", "    if a == b {", "    }", "}"]
+    F = list(L)
+    F[5] = "    return u32(a) + b;"; F[8] = "    let r: u32 = u32(a) * b;"; F[11] = "    return take(u32(a) & b);"
+    F[15] = "    r = a | u32(b);"; F[18] = "    return a << u32(b);"; F[21] = "    if i32(a) == b {"
+    write("fix_e0261_with_an_expected_type_widens_to_it", L, F)
+    # No single lossless wrap makes the result the expected type: no fix (the E0261 stays, nothing else is added).
+    L = ["manna v0;", "fn reviewer(a: u8, b: u8) -> u8 {", "    return u32(a) + b;", "}",
+         "fn narrow(a: u32, b: u8) -> u8 {", "    return a + b;", "}",
+         "fn sign(a: u8, b: i8) -> u8 {", "    return a + b;", "}",
+         "fn count(a: u8, b: u32) -> u8 {", "    return a << b;", "}",
+         "fn cmp(a: u8, b: i8) {", "    if a < b {", "    }", "}",
+         "fn nonint(a: u8, b: u32) {", "    let r: bool = a + b;", "}"]
+    e261 = lambda x, y: "operands have different types: %s and %s; convert one explicitly" % (x, y)
+    write("fix_e0261_no_fix_when_no_lossless_wrap_gives_the_expected_type", L, L,
+          [g.err(L, 3, "u32(a) + b", "E0261", e261("u32", "u8")), g.err(L, 6, "a + b", "E0261", e261("u32", "u8")), g.err(L, 9, "a + b", "E0261", e261("u8", "i8")),
+           g.err(L, 12, "a << b", "E0261", e261("u8", "u32")), g.err(L, 15, "a < b", "E0261", e261("u8", "i8")), g.err(L, 19, "a + b", "E0261", e261("u8", "u32"))])

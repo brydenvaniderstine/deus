@@ -1724,6 +1724,66 @@ static void test_e0261_fix(void) {
         snprintf(fsrc, sizeof fsrc, "manna v0;\n%s", fixed);
         parse_src(fsrc);
         assert(g_ps.diags.len == 0); /* the fixed file parses cleanly */
+        /* ... and the type checker accepts it: a fix that leaves the program rejected is no fix (audit finding 10) */
+        size_t before_fixed = st.diags.len;
+        IrModule *mf = NULL;
+        assert(ir_build(&st, &g_ps.diags, &g_items, &mf) == IR_BUILT && mf && st.diags.len == before_fixed);
+        parse_done();
+    }
+    /* With a type expected of the whole expression (a return, an annotated let, an argument, an assignment, an `if`), the fix must also make
+     * the result that type, by one lossless widening: it is applied and re-checked; where no single wrap can, there is no fix. */
+    static const struct { const char *line2, *fixed; } ctx[] = {
+        {"fn f(a: u8, b: u32) -> u32 { return a + b; }\n", "fn f(a: u8, b: u32) -> u32 { return u32(a) + b; }\n"},
+        {"fn f(a: u32, b: u8) -> u32 { return a + b; }\n", "fn f(a: u32, b: u8) -> u32 { return a + u32(b); }\n"},
+        {"fn f(a: u8, b: u32) { let r: u32 = a * b; }\n", "fn f(a: u8, b: u32) { let r: u32 = u32(a) * b; }\n"},
+        {"fn g(x: u32) -> u32 { return x; } fn f(a: u8, b: u32) -> u32 { return g(a + b); }\n", "fn g(x: u32) -> u32 { return x; } fn f(a: u8, b: u32) -> u32 { return g(u32(a) + b); }\n"},
+        {"fn f(a: u8, b: u32) { let r: u32 = 0; r = a & b; }\n", "fn f(a: u8, b: u32) { let r: u32 = 0; r = u32(a) & b; }\n"},
+        {"fn f(a: u32, b: u8) -> u32 { return a << b; }\n", "fn f(a: u32, b: u8) -> u32 { return a << u32(b); }\n"},
+        {"fn f(a: u8, b: u32) { if a < b { } }\n", "fn f(a: u8, b: u32) { if u32(a) < b { } }\n"},
+        {"fn f(a: i8, b: i32) { if a == b { } }\n", "fn f(a: i8, b: i32) { if i32(a) == b { } }\n"},
+    };
+    for (size_t i = 0; i < sizeof ctx / sizeof ctx[0]; i++) {
+        char src[300];
+        snprintf(src, sizeof src, "manna v0;\n%s", ctx[i].line2);
+        parse_src(src);
+        assert(g_ps.diags.len == 0);
+        IrModule *m = NULL;
+        size_t before = st.diags.len;
+        assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_ERRORS && st.diags.len == before + 1);
+        const Diagnostic *d = &st.diags.items[before];
+        assert(strcmp(d->code, "E0261") == 0 && d->fix && d->fix->n_edits == 2);
+        const char *ln2 = strchr(src, '\n') + 1;
+        size_t c0 = (size_t)d->fix->edits[0].span.start_col - 1, c1 = (size_t)d->fix->edits[1].span.start_col - 1;
+        char fixed[300];
+        snprintf(fixed, sizeof fixed, "%.*s%s%.*s%s%s", (int)c0, ln2, d->fix->edits[0].text, (int)(c1 - c0), ln2 + c0, d->fix->edits[1].text, ln2 + c1);
+        if (strcmp(fixed, ctx[i].fixed) != 0) { fprintf(stderr, "fix applied: %s want: %s", fixed, ctx[i].fixed); abort(); }
+        parse_done();
+        char fsrc[320];
+        snprintf(fsrc, sizeof fsrc, "manna v0;\n%s", fixed);
+        parse_src(fsrc);
+        assert(g_ps.diags.len == 0);
+        before = st.diags.len;
+        assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_BUILT && m && st.diags.len == before); /* accepted */
+        parse_done();
+    }
+    static const char *const nofix_ctx[] = {
+        "fn f(a: u8, b: u8) -> u8 { return u32(a) + b; }\n",  /* the audit's case: no lossless wrap gives u8 */
+        "fn f(a: u32, b: u8) -> u8 { return a + b; }\n",      /* the result would have to be narrowed */
+        "fn f(a: u8, b: u32) -> u8 { return a + b; }\n",
+        "fn f(a: u8, b: i8) -> u8 { return a + b; }\n",       /* neither direction is lossless */
+        "fn f(a: u8, b: u32) -> u8 { return a << b; }\n",     /* the count would be narrowed */
+        "fn f(a: u8, b: i8) { if a < b { } }\n",              /* a comparison with no widening either way */
+        "fn f(a: u8, b: u32) { let r: bool = a + b; }\n",     /* nothing wrapped makes a u8 + u32 a bool */
+    };
+    for (size_t i = 0; i < sizeof nofix_ctx / sizeof nofix_ctx[0]; i++) {
+        char src[200];
+        snprintf(src, sizeof src, "manna v0;\n%s", nofix_ctx[i]);
+        parse_src(src);
+        assert(g_ps.diags.len == 0);
+        IrModule *m = NULL;
+        size_t before = st.diags.len;
+        assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_ERRORS && st.diags.len == before + 1);
+        assert(strcmp(st.diags.items[before].code, "E0261") == 0 && st.diags.items[before].fix == NULL);
         parse_done();
     }
     /* no integer conversion exists with a bool or a struct: no fix */
@@ -1739,7 +1799,7 @@ static void test_e0261_fix(void) {
         parse_done();
     }
     ir_state_destroy(&st);
-    pass("E0261: the D4 fix pinned (which operand, what type, two zero-width inserts), applied it parses; no fix for bool");
+    pass("E0261: the D4 fix pinned (which operand, what type, two zero-width inserts), the fixed source is accepted; with an expected type only a lossless widening to it, else no fix; no fix for bool");
 }
 
 /* The checker is linear: the single bottom-up pass visits every node at most twice (once to

@@ -1,0 +1,20 @@
+manna v0;
+fn reviewer(a: u8, b: u8) -> u8 {
+    return u32(a) + b;
+}
+fn narrow(a: u32, b: u8) -> u8 {
+    return a + b;
+}
+fn sign(a: u8, b: i8) -> u8 {
+    return a + b;
+}
+fn count(a: u8, b: u32) -> u8 {
+    return a << b;
+}
+fn cmp(a: u8, b: i8) {
+    if a < b {
+    }
+}
+fn nonint(a: u8, b: u32) {
+    let r: bool = a + b;
+}

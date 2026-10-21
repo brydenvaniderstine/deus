@@ -295,7 +295,14 @@ static bool lossless(const IrType *from, const IrType *to) {
 /* E0261 for two typed operands of different types. The fix (both integer types only) wraps ONE
  * operand in the conversion to the other's type: the one that converts without loss if exactly
  * one does (u8 + u32 -> `u32(a) + b`), else the RIGHT operand into the left's type; a shift's
- * count is always the one wrapped (its left operand decides the result type). */
+ * count is always the one wrapped (its left operand decides the result type).
+ * When the expression itself was checked against a type E (a return, an annotated let, an
+ * argument, an assignment: bc->expect_node), the fix must also make the result E, by one lossless
+ * widening and never a narrowing: arithmetic and bitwise operators wrap the operand that is not
+ * already E (only if that widens it to E), a shift wraps its count into the left operand's type
+ * (which must be E, and widening the count), a comparison (result bool) wraps the operand that widens
+ * losslessly when E is bool. If no single wrap does that, no fix is offered: a fix that leaves the program rejected is
+ * worse than none. (docs/M2_PLAN.md "Operators", E0261.) */
 static IR_COLD void report_types_differ(BodyCtx *bc, const Expr *e, const IrType *lt, const IrType *rt) {
     IrState *st = bc->st;
     const Expr *le = e->as.binary.lhs, *re = e->as.binary.rhs;
@@ -303,8 +310,24 @@ static IR_COLD void report_types_differ(BodyCtx *bc, const Expr *e, const IrType
     const char *to = NULL;
     if (is_int(lt) && is_int(rt)) {
         bool l2r = lossless(lt, rt), r2l = lossless(rt, lt);
-        wrap_left = !is_shift(e->as.binary.op) && l2r && !r2l;
-        to = ir_type_text(st, wrap_left ? rt : lt);
+        BinOp op = e->as.binary.op;
+        const IrType *want = bc->expect_node == e ? bc->expect_type : NULL;
+        if (!want || want->kind == IR_T_ERROR) {
+            wrap_left = !is_shift(op) && l2r && !r2l;
+            to = ir_type_text(st, wrap_left ? rt : lt);
+        } else if (is_shift(op)) {
+            if (lt == want && r2l) to = ir_type_text(st, lt);
+        } else if (!is_arith_class(op)) { /* a comparison: the result is bool whatever is wrapped */
+            if (want->kind == IR_T_BOOL && (l2r || r2l)) { /* the one widening, if there is one */
+                wrap_left = l2r;
+                to = ir_type_text(st, wrap_left ? rt : lt);
+            }
+        } else if (rt == want && l2r) {
+            wrap_left = true;
+            to = ir_type_text(st, rt);
+        } else if (lt == want && r2l) {
+            to = ir_type_text(st, lt);
+        }
     }
     ir_error(st, diag_ir_operand_types_differ(st->arena, e->span, ir_type_text(st, lt), ir_type_text(st, rt),
                                               le->span, re->span, wrap_left, to));
@@ -948,6 +971,10 @@ static Synth synth(BodyCtx *bc, const Expr *e) {
 IrExpr *ir_check_expr(BodyCtx *bc, const Expr *e, const IrType *expected) {
     IrState *st = bc->st;
     if (e->kind == EXPR_ARRAY || e->kind == EXPR_ARRAY_REPEAT) return check_array_literal(bc, e, expected);
+    if (e->kind == EXPR_BINARY) { /* E0261's fix needs the type the whole expression is expected to have */
+        bc->expect_node = e;
+        bc->expect_type = expected;
+    }
     Synth s = synth(bc, e);
     if (s.group) return group_against(st, e, expected);
     if (is_unit(s)) { /* nothing is expected to BE unit: a call that returns nothing is not a value */

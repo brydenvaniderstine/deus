@@ -221,6 +221,8 @@ typedef struct {
     size_t    loop_depth; /* enclosing `while`/`for` bodies: `break`/`continue` are legal only inside one */
     Rename  **renames;    /* by slot: the misnamed locals and parameters (NULL until the first) */
     size_t    renames_cap;
+    const Expr   *expect_node; /* the binary expression ir_check_expr was asked to check against expect_type: only it may use the type (E0261's fix) */
+    const IrType *expect_type;
 } BodyCtx;
 
 /* The Rename of a local slot (NULL if the local is well named). */
