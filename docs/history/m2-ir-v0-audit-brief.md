@@ -4,7 +4,7 @@ Written at the close of typed-IR step 16, for an external, independent audit bef
 
 ## 1. What is being audited
 
-Everything that changed between the tag `m2-parser-v0.1` (`ee46cbc`) and `main`: 76 commits up to the step 16 head `6b3f537` (77 with the one docs commit that records its CI run), `git diff --shortstat m2-parser-v0.1 HEAD -- tools/mannac`: 20 files, +6787 / -220, plus 870 new test files (`tests/ir`: 828, `tests/ir_fix`: 42) and the Makefile, CI and tools scripts. Three kinds of change, to be audited differently:
+Everything that changed between the tag `m2-parser-v0.1` (`ee46cbc`) and `main`: 78 commits up to the audited head `387d138` (`git rev-list --count m2-parser-v0.1..387d138`). Of the commits after the step 16 head `6b3f537`, `62012c5` is docs-only (it records that head's CI run) and `387d138` is Makefile-only (`make coverage` deletes stale profiles first; a duplicate `.PHONY` entry removed; no source, test or golden changed, and every number below is unchanged by it). The audited code is `387d138`; a later docs-only commit may record this brief's own update, `git diff --shortstat m2-parser-v0.1 HEAD -- tools/mannac`: 20 files, +6787 / -220, plus 870 new test files (`tests/ir`: 828, `tests/ir_fix`: 42) and the Makefile, CI and tools scripts. Three kinds of change, to be audited differently:
 
 ### 1.1 New: the typed IR stage (the main audit target)
 
@@ -28,7 +28,7 @@ The only tagged files that differ from `m2-parser-v0.1` are the following. `lexe
 
 ## 2. State at the time of writing (all from running the commands, 2026-10-20)
 
-- IR goldens 414 (`tests/ir/*.mn` + `.ir`), plain and ASan; 17 rename cases (`tests/ir_fix`); 91 IR unit-test PASS lines plain and ASan (66 in the 8 MB run, 10 + 15 in the two 2 MB stack runs); 2 NDEBUG tests; determinism 822/822; every one of the 22 CI test targets exits 0 locally. CI: run 39499256968 on `6b3f537` (the step 16 head) is green, all steps including `audit-ir-poison` (104/104 on `macos-14`) and `test-ir-ndebug`.
+- IR goldens 414 (`tests/ir/*.mn` + `.ir`), plain and ASan; 17 rename cases (`tests/ir_fix`); 91 IR unit-test PASS lines plain and ASan (66 in the 8 MB run, 10 + 15 in the two 2 MB stack runs); 2 NDEBUG tests; determinism 822/822; every one of the 22 CI test targets exits 0 locally. CI: run 39499256968 on `6b3f537` (the step 16 head) and run 39628702872 on `387d138` (the audited head, attempt 1) are both green, all steps including `audit-ir-poison` (104/104 on `macos-14`) and `test-ir-ndebug`.
 - `make audit-ir-poison`: 104 poisoning lines, each run by a golden whose expected output holds exactly one diagnostic. `make test-ir-error-codes`: 44 documented-emitted codes, each with a golden, a unit test and a constructor; `E0202` is unassigned on purpose.
 - Stack (gate: passes at 2048 KB of 8192 KB): builder worst margin 94.2x plain, 9.4x ASan; dumper 103.7x plain, 14.7x ASan; parser alone on the same inputs 31.6x plain, 7.2x ASan.
 - Fuzz (libFuzzer + ASan + UBSan): `fuzz_ir` gated 601 s / 228,502 execs, ungated 601 s / 234,347 execs, 0 crashes, 0 timeouts. The ungated mode removes the parse-diagnostics gate; over the 1,747-file corpus it ran the IR on 1,448 inputs that the parser had reported errors on (644 BUILT, 804 ERRORS, 0 `IR_UNIMPLEMENTED`; 668 BUILT and 1,012 ERRORS over all 1,680 inputs that parsed without a fatal abort), with no sanitizer report.
