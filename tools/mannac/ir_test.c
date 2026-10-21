@@ -1741,6 +1741,7 @@ static void test_e0261_fix(void) {
         {"fn f(a: u32, b: u8) -> u32 { return a << b; }\n", "fn f(a: u32, b: u8) -> u32 { return a << u32(b); }\n"},
         {"fn f(a: u8, b: u32) { if a < b { } }\n", "fn f(a: u8, b: u32) { if u32(a) < b { } }\n"},
         {"fn f(a: i8, b: i32) { if a == b { } }\n", "fn f(a: i8, b: i32) { if i32(a) == b { } }\n"},
+        {"fn f(a: u32, b: u8) { if a < b { } }\n", "fn f(a: u32, b: u8) { if a < u32(b) { } }\n"}, /* the right operand widens */
     };
     for (size_t i = 0; i < sizeof ctx / sizeof ctx[0]; i++) {
         char src[300];

@@ -20,7 +20,9 @@
  *     requires status 0).
  * `ir_dump --fixed <file.mn>` prints the source with EVERY fix the diagnostics carry applied (typed-IR step 14;
  * tests/ir_fix): the file unchanged if it has none, and for a file the parser or the IR could not accept at all.
- * The runner re-checks the printed source. */
+ * The runner re-checks the printed source.
+ * KNOWN LIMIT (audit cosmetic item, STATUS "Known issues"): the fixed text comes back from ir_apply_fixes as a NUL-terminated string and
+ * is printed with strlen, so a source containing a NUL byte is truncated at it in the --fixed output. A harness, not the compiler. */
 
 static char *read_file(const char *path, size_t *out_len) {
     FILE *f = fopen(path, "rb");

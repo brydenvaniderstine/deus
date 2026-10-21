@@ -26,7 +26,7 @@ The only tagged files that differ from `m2-parser-v0.1` are the following. `lexe
 
 `Makefile` (IR targets, `coverage` now also runs `tests/ir_fix`, `fuzz-ir`, `fuzz-ir-ungated`, `test-ir-ndebug`), `.github/workflows/ci.yml` (the new steps), `tools/fuzz/run_fuzzers.sh`. Out of scope: anything under `kernel/`, the lexer, the arena.
 
-## 2. State at the time of writing (all from running the commands, 2026-10-20)
+## 2. State at the first audit (all from running the commands, 2026-10-20; the state after the fixes is section 2b)
 
 - IR goldens 414 (`tests/ir/*.mn` + `.ir`), plain and ASan; 17 rename cases (`tests/ir_fix`); 91 IR unit-test PASS lines plain and ASan (66 in the 8 MB run, 10 + 15 in the two 2 MB stack runs); 2 NDEBUG tests; determinism 822/822; every one of the 22 CI test targets exits 0 locally. CI: run 39499256968 on `6b3f537` (the step 16 head) and run 39628702872 on `387d138` (the audited head, attempt 1) are both green, all steps including `audit-ir-poison` (104/104 on `macos-14`) and `test-ir-ndebug`.
 - `make audit-ir-poison`: 104 poisoning lines, each run by a golden whose expected output holds exactly one diagnostic. `make test-ir-error-codes`: 44 documented-emitted codes, 43 with a golden, 25 with a unit test, all 44 with a `diag_ir_*` constructor in `diag.c`; `E0201` (the IR arena limit) has no golden (only a generated input reaches it; unit tests use a 64 KiB arena); `E0202` is unassigned on purpose.
@@ -34,6 +34,22 @@ The only tagged files that differ from `m2-parser-v0.1` are the following. `lexe
 - Fuzz (libFuzzer + ASan + UBSan): `fuzz_ir` gated 601 s / 228,502 execs, ungated 601 s / 234,347 execs, 0 crashes, 0 timeouts. The ungated mode removes the parse-diagnostics gate; over the 1,747-file corpus it ran the IR on 1,448 inputs that the parser had reported errors on (644 BUILT, 804 ERRORS, 0 `IR_UNIMPLEMENTED`; 668 BUILT and 1,012 ERRORS over all 1,680 inputs that parsed without a fatal abort), with no sanitizer report. The input classification and BUILT/ERRORS counts come from a throwaway program (parse, then `ir_build` built with `-DMANNA_FUZZ_IR_UNGATED` and ASan/UBSan, over `tools/fuzz/corpus/ir/*`) that is not in the repository or the pack; the execs come from `build/fuzz/fuzz_ir_{gated,ungated}.log`, which are not tracked either.
 - Coverage (`make coverage`, 99.18% of 5,137 lines): every uncovered line in `ir*.c`, `lexer.c`, `parser.c` is justified in `docs/STATUS.md` "Verification snapshot: typed IR".
 - Author-side limits: only macOS Apple clang 15 was available; the IR Make targets honor `MANNAC_CC`, so `make MANNAC_CC=gcc test-ir-unit-asan` is the Linux run. Reviewer Linux runs are recorded in `STATUS.md` for step 9 and for 10b; none exists for steps 11-16.
+
+## 2b. After the first audit: the fixes (typed-IR step 17, 2026-10-21; local commits 17a-17g, not pushed, not yet CI-run)
+
+The reviewer reproduced the findings on Linux (`~/Desktop/m2-ir-v0-audit-findings-2026-10-21.md`). What changed, for the re-audit (`git diff 387d138 HEAD`):
+
+| Finding | Fix | Commit |
+|---|---|---|
+| 1 oversized `let` annotation plus a literal: E0222 twice | `ir_check_type_size` returns whether it reported; `build_let` types the let ERROR | 17a `8c99091` |
+| 6, 8a, 8b renames missed a duplicate `let`, a function/struct used as a value (E0231), a field given twice (E0244) | those are recorded as uses of the misnamed declaration | 17b `f498269` |
+| 2 non-assignable target never checked | the target is walked with `IrState.muted` raised: call edges and name uses recorded, nothing reported (option B); decision recorded in `M2_PLAN.md` and `error_codes.md` E0270 | 17c `f4161b0` |
+| 4 E0261 fix ignored the expected type | with an expected type, one lossless widening to it, else no fix; never narrows | 17d `9f1bd1d` |
+| 7 sibling declarations could not share a rename target | `IrLocal.scope_end` (internal, not dumped); `collides()` counts only locals that can see each other | 17e `26aa877` |
+| 3, 9, 11 | goldens `len_bare_after_the_scope_of_a_local_named_len_closed`, `size_overflow_in_the_outer_multiplication`, `one_error_let_size_overflow_in_the_outer_multiplication`; `ir_rename.c` added to `audit_ir_poison.py`, whose wording is now "run by a one-diagnostic golden", not a no-cascade proof | 17f `d66c451` |
+| 5, 10, cosmetics | 5: known issue (the E0261 fix on a 511-operation chain gives E0111); 10: `test_e0261_fix` re-checks every fixed source (17d); docs: E0256 says "visible", the `Len` field fix is withheld because `len` is reserved, "13 cases" is now 28, the `--fixed` NUL truncation is documented | 17g (docs) |
+
+Numbers after step 17 (run on the 17f code; every suite exits 0 locally): 421 IR goldens plain and ASan; 28 rename cases; 92 IR unit-test PASS lines (67 + 10 + 15); 2 NDEBUG tests; determinism 840/840; `make audit-ir-poison` 106 poisoning lines, 106 run by a one-diagnostic golden, 0 not; 44 emitted codes, 43 with a golden, 26 with a unit test; coverage 99.19% of 5,183 lines, the same 42 uncovered lines with new line numbers (`docs/STATUS.md`); stack margins unchanged except the builder under ASan, 9.2x (was 9.4x). No golden or fix case that existed before step 17 changed (additions only). **Not re-run after step 17:** the fuzz runs (the numbers in section 2 are from `6b3f537`), CI, and any Linux/gcc run; the pack must be rebuilt (`BUILD.txt`'s counts, the `ir.diff` against `m2-parser-v0.1`, the bundles).
 
 ## 3. The pack and the reproduce step
 
@@ -76,7 +92,7 @@ awk '/^## 4\. Parser grammar/{p=1} /^### Typed IR \(stage 3\)/{p=0} p' docs/M2_P
 # BUILD.txt: kept with the pack (split + build + run)
 ```
 
-## 4. Auditor prompt
+## 4. Auditor prompt (the prompt of the first audit; for the re-audit its numbers become those of section 2b and its "Known and accepted" list gains the two known issues in `STATUS.md`)
 
 This block is the whole prompt and the only thing pasted to the reviewer. `~/Desktop/m2-ir-v0-audit-prompt.txt` is this block with the leading `> ` removed (generated, not hand-edited).
 
