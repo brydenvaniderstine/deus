@@ -1,0 +1,18 @@
+manna v0;
+fn f(c: bool) {
+    let a_b: u8 = 1;
+    if c {
+        let aB: u8 = 2;
+    }
+}
+fn g(fooBar: u8, c: bool) {
+    if c {
+        let foo_bar: u8 = 3;
+    }
+}
+fn h(c: bool) {
+    let fooBar: u8 = 1;
+    if c {
+        let foo_Bar: u8 = 2;
+    }
+}

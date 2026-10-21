@@ -229,6 +229,7 @@ IrLocal *ir_local_new(IrState *st, uint32_t slot, const char *name, const IrType
     l->type = type;
     l->span = span;
     l->is_param = is_param;
+    l->scope_end = UINT32_MAX;
     return l;
 }
 

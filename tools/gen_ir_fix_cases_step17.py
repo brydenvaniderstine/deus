@@ -53,3 +53,17 @@ if __name__ == "__main__":
     write("fix_e0261_no_fix_when_no_lossless_wrap_gives_the_expected_type", L, L,
           [g.err(L, 3, "u32(a) + b", "E0261", e261("u32", "u8")), g.err(L, 6, "a + b", "E0261", e261("u32", "u8")), g.err(L, 9, "a + b", "E0261", e261("u8", "i8")),
            g.err(L, 12, "a << b", "E0261", e261("u8", "u32")), g.err(L, 15, "a < b", "E0261", e261("u8", "i8")), g.err(L, 19, "a + b", "E0261", e261("u8", "u32"))])
+
+    # Finding 7: two declarations that cannot see each other (sibling loops, sibling blocks, a block that closed before the other local) may
+    # share a name, so they get the same fix target; the first-fix-wins refusal applies only when one is visible from the other.
+    L = ["manna v0;", "fn f(Ab: u8) {", "    for let Idx: u8 = 0; Idx < Ab; Idx = Idx + 1 {", "    }", "    for let Idx: u8 = 0; Idx < Ab; Idx = Idx + 1 {", "    }", "}"]
+    write("fix_sibling_loops_share_a_fix_target", L, rename(L, {"Ab": "ab", "Idx": "idx"}))
+    L = ["manna v0;", "fn f(c: bool) {", "    if c {", "        let aB: u8 = 1;", "    } else {", "        let aB: u8 = 2;", "    }", "    let a_b: u8 = 3;", "}"]
+    write("fix_sibling_blocks_and_a_later_local_share_a_fix_target", L, rename(L, {"aB": "a_b"}))
+    L = ["manna v0;", "fn f(c: bool) {", "    let a_b: u8 = 1;", "    if c {", "        let aB: u8 = 2;", "    }", "}",
+         "fn g(fooBar: u8, c: bool) {", "    if c {", "        let foo_bar: u8 = 3;", "    }", "}",
+         "fn h(c: bool) {", "    let fooBar: u8 = 1;", "    if c {", "        let foo_Bar: u8 = 2;", "    }", "}"]
+    F = list(L); F[13] = "    let foo_bar: u8 = 1;"
+    # (a parameter is reported in the declaration pass, before the bodies, hence the order)
+    write("fix_target_visible_from_the_declaration_is_still_refused", L, F,
+          [g.err(F, 8, "fooBar", "E0280", snake("fooBar")), g.err(F, 5, "aB", "E0280", snake("aB")), g.err(F, 16, "foo_Bar", "E0280", snake("foo_Bar"))])

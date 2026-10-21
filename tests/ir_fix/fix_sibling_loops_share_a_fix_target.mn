@@ -1,0 +1,7 @@
+manna v0;
+fn f(Ab: u8) {
+    for let Idx: u8 = 0; Idx < Ab; Idx = Idx + 1 {
+    }
+    for let Idx: u8 = 0; Idx < Ab; Idx = Idx + 1 {
+    }
+}

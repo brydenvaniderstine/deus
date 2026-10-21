@@ -91,6 +91,7 @@ typedef struct Rename {
     bool        pascal;    /* PascalCase (a struct) rather than snake_case */
     size_t      scope;     /* REN_FIELD: the struct's index; REN_LOCAL: the function's index; REN_TOP: unused */
     const char *name;
+    uint32_t    slot;      /* REN_LOCAL: the declared local's slot in its function (set by body_set_rename) */
     Span        decl_span; /* the declared name */
     size_t      diag;      /* index of its E0280/E0281 in IrState.diags: the fix is attached there at the end */
     UseList     uses;      /* every resolved use, in checking order */

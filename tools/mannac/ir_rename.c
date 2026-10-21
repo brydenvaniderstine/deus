@@ -63,6 +63,7 @@ void body_set_rename(BodyCtx *bc, size_t slot, Rename *r) {
         bc->renames_cap = cap;
     }
     bc->renames[slot] = r;
+    r->slot = (uint32_t)slot;
 }
 
 /* The tables the declaration pass and the checker fill. Allocated on first use. */
@@ -76,6 +77,14 @@ static int cmp_span(const void *pa, const void *pb) {
     if (a->end_line != b->end_line) return a->end_line < b->end_line ? -1 : 1;
     if (a->end_col != b->end_col) return a->end_col < b->end_col ? -1 : 1;
     return 0;
+}
+
+/* Can one of two locals of a function be seen from where the other is declared? A local is visible from its declaration to the end of
+ * its scope: a later slot below scope_end is declared inside that region. Two locals that cannot see each other (sibling blocks, two
+ * sibling loops, a block that closed before the other local) may share a name, so they may share a fix target. */
+static bool locals_see_each_other(const IrFunc *f, uint32_t a, uint32_t b) {
+    const IrLocal *la = f->locals.items[a], *lb = f->locals.items[b];
+    return (a < b && b < la->scope_end) || (b < a && a < lb->scope_end);
 }
 
 /* Is `target` already a name in the scope of `r` as written, or the target of an earlier fix in that scope? */
@@ -92,14 +101,15 @@ static bool collides(const Ctx *cx, const Rename *r, const char *target, size_t 
         case REN_LOCAL: {
             const IrFunc *f = cx->fns[r->scope];
             for (size_t i = 0; i < f->locals.len; i++) {
-                if (strcmp(((const IrLocal *)f->locals.items[i])->name, target) == 0) return true;
+                if (strcmp(((const IrLocal *)f->locals.items[i])->name, target) == 0 && locals_see_each_other(f, r->slot, (uint32_t)i)) return true;
             }
             break;
         }
     }
     for (size_t j = 0; j < upto; j++) {
         const Rename *o = cx->renames[j];
-        if (granted[j] && o->kind == r->kind && o->scope == r->scope && o->pascal == r->pascal && strcmp(granted[j], target) == 0) return true;
+        if (granted[j] && o->kind == r->kind && o->scope == r->scope && o->pascal == r->pascal && strcmp(granted[j], target) == 0 &&
+            (r->kind != REN_LOCAL || locals_see_each_other(cx->fns[r->scope], r->slot, o->slot))) return true;
         /* one namespace at the top level: a struct's target and a function's target must differ too */
         if (granted[j] && r->kind == REN_TOP && o->kind == REN_TOP && strcmp(granted[j], target) == 0) return true;
     }

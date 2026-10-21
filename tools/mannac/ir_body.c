@@ -72,8 +72,10 @@ void body_pop_scope(BodyCtx *bc) {
     assert(bc->depth > 0);
     size_t start = bc->scope_start[--bc->depth];
     for (size_t i = start; i < bc->func->locals.len; i++) {
-        const IrLocal *l = bc->func->locals.items[i];
+        IrLocal *l = bc->func->locals.items[i];
         tab_find(bc, l->name)->alive = false;
+        /* the first (innermost) pop closes it; an enclosing pop revisits it */
+        if (l->scope_end == UINT32_MAX) l->scope_end = (uint32_t)bc->func->locals.len; /* a later local has a slot >= this: it cannot see l */
     }
 }
 
