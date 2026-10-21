@@ -772,6 +772,38 @@ static void test_unimplemented(void) {
     pass("IR_UNIMPLEMENTED: only an ExprKind no case handles (a state the parser never produces) reaches it, no diagnostic, no module; real errors win; state reusable");
 }
 
+/* Audit finding 2: the target of a non-assignable assignment is checked muted (call edges and name uses, no diagnostics). The mute
+ * is lowered on the way out, and an unwind out of the muted subtree (here: the arena runs out inside it, E0201) leaves it at 0. */
+static void test_muted_target(void) {
+    enum { N_ARGS = 8000 };
+    size_t cap = 64 + N_ARGS * 3;
+    char *src = malloc(cap);
+    assert(src);
+    size_t n = (size_t)snprintf(src, cap, "manna v0;\nfn g(a: u8) {\n}\nfn f(a: u8) {\n    g(a");
+    for (int i = 1; i < N_ARGS; i++) n += (size_t)snprintf(src + n, cap - n, ", a");
+    snprintf(src + n, cap - n, ") = 1;\n}\n");
+    parse_src(src);
+    assert(g_ps.diags.len == 0);
+    static IrState st;
+    ir_state_init(&st, 64 << 10);
+    IrModule *m = (IrModule *)0x1;
+    assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_ERRORS && m == NULL);
+    assert(st.diags.len == 2 && strcmp(st.diags.items[0].code, "E0270") == 0 && strcmp(st.diags.items[1].code, "E0201") == 0);
+    assert(st.muted == 0);
+    ir_state_destroy(&st);
+    parse_done();
+    free(src);
+    /* Without the unwind: a bad target with an error inside it reports the E0270 only, and the next statement's error is not lost. */
+    parse_src("manna v0;\nfn f() {\n    nope(1) = 1;\n    let x: u8 = true;\n}\n");
+    assert(g_ps.diags.len == 0);
+    ir_state_init(&st, 1 << 20);
+    assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_ERRORS);
+    assert(st.diags.len == 2 && strcmp(st.diags.items[0].code, "E0270") == 0 && strcmp(st.diags.items[1].code, "E0223") == 0 && st.muted == 0);
+    ir_state_destroy(&st);
+    parse_done();
+    pass("muted target: no diagnostic from inside it, the mute is lowered on every path (also after an E0201 unwind), later errors still print");
+}
+
 /* `fn f() -> T { return <expr>; }` for one case of the range matrix. Returns the build status;
  * the diagnostics are left in st. */
 static IrStatus build_return(IrState *st, const char *type, const char *expr, IrModule **m) {
@@ -2138,6 +2170,7 @@ int main(int argc, char **argv) {
     test_gate();
     test_build_empty_functions();
     test_unimplemented();
+    test_muted_target();
     test_build_e0201_and_reuse();
     test_e0201_in_name_table();
     test_decls_many_names();

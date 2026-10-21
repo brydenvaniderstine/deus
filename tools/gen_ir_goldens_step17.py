@@ -18,3 +18,14 @@ if __name__ == "__main__":
     # The same with ONE let, so `make audit-ir-poison` has a golden whose whole output is the single diagnostic (it was two before the fix).
     L = ["manna v0;", "fn f(v: u8) {", "    let x: [4294967296]u8 = [v; 4294967296];", "}"]
     g.errors("one_error_let_oversized_annotation_with_a_literal", L, [e(L, 3, "[4294967296]u8", "E0222", big)])
+
+    # Finding 2: the target of a non-assignable assignment is checked muted. Its calls still count toward recursion (E0235), a cycle through
+    # one included; nothing else in it is reported (one mistake, one error).
+    rec, notlv = "recursion is not allowed in v0", "can't assign to this expression"
+    L = ["manna v0;", "fn f() {", "    f() = 1;", "}", "fn a() {", "    b() = 1;", "}", "fn b() {", "    a();", "}"]
+    g.errors("assign_target_calls_count_toward_recursion", L, [e(L, 3, "f()", "E0270", notlv), e(L, 6, "b()", "E0270", notlv),
+        e(L, 3, "f()", "E0235", rec), e(L, 6, "b()", "E0235", rec)])
+    # An unknown function and a wrong argument count inside the target are not reported; the errors after the assignment are (the mute is lowered).
+    L = ["manna v0;", "fn g(x: u8) {", "}", "fn f(x: u8) {", "    g(x) = 3;", "    nope(x) = 1;", "    g(x, x) = 3;", "    let y: u8 = nope;", "    let z: u8 = true;", "}"]
+    g.errors("assign_target_is_silent_but_later_errors_still_print", L, [e(L, 5, "g(x)", "E0270", notlv), e(L, 6, "nope(x)", "E0270", notlv),
+        e(L, 7, "g(x, x)", "E0270", notlv), e(L, 8, "nope", "E0230", "unknown name 'nope'"), e(L, 9, "true", "E0223", "type mismatch: expected u8, found bool")])

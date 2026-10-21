@@ -23,6 +23,7 @@ IrStatus ir_build(IrState *st, const DiagList *parse_diags, const NodeList *item
     if (setjmp(st->fatal_target) != 0) {
         /* E0201 / E0203 (already recorded), or ir_unimplemented. Errors found before the
          * unwind win over IR_UNIMPLEMENTED: they are real whatever the rest of the file holds. */
+        st->muted = 0; /* the unwind may have left a muted subtree */
         return st->unimplemented && st->diags.len == base ? IR_UNIMPLEMENTED : IR_ERRORS;
     }
 

@@ -1,0 +1,6 @@
+ERRORS:
+5:5 E0270 can't assign to this expression
+6:5 E0270 can't assign to this expression
+7:5 E0270 can't assign to this expression
+8:17 E0230 unknown name 'nope'
+9:17 E0223 type mismatch: expected u8, found bool
