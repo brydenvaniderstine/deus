@@ -124,7 +124,9 @@ static IR_NOINLINE IrStmt *build_let(BodyCtx *bc, const Stmt *s) {
     const IrType *annot = NULL;
     if (s->as.let_stmt.type) {
         annot = ir_resolve_type(bc->decls, s->as.let_stmt.type, CTX_PARAM);
-        ir_check_type_size(bc->decls, s->as.let_stmt.type, annot);
+        /* An annotation that is too large is reported once and the let is typed ERROR, so its initializer (which
+         * would build the same oversized type) does not report it again. */
+        if (ir_check_type_size(bc->decls, s->as.let_stmt.type, annot)) annot = ir_type_error(st);
     }
     IrExpr *init = annot ? ir_check_expr(bc, s->as.let_stmt.init, annot) : ir_infer_expr(bc, s->as.let_stmt.init);
     const IrType *t = annot ? annot : init->type;

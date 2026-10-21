@@ -155,8 +155,8 @@ typedef enum {
 /* AST type -> IR type (ir_decls.c). A failure records ONE error and yields ERROR. */
 const IrType *ir_resolve_type(Ctx *cx, const Type *t, TypeCtx ctx);
 /* E0222 if the type's size exceeds the limit (silent for ERROR and for a type that needs an
- * unsized struct). */
-void ir_check_type_size(Ctx *cx, const Type *ast, const IrType *t);
+ * unsized struct); returns true if it reported, so a `let` can poison its annotation. */
+bool ir_check_type_size(Ctx *cx, const Type *ast, const IrType *t);
 
 /* ---- naming conventions (ir_names.c, typed-IR step 14) ---- */
 bool ir_is_snake_case(const char *name);

@@ -352,16 +352,19 @@ static void analyze_structs(Ctx *cx) {
 
 /* ---- function signatures ---- */
 
-/* E0222 for a parameter or return type whose size exceeds the limit. A type that needs
- * an unsized struct is silent (that struct's own error is already reported). */
-void ir_check_type_size(Ctx *cx, const Type *ast, const IrType *t) {
-    if (t->kind == IR_T_ERROR) return;
+/* E0222 for a parameter, return or `let` type whose size exceeds the limit; true if it was reported,
+ * so a `let` can poison its annotation (one mistake, one error). A type that needs an unsized struct
+ * is silent (that struct's own error is already reported). */
+bool ir_check_type_size(Ctx *cx, const Type *ast, const IrType *t) {
+    if (t->kind == IR_T_ERROR) return false;
     uint64_t size;
     uint32_t align;
     Span bad;
     if (type_layout(cx, ast, t, &size, &align, &bad) == LAY_TOO_BIG) {
         ir_error(cx->st, diag_ir_type_too_large(bad));
+        return true;
     }
+    return false;
 }
 
 /* Size of a type built from an EXPRESSION (an array literal, `[v; N]`): false if it exceeds the
