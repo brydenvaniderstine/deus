@@ -52,7 +52,7 @@ QEMU_FLAGS   := -machine q35 -m 8G -cpu qemu64,+apic,+pdpe1gb \
                 -serial file:serial.log -monitor stdio -no-reboot \
                 -d int,cpu_reset -D qemu.log
 
-.PHONY: all image run debug clean limine stage-esp test-wx test-lexer test-lexer-asan test-arena test-arena-asan test-ast test-ast-asan test-parser-state test-parser-state-asan test-parser-fixes test-parser-fixes-asan test-parser test-parser-asan test-determinism test-ir test-ir-asan test-ir-unit test-ir-unit-asan test-ir-ndebug test-ir-ndebug test-ir-fix test-ir-fix-asan test-ir-error-codes audit-ir-poison coverage fuzz fuzz-lexer fuzz-parser fuzz-ir fuzz-ir-ungated measure-height measure-ir-stack measure-ir-build-stack
+.PHONY: all image run debug clean limine stage-esp test-wx test-lexer test-lexer-asan test-arena test-arena-asan test-ast test-ast-asan test-parser-state test-parser-state-asan test-parser-fixes test-parser-fixes-asan test-parser test-parser-asan test-determinism test-ir test-ir-asan test-ir-unit test-ir-unit-asan test-ir-ndebug test-ir-fix test-ir-fix-asan test-ir-error-codes audit-ir-poison coverage fuzz fuzz-lexer fuzz-parser fuzz-ir fuzz-ir-ungated measure-height measure-ir-stack measure-ir-build-stack
 
 all: $(KERNEL_ELF)
 
@@ -358,6 +358,9 @@ COVERAGE_FLAGS := -fprofile-instr-generate -fcoverage-mapping
 
 coverage:
 	@mkdir -p $(COVERAGE_DIR)
+	@# stale profiles from an earlier run would be merged into this one's numbers
+	find $(COVERAGE_DIR) -maxdepth 1 -type f -name '*.profraw' -delete
+	rm -f $(COVERAGE_DIR)/merged.profdata
 	clang -std=c11 -Wall -Wextra -g $(COVERAGE_FLAGS) -o $(COVERAGE_DIR)/mannac $(MANNAC_SRCS)
 	LLVM_PROFILE_FILE=$(COVERAGE_DIR)/lexer-%p.profraw ./tools/run_lexer_goldens.sh $(COVERAGE_DIR)/mannac
 	clang -std=c11 -Wall -Wextra -g $(COVERAGE_FLAGS) -o $(COVERAGE_DIR)/arena_test $(ARENA_TEST_SRCS)
