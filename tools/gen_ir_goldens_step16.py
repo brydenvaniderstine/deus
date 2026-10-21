@@ -43,7 +43,10 @@ if __name__ == "__main__":
     g.errors("op_eq_is_not_defined_on_arrays_and_slices", L, [e(L, 3, "a == b", "E0260", "operator '==' is not defined for [2]u8"),
         e(L, 4, "s == t", "E0260", "operator '==' is not defined for []u8"), e(L, 5, "a != b", "E0260", "operator '!=' is not defined for [2]u8")])
 
-    # Admission #11: a size computation that overflows u64 (2^32 * 2^32, 2^63 * 2), reported as too large, not wrapped
+    # Admission #11: sizes over the limit by a large margin. S and T are nested arrays whose INNER array is already over the limit (reported at the
+    # inner type, before any multiplication: the audit's finding 9); U is 2^63 u16 elements (2^63 * 2 = 2^64, the one-level product that would
+    # wrap; the check is a division, so it never multiplies); V is 2^63 u8 elements. The nested product that wraps (an in-limit inner array, an
+    # outer length of 2^48) is size_overflow_in_the_outer_multiplication (step 17).
     big = "type is too large (size exceeds the limit)"
     L = ["manna v0;", "struct S { a: [4294967296][4294967296]u8, }", "struct T { a: [4294967297][4294967297]u8, }", "struct U { a: [9223372036854775808]u16, }", "struct V { a: [9223372036854775808]u8, }"]
     g.errors("size_computation_overflowing_u64", L, [e(L, 2, "[4294967296]u8", "E0222", big), e(L, 3, "[4294967297]u8", "E0222", big),

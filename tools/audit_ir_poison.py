@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
-"""No-cascade audit (typed-IR step 15). Run from the repo root: python3 tools/audit_ir_poison.py [--check]
+"""One-diagnostic-golden audit of the poisoning paths (typed-IR step 15, reworded at step 17). Run from the repo root: python3 tools/audit_ir_poison.py [--check]
 
 A POISONING PATH is a source line in the builder where a mistake becomes a diagnostic or an ERROR-typed node, or
 where an ERROR operand is consumed silently (the places a cascade would start): every `ir_error(` call, every
 `is_error(` / `error_node(` / `ir_type_error(` use, and the declaration-poisoning flag `poisoned`.
 For each such line this finds the goldens (tests/ir/*.mn) that execute it, using one instrumented ir_dump run
 per golden, and reports the ones whose expected output holds EXACTLY ONE diagnostic: a test in which that path
-runs and one mistake costs one error. A line with no such golden is listed as UNPROVEN (exit 1 with --check);
-the unit tests (ir_test.c) cannot be split per test, so a line only they reach must be argued by hand in the report.
+runs and nothing else is reported. A line with no such golden is listed as NOT RUN BY A ONE-DIAGNOSTIC GOLDEN (exit 1 with --check).
+THIS IS NOT A PROOF that the path cannot cascade: it shows that a test exists in which the path ran and the output was one
+diagnostic, and says nothing about other inputs. The unit tests (ir_test.c) cannot be split per test, so a line only they reach
+must be argued by hand in the report.
 """
 import os, re, subprocess, sys, glob, shutil, json, bisect
 from concurrent.futures import ThreadPoolExecutor
@@ -15,7 +17,7 @@ from concurrent.futures import ThreadPoolExecutor
 ROOT = os.getcwd()
 OUT = os.path.join(ROOT, "build", "audit_poison")
 SRC = "tools/mannac/"
-FILES = ["ir_decls.c", "ir_expr.c", "ir_body.c", "ir_calls.c", "ir_build.c"]
+FILES = ["ir_decls.c", "ir_expr.c", "ir_body.c", "ir_calls.c", "ir_build.c", "ir_rename.c"]
 BIN_SRCS = ["arena", "ast", "diag", "parser_state", "parser", "lexer", "ir", "ir_dump", "ir_build", "ir_decls",
             "ir_expr", "ir_body", "ir_calls", "ir_names", "ir_rename", "ir_main"]
 PAT = re.compile(r"\b(ir_error|is_error|error_node|ir_type_error)\(|\bpoisoned\b")
@@ -96,14 +98,14 @@ if __name__ == "__main__":
     with ThreadPoolExecutor(8) as ex: results = list(ex.map(lines_hit, goldens))
     one = {name: hit for name, hit in results if n_diags(name) == 1}
     anyhit = {name: hit for name, hit in results if n_diags(name) >= 1}
-    unproven = []
-    print("%-14s %-6s %-58s %s" % ("file:line", "ones", "source", "proving goldens (exactly one diagnostic; first 2)"))
+    not_run = []
+    print("%-14s %-6s %-58s %s" % ("file:line", "ones", "source", "one-diagnostic goldens that run it (first 2)"))
     for f, n, src, ln, col in cands:
         proof = sorted(nm for nm, hit in one.items() if ran(hit, f, ln, col))
         err = sorted(nm for nm, hit in anyhit.items() if ran(hit, f, ln, col))
-        print("%-14s %-6d %-58s %s" % ("%s:%d" % (f, n), len(proof), src[:58], ", ".join(proof[:2]) if proof else ("UNPROVEN (reached by %d golden(s) with several diagnostics)" % len(err) if err else "UNPROVEN (no golden reaches it)")))
-        if not proof: unproven.append((f, n))
-    print("\n%d poisoning lines, %d proven by a one-diagnostic golden, %d unproven" % (len(cands), len(cands) - len(unproven), len(unproven)))
-    for f, n in unproven: print("UNPROVEN %s:%d" % (f, n))
+        print("%-14s %-6d %-58s %s" % ("%s:%d" % (f, n), len(proof), src[:58], ", ".join(proof[:2]) if proof else ("NOT RUN BY A ONE-DIAGNOSTIC GOLDEN (reached by %d golden(s) with several diagnostics)" % len(err) if err else "NOT RUN BY A ONE-DIAGNOSTIC GOLDEN (no golden reaches it)")))
+        if not proof: not_run.append((f, n))
+    print("\n%d poisoning lines, %d run by a one-diagnostic golden, %d not (this is not a no-cascade proof)" % (len(cands), len(cands) - len(not_run), len(not_run)))
+    for f, n in not_run: print("NOT RUN BY A ONE-DIAGNOSTIC GOLDEN %s:%d" % (f, n))
     shutil.rmtree(OUT, ignore_errors=True)
-    sys.exit(1 if (check and unproven) else 0)
+    sys.exit(1 if (check and not_run) else 0)

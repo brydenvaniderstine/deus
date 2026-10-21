@@ -29,3 +29,18 @@ if __name__ == "__main__":
     L = ["manna v0;", "fn g(x: u8) {", "}", "fn f(x: u8) {", "    g(x) = 3;", "    nope(x) = 1;", "    g(x, x) = 3;", "    let y: u8 = nope;", "    let z: u8 = true;", "}"]
     g.errors("assign_target_is_silent_but_later_errors_still_print", L, [e(L, 5, "g(x)", "E0270", notlv), e(L, 6, "nope(x)", "E0270", notlv),
         e(L, 7, "g(x, x)", "E0270", notlv), e(L, 8, "nope", "E0230", "unknown name 'nope'"), e(L, 9, "true", "E0223", "type mismatch: expected u8, found bool")])
+
+    # Finding 9: a size computation that really multiplies. The inner array is 65536 bytes, within the limit; the outer is 2^48 of them, 2^64
+    # bytes, which wraps to 0 if the multiplication is done in u64 (size_computation_overflowing_u64 never gets that far: its inner array is
+    # already too big). Reported at the whole type, in a struct field, a parameter, a return type and a `let`.
+    ty = "[281474976710656][65536]u8"
+    L = ["manna v0;", "struct W { a: %s, }" % ty, "fn f(p: %s) {" % ty, "}", "fn g() -> %s {" % ty, "}" ]
+    g.errors("size_overflow_in_the_outer_multiplication", L, [e(L, 2, ty, "E0222", big), e(L, 3, ty, "E0222", big), e(L, 5, ty, "E0222", big)])
+    L = ["manna v0;", "fn f() {", "    let x: %s = [1, 2];" % ty, "}"]
+    g.errors("one_error_let_size_overflow_in_the_outer_multiplication", L, [e(L, 3, ty, "E0222", big)])
+
+    # Finding 3: E0256 is for a bare `len` when no VISIBLE declaration named len exists. A local named len in a closed block is E0257 at its
+    # declaration; the bare `len` after the block has nothing to resolve to, so it is E0256 as well (two mistakes, two errors).
+    L = ["manna v0;", "fn f() {", "    if true {", "        let len: u8 = 1;", "    }", "    let n = len;", "}"]
+    g.errors("len_bare_after_the_scope_of_a_local_named_len_closed", L, [e(L, 4, "len", "E0257", "'len' is a builtin and can't be declared"),
+        e(L, 6, "len", "E0256", "len is a builtin function; call it as len(x)")])

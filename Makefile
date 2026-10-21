@@ -308,9 +308,10 @@ test-ir-fix:
 test-ir-error-codes:
 	@python3 tools/check_error_code_coverage.py
 
-# Typed-IR step 15: the no-cascade audit. Every poisoning line of the builder (ir_error / is_error / error_node /
-# ir_type_error / the struct `poisoned` flag) is executed by at least one tests/ir golden holding exactly ONE
-# diagnostic (per-golden source coverage; needs Xcode's llvm-cov). Prints the table; fails on an unproven line.
+# Typed-IR step 15: every poisoning line of the builder (ir_error / is_error / error_node / ir_type_error / the struct
+# `poisoned` flag, in ir_decls/expr/body/calls/build/rename.c) is RUN by at least one tests/ir golden holding exactly ONE
+# diagnostic (per-golden source coverage; needs Xcode's llvm-cov). Prints the table; fails on a line no such golden runs.
+# This is not a proof that the path cannot cascade, only that a one-diagnostic test exercises it.
 audit-ir-poison:
 	@python3 tools/audit_ir_poison.py --check
 
