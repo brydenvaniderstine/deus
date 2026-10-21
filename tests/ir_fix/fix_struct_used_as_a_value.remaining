@@ -1,0 +1,2 @@
+ERRORS:
+4:17 E0231 'MyS' is a struct, not a value

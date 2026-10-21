@@ -1,0 +1,2 @@
+ERRORS:
+4:9 E0213 'my_var' is already declared in this function

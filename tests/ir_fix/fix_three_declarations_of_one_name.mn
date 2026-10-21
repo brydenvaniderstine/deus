@@ -1,0 +1,7 @@
+manna v0;
+fn f() {
+    let myVar: u8 = 1;
+    let myVar: u8 = 2;
+    let myVar: u8 = 3;
+    myVar = 4;
+}

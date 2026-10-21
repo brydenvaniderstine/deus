@@ -220,6 +220,9 @@ static IR_NOINLINE IrExpr *check_ident(BodyCtx *bc, const Expr *e) {
             ir_error(st, diag_ir_len_not_called(e->span));
             return error_node(st, e->span);
         }
+        /* A function or struct used as a value is still a resolved use of that name: a rename must reach it. */
+        if (top && !top->is_struct && bc->decls->fn_renames) ir_note_use(st, bc->decls->fn_renames[top->index], e->span);
+        if (top && top->is_struct && bc->decls->struct_renames) ir_note_use(st, bc->decls->struct_renames[top->index], e->span);
         report_name(st, e, top);
         return error_node(st, e->span);
     }
@@ -521,6 +524,7 @@ static IR_NOINLINE long construct_field(BodyCtx *bc, Construct *c, const Expr *a
     }
     if (c->slots[k]) {
         ir_error(st, diag_ir_field_given_twice(st->arena, n->span, name));
+        ir_note_field_use(bc, c->s, k, n->span); /* the name still resolves to the field: a rename must reach it */
         return -1;
     }
     ir_note_field_use(bc, c->s, k, n->span);

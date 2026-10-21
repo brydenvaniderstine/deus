@@ -114,8 +114,14 @@ static IR_NOINLINE IrStmt *build_let(BodyCtx *bc, const Stmt *s) {
     IrState *st = bc->st;
     const char *name = s->as.let_stmt.name;
     Span name_span = s->as.let_stmt.name_span;
-    bool dup = body_lookup(bc, name) != NULL;
-    if (dup) ir_error(st, diag_ir_already_declared(st->arena, name_span, name));
+    IrLocal *first = body_lookup(bc, name);
+    bool dup = first != NULL;
+    if (dup) {
+        ir_error(st, diag_ir_already_declared(st->arena, name_span, name));
+        /* The redeclaration binds nothing, but if the name is misnamed the same rename must reach it, or the fixed
+         * program would still carry the old spelling here (and report E0280 with no fix, forever). */
+        ir_note_use(st, body_rename(bc, first->slot), name_span);
+    }
     if (strcmp(name, "len") == 0) ir_error(st, diag_ir_len_declared(name_span)); /* the declaration still binds */
 
     Rename *rename = NULL;

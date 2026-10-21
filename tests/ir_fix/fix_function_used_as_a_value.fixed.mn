@@ -1,0 +1,6 @@
+manna v0;
+fn do_it() {
+}
+fn g() {
+    let x: u8 = do_it;
+}

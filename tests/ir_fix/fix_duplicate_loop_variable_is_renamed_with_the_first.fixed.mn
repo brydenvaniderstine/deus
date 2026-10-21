@@ -1,0 +1,6 @@
+manna v0;
+fn f() {
+    let ab: u8 = 1;
+    for let ab: u8 = 0; ab < 2; ab = ab + 1 {
+    }
+}
