@@ -40,6 +40,7 @@ jobs:
       - run: make test-ir-fix
       - run: make test-ir-fix-asan
       - run: make test-ir-error-codes
+      - run: make test-e0261-exhaustive
       - run: make audit-ir-poison
       - run: make test-ir-unit
       - run: make test-ir-unit-asan

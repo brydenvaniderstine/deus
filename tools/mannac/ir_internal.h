@@ -208,6 +208,12 @@ typedef struct {
     bool        alive;
 } VisEntry;
 
+/* Where an expression sits, for E0261's fix-it: a fix wraps one operand in a lossless widening, so the binary's type may change, and the fix
+ * is offered only if the new type is known to be accepted there. FIX_NONE: unknown (no fix, except a comparison, whose result is bool
+ * whatever is wrapped); FIX_FREE: nothing constrains the type (an un-annotated let, an expression statement); FIX_TYPE: exactly `type`. */
+enum { FIX_NONE = 0, FIX_FREE, FIX_TYPE, FIX_SIGNED /* free, but under a unary `-`: any signed integer type */ };
+typedef struct { int mode; const IrType *type; } FixCtx;
+
 typedef struct {
     IrState  *st;
     Ctx      *decls;
@@ -222,8 +228,7 @@ typedef struct {
     size_t    loop_depth; /* enclosing `while`/`for` bodies: `break`/`continue` are legal only inside one */
     Rename  **renames;    /* by slot: the misnamed locals and parameters (NULL until the first) */
     size_t    renames_cap;
-    const Expr   *expect_node; /* the binary expression ir_check_expr was asked to check against expect_type: only it may use the type (E0261's fix) */
-    const IrType *expect_type;
+    FixCtx        fix;         /* what the expression being checked may be fixed to (E0261): set by whoever checks it, saved and restored around every nested check */
 } BodyCtx;
 
 /* The Rename of a local slot (NULL if the local is well named). */

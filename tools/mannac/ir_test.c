@@ -1685,13 +1685,10 @@ static void test_e0261_fix(void) {
     static const struct { const char *ta, *tb, *op, *expr, *fixed; bool left; const char *to; } cases[] = {
         {"u8", "u32", "+", "a + b", "u32(a) + b", true, "u32"},      /* the narrower converts losslessly: wrap it */
         {"u32", "u8", "+", "a + b", "a + u32(b)", false, "u32"},
-        {"u8", "i8", "+", "a + b", "a + u8(b)", false, "u8"},        /* neither direction is lossless: right into left's type */
-        {"i8", "u8", "-", "a - b", "a - i8(b)", false, "i8"},
         {"u8", "i32", "*", "a * b", "i32(a) * b", true, "i32"},      /* unsigned -> wider signed is lossless */
         {"i32", "u8", "<", "a < b", "a < i32(b)", false, "i32"},
         {"u32", "i64", "==", "a == b", "i64(a) == b", true, "i64"},
         {"i8", "i64", "/", "a / b", "i64(a) / b", true, "i64"},
-        {"u8", "u32", "<<", "a << b", "a << u8(b)", false, "u8"},    /* a shift's COUNT is always the one wrapped */
         {"u32", "u8", ">>", "a >> b", "a >> u32(b)", false, "u32"},
         {"u8", "u32", "&", "(a) & b", "u32((a)) & b", true, "u32"},  /* the operand's span includes its parentheses */
     };
@@ -1775,6 +1772,16 @@ static void test_e0261_fix(void) {
         "fn f(a: u8, b: u32) -> u8 { return a << b; }\n",     /* the count would be narrowed */
         "fn f(a: u8, b: i8) { if a < b { } }\n",              /* a comparison with no widening either way */
         "fn f(a: u8, b: u32) { let r: bool = a + b; }\n",     /* nothing wrapped makes a u8 + u32 a bool */
+        /* with nothing expected, the fix is still one LOSSLESS widening (these three had a narrowing fix before step 18) */
+        "fn f(a: u8, b: i8) { let r = a + b; }\n",
+        "fn f(a: i8, b: u8) { let r = a - b; }\n",
+        "fn f(a: u8, b: u32) { let r = a << b; }\n",
+        /* a wrapped operand must not make an enclosing operator fail, or lose the type the context expects (step 18: audit findings 1 and 4) */
+        "fn g(x: u8) -> u8 { return x; } fn f(a: u8, b: u8, c: u16) -> u8 { return g(a + b) + c; }\n",
+        "fn g(x: u8) -> u8 { return x; } fn f(a: u8, b: u8, c: u32) -> u8 { return g(a + b) << c; }\n",
+        "fn f(a: u8, b: u16, c: u8) -> u8 { return a + b + c; }\n",
+        "fn f(a: i8, b: i16) -> i8 { return -(a + b); }\n",
+        "fn f(a: u8, b: u16, c: u8) { let r = a + b + c; }\n",   /* the fixed outer operator would fail again */
     };
     for (size_t i = 0; i < sizeof nofix_ctx / sizeof nofix_ctx[0]; i++) {
         char src[200];

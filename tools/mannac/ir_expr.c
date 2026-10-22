@@ -237,13 +237,14 @@ static IR_NOINLINE IrExpr *check_ident(BodyCtx *bc, const Expr *e) {
 
 typedef struct {
     bool     group; /* an untyped literal expression: nothing built yet */
+    uint32_t pending; /* an ERROR node only: 1 + the index of the one E0261 diagnostic in this subtree whose fix still depends on its ancestors (0: none) */
     IrExpr  *node;  /* otherwise the typed (or ERROR) expression */
 } Synth;
 
 static Synth synth(BodyCtx *bc, const Expr *e);
 
-static Synth is_group(void)        { Synth s = {true, NULL}; return s; }
-static Synth is_node(IrExpr *n)    { Synth s = {false, n}; return s; }
+static Synth is_group(void)        { Synth s = {true, 0, NULL}; return s; }
+static Synth is_node(IrExpr *n)    { Synth s = {false, 0, n}; return s; }
 static Synth is_error(IrState *st, Span at) { return is_node(error_node(st, at)); }
 
 static bool has_error(Synth s) { return !s.group && s.node->type->kind == IR_T_ERROR; }
@@ -261,7 +262,11 @@ static IR_NOINLINE Synth finish_unary(BodyCtx *bc, const Expr *e, Synth o) {
         report_bool_expected(st, e->as.unary.operand->span);
         return is_error(st, e->span);
     }
-    if (has_error(o)) return is_error(st, e->span);
+    if (has_error(o)) { /* a unary `-` or `~` keeps its operand's type, so a fix inside it stays as valid as it was */
+        Synth s = is_error(st, e->span);
+        s.pending = o.pending;
+        return s;
+    }
     const IrType *t = o.node->type;
     bool ok = op == UNOP_NOT ? t->kind == IR_T_BOOL
             : op == UNOP_NEG ? is_int(t) && t->as.integer.is_signed
@@ -274,7 +279,16 @@ static IR_NOINLINE Synth finish_unary(BodyCtx *bc, const Expr *e, Synth o) {
 }
 
 static Synth synth_unary(BodyCtx *bc, const Expr *e) {
+    FixCtx my = bc->fix;
+    /* `-x` and `~x` have x's type, so x sits where the whole sits; `!x` does not. `-` also needs a signed type (E0260 otherwise): a fix
+     * must not make the operand unsigned or leave the place it is expected to fill unsigned. */
+    if (e->as.unary.op == UNOP_NOT) bc->fix = (FixCtx){FIX_NONE, NULL};
+    else if (e->as.unary.op == UNOP_NEG) {
+        if (my.mode == FIX_FREE) bc->fix = (FixCtx){FIX_SIGNED, NULL};
+        else if (my.mode == FIX_TYPE && !(my.type->kind == IR_T_INT && my.type->as.integer.is_signed)) bc->fix = (FixCtx){FIX_NONE, NULL};
+    }
     Synth o = synth(bc, e->as.unary.operand);
+    bc->fix = my;
     return finish_unary(bc, e, o);
 }
 
@@ -292,45 +306,78 @@ static bool lossless(const IrType *from, const IrType *to) {
     return !fs && ts && tb > fb; /* unsigned -> a wider signed type */
 }
 
-/* E0261 for two typed operands of different types. The fix (both integer types only) wraps ONE
- * operand in the conversion to the other's type: the one that converts without loss if exactly
- * one does (u8 + u32 -> `u32(a) + b`), else the RIGHT operand into the left's type; a shift's
- * count is always the one wrapped (its left operand decides the result type).
- * When the expression itself was checked against a type E (a return, an annotated let, an
- * argument, an assignment: bc->expect_node), the fix must also make the result E, by one lossless
- * widening and never a narrowing: arithmetic and bitwise operators wrap the operand that is not
- * already E (only if that widens it to E), a shift wraps its count into the left operand's type
- * (which must be E, and widening the count), a comparison (result bool) wraps the operand that widens
- * losslessly when E is bool. If no single wrap does that, no fix is offered: a fix that leaves the program rejected is
- * worse than none. (docs/M2_PLAN.md "Operators", E0261.) */
-static IR_COLD void report_types_differ(BodyCtx *bc, const Expr *e, const IrType *lt, const IrType *rt) {
+/* May a fix make the expression's type `result`? Only where that type is known to be accepted (bc->fix). */
+static bool fix_accepts(const BodyCtx *bc, const IrType *result) {
+    if (bc->fix.mode == FIX_FREE) return true;
+    if (bc->fix.mode == FIX_SIGNED) return result->kind == IR_T_INT && result->as.integer.is_signed;
+    return bc->fix.mode == FIX_TYPE && bc->fix.type->kind != IR_T_ERROR && bc->fix.type == result;
+}
+
+/* E0261 for two typed operands of different types. The fix (both integer types only) wraps exactly ONE operand in a LOSSLESS
+ * widening to the other's type - never a narrowing, never a change of sign that can lose a value - and is offered only if the
+ * binary's type after the wrap is known to be accepted where it sits (bc->fix, see FixCtx):
+ *   - a comparison: the result is bool whichever operand is wrapped, so the fix is offered anywhere (when one direction is lossless);
+ *   - an arithmetic or bitwise operator: the wrap makes the result the wider type, so it is offered where that type is expected or
+ *     where nothing constrains the type (u8 + u32 -> `u32(a) + b`);
+ *   - a shift: only the count is wrapped, into the left operand's type (the result type), and only if that widens it.
+ * Anywhere else, no fix: a fix that leaves the program rejected is worse than none. Returns, for an arithmetic fix inside a context
+ * that was passed down from an ancestor (FIX_TYPE), 1 + the index of the diagnostic: the ancestor may still have to withdraw it
+ * (see settle_pending). (docs/M2_PLAN.md "Operators", E0261.) */
+static IR_COLD uint32_t report_types_differ(BodyCtx *bc, const Expr *e, const IrType *lt, const IrType *rt) {
     IrState *st = bc->st;
     const Expr *le = e->as.binary.lhs, *re = e->as.binary.rhs;
-    bool wrap_left = false;
+    bool wrap_left = false, arith_fix = false;
     const char *to = NULL;
     if (is_int(lt) && is_int(rt)) {
         bool l2r = lossless(lt, rt), r2l = lossless(rt, lt);
         BinOp op = e->as.binary.op;
-        const IrType *want = bc->expect_node == e ? bc->expect_type : NULL;
-        if (!want || want->kind == IR_T_ERROR) {
-            wrap_left = !is_shift(op) && l2r && !r2l;
-            to = ir_type_text(st, wrap_left ? rt : lt);
-        } else if (is_shift(op)) {
-            if (lt == want && r2l) to = ir_type_text(st, lt);
-        } else if (!is_arith_class(op)) { /* a comparison: the result is bool whatever is wrapped */
-            if (want->kind == IR_T_BOOL && (l2r || r2l)) { /* the one widening, if there is one */
-                wrap_left = l2r;
-                to = ir_type_text(st, wrap_left ? rt : lt);
+        const IrType *result = NULL;
+        if (!is_arith_class(op)) { /* a comparison */
+            if (l2r) { wrap_left = true; to = ir_type_text(st, rt); }
+            else if (r2l) to = ir_type_text(st, lt);
+        } else {
+            if (is_shift(op)) {
+                if (r2l) { to = ir_type_text(st, lt); result = lt; }
+            } else if (l2r) {
+                wrap_left = true;
+                to = ir_type_text(st, rt);
+                result = rt;
+            } else if (r2l) {
+                to = ir_type_text(st, lt);
+                result = lt;
             }
-        } else if (rt == want && l2r) {
-            wrap_left = true;
-            to = ir_type_text(st, rt);
-        } else if (lt == want && r2l) {
-            to = ir_type_text(st, lt);
+            if (to && !fix_accepts(bc, result)) to = NULL;
+            arith_fix = to != NULL;
         }
     }
+    size_t before = st->diags.len;
     ir_error(st, diag_ir_operand_types_differ(st->arena, e->span, ir_type_text(st, lt), ir_type_text(st, rt),
                                               le->span, re->span, wrap_left, to));
+    return (arith_fix && bc->fix.mode == FIX_TYPE && st->diags.len > before) ? (uint32_t)before + 1 : 0;
+}
+
+static IR_COLD void withdraw_fix(BodyCtx *bc, uint32_t pending) {
+    if (pending) bc->st->diags.items[pending - 1].fix = NULL;
+}
+
+/* A binary operator with an ERROR operand is silent, but a fix offered inside it was offered on the strength of this operator
+ * accepting the wrapped type: its other operand must have that type too, or the fixed source fails at THIS operator. Only
+ * FIX_TYPE contexts pass down to arithmetic operands, so only there can a fix be pending. The fix is withdrawn when the other operand is a
+ * typed expression of another type; when both operands carry a fix, both are withdrawn (neither is a single mistake any more). */
+static IR_COLD Synth settle_pending(BodyCtx *bc, const Expr *e, Synth l, Synth r) {
+    Synth out = is_error(bc->st, e->span);
+    if (!l.pending && !r.pending) return out;
+    const IrType *want = bc->fix.mode == FIX_TYPE ? bc->fix.type : NULL;
+    bool typed_l = !l.group && !has_error(l) && !is_unit(l), typed_r = !r.group && !has_error(r) && !is_unit(r);
+    if (l.pending && r.pending) {
+        withdraw_fix(bc, l.pending);
+        withdraw_fix(bc, r.pending);
+        return out;
+    }
+    if (l.pending && typed_r && r.node->type != want) withdraw_fix(bc, l.pending);
+    else if (r.pending && typed_l && l.node->type != want) withdraw_fix(bc, r.pending);
+    else out.pending = l.pending ? l.pending : r.pending;
+    return out;
 }
 
 /* A binary operator with at least one TYPED operand (the other may be a group). In order: an
@@ -341,7 +388,7 @@ static IR_NOINLINE Synth typed_binary(BodyCtx *bc, const Expr *e, Synth l, Synth
     IrState *st = bc->st;
     BinOp op = e->as.binary.op;
     const Expr *le = e->as.binary.lhs, *re = e->as.binary.rhs;
-    if (has_error(l) || has_error(r)) return is_error(st, e->span);
+    if (has_error(l) || has_error(r)) return settle_pending(bc, e, l, r);
     if (l.group && r.group) { /* only a comparison reaches here with two groups */
         report_cannot_infer(st, le->span);
         return is_error(st, e->span);
@@ -357,8 +404,9 @@ static IR_NOINLINE Synth typed_binary(BodyCtx *bc, const Expr *e, Synth l, Synth
     IrExpr *rn = r.group ? group_against(st, re, lt) : r.node;
     if (ln->type->kind == IR_T_ERROR || rn->type->kind == IR_T_ERROR) return is_error(st, e->span); /* already reported */
     if (ln->type != rn->type) {
-        report_types_differ(bc, e, ln->type, rn->type);
-        return is_error(st, e->span);
+        Synth s = is_error(st, e->span);
+        s.pending = report_types_differ(bc, e, ln->type, rn->type);
+        return s;
     }
     const IrType *result = is_arith_class(op) ? ln->type : ir_type_bool(st);
     return is_node(ir_expr_binary(st, e->span, result, op, ln, rn));
@@ -396,9 +444,18 @@ static IR_NOINLINE Synth finish_binary(BodyCtx *bc, const Expr *e, Synth l, Synt
     return typed_binary(bc, e, l, r);
 }
 
+/* The operands of an arithmetic or bitwise operator sit where the whole sits when that is a known type (the fix there must make the
+ * operand that type); the left operand of a shift too. Anything else - a comparison, `&&`, a shift count, or a whole that is only
+ * unconstrained (the other operand decides the type) - leaves the operand's place unknown. */
 static Synth synth_binary(BodyCtx *bc, const Expr *e) {
+    FixCtx my = bc->fix, none = {FIX_NONE, NULL};
+    BinOp op = e->as.binary.op;
+    bool through = is_arith_class(op) && my.mode == FIX_TYPE;
+    bc->fix = through ? my : none;
     Synth l = synth(bc, e->as.binary.lhs);
+    bc->fix = through && !is_shift(op) ? my : none;
     Synth r = synth(bc, e->as.binary.rhs);
+    bc->fix = my;
     return finish_binary(bc, e, l, r);
 }
 
@@ -951,11 +1008,28 @@ static IR_NOINLINE Synth synth_leaf(BodyCtx *bc, const Expr *e) {
     }
 }
 
+static Synth synth_other(BodyCtx *bc, const Expr *e);
+static Synth synth_kind(BodyCtx *bc, const Expr *e);
+
 static Synth synth(BodyCtx *bc, const Expr *e) {
     bc->st->expr_visits++;
     assert(ir_ast_height_ok(e)); /* the parser's E0111 bound; this stage asserts it, enforces none */
     if (e->kind == EXPR_BINARY) return synth_binary(bc, e);
     if (e->kind == EXPR_UNARY) return synth_unary(bc, e);
+    return synth_other(bc, e);
+}
+
+/* Every other kind of expression: its parts do not sit where it sits (an argument is checked against the parameter, an index against
+ * nothing), so they start with an unknown place. */
+static IR_NOINLINE Synth synth_other(BodyCtx *bc, const Expr *e) {
+    FixCtx my = bc->fix;
+    bc->fix = (FixCtx){FIX_NONE, NULL};
+    Synth s = synth_kind(bc, e);
+    bc->fix = my;
+    return s;
+}
+
+static Synth synth_kind(BodyCtx *bc, const Expr *e) {
     if (e->kind == EXPR_CALL) return synth_call(bc, e);
     if (e->kind == EXPR_FIELD_ACCESS) return synth_field(bc, e);
     if (e->kind == EXPR_CONVERT) return synth_convert(bc, e);
@@ -970,12 +1044,16 @@ static Synth synth(BodyCtx *bc, const Expr *e) {
 
 IrExpr *ir_check_expr(BodyCtx *bc, const Expr *e, const IrType *expected) {
     IrState *st = bc->st;
-    if (e->kind == EXPR_ARRAY || e->kind == EXPR_ARRAY_REPEAT) return check_array_literal(bc, e, expected);
-    if (e->kind == EXPR_BINARY) { /* E0261's fix needs the type the whole expression is expected to have */
-        bc->expect_node = e;
-        bc->expect_type = expected;
+    FixCtx saved = bc->fix;
+    if (e->kind == EXPR_ARRAY || e->kind == EXPR_ARRAY_REPEAT) {
+        bc->fix = (FixCtx){FIX_NONE, NULL};
+        IrExpr *n = check_array_literal(bc, e, expected);
+        bc->fix = saved;
+        return n;
     }
+    bc->fix = (FixCtx){FIX_TYPE, expected}; /* the expression must have exactly this type: E0261's fix may use it */
     Synth s = synth(bc, e);
+    bc->fix = saved;
     if (s.group) return group_against(st, e, expected);
     if (is_unit(s)) { /* nothing is expected to BE unit: a call that returns nothing is not a value */
         report_unit(st, e->span);
@@ -987,9 +1065,19 @@ IrExpr *ir_check_expr(BodyCtx *bc, const Expr *e, const IrType *expected) {
     return error_node(st, e->span);
 }
 
+/* The two entries whose expression is not checked against a type: an un-annotated let and an expression statement are FREE (the
+ * binary's type may become whatever the fix makes it); a silent walk reports nothing, so its fixes do not matter. */
+static Synth synth_in(BodyCtx *bc, const Expr *e, int mode) {
+    FixCtx saved = bc->fix;
+    bc->fix = (FixCtx){mode, NULL};
+    Synth s = synth(bc, e);
+    bc->fix = saved;
+    return s;
+}
+
 IrExpr *ir_infer_expr(BodyCtx *bc, const Expr *e) {
     IrState *st = bc->st;
-    Synth s = synth(bc, e);
+    Synth s = synth_in(bc, e, FIX_FREE);
     if (is_unit(s)) {
         report_unit(st, e->span);
         return error_node(st, e->span);
@@ -1003,12 +1091,12 @@ IrExpr *ir_infer_expr(BodyCtx *bc, const Expr *e) {
 
 IrExpr *ir_infer_discard(BodyCtx *bc, const Expr *e) {
     IrState *st = bc->st;
-    Synth s = synth(bc, e);
+    Synth s = synth_in(bc, e, FIX_FREE);
     if (!s.group) return s.node; /* a value that is thrown away may be unit */
     report_cannot_infer(st, e->span);
     return error_node(st, e->span);
 }
 
 void ir_check_silent(BodyCtx *bc, const Expr *e) {
-    (void)synth(bc, e);
+    (void)synth_in(bc, e, FIX_NONE);
 }

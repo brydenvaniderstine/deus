@@ -1,0 +1,10 @@
+manna v0;
+fn g(x: u8) -> u8 {
+    return x;
+}
+fn f(a: u8, b: u8, d: i8) -> bool {
+    if g(a + b) < d {
+        return true;
+    }
+    return false;
+}

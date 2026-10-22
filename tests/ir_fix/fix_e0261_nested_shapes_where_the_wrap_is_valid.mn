@@ -1,0 +1,16 @@
+manna v0;
+fn g(x: u8) -> u8 {
+    return x;
+}
+fn f(a: u8, b: u8, c: u16) -> u16 {
+    return g(a + b) + c;
+}
+fn h(a: u8, b: u16, c: u16) -> u16 {
+    return a + b + c;
+}
+fn k(a: i8, b: i16) -> i16 {
+    return -(a + b);
+}
+fn m(a: u8, b: u16) {
+    let r = a + b;
+}

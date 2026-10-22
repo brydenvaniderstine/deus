@@ -1,0 +1,4 @@
+manna v0;
+fn f(a: i8, b: i16) -> i8 {
+    return -(a + b);
+}

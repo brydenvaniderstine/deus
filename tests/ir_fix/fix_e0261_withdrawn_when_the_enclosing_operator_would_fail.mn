@@ -1,0 +1,7 @@
+manna v0;
+fn f(a: u8, b: u16, c: u8) -> u16 {
+    return a + b + c;
+}
+fn g(a: u8, b: u16, c: u8) {
+    let r = a + b + c;
+}
