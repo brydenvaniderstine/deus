@@ -52,7 +52,7 @@ QEMU_FLAGS   := -machine q35 -m 8G -cpu qemu64,+apic,+pdpe1gb \
                 -serial file:serial.log -monitor stdio -no-reboot \
                 -d int,cpu_reset -D qemu.log
 
-.PHONY: all image run debug clean limine stage-esp test-wx test-lexer test-lexer-asan test-arena test-arena-asan test-ast test-ast-asan test-parser-state test-parser-state-asan test-parser-fixes test-parser-fixes-asan test-parser test-parser-asan test-determinism test-ir test-ir-asan test-ir-unit test-ir-unit-asan test-ir-ndebug test-ir-fix test-ir-fix-asan test-ir-error-codes audit-ir-poison test-e0261-exhaustive coverage fuzz fuzz-lexer fuzz-parser fuzz-ir fuzz-ir-ungated measure-height measure-ir-stack measure-ir-build-stack
+.PHONY: all image run debug clean limine stage-esp test-wx test-lexer test-lexer-asan test-arena test-arena-asan test-ast test-ast-asan test-parser-state test-parser-state-asan test-parser-fixes test-parser-fixes-asan test-parser test-parser-asan test-determinism test-ir test-ir-asan test-ir-unit test-ir-unit-asan test-ir-ndebug test-ir-fix test-ir-fix-asan test-ir-error-codes audit-ir-poison test-e0261-exhaustive test-rename-property coverage fuzz fuzz-lexer fuzz-parser fuzz-ir fuzz-ir-ungated measure-height measure-ir-stack measure-ir-build-stack
 
 all: $(KERNEL_ELF)
 
@@ -314,6 +314,13 @@ test-e0261-exhaustive:
 	@mkdir -p $(IR_TEST_DIR)
 	$(MANNAC_CC) -std=c11 -Wall -Wextra -O2 -g -o $(IR_TEST_DIR)/ir_e0261_exhaustive $(IR_EXH_SRCS)
 	$(IR_TEST_DIR)/ir_e0261_exhaustive
+
+# Typed-IR step 18: a fixed-seed random property test of the rename fix-its (2,500 programs, ~35 s): after `ir_dump --fixed`, no new error
+# and no identifier resolves to another declaration (tools/rename_property_test.py, with its own resolver).
+test-rename-property:
+	@mkdir -p $(IR_DUMP_DIR)
+	$(MANNAC_CC) -std=c11 -Wall -Wextra -O2 -g -o $(IR_DUMP_DIR)/ir_dump $(IR_DUMP_SRCS)
+	python3 tools/rename_property_test.py $(IR_DUMP_DIR)/ir_dump 2500 0
 
 # Typed-IR step 15: every E02xx code docs/error_codes.md calls emitted has a golden or unit test (and a constructor in
 # diag.c, and nothing emitted is undocumented); prints the per-code table.
