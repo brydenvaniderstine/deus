@@ -452,12 +452,12 @@ static IR_NOINLINE Synth finish_binary(BodyCtx *bc, const Expr *e, Synth l, Synt
  * operand that type); the left operand of a shift too. Anything else - a comparison, `&&`, a shift count, or a whole that is only
  * unconstrained (the other operand decides the type) - leaves the operand's place unknown. */
 static Synth synth_binary(BodyCtx *bc, const Expr *e) {
-    FixCtx my = bc->fix, none = {FIX_NONE, NULL};
+    FixCtx my = bc->fix;
     BinOp op = e->as.binary.op;
     bool through = is_arith_class(op) && my.mode == FIX_TYPE;
-    bc->fix = through ? my : none;
+    if (!through) bc->fix = (FixCtx){FIX_NONE, NULL};
     Synth l = synth(bc, e->as.binary.lhs);
-    bc->fix = through && !is_shift(op) ? my : none;
+    bc->fix = through && !is_shift(op) ? my : (FixCtx){FIX_NONE, NULL};
     Synth r = synth(bc, e->as.binary.rhs);
     bc->fix = my;
     return finish_binary(bc, e, l, r);

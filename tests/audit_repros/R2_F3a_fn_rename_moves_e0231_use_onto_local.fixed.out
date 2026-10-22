@@ -1,0 +1,3 @@
+ERRORS:
+3:4 E0280 'helperFn' is not snake_case
+9:17 E0231 'helperFn' is a function, not a value

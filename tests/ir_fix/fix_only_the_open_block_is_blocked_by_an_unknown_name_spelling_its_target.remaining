@@ -1,0 +1,3 @@
+ERRORS:
+7:13 E0280 'aB' is not snake_case
+8:21 E0230 unknown name 'a_b'

@@ -1,0 +1,2 @@
+ERRORS:
+4:17 E0261 operands have different types: u8 and u16; convert one explicitly

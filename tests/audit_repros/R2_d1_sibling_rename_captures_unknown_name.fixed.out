@@ -1,0 +1,3 @@
+ERRORS:
+8:13 E0280 'itemCount' is not snake_case
+9:16 E0230 unknown name 'item_count'

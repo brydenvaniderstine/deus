@@ -101,3 +101,30 @@ if __name__ == "__main__":
     L = ["manna v0;", "struct P {", "    fooBar: u8,", "}", "fn n() -> P {", "    return P(foo_bar: 1);", "}"]
     write("fix_field_rename_onto_an_unknown_construction_field", L, L,
           [g.err(L, 3, "fooBar", "E0280", snake("fooBar")), g.err(L, 6, "foo_bar", "E0242", "struct 'P' has no field 'foo_bar'")])
+
+    # ---- more E0261 shapes (these cover every branch of the fix-context code: the signed place under unary minus, a fix in the right operand of
+    # an enclosing operator kept or withdrawn, a fix in both operands withdrawn).
+    L = ["manna v0;", "fn f(a: i8, b: i16) {", "    let r = -(a + b);", "}"]
+    F = list(L); F[2] = "    let r = -(i16(a) + b);"
+    write("fix_e0261_under_unary_minus_in_an_unconstrained_value_needs_a_signed_type", L, F)
+    L = ["manna v0;", "fn f(a: u8, b: u16) {", "    let r = -(a + b);", "}", "fn g(a: u8, b: u16) -> u16 {", "    return -(a + b);", "}"]
+    write("fix_e0261_under_unary_minus_no_fix_when_the_type_would_be_unsigned", L, L,
+          [g.err(L, 3, "(a + b)", "E0261", e261("u8", "u16")), g.err(L, 6, "(a + b)", "E0261", e261("u8", "u16"))])
+    L = ["manna v0;", "fn f(a: u8, b: u16, c: u16) -> u16 {", "    return c + (a + b);", "}"]
+    F = list(L); F[2] = "    return c + (u16(a) + b);"
+    write("fix_e0261_in_the_right_operand_of_an_operator_that_accepts_it", L, F)
+    L = ["manna v0;", "fn f(a: u8, b: u16, c: u8) -> u16 {", "    return c + (a + b);", "}"]
+    write("fix_e0261_in_the_right_operand_withdrawn_when_the_left_has_another_type", L, L, [g.err(L, 3, "(a + b)", "E0261", e261("u8", "u16"))])
+    L = ["manna v0;", "fn f(a: u8, b: u16, c: u8, d: u16) -> u16 {", "    return (a + b) + (c + d);", "}"]
+    write("fix_e0261_two_fixes_inside_one_operator_are_both_withdrawn", L, L,
+          [g.err(L, 3, "(a + b)", "E0261", e261("u8", "u16")), g.err(L, 3, "(c + d)", "E0261", e261("u8", "u16"))])
+    # A misnamed local whose block closed, then the same name misnamed again in a sibling block that also uses a name declared nowhere:
+    # only the second is visible at the use, and its rename is blocked only if it spells that name.
+    L = ["manna v0;", "fn f(c: bool) {", "    if c {", "        let aB: u8 = 1;", "    }", "    if c {", "        let aB: u8 = 2;", "        let y: u8 = zz;", "    }", "}"]
+    write("fix_sibling_blocks_with_the_same_misnamed_local_and_an_unknown_name", L, rename(L, {"aB": "a_b"}), [g.err(rename(L, {"aB": "a_b"}), 8, "zz", "E0230", unknown("zz"))])
+    # The same two blocks, the unknown name spelling the target: only the block that is open at the use is blocked; the closed one is not
+    # (the lookup by name finds the open block's local, a different slot, so the closed block's rename is not mistaken for a visible one).
+    L = ["manna v0;", "fn f(c: bool) {", "    if c {", "        let aB: u8 = 1;", "    }", "    if c {", "        let aB: u8 = 2;", "        let y: u8 = a_b;", "    }", "}"]
+    F = list(L); F[3] = "        let a_b: u8 = 1;"
+    write("fix_only_the_open_block_is_blocked_by_an_unknown_name_spelling_its_target", L, F,
+          [g.err(F, 7, "aB", "E0280", snake("aB")), g.err(F, 8, "a_b", "E0230", unknown("a_b"))])

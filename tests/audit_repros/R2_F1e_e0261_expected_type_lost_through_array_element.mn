@@ -1,0 +1,5 @@
+manna v0;
+
+fn f(a: u8, b: u8, d: u16) {
+    let r: u8 = [a, a + b][1] + d;
+}

@@ -1,6 +1,6 @@
 # m2-ir-v0 audit repros
 
-One input per audit finding (`~/Desktop/m2-ir-v0-audit-findings-2026-10-21.md`), with the output the code gives **after step 17**.
+One input per audit finding (the first audit: `~/Desktop/m2-ir-v0-audit-findings-2026-10-21.md`, inputs `01_` ... `09_`; the re-audit of step 17: inputs `R2_*`, the auditor's files verbatim), with the output the code gives **after step 18** (the first audit's outputs did not change between step 17 and step 18).
 For `NN_name.mn`:
 
 - `NN_name.out`: `ir_dump NN_name.mn`
@@ -25,3 +25,16 @@ These files are not part of `make test-*`; they exist for the re-audit. The same
 | 10 | n/a | `test_e0261_fix` in `tools/mannac/ir_test.c` now re-checks every fixed source: `make test-ir-unit` |
 | 11 | n/a | `make audit-ir-poison`: `ir_rename.c` is in the file list, 106/106 lines run by a one-diagnostic golden |
 | 12 | n/a | disclosure only (the brief): the ungated fuzz statistics came from an untracked program |
+
+## Re-audit of step 17 (inputs `R2_*.mn`; fixed in step 18)
+
+| Input | Expected now (what the re-audit found before) |
+|---|---|
+| `R2_F1a`, `F1c`, `F1d`, `F1e` | one E0261 and **no fix** (fixed source == input). Before: a nested call argument, construction field or array element overwrote the expected type, so a lossy or narrowing wrap was offered and the fixed source failed |
+| `R2_F1b` | one E0261 (`u8` and `i8`) and no fix: neither direction is lossless. Before: a lossy `u8(...)` wrap |
+| `R2_F4a`, `F4b` | one E0261 and no fix: the wrap would make the enclosing `+` (or the unary `-`'s place) fail. Before: a fix whose result was not clean |
+| `R2_F2a`, `F2b` | the rename keeps the parentheses: `(my_var) = 2`, `(my_p).x = 2`, `(my_p)[0] = 3`; the re-check reports the same E0270s. Before: the parentheses were deleted and the E0270 vanished |
+| `R2_F3a`, `F3b` | E0280 and E0231, **no fix** (fixed source == input): the rename would have made a local capture the function used as a value, or the function a local. Before: a fix that changed what `helper_fn` meant |
+| `R2_d1` | E0280 and E0230, no fix: renaming `itemCount` would make the unknown `item_count` resolve to it. Before: it resolved after the fix |
+| `R2_f1`, `f2` | the mute across loops, branches and the 20-error cap: `R2_f1` ends `E0270`, `E0270`, `E0203` after 18 `E0223`; `R2_f2` prints the E0270s and the value-side errors (`nope2`, `h()`) but nothing from inside a target. Sound before and after |
+| `R2_g1` | three E0222 (one per oversized annotation) and the one independent E0261 (`take(..)` is `u8`, `len(..)` is `u64`). Sound before and after |
