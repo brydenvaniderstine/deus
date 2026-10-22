@@ -138,6 +138,7 @@ Expr *expr_ident(Arena *a, Span span, const char *name, size_t name_len) {
     e->parenthesized = false;
     e->height = 1;
     e->as.ident.name = arena_strndup(a, name, name_len);
+    e->as.ident.name_span = span; /* the parser widens `span` over parentheses; this stays the token */
     return e;
 }
 

@@ -1,0 +1,6 @@
+manna v0;
+fn f() -> u8 {
+    let my_var: u8 = 1;
+    (my_var) = 2;
+    return my_var;
+}

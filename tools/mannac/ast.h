@@ -46,7 +46,7 @@ struct Type {
     TypeKind kind;
     Span     span;
     union {
-        struct { const char *name; } ident;          /* arena-owned, NUL-terminated */
+        struct { const char *name; Span name_span; } ident; /* name_span: the identifier token alone; `span` also covers any parentheses around it */          /* arena-owned, NUL-terminated */
         struct { uint64_t size; Type *elem; } array;  /* [size]elem */
         struct { Type *elem; } slice;                 /* []elem */
     } as;
@@ -178,7 +178,7 @@ struct Expr {
     union {
         struct { uint64_t value; } number;
         struct { bool value; } boolean;
-        struct { const char *name; } ident;
+        struct { const char *name; Span name_span; } ident; /* name_span: the identifier token alone; `span` also covers any parentheses around it */
         struct { UnOp op; Expr *operand; } unary;
         struct { BinOp op; Expr *lhs; Expr *rhs; } binary;
         struct { Span name_span; const char *name; NodeList args; } call; /* args: Expr*; name_span: the callee identifier */

@@ -40,3 +40,17 @@ if __name__ == "__main__":
     L = ["manna v0;", "fn f(a: u8, b: u16, c: u8) -> u16 {", "    return a + b + c;", "}", "fn g(a: u8, b: u16, c: u8) {", "    let r = a + b + c;", "}"]
     write("fix_e0261_withdrawn_when_the_enclosing_operator_would_fail", L, L,
           [g.err(L, 3, "a + b", "E0261", e261("u8", "u16")), g.err(L, 6, "a + b", "E0261", e261("u8", "u16"))])
+
+    # ---- a rename edits the name token only: parentheses around a use stay (audit findings F2a, F2b). The target is not assignable, so
+    # the E0270 stays after the fix, at the (parenthesized) target.
+    L = ["manna v0;", "fn f() -> u8 {", "    let myVar: u8 = 1;", "    (myVar) = 2;", "    return myVar;", "}"]
+    F = rename(L, {"myVar": "my_var"})
+    write("fix_rename_keeps_the_parentheses_of_a_bad_target", L, F, [g.err(F, 4, "(my_var)", "E0270", "can't assign to this expression")])
+    L = ["manna v0;", "struct P {", "    x: u8,", "}", "fn f() -> u8 {", "    let myP: P = P(x: 1);", "    (myP).x = 2;", "    (myP)[0] = 3;", "    return myP.x;", "}"]
+    F = rename(L, {"myP": "my_p"})
+    write("fix_rename_keeps_the_parentheses_of_a_field_and_an_index_target", L, F,
+          [g.err(F, 7, "(my_p).x", "E0270", "can't assign to this expression"), g.err(F, 8, "(my_p)[0]", "E0270", "can't assign to this expression")])
+    L = ["manna v0;", "fn doIt() -> u8 {", "    return 1;", "}", "fn g() -> u8 {", "    let myVar: u8 = 1;", "    ( ( myVar ) ) = 2;", "    let x: u8 = ( myVar );", "    let y: u8 = (doIt);", "    return ((myVar));", "}"]
+    F = rename(L, {"myVar": "my_var", "doIt": "do_it"})
+    write("fix_rename_keeps_nested_and_spaced_parentheses", L, F,
+          [g.err(F, 7, "( ( my_var ) )", "E0270", "can't assign to this expression"), g.err(F, 9, "(do_it)", "E0231", "'do_it' is a function, not a value")])

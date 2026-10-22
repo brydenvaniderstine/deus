@@ -221,12 +221,12 @@ static IR_NOINLINE IrExpr *check_ident(BodyCtx *bc, const Expr *e) {
             return error_node(st, e->span);
         }
         /* A function or struct used as a value is still a resolved use of that name: a rename must reach it. */
-        if (top && !top->is_struct && bc->decls->fn_renames) ir_note_use(st, bc->decls->fn_renames[top->index], e->span);
-        if (top && top->is_struct && bc->decls->struct_renames) ir_note_use(st, bc->decls->struct_renames[top->index], e->span);
+        if (top && !top->is_struct && bc->decls->fn_renames) ir_note_use(st, bc->decls->fn_renames[top->index], e->as.ident.name_span);
+        if (top && top->is_struct && bc->decls->struct_renames) ir_note_use(st, bc->decls->struct_renames[top->index], e->as.ident.name_span);
         report_name(st, e, top);
         return error_node(st, e->span);
     }
-    ir_note_use(st, body_rename(bc, l->slot), e->span);
+    ir_note_use(st, body_rename(bc, l->slot), e->as.ident.name_span);
     return ir_expr_local(st, e->span, l);
 }
 

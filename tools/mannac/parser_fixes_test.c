@@ -631,7 +631,8 @@ static void test_name_spans(void) {
         "    let v = u64(p);\n"            /* 7 */
         "    let w = g(v).x;\n"            /* 8 */
         "    let z = (g(v)).x;\n"          /* 9 */
-        "}\n";                             /* 10 */
+        "    let q = ( ( v ) );\n"         /* 10 */
+        "}\n";                             /* 11 */
     ParserState ps;
     NodeList items = parse_clean_file(&ps, src);
     assert(items.len == 2);
@@ -682,6 +683,12 @@ static void test_name_spans(void) {
     expect_span("parenthesized call: span widened to the parens", call2->span, 9, 13, 9, 19);
     expect_span("parenthesized call: callee name_span is the identifier", call2->as.call.name_span, 9, 14, 9, 15);
     expect_span("field name after a parenthesized base", fa2->as.field_access.name_span, 9, 20, 9, 21);
+    /* A parenthesized identifier (step 18, re-audit finding F2): span covers every paren and space, name_span is the token alone. */
+    const Stmt *let_q = body->as.block.stmts.items[3];
+    const Expr *id = let_q->as.let_stmt.init;
+    assert(id->kind == EXPR_IDENT && id->parenthesized);
+    expect_span("parenthesized identifier: span widened to the parens", id->span, 10, 13, 10, 22);
+    expect_span("parenthesized identifier: name_span is the identifier alone", id->as.ident.name_span, 10, 17, 10, 18);
     parser_state_destroy(&ps);
 
     /* A multi-line attribute: span covers both brackets across lines. */

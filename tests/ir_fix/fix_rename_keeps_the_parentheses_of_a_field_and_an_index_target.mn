@@ -1,0 +1,10 @@
+manna v0;
+struct P {
+    x: u8,
+}
+fn f() -> u8 {
+    let myP: P = P(x: 1);
+    (myP).x = 2;
+    (myP)[0] = 3;
+    return myP.x;
+}
