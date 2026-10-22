@@ -1,0 +1,5 @@
+manna v0;
+struct P { aB: u8, }
+fn f() {
+    let p = P(aB: 1, aB: 2);
+}

@@ -1,0 +1,3 @@
+ERRORS:
+4:13 E0257 'len' is a builtin and can't be declared
+6:13 E0256 len is a builtin function; call it as len(x)

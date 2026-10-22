@@ -1,0 +1,6 @@
+manna v0;
+fn doIt() {
+}
+fn g() {
+    let x: u8 = doIt;
+}

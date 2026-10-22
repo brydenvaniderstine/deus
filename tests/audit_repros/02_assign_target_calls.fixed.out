@@ -1,0 +1,5 @@
+ERRORS:
+3:5 E0270 can't assign to this expression
+6:5 E0270 can't assign to this expression
+3:5 E0235 recursion is not allowed in v0
+6:5 E0235 recursion is not allowed in v0

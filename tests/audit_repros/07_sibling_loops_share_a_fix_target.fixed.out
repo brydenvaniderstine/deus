@@ -1,0 +1,28 @@
+(fn@2:1-7:2 fn:f
+  (params (param@2:6-2:12 ab #0 u8))
+  (returns)
+  (block@2:14-7:2
+    (for@3:5-4:6
+      (let@3:9-3:25 idx #1 u8
+        (int@3:23-3:24 0 u8))
+      (binary@3:26-3:34 < bool
+        (local@3:26-3:29 idx #1 u8)
+        (local@3:32-3:34 ab #0 u8))
+      (assign@3:36-3:49
+        (local@3:36-3:39 idx #1 u8)
+        (binary@3:42-3:49 + u8
+          (local@3:42-3:45 idx #1 u8)
+          (int@3:48-3:49 1 u8)))
+      (block@3:50-4:6))
+    (for@5:5-6:6
+      (let@5:9-5:25 idx #2 u8
+        (int@5:23-5:24 0 u8))
+      (binary@5:26-5:34 < bool
+        (local@5:26-5:29 idx #2 u8)
+        (local@5:32-5:34 ab #0 u8))
+      (assign@5:36-5:49
+        (local@5:36-5:39 idx #2 u8)
+        (binary@5:42-5:49 + u8
+          (local@5:42-5:45 idx #2 u8)
+          (int@5:48-5:49 1 u8)))
+      (block@5:50-6:6))))

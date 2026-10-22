@@ -1,0 +1,7 @@
+ERRORS:
+3:12 E0261 operands have different types: u32 and u8; convert one explicitly
+6:12 E0261 operands have different types: u32 and u8; convert one explicitly
+9:12 E0261 operands have different types: u8 and i8; convert one explicitly
+12:12 E0261 operands have different types: u8 and u32; convert one explicitly
+15:8 E0261 operands have different types: u8 and i8; convert one explicitly
+19:19 E0261 operands have different types: u8 and u32; convert one explicitly
