@@ -1,0 +1,5 @@
+ERRORS:
+9:14 E0222 type is too large (size exceeds the limit)
+10:14 E0222 type is too large (size exceeds the limit)
+11:16 E0222 type is too large (size exceeds the limit)
+14:17 E0261 operands have different types: u8 and u64; convert one explicitly

@@ -1,0 +1,15 @@
+manna v0;
+fn g(x: u8) -> u8 {
+    return x;
+}
+fn f(c: bool) -> u8 {
+    for let i: u8 = 0; i < 3; g(i + nope) = 1 {
+        if c {
+            g(true) = nope2;
+        } else {
+            (g(1, 2)).x = h();
+        }
+    }
+    let y: u8 = true;
+    return y;
+}

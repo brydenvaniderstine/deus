@@ -1,0 +1,22 @@
+manna v0;
+struct P {
+    a: u8,
+}
+fn take(x: [3]u8) -> u8 {
+    return x[0];
+}
+fn f(v: u8) -> u8 {
+    let big: [4294967296]u8 = [v; 4294967296];
+    let s: [][4294967296]u8 = big;
+    for let i: [4294967296]u8 = big; i < 3; i = i + 1 {
+        big = [1, 2];
+        big[0] = true;
+        let q = take(big) + len(big) + big[0..2][0];
+        let p = P(a: big);
+        let w: u8 = u8(big) + -big + big.x;
+        if big {
+            return big;
+        }
+    }
+    return big == big;
+}
