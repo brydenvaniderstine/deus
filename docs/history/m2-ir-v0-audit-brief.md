@@ -60,7 +60,7 @@ Numbers after step 17 (run on the 17f code; every suite exits 0 locally): 421 IR
 | `BUILD.txt` | split, build and run commands (read first) |
 | `ir.diff` | `git diff m2-parser-v0.1 HEAD -- tools Makefile .github ':!tools/fuzz/corpus'` |
 | `code_bundle.txt` | every file of `tools/mannac/` at HEAD, the `tools/*.sh` and `tools/*.py` scripts, `tools/fuzz/run_fuzzers.sh`, `Makefile`, `.github/workflows/ci.yml`, each under `===== FILE: <path> =====` |
-| `tests_bundle.txt` | every file of `tests/ir` and `tests/ir_fix` (all new since the tag), same header format |
+| `tests_bundle.txt` | every file of `tests/ir`, `tests/ir_fix` (all new since the tag) and `tests/audit_repros` (one input per first-audit finding with its expected output; see its `README.md`), same header format |
 | `tests_ir_list.txt` | `ls tests/ir` |
 | `TYPED_IR.md`, `error_codes.md`, `M2_PLAN_ir.md`, `M2_PLAN_s4.md`, `STATUS.md` | the plan record, the code registry, the IR rules and the Admission records (#7-#15), the parser grammar (to judge 10b), and the status with the coverage justification |
 | `m2-ir-v0-audit-brief.md` | this file |
@@ -82,7 +82,7 @@ def bundle(paths,out):
             f.write(("===== FILE: %s%s =====\n"%(p,"" if nl else " (no trailing newline)")).encode()+b+(b"" if nl else b"\n"))
 code=sorted(glob.glob('tools/mannac/*'))+sorted(glob.glob('tools/*.sh')+glob.glob('tools/*.py'))+['tools/fuzz/run_fuzzers.sh','Makefile','.github/workflows/ci.yml']
 bundle(code, D+'/code_bundle.txt')
-bundle(sorted(p for p in glob.glob('tests/ir/*')+glob.glob('tests/ir_fix/*') if os.path.isfile(p)), D+'/tests_bundle.txt')
+bundle(sorted(p for p in glob.glob('tests/ir/*')+glob.glob('tests/ir_fix/*')+glob.glob('tests/audit_repros/*') if os.path.isfile(p)), D+'/tests_bundle.txt')
 PY
 ls tests/ir > $D/tests_ir_list.txt
 cp docs/history/TYPED_IR.md docs/error_codes.md docs/STATUS.md docs/history/m2-ir-v0-audit-brief.md $D/
