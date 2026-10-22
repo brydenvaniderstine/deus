@@ -221,8 +221,12 @@ static IR_NOINLINE IrExpr *check_ident(BodyCtx *bc, const Expr *e) {
             return error_node(st, e->span);
         }
         /* A function or struct used as a value is still a resolved use of that name: a rename must reach it. */
-        if (top && !top->is_struct && bc->decls->fn_renames) ir_note_use(st, bc->decls->fn_renames[top->index], e->as.ident.name_span);
-        if (top && top->is_struct && bc->decls->struct_renames) ir_note_use(st, bc->decls->struct_renames[top->index], e->as.ident.name_span);
+        Rename *tr = NULL;
+        if (top && !top->is_struct && bc->decls->fn_renames) tr = bc->decls->fn_renames[top->index];
+        if (top && top->is_struct && bc->decls->struct_renames) tr = bc->decls->struct_renames[top->index];
+        ir_note_use(st, tr, e->as.ident.name_span);
+        ir_note_free_name(bc, e->as.ident.name, tr); /* ... and no rename may make a local capture it (an unknown name too) */
+        if (!top) ir_note_unresolved(st, bc->decls, NS_TOP, 0, e->as.ident.name);
         report_name(st, e, top);
         return error_node(st, e->span);
     }
@@ -484,6 +488,7 @@ static IR_NOINLINE void silently_check_args(BodyCtx *bc, const Expr *e) {
 }
 
 static IR_COLD void report_unknown_function(BodyCtx *bc, const Expr *e) {
+    ir_note_unresolved(bc->st, bc->decls, NS_TOP, 0, e->as.call.name);
     ir_error(bc->st, diag_ir_unknown_function(bc->st->arena, e->as.call.name_span, e->as.call.name));
 }
 
@@ -598,6 +603,7 @@ static IR_NOINLINE long construct_field(BodyCtx *bc, Construct *c, const Expr *a
     const char *name = n->as.ident.name;
     size_t k = field_index(c->s, name, c->highest < c->s->n_fields ? c->highest : 0);
     if (k == SIZE_MAX) {
+        ir_note_unresolved(st, bc->decls, NS_FIELD, (size_t)(c->s - bc->decls->irs), name);
         ir_error(st, diag_ir_no_such_field(st->arena, n->span, c->s->name, name));
         c->unrecognized = true;
         return -1;
@@ -720,7 +726,9 @@ static IR_COLD void report_no_fields(IrState *st, Span at, const IrType *t) {
     ir_error(st, diag_ir_type_has_no_fields(st->arena, at, ir_type_text(st, t)));
 }
 
-static IR_COLD void report_no_such_field(IrState *st, const Expr *e, const IrStruct *s) {
+static IR_COLD void report_no_such_field(BodyCtx *bc, const Expr *e, const IrStruct *s) {
+    IrState *st = bc->st;
+    ir_note_unresolved(st, bc->decls, NS_FIELD, (size_t)(s - bc->decls->irs), e->as.field_access.name);
     ir_error(st, diag_ir_no_such_field(st->arena, e->as.field_access.name_span, s->name, e->as.field_access.name));
 }
 
@@ -748,7 +756,7 @@ static IR_NOINLINE Synth finish_field(BodyCtx *bc, const Expr *e, Synth b) {
             return is_node(ir_expr_field(st, e->span, s->fields[k].type, b.node, (uint32_t)k));
         }
     }
-    report_no_such_field(st, e, s);
+    report_no_such_field(bc, e, s);
     return is_error(st, e->span);
 }
 

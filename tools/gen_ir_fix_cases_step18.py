@@ -54,3 +54,50 @@ if __name__ == "__main__":
     F = rename(L, {"myVar": "my_var", "doIt": "do_it"})
     write("fix_rename_keeps_nested_and_spaced_parentheses", L, F,
           [g.err(F, 7, "( ( my_var ) )", "E0270", "can't assign to this expression"), g.err(F, 9, "(do_it)", "E0231", "'do_it' is a function, not a value")])
+
+    # ---- a rename must not change what a use resolves to (audit findings F3a, F3b, d1). The auditor's inputs: no fix is offered where
+    # a local would capture the use of a function (3a) or where a renamed local would capture a use of a function (3b) or of an unknown name.
+    unknown = lambda n: "unknown name '%s'" % n
+    L = ["manna v0;", "fn helperFn() -> u8 {", "    return 7;", "}", "fn main() -> u8 {", "    let helper_fn: u8 = 1;", "    let x: u8 = helperFn;", "    return x;", "}"]
+    write("fix_function_rename_that_a_visible_local_would_capture", L, L,
+          [g.err(L, 2, "helperFn", "E0280", snake("helperFn")), g.err(L, 7, "helperFn", "E0231", "'helperFn' is a function, not a value")])
+    L = ["manna v0;", "fn helper_fn() -> u8 {", "    return 7;", "}", "fn main() -> u8 {", "    let helperFn: u8 = 1;", "    let x: u8 = helper_fn;", "    return x + helperFn;", "}"]
+    write("fix_local_rename_onto_a_function_used_as_a_value", L, L,
+          [g.err(L, 6, "helperFn", "E0280", snake("helperFn")), g.err(L, 7, "helper_fn", "E0231", "'helper_fn' is a function, not a value")])
+    L = ["manna v0;", "fn f(c: bool) -> u8 {", "    if c {", "        let item_count: u8 = 1;", "    }", "    if c {", "        let itemCount: u8 = 2;", "        return item_count;", "    }", "    return 0;", "}"]
+    write("fix_local_rename_onto_an_unknown_name_used_in_its_scope", L, L,
+          [g.err(L, 7, "itemCount", "E0280", snake("itemCount")), g.err(L, 8, "item_count", "E0230", unknown("item_count"))])
+    L = ["manna v0;", "fn f(itemCount: u8) -> u8 {", "    return item_count;", "}"]
+    write("fix_parameter_rename_onto_an_unknown_name_used_in_the_body", L, L,
+          [g.err(L, 2, "itemCount", "E0280", snake("itemCount")), g.err(L, 3, "item_count", "E0230", unknown("item_count"))])
+    # A struct and a local swap names: each rename would land on the other's name, and the use of the struct as a value would be captured.
+    L = ["manna v0;", "struct my_s {", "    a: u8,", "}", "fn f() {", "    let MyS: u8 = 1;", "    let x: u8 = my_s;", "}"]
+    write("fix_struct_and_local_that_would_swap_names", L, L,
+          [g.err(L, 2, "my_s", "E0281", pascal("my_s")), g.err(L, 6, "MyS", "E0280", snake("MyS")), g.err(L, 7, "my_s", "E0231", "'my_s' is a struct, not a value")])
+    # Controls: where the name is not visible at the use (the local is declared later, or its block is closed), the rename is safe and is offered.
+    L = ["manna v0;", "fn doIt() -> u8 {", "    return 1;", "}", "fn f() {", "    let x: u8 = doIt;", "    let do_it: u8 = 2;", "}"]
+    write("fix_function_rename_is_offered_when_the_local_is_declared_after_the_use", L, rename(L, {"doIt": "do_it"}),
+          [g.err(rename(L, {"doIt": "do_it"}), 6, "do_it", "E0231", "'do_it' is a function, not a value")])
+    L = ["manna v0;", "fn f(c: bool) -> u8 {", "    let y: u8 = item_count;", "    let itemCount: u8 = 2;", "    return itemCount;", "}"]
+    F = rename(L, {"itemCount": "item_count"})
+    F[2] = "    let y: u8 = item_count;"
+    write("fix_local_rename_is_offered_when_the_unknown_name_comes_before_its_declaration", L, F, [g.err(F, 3, "item_count", "E0230", unknown("item_count"))])
+
+    # ---- a rename must not make a name that resolved to nothing start to resolve (the property test's finding): an unknown name, function,
+    # type or field used ANYWHERE blocks the rename whose target it spells. Each case is its own program (a declaration-pass error would
+    # stop the bodies being read).
+    L = ["manna v0;", "fn helperFn() -> u8 {", "    return 1;", "}", "fn g() -> u8 {", "    return helper_fn;", "}"]
+    write("fix_function_rename_onto_an_unknown_name_used_elsewhere", L, L,
+          [g.err(L, 2, "helperFn", "E0280", snake("helperFn")), g.err(L, 6, "helper_fn", "E0230", unknown("helper_fn"))])
+    L = ["manna v0;", "fn helperFn() -> u8 {", "    return 1;", "}", "fn g() {", "    helper_fn();", "}"]
+    write("fix_function_rename_onto_an_unknown_callee", L, L,
+          [g.err(L, 2, "helperFn", "E0280", snake("helperFn")), g.err(L, 6, "helper_fn", "E0232", "unknown function 'helper_fn'")])
+    L = ["manna v0;", "struct my_s {", "    a: u8,", "}", "fn k() {", "    let a: MyS = 1;", "}"]
+    write("fix_struct_rename_onto_an_unknown_type", L, L,
+          [g.err(L, 2, "my_s", "E0281", pascal("my_s")), g.err(L, 6, "MyS", "E0220", "unknown type 'MyS'")])
+    L = ["manna v0;", "struct P {", "    fooBar: u8,", "}", "fn m(p: P) -> u8 {", "    return p.foo_bar;", "}"]
+    write("fix_field_rename_onto_an_unknown_field", L, L,
+          [g.err(L, 3, "fooBar", "E0280", snake("fooBar")), g.err(L, 6, "foo_bar", "E0242", "struct 'P' has no field 'foo_bar'")])
+    L = ["manna v0;", "struct P {", "    fooBar: u8,", "}", "fn n() -> P {", "    return P(foo_bar: 1);", "}"]
+    write("fix_field_rename_onto_an_unknown_construction_field", L, L,
+          [g.err(L, 3, "fooBar", "E0280", snake("fooBar")), g.err(L, 6, "foo_bar", "E0242", "struct 'P' has no field 'foo_bar'")])

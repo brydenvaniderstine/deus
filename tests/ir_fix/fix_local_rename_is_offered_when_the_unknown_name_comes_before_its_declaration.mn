@@ -1,0 +1,6 @@
+manna v0;
+fn f(c: bool) -> u8 {
+    let y: u8 = item_count;
+    let itemCount: u8 = 2;
+    return itemCount;
+}

@@ -1,0 +1,4 @@
+ERRORS:
+2:8 E0281 'my_s' is not PascalCase
+6:9 E0280 'MyS' is not snake_case
+7:17 E0231 'my_s' is a struct, not a value

@@ -53,6 +53,17 @@ void ir_note_use(IrState *st, Rename *r, Span at) {
     u->spans[u->len++] = at;
 }
 
+void ir_note_unresolved(IrState *st, Ctx *cx, int ns, size_t scope, const char *name) {
+    if (cx->n_unresolved == cx->cap_unresolved) {
+        size_t cap = cx->cap_unresolved ? cx->cap_unresolved * 2 : 8;
+        Unresolved *list = arena_alloc(st->arena, cap * sizeof(Unresolved), alignof(Unresolved));
+        if (cx->n_unresolved) memcpy(list, cx->unresolved, cx->n_unresolved * sizeof(Unresolved));
+        cx->unresolved = list;
+        cx->cap_unresolved = cap;
+    }
+    cx->unresolved[cx->n_unresolved++] = (Unresolved){name, ns, scope};
+}
+
 void body_set_rename(BodyCtx *bc, size_t slot, Rename *r) {
     if (slot >= bc->renames_cap) {
         size_t cap = bc->renames_cap ? bc->renames_cap : 8;
@@ -64,6 +75,24 @@ void body_set_rename(BodyCtx *bc, size_t slot, Rename *r) {
     }
     bc->renames[slot] = r;
     r->slot = (uint32_t)slot;
+}
+
+void ir_note_free_name(BodyCtx *bc, const char *name, Rename *top) {
+    Arena *a = bc->st->arena;
+    const char *top_target = NULL; /* where `top` is going: it must not land on a visible local, or on the target of a visible local */
+    if (top) {
+        top_target = top->pascal ? ir_to_pascal_case(a, top->name) : ir_to_snake_case(a, top->name);
+        if (top_target && body_lookup(bc, top_target)) top->blocked = true;
+    }
+    if (!bc->renames) return;
+    for (size_t s = 0; s < bc->renames_cap; s++) {
+        Rename *r = bc->renames[s];
+        if (!r || r->kind != REN_LOCAL || r->blocked) continue;
+        const IrLocal *seen = body_lookup(bc, r->name); /* visible here? */
+        if (!seen || seen->slot != r->slot) continue;
+        const char *t = ir_to_snake_case(a, r->name);
+        if (t && (strcmp(t, name) == 0 || (top_target && strcmp(t, top_target) == 0))) r->blocked = true;
+    }
 }
 
 /* The tables the declaration pass and the checker fill. Allocated on first use. */
@@ -89,6 +118,12 @@ static bool locals_see_each_other(const IrFunc *f, uint32_t a, uint32_t b) {
 
 /* Is `target` already a name in the scope of `r` as written, or the target of an earlier fix in that scope? */
 static bool collides(const Ctx *cx, const Rename *r, const char *target, size_t upto, const char *const *granted) {
+    /* a name that resolved to nothing would start to resolve to this declaration */
+    for (size_t i = 0; i < cx->n_unresolved; i++) {
+        const Unresolved *u = &cx->unresolved[i];
+        if (strcmp(u->name, target) != 0) continue;
+        if (u->ns == NS_TOP ? r->kind == REN_TOP : (r->kind == REN_FIELD && u->scope == r->scope)) return true;
+    }
     switch (r->kind) {
         case REN_TOP:
             if (symtab_lookup(&cx->top, target)) return true;
@@ -123,7 +158,7 @@ void ir_finalize_renames(IrState *st, Ctx *cx) {
         Rename *r = cx->renames[i];
         granted[i] = NULL;
         const char *target = r->pascal ? ir_to_pascal_case(st->arena, r->name) : ir_to_snake_case(st->arena, r->name);
-        if (!target || ir_is_reserved_name(target) || collides(cx, r, target, i, granted)) continue;
+        if (!target || r->blocked || ir_is_reserved_name(target) || collides(cx, r, target, i, granted)) continue;
         granted[i] = target;
 
         size_t n = 1 + r->uses.len;

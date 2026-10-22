@@ -1,0 +1,7 @@
+manna v0;
+struct P {
+    fooBar: u8,
+}
+fn n() -> P {
+    return P(foo_bar: 1);
+}

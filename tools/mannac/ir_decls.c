@@ -48,6 +48,7 @@ const IrType *ir_resolve_type(Ctx *cx, const Type *t, TypeCtx ctx) {
                 if (cx->struct_renames) ir_note_use(st, cx->struct_renames[e->index], t->span);
                 return ir_type_struct(st, &cx->irs[e->index]);
             }
+            ir_note_unresolved(st, cx, NS_TOP, 0, t->as.ident.name);
             ir_error(st, diag_ir_unknown_type(st->arena, t->span, t->as.ident.name));
             return ir_type_error(st);
         }

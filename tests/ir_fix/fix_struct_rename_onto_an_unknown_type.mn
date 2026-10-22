@@ -1,0 +1,7 @@
+manna v0;
+struct my_s {
+    a: u8,
+}
+fn k() {
+    let a: MyS = 1;
+}

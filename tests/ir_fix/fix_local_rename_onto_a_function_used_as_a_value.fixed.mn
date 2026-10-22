@@ -1,0 +1,9 @@
+manna v0;
+fn helper_fn() -> u8 {
+    return 7;
+}
+fn main() -> u8 {
+    let helperFn: u8 = 1;
+    let x: u8 = helper_fn;
+    return x + helperFn;
+}

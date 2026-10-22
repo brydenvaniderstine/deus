@@ -95,6 +95,7 @@ typedef struct Rename {
     Span        decl_span; /* the declared name */
     size_t      diag;      /* index of its E0280/E0281 in IrState.diags: the fix is attached there at the end */
     UseList     uses;      /* every resolved use, in checking order */
+    bool        blocked;   /* a name used as a value would change what it resolves to under the fix: no fix (ir_note_free_name) */
 } Rename;
 
 /* ---- declarations ---- */
@@ -121,6 +122,12 @@ typedef struct CallEdge {
     Span     span;           /* the whole call */
 } CallEdge;
 
+/* A name that resolved to nothing (an unknown name, function, type or field): a rename must not give a declaration that name, or the use
+ * would start to resolve. NS_TOP: the top-level namespace (functions and structs; values, callees and types alike); NS_FIELD: the
+ * fields of struct `scope`. */
+typedef struct { const char *name; int ns; size_t scope; } Unresolved;
+enum { NS_TOP, NS_FIELD };
+
 typedef struct {
     IrState    *st;
     Symtab      top;     /* structs and functions, one namespace */
@@ -142,6 +149,8 @@ typedef struct {
     Rename    **fn_renames;     /* per function */
     Rename   ***param_renames;  /* per function, an array per misnamed-parameter function (indexed by slot) */
     size_t      cap_decl_items; /* size of the per-item tables above (the number of top-level items) */
+    Unresolved *unresolved;    /* every name that resolved to nothing, in checking order (recorded for the renames only) */
+    size_t      n_unresolved, cap_unresolved;
 } Ctx;
 
 /* Where a type is being written, which decides what a slice may do there
@@ -174,6 +183,7 @@ bool ir_is_reserved_name(const char *name);
 Rename *ir_check_naming(IrState *st, Ctx *cx, RenameKind kind, size_t scope, bool pascal, const char *name, Span at);
 /* Records a resolved use of a misnamed declaration (a no-op for NULL). */
 void ir_note_use(IrState *st, Rename *r, Span at);
+void ir_note_unresolved(IrState *st, Ctx *cx, int ns, size_t scope, const char *name);
 /* After every body is built: decides each rename (converted name, collisions) and attaches its fix to the
  * diagnostic. Not called when the build did not run to the end: the uses are then incomplete. */
 void ir_finalize_renames(IrState *st, Ctx *cx);
@@ -236,6 +246,10 @@ static inline Rename *body_rename(const BodyCtx *bc, size_t slot) {
     return bc->renames && slot < bc->renames_cap ? bc->renames[slot] : NULL;
 }
 void body_set_rename(BodyCtx *bc, size_t slot, Rename *r);
+/* A name used as a value that is NOT a local here: a function or struct (E0231; `top` is its Rename if it is misnamed, else NULL) or nothing
+ * (E0230). A rename that gave a visible local that name would capture this use (it would resolve to the local, hiding the error and
+ * changing what it means), and so would a rename of `top` to a name a visible local already has: those renames are blocked. */
+void ir_note_free_name(BodyCtx *bc, const char *name, Rename *top);
 
 /* Starts a body: registers the parameters (already in func->locals, slots 0..n_params-1). */
 void body_init(BodyCtx *bc, IrState *st, Ctx *decls, IrFunc *func);

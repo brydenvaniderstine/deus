@@ -1,0 +1,8 @@
+manna v0;
+struct my_s {
+    a: u8,
+}
+fn f() {
+    let MyS: u8 = 1;
+    let x: u8 = my_s;
+}

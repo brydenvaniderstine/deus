@@ -1,0 +1,3 @@
+ERRORS:
+2:4 E0280 'helperFn' is not snake_case
+6:12 E0230 unknown name 'helper_fn'

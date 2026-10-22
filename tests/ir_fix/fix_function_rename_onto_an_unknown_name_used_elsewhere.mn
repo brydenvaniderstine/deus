@@ -1,0 +1,7 @@
+manna v0;
+fn helperFn() -> u8 {
+    return 1;
+}
+fn g() -> u8 {
+    return helper_fn;
+}

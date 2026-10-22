@@ -1,0 +1,8 @@
+manna v0;
+fn do_it() -> u8 {
+    return 1;
+}
+fn f() {
+    let x: u8 = do_it;
+    let do_it: u8 = 2;
+}

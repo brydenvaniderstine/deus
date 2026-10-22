@@ -1,0 +1,11 @@
+manna v0;
+fn f(c: bool) -> u8 {
+    if c {
+        let item_count: u8 = 1;
+    }
+    if c {
+        let itemCount: u8 = 2;
+        return item_count;
+    }
+    return 0;
+}
