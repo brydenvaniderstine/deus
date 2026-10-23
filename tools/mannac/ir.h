@@ -141,6 +141,8 @@ typedef struct {
     const IrType  *type;
     Span           span;
     bool           is_param;
+    uint32_t       fix_diag;  /* internal, not dumped: 1 + the index of the E0261 diagnostic whose fix would give this local its type (it is ERROR now); 0: none. See ir_expr.c "a local that waits for its uses" */
+    const IrType  *fix_type;  /* ... the type that fix would give it */
     uint32_t       scope_end; /* internal, not dumped: the number of locals when its scope closed (UINT32_MAX while open and for parameters); a local declared later in the same function with a slot below this can see it */
 } IrLocal;
 

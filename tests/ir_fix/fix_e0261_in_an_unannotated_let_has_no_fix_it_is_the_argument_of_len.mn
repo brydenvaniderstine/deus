@@ -1,0 +1,5 @@
+manna v0;
+fn f(a: u8, b: u32, xs: [2]u8) {
+    let r = a + b;
+    len(r);
+}

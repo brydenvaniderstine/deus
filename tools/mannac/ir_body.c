@@ -136,10 +136,14 @@ static IR_NOINLINE IrStmt *build_let(BodyCtx *bc, const Stmt *s) {
          * would build the same oversized type) does not report it again. */
         if (ir_check_type_size(bc->decls, s->as.let_stmt.type, annot)) annot = ir_type_error(st);
     }
-    IrExpr *init = annot ? ir_check_expr(bc, s->as.let_stmt.init, annot) : ir_infer_expr(bc, s->as.let_stmt.init);
+    uint32_t pending = 0; /* an E0261 fix in the initializer whose type becomes this local's: it waits for the local's uses (ir_expr.c Synth) */
+    const IrType *ptype = NULL;
+    IrExpr *init = annot ? ir_check_expr(bc, s->as.let_stmt.init, annot) : ir_infer_pending(bc, s->as.let_stmt.init, FIX_LOCAL, &pending, &ptype);
     const IrType *t = annot ? annot : init->type;
     IrLocal *l = dup ? ir_local_new(st, UINT32_MAX, name, t, name_span, false) /* bound to nothing */
                      : body_declare(bc, name, t, name_span);
+    l->fix_diag = pending;
+    l->fix_type = ptype;
     if (rename) body_set_rename(bc, l->slot, rename);
     return ir_stmt_let(st, s->span, l, init);
 }
@@ -181,8 +185,11 @@ static IR_NOINLINE IrStmt *build_assign(BodyCtx *bc, const Stmt *s) {
     }
     /* The place: the local, or a chain of fields over it (an element, step 12, still stops the build in
      * the checker); on a mistake in it (E0230/E0231, E0242, E0251) the place is ERROR. */
-    IrExpr *place = ir_infer_expr(bc, target);
+    uint32_t pending;
+    const IrType *ptype;
+    IrExpr *place = ir_infer_pending(bc, target, FIX_NONE, &pending, &ptype);
     IrExpr *v = ir_check_expr(bc, value, place->type);
+    if (pending) ir_assign_to_pending(bc, value, pending, ptype); /* a local that waits is assigned: the value must have its new type */
     return ir_stmt_assign(st, s->span, place, v);
 }
 

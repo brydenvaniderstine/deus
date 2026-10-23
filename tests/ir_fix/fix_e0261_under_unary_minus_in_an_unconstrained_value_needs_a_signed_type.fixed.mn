@@ -1,4 +1,4 @@
 manna v0;
 fn f(a: i8, b: i16) {
-    -(i16(a) + b);
+    let r = -(i16(a) + b);
 }

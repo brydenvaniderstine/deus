@@ -1,4 +1,0 @@
-manna v0;
-fn f(a: i8, b: i16) {
-    let r = -(a + b);
-}

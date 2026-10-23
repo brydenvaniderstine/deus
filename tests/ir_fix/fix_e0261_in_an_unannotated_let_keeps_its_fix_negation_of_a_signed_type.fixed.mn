@@ -1,0 +1,5 @@
+manna v0;
+fn f(a: i8, b: i16) -> i16 {
+    let r = i16(a) + b;
+    return -r;
+}

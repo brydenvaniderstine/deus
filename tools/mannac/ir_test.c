@@ -1727,7 +1727,6 @@ static void test_edit_padding(void) {
 static void test_e0261_fix(void) {
     static IrState st;
     ir_state_init(&st, 1 << 20);
-    /* each case is an EXPRESSION STATEMENT (a free place); step 19: the same text as an un-annotated `let` has no fix when it is arithmetic (below) */
     static const struct { const char *ta, *tb, *op, *expr, *fixed; bool left; const char *to; } cases[] = {
         {"u8", "u32", "+", "a + b", "u32(a) + b", true, "u32"},      /* the narrower converts losslessly: wrap it */
         {"u32", "u8", "+", "a + b", "a + u32(b)", false, "u32"},
@@ -1740,7 +1739,7 @@ static void test_e0261_fix(void) {
     };
     for (size_t i = 0; i < sizeof cases / sizeof cases[0]; i++) {
         char src[256];
-        snprintf(src, sizeof src, "manna v0;\nfn f(a: %s, b: %s) { %s; }\n", cases[i].ta, cases[i].tb, cases[i].expr);
+        snprintf(src, sizeof src, "manna v0;\nfn f(a: %s, b: %s) { let r = %s; }\n", cases[i].ta, cases[i].tb, cases[i].expr);
         parse_src(src);
         assert(g_ps.diags.len == 0);
         IrModule *m = NULL;
@@ -1760,7 +1759,7 @@ static void test_e0261_fix(void) {
         char fixed[256];
         snprintf(fixed, sizeof fixed, "%.*s%s%.*s%s%s", (int)c0, ln2, e0->text, (int)(c1 - c0), ln2 + c0, e1->text, ln2 + c1);
         char want[256];
-        snprintf(want, sizeof want, "fn f(a: %s, b: %s) { %s; }\n", cases[i].ta, cases[i].tb, cases[i].fixed);
+        snprintf(want, sizeof want, "fn f(a: %s, b: %s) { let r = %s; }\n", cases[i].ta, cases[i].tb, cases[i].fixed);
         if (strcmp(fixed, want) != 0) { fprintf(stderr, "fix applied: %s want: %s", fixed, want); abort(); }
         parse_done();
         char fsrc[300];
@@ -1786,6 +1785,9 @@ static void test_e0261_fix(void) {
         {"fn f(a: i8, b: i32) { if a == b { } }\n", "fn f(a: i8, b: i32) { if i32(a) == b { } }\n"},
         {"fn f(a: u32, b: u8) { if a < b { } }\n", "fn f(a: u32, b: u8) { if a < u32(b) { } }\n"}, /* the right operand widens */
         {"fn f(a: u8, b: u32) { let r = a < b; }\n", "fn f(a: u8, b: u32) { let r = u32(a) < b; }\n"}, /* a comparison is bool whichever operand is wrapped: safe in an un-annotated let */
+        /* an un-annotated let whose later uses all accept the wider type keeps its fix (it waits for them) */
+        {"fn f(a: u8, b: u32) -> u32 { let r = a + b; return r; }\n", "fn f(a: u8, b: u32) -> u32 { let r = u32(a) + b; return r; }\n"},
+        {"fn f(a: u8, b: u32, n: u32) { for let i = a + b; i < n; i = i + 1 { } }\n", "fn f(a: u8, b: u32, n: u32) { for let i = u32(a) + b; i < n; i = i + 1 { } }\n"},
     };
     for (size_t i = 0; i < sizeof ctx / sizeof ctx[0]; i++) {
         char src[300];
@@ -1829,15 +1831,11 @@ static void test_e0261_fix(void) {
         "fn f(a: u8, b: u16, c: u8) -> u8 { return a + b + c; }\n",
         "fn f(a: i8, b: i16) -> i8 { return -(a + b); }\n",
         "fn f(a: u8, b: u16, c: u8) { let r = a + b + c; }\n",   /* the fixed outer operator would fail again */
-        /* an un-annotated let (or for-let): the new type would become the local's type for every later use (re-audit 3, finding 3) */
-        "fn f(a: u8, b: u32) { let r = a + b; }\n",
-        "fn f(a: u32, b: u8) { let r = a + b; }\n",
-        "fn f(a: u8, b: i32) { let r = a * b; }\n",
-        "fn f(a: i8, b: i64) { let r = a / b; }\n",
-        "fn f(a: u32, b: u8) { let r = a >> b; }\n",
-        "fn f(a: u8, b: u32) { let r = (a) & b; }\n",
+        /* an un-annotated let (or for-let) whose later use rejects the type the fix would give the local (re-audit 3, finding 3): the fix waits
+         * for the local's uses and is withdrawn by the first that does not accept it */
         "fn f(a: u8, b: u32) -> u8 { let r = a + b; return r; }\n",
         "fn f(a: u8, b: u32, n: u8) { for let i = a + b; i < n; i = i + 1 { } }\n",
+        "fn g(x: u8) { } fn f(a: u8, b: u32) { let r = a + b; g(r); }\n",
         /* STEP19B-BEGIN a pending fix beside an untyped literal group that the new type rejects (re-audit 3, finding 4) */
         "fn f(a: u8, b: u16) -> u16 { return (a + b) + 70000; }\n",
         "fn f(a: u8, b: u32) -> u32 { return (a + b) * -1; }\n",

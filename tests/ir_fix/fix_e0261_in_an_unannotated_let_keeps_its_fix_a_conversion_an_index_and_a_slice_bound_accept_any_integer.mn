@@ -1,0 +1,7 @@
+manna v0;
+fn f(a: u8, b: u32, xs: [3]u8) {
+    let r = a + b;
+    let q = u64(r);
+    xs[r];
+    xs[r..r];
+}

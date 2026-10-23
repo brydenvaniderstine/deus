@@ -35,18 +35,71 @@ if __name__ == "__main__":
     write("fix_e0261_insert_after_else_if_without_a_space", L, F)
 
     # ---- 19c-1 (finding 3): the type of an un-annotated `let` / `for let` initializer becomes the LOCAL's type, which every later use is
-    # checked against, so the E0261 fix is not offered there (an expression statement is still free; a comparison is bool either way).
+    # checked against. The E0261 fix is attached and WAITS for those uses (IrLocal.fix_diag): the first use that rejects the new type
+    # withdraws it, and a let whose uses all accept it keeps it. A comparison is bool either way (no waiting).
+    def keep(name, L, edits):
+        F = list(L)
+        for ln, text in edits.items(): F[ln - 1] = text
+        write(name, L, F)
+    def drop(name, L, ln, tok, x, y):
+        write(name, L, L, [g.err(L, ln, tok, "E0261", e261(x, y))])
+    # rejected: the auditor's t1, t2, t3, and the other ways a later use can disagree
     L = ["manna v0;", "fn f(a: u8, b: u32) -> u8 {", "    let r = a + b;", "    return r;", "}"]
-    write("fix_e0261_in_an_unannotated_let_has_no_fix_the_local_is_used_later", L, L, [g.err(L, 3, "a + b", "E0261", e261("u8", "u32"))])
+    drop("fix_e0261_in_an_unannotated_let_has_no_fix_the_local_is_returned_as_another_type", L, 3, "a + b", "u8", "u32")
     L = ["manna v0;", "fn f(a: u8, b: u32, n: u8) {", "    for let i = a + b; i < n; i = i + 1 {", "    }", "}"]
-    write("fix_e0261_in_an_unannotated_for_let_has_no_fix", L, L, [g.err(L, 3, "a + b", "E0261", e261("u8", "u32"))])
+    drop("fix_e0261_in_an_unannotated_for_let_has_no_fix_the_condition_compares_another_type", L, 3, "a + b", "u8", "u32")
     L = ["manna v0;", "fn g(x: u8) {", "}", "fn f(a: u8, b: u32) {", "    let r = a + b;", "    g(r);", "}"]
-    write("fix_e0261_in_an_unannotated_let_has_no_fix_the_local_is_an_argument", L, L, [g.err(L, 5, "a + b", "E0261", e261("u8", "u32"))])
-    L = ["manna v0;", "fn f(a: i8, b: i16) {", "    let r = -(a + b);", "}"]
-    write("fix_e0261_under_unary_minus_in_an_unannotated_let_has_no_fix", L, L, [g.err(L, 3, "(a + b)", "E0261", e261("i8", "i16"))])
+    drop("fix_e0261_in_an_unannotated_let_has_no_fix_the_local_is_an_argument_of_another_type", L, 5, "a + b", "u8", "u32")
+    L = ["manna v0;", "fn f(a: u8, b: u32, d: u16) {", "    let r = a + b;", "    let q = r + d;", "}"]
+    drop("fix_e0261_in_an_unannotated_let_has_no_fix_a_later_operator_mixes_it_with_another_type", L, 3, "a + b", "u8", "u32")
+    L = ["manna v0;", "fn f(a: u8, b: u32, d: u16) {", "    let r = a + b;", "    r = d;", "}"]
+    drop("fix_e0261_in_an_unannotated_let_has_no_fix_it_is_assigned_another_type", L, 3, "a + b", "u8", "u32")
+    L = ["manna v0;", "fn f(a: u8, b: u32) {", "    let r = a + b;", "    if r {", "    }", "}"]
+    drop("fix_e0261_in_an_unannotated_let_has_no_fix_it_is_a_condition", L, 3, "a + b", "u8", "u32")
+    L = ["manna v0;", "fn f(a: u8, b: u32) -> u8 {", "    let r = a + b;", "    let s = r;", "    return s;", "}"]
+    drop("fix_e0261_in_an_unannotated_let_has_no_fix_a_copy_of_it_is_returned_as_another_type", L, 3, "a + b", "u8", "u32")
+    L = ["manna v0;", "fn f(a: u8, b: u16) -> u16 {", "    let r = a + b;", "    return r + 70000;", "}"]
+    drop("fix_e0261_in_an_unannotated_let_has_no_fix_a_literal_beside_it_does_not_fit", L, 3, "a + b", "u8", "u16")
+    L = ["manna v0;", "fn f(a: u8, b: u16) -> u16 {", "    let r = a + b;", "    return -r;", "}"]
+    drop("fix_e0261_in_an_unannotated_let_has_no_fix_it_is_negated_and_unsigned", L, 3, "a + b", "u8", "u16")
+    L = ["manna v0;", "fn f(a: u8, b: u16, c: u8, d: u32) -> u32 {", "    let r = a + b;", "    let s = c + d;", "    return r + s;", "}"]
+    write("fix_e0261_two_waiting_fixes_meeting_in_one_operator_are_both_withdrawn", L, L,
+          [g.err(L, 3, "a + b", "E0261", e261("u8", "u16")), g.err(L, 4, "c + d", "E0261", e261("u8", "u32"))])
+    L = ["manna v0;", "fn f(a: u8, b: u32) -> u8 {", "    let r = a + b;", "    let ok = r < 5;", "    return ok;", "}"]
+    drop("fix_e0261_in_an_unannotated_let_has_no_fix_a_comparison_of_it_is_returned_as_another_type", L, 3, "a + b", "u8", "u32")
+    L = ["manna v0;", "fn f(a: u8, b: u32, xs: [2]u8) {", "    let r = a + b;", "    len(r);", "}"]
+    drop("fix_e0261_in_an_unannotated_let_has_no_fix_it_is_the_argument_of_len", L, 3, "a + b", "u8", "u32")
+    L = ["manna v0;", "fn f(a: u8, b: u32) {", "    let r = a + b;", "    let xs = [r, 1];", "    let q = xs[0] + a;", "}"]
+    drop("fix_e0261_in_an_unannotated_let_has_no_fix_it_is_an_array_element_that_decides_a_type", L, 3, "a + b", "u8", "u32")
+    # accepted: every later use takes the wider type
+    L = ["manna v0;", "fn f(a: u8, b: u32) -> u32 {", "    let r = a + b;", "    return r;", "}"]
+    keep("fix_e0261_in_an_unannotated_let_keeps_its_fix_the_local_is_returned_as_that_type", L, {3: "    let r = u32(a) + b;"})
+    L = ["manna v0;", "fn f(a: u8, b: u32) {", "    let r = a + b;", "}"]
+    keep("fix_e0261_in_an_unannotated_let_keeps_its_fix_with_no_later_use", L, {3: "    let r = u32(a) + b;"})
+    L = ["manna v0;", "fn f(a: u8, b: u32, n: u32) {", "    for let i = a + b; i < n; i = i + 1 {", "    }", "}"]
+    keep("fix_e0261_in_an_unannotated_for_let_keeps_its_fix_condition_and_step_accept_the_type", L, {3: "    for let i = u32(a) + b; i < n; i = i + 1 {"})
+    L = ["manna v0;", "fn g(x: u32) {", "}", "fn f(a: u8, b: u32, c: u32) {", "    let r = a + b;", "    let s: u32 = r;", "    let t = r + c;", "    g(t);", "    if r < c {", "    }", "}"]
+    keep("fix_e0261_in_an_unannotated_let_keeps_its_fix_annotated_let_argument_operator_and_condition_accept_the_type", L, {5: "    let r = u32(a) + b;"})
+    L = ["manna v0;", "fn f(a: u8, b: u32) -> u32 {", "    let r = a + b;", "    let s = r;", "    r = r + 1;", "    return s + r;", "}"]
+    keep("fix_e0261_in_an_unannotated_let_keeps_its_fix_a_copy_an_assignment_with_a_literal_and_a_sum_accept_the_type", L, {3: "    let r = u32(a) + b;"})
+    L = ["manna v0;", "fn f(a: u8, b: u32, xs: [3]u8) {", "    let r = a + b;", "    let q = u64(r);", "    xs[r];", "    xs[r..r];", "}"]
+    keep("fix_e0261_in_an_unannotated_let_keeps_its_fix_a_conversion_an_index_and_a_slice_bound_accept_any_integer", L, {3: "    let r = u32(a) + b;"})
+    L = ["manna v0;", "fn f(a: i8, b: i16) -> i16 {", "    let r = a + b;", "    return -r;", "}"]
+    keep("fix_e0261_in_an_unannotated_let_keeps_its_fix_negation_of_a_signed_type", L, {3: "    let r = i16(a) + b;"})
+    L = ["manna v0;", "fn f(a: u8, b: u32) -> bool {", "    let r = a + b;", "    let ok = r < 5;", "    return ok && r > 1;", "}"]
+    keep("fix_e0261_in_an_unannotated_let_keeps_its_fix_comparisons_and_logic_accept_the_type", L, {3: "    let r = u32(a) + b;"})
     L = ["manna v0;", "fn f(a: u8, b: u32) {", "    let r = a < b;", "}"]
-    F = list(L); F[2] = "    let r = u32(a) < b;"
-    write("fix_e0261_comparison_in_an_unannotated_let_keeps_its_fix_bool_either_way", L, F)
+    keep("fix_e0261_comparison_in_an_unannotated_let_keeps_its_fix_bool_either_way", L, {3: "    let r = u32(a) < b;"})
+
+    # A sibling that is silent because of ANOTHER mistake has no known type yet: once that mistake is fixed it may disagree, so the fix is not
+    # known to be accepted and is withdrawn (R2_g1 of the second audit has the same shape with an oversized `let`).
+    unknown = lambda n: "unknown name '%s'" % n
+    L = ["manna v0;", "fn f(a: u8, b: u16) -> u16 {", "    return (a + b) + nope;", "}"]
+    write("fix_e0261_withdrawn_when_the_other_operand_is_silent_because_of_another_mistake", L, L,
+          [g.err(L, 3, "(a + b)", "E0261", e261("u8", "u16")), g.err(L, 3, "nope", "E0230", unknown("nope"))])
+    L = ["manna v0;", "fn f(a: u8, b: u16) {", "    let r = a + b;", "    let q = r + nope;", "}"]
+    write("fix_e0261_in_an_unannotated_let_has_no_fix_a_later_operand_is_silent_because_of_another_mistake", L, L,
+          [g.err(L, 3, "a + b", "E0261", e261("u8", "u16")), g.err(L, 4, "nope", "E0230", unknown("nope"))])
 
     # ---- 19c-2 (finding 4): a pending fix gives the operator the place's type; an untyped literal group beside it takes that type and must fit.
     L = ["manna v0;", "fn f(a: u8, b: u16) -> u16 {", "    return (a + b) + 70000;", "}"]

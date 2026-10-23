@@ -239,20 +239,47 @@ static IR_NOINLINE IrExpr *check_ident(BodyCtx *bc, const Expr *e) {
  * holds at most the two operand results. Everything that happens AFTER the operands are typed is
  * in a finish_* function (non-inlined), so its locals exist only once the recursion returned. */
 
+/* A fix that waits (step 19). A fix-it for E0261 changes the type of the expression it sits in, so it is only right if everything that
+ * reads that expression accepts the new type. `pending` is 1 + the index of the one E0261 diagnostic whose fix still depends on what
+ * reads the expression, and `ptype` the type the expression WOULD have after the fix. Every parent either checks that it accepts
+ * `ptype` and passes the pending fix on (an operator whose other operand agrees, unary `-` of a signed type...), or ends it: a consumer
+ * that accepts `ptype` lets it stand, any other withdraws the fix (its diagnostic loses it). Two sources: an E0261 inside the
+ * expression (`a + b` in a place that expects what the wrap makes it), and a use of a local whose own initializer has such a fix. */
 typedef struct {
     bool     group; /* an untyped literal expression: nothing built yet */
-    uint32_t pending; /* an ERROR node only: 1 + the index of the one E0261 diagnostic in this subtree whose fix still depends on its ancestors (0: none) */
+    uint32_t pending; /* an ERROR node only: see above (0: none) */
+    const IrType *ptype; /* ... the type it would have (NULL when pending is 0) */
     IrExpr  *node;  /* otherwise the typed (or ERROR) expression */
 } Synth;
 
 static Synth synth(BodyCtx *bc, const Expr *e);
 
-static Synth is_group(void)        { Synth s = {true, 0, NULL}; return s; }
-static Synth is_node(IrExpr *n)    { Synth s = {false, 0, n}; return s; }
+static Synth is_group(void)        { Synth s = {true, 0, NULL, NULL}; return s; }
+static Synth is_node(IrExpr *n)    { Synth s = {false, 0, NULL, n}; return s; }
 static Synth is_error(IrState *st, Span at) { return is_node(error_node(st, at)); }
 
 static bool has_error(Synth s) { return !s.group && s.node->type->kind == IR_T_ERROR; }
 static bool is_unit(Synth s)   { return !s.group && s.node->type->kind == IR_T_UNIT; }
+
+static IR_COLD void withdraw_fix(BodyCtx *bc, uint32_t pending) {
+    if (pending) bc->st->diags.items[pending - 1].fix = NULL;
+}
+
+/* The end of a fix that waits, at a consumer that cannot take the type the fix would give its operand (an array, a struct, a bool...): the
+ * fix is withdrawn. `accept_int_pending` is for the consumers that take any integer (a conversion operand, an index, a slice bound). */
+static Synth reject_pending(BodyCtx *bc, Synth s) {
+    if (s.pending) {
+        withdraw_fix(bc, s.pending);
+        s.pending = 0;
+    }
+    return s;
+}
+
+static Synth accept_int_pending(BodyCtx *bc, Synth s) {
+    if (s.pending && !is_int(s.ptype)) withdraw_fix(bc, s.pending);
+    s.pending = 0;
+    return s;
+}
 
 static IR_NOINLINE Synth finish_unary(BodyCtx *bc, const Expr *e, Synth o) {
     IrState *st = bc->st;
@@ -266,9 +293,14 @@ static IR_NOINLINE Synth finish_unary(BodyCtx *bc, const Expr *e, Synth o) {
         report_bool_expected(st, e->as.unary.operand->span);
         return is_error(st, e->span);
     }
-    if (has_error(o)) { /* a unary `-` or `~` keeps its operand's type, so a fix inside it stays as valid as it was */
+    if (has_error(o)) { /* a unary operator on a silent operand: a fix that waits inside it goes on waiting if the operator accepts its new type */
         Synth s = is_error(st, e->span);
-        s.pending = o.pending;
+        if (o.pending) {
+            const IrType *pt = o.ptype;
+            bool ok = op == UNOP_NOT ? pt->kind == IR_T_BOOL : op == UNOP_NEG ? is_int(pt) && pt->as.integer.is_signed : is_int(pt);
+            if (ok) { s.pending = o.pending; s.ptype = pt; }
+            else withdraw_fix(bc, o.pending);
+        }
         return s;
     }
     const IrType *t = o.node->type;
@@ -312,7 +344,7 @@ static bool lossless(const IrType *from, const IrType *to) {
 
 /* May a fix make the expression's type `result`? Only where that type is known to be accepted (bc->fix). */
 static bool fix_accepts(const BodyCtx *bc, const IrType *result) {
-    if (bc->fix.mode == FIX_FREE) return true;
+    if (bc->fix.mode == FIX_FREE || bc->fix.mode == FIX_LOCAL) return true;
     if (bc->fix.mode == FIX_SIGNED) return result->kind == IR_T_INT && result->as.integer.is_signed;
     return bc->fix.mode == FIX_TYPE && bc->fix.type->kind != IR_T_ERROR && bc->fix.type == result;
 }
@@ -327,11 +359,12 @@ static bool fix_accepts(const BodyCtx *bc, const IrType *result) {
  * Anywhere else, no fix: a fix that leaves the program rejected is worse than none. Returns, for an arithmetic fix inside a context
  * that was passed down from an ancestor (FIX_TYPE), 1 + the index of the diagnostic: the ancestor may still have to withdraw it
  * (see settle_pending). (docs/M2_PLAN.md "Operators", E0261.) */
-static IR_COLD uint32_t report_types_differ(BodyCtx *bc, const Expr *e, const IrType *lt, const IrType *rt) {
+static IR_COLD uint32_t report_types_differ(BodyCtx *bc, const Expr *e, const IrType *lt, const IrType *rt, const IrType **ptype) {
     IrState *st = bc->st;
     const Expr *le = e->as.binary.lhs, *re = e->as.binary.rhs;
     bool wrap_left = false, arith_fix = false;
     const char *to = NULL;
+    const IrType *new_type = NULL;
     if (is_int(lt) && is_int(rt)) {
         bool l2r = lossless(lt, rt), r2l = lossless(rt, lt);
         BinOp op = e->as.binary.op;
@@ -352,17 +385,19 @@ static IR_COLD uint32_t report_types_differ(BodyCtx *bc, const Expr *e, const Ir
             }
             if (to && !fix_accepts(bc, result)) to = NULL;
             arith_fix = to != NULL;
+            new_type = result;
         }
     }
     size_t before = st->diags.len;
     ir_error(st, diag_ir_operand_types_differ(st->arena, e->span, ir_type_text(st, lt), ir_type_text(st, rt),
                                               le->span, re->span, wrap_left, to));
-    return (arith_fix && bc->fix.mode == FIX_TYPE && st->diags.len > before) ? (uint32_t)before + 1 : 0;
+    if (arith_fix && (bc->fix.mode == FIX_TYPE || bc->fix.mode == FIX_LOCAL) && st->diags.len > before) {
+        *ptype = new_type;
+        return (uint32_t)before + 1;
+    }
+    return 0;
 }
 
-static IR_COLD void withdraw_fix(BodyCtx *bc, uint32_t pending) {
-    if (pending) bc->st->diags.items[pending - 1].fix = NULL;
-}
 
 /* A literal, or unary `-`/`~` and arithmetic, bitwise and shift operators over literals: no name, no call, nothing that records a use or a
  * call edge. The only subtrees that are dry-checked (group_fits). */
@@ -389,26 +424,36 @@ static IR_COLD bool group_fits(BodyCtx *bc, const Expr *g, const IrType *t) {
     return st->muted_hits == hits;
 }
 
-/* A binary operator with an ERROR operand is silent, but a fix offered inside it was offered on the strength of this operator
- * accepting the wrapped type: its other operand must have that type too, or the fixed source fails at THIS operator. Only
- * FIX_TYPE contexts pass down to arithmetic operands, so only there can a fix be pending. The fix is withdrawn when the other operand is a
- * typed expression of another type; when both operands carry a fix, both are withdrawn (neither is a single mistake any more). */
+/* A binary operator with an ERROR operand is silent, but a fix that waits inside it (see Synth) was offered on the strength of this operator
+ * accepting the new type, and the fixed source must stay clean HERE too. With the pending operand of type P = `ptype`:
+ *   - the other operand must have type P (a typed one), fit P (an untyped literal group, dry-checked), or be silent already (ERROR);
+ *     otherwise the fixed source fails at this operator and the fix is withdrawn;
+ *   - the operator must be defined for P (`+` is not for bool);
+ *   - the operator's own result is what the parent sees: P for arithmetic, bitwise and shift (a shift's result is its LEFT operand's
+ *     type, which is P either way once they agree), bool for a comparison. The fix goes on waiting with that type.
+ * Both operands carrying the same fix (`r + r` of one local) agree with each other; two different fixes are two mistakes: both are withdrawn. */
 static IR_COLD Synth settle_pending(BodyCtx *bc, const Expr *e, Synth l, Synth r) {
     Synth out = is_error(bc->st, e->span);
     if (!l.pending && !r.pending) return out;
-    const IrType *want = bc->fix.mode == FIX_TYPE ? bc->fix.type : NULL;
-    bool typed_l = !l.group && !has_error(l) && !is_unit(l), typed_r = !r.group && !has_error(r) && !is_unit(r);
-    if (l.pending && r.pending) {
+    if (l.pending && r.pending && (l.pending != r.pending || l.ptype != r.ptype)) {
         withdraw_fix(bc, l.pending);
         withdraw_fix(bc, r.pending);
         return out;
     }
-    /* an untyped literal group on the other side takes the type this fix gives the operator: it must fit it (re-audit 3, finding 4) */
-    if (l.pending && typed_r && r.node->type != want) withdraw_fix(bc, l.pending);
-    else if (r.pending && typed_l && l.node->type != want) withdraw_fix(bc, r.pending);
-    else if (l.pending && r.group && !group_fits(bc, e->as.binary.rhs, want)) withdraw_fix(bc, l.pending);
-    else if (r.pending && l.group && !group_fits(bc, e->as.binary.lhs, want)) withdraw_fix(bc, r.pending);
-    else out.pending = l.pending ? l.pending : r.pending;
+    bool same = l.pending && r.pending;
+    bool p_left = l.pending != 0;
+    const Synth p = p_left ? l : r, o = p_left ? r : l;
+    const Expr *oe = p_left ? e->as.binary.rhs : e->as.binary.lhs;
+    BinOp op = e->as.binary.op;
+    const IrType *pt = p.ptype;
+    bool agrees = same || (!has_error(o) && (o.group ? group_fits(bc, oe, pt) : o.node->type == pt));
+    bool op_ok = is_logical(op) ? pt->kind == IR_T_BOOL : operand_ok(op, pt);
+    if (!agrees || !op_ok) {
+        withdraw_fix(bc, p.pending);
+        return out;
+    }
+    out.pending = p.pending;
+    out.ptype = is_arith_class(op) ? pt : ir_type_bool(bc->st);
     return out;
 }
 
@@ -437,7 +482,7 @@ static IR_NOINLINE Synth typed_binary(BodyCtx *bc, const Expr *e, Synth l, Synth
     if (ln->type->kind == IR_T_ERROR || rn->type->kind == IR_T_ERROR) return is_error(st, e->span); /* already reported */
     if (ln->type != rn->type) {
         Synth s = is_error(st, e->span);
-        s.pending = report_types_differ(bc, e, ln->type, rn->type);
+        s.pending = report_types_differ(bc, e, ln->type, rn->type, &s.ptype);
         return s;
     }
     const IrType *result = is_arith_class(op) ? ln->type : ir_type_bool(st);
@@ -449,7 +494,7 @@ static IR_NOINLINE Synth typed_binary(BodyCtx *bc, const Expr *e, Synth l, Synth
 static IR_NOINLINE Synth finish_logical(BodyCtx *bc, const Expr *e, Synth l, Synth r) {
     IrState *st = bc->st;
     BinOp op = e->as.binary.op;
-    if (has_error(l) || has_error(r)) return is_error(st, e->span);
+    if (has_error(l) || has_error(r)) return settle_pending(bc, e, l, r);
     const Expr *ops[2] = {e->as.binary.lhs, e->as.binary.rhs};
     Synth sy[2] = {l, r};
     for (int i = 0; i < 2; i++) {
@@ -482,7 +527,7 @@ static IR_NOINLINE Synth finish_binary(BodyCtx *bc, const Expr *e, Synth l, Synt
 static Synth synth_binary(BodyCtx *bc, const Expr *e) {
     FixCtx my = bc->fix;
     BinOp op = e->as.binary.op;
-    bool through = is_arith_class(op) && my.mode == FIX_TYPE;
+    bool through = is_arith_class(op) && (my.mode == FIX_TYPE || my.mode == FIX_LOCAL);
     if (!through) bc->fix = (FixCtx){FIX_NONE, NULL};
     Synth l = synth(bc, e->as.binary.lhs);
     bc->fix = through && !is_shift(op) ? my : (FixCtx){FIX_NONE, NULL};
@@ -721,7 +766,7 @@ static IR_NOINLINE Synth finish_len(BodyCtx *bc, const Expr *e, Synth a) {
 static Synth synth_len(BodyCtx *bc, const Expr *e) {
     const NodeList *args = &e->as.call.args;
     if (args->len != 1 || ((const Expr *)args->items[0])->kind == EXPR_NAMED_ARG) return len_bad_arity(bc, e);
-    Synth a = synth(bc, args->items[0]);
+    Synth a = reject_pending(bc, synth(bc, args->items[0]));
     return finish_len(bc, e, a);
 }
 
@@ -789,7 +834,7 @@ static IR_NOINLINE Synth finish_field(BodyCtx *bc, const Expr *e, Synth b) {
 }
 
 static Synth synth_field(BodyCtx *bc, const Expr *e) {
-    Synth b = synth(bc, e->as.field_access.base);
+    Synth b = reject_pending(bc, synth(bc, e->as.field_access.base));
     return finish_field(bc, e, b);
 }
 
@@ -827,7 +872,7 @@ static IR_NOINLINE Synth finish_convert(BodyCtx *bc, const Expr *e, Synth o) {
 }
 
 static Synth synth_convert(BodyCtx *bc, const Expr *e) {
-    Synth o = synth(bc, e->as.convert.operand);
+    Synth o = accept_int_pending(bc, synth(bc, e->as.convert.operand));
     return finish_convert(bc, e, o);
 }
 
@@ -861,7 +906,7 @@ static const IrType *element_type(const IrType *t) {
 /* An index or a slice bound: an integer of any type; a literal takes u64. */
 static IR_NOINLINE IrExpr *check_index_operand(BodyCtx *bc, const Expr *e) {
     IrState *st = bc->st;
-    Synth s = synth(bc, e);
+    Synth s = accept_int_pending(bc, synth(bc, e));
     if (s.group) return group_against(st, e, ir_type_int(st, 64, false));
     if (is_unit(s)) {
         report_unit(st, e->span);
@@ -901,7 +946,7 @@ static IR_NOINLINE Synth finish_index(BodyCtx *bc, const Expr *e, Synth b, const
 }
 
 static Synth synth_index(BodyCtx *bc, const Expr *e) {
-    Synth b = synth(bc, e->as.index.base);
+    Synth b = reject_pending(bc, synth(bc, e->as.index.base));
     return finish_index(bc, e, b, indexable_element(bc, e->as.index.base, b));
 }
 
@@ -927,7 +972,7 @@ static IR_NOINLINE Synth finish_slice(BodyCtx *bc, const Expr *e, Synth b, const
 }
 
 static Synth synth_slice(BodyCtx *bc, const Expr *e) {
-    Synth b = synth(bc, e->as.slice.base);
+    Synth b = reject_pending(bc, synth(bc, e->as.slice.base));
     return finish_slice(bc, e, b, indexable_element(bc, e->as.slice.base, b));
 }
 
@@ -967,7 +1012,7 @@ static Synth array_infer(BodyCtx *bc, const Expr *e, const IrType *expected) {
     const NodeList *src = &e->as.array.elems;
     NodeList out;
     node_list_init(&out);
-    Synth first = synth(bc, src->items[0]);
+    Synth first = reject_pending(bc, synth(bc, src->items[0]));
     const IrType *t = deciding_type(bc, src->items[0], first, e, expected);
     if (!t) {
         for (size_t i = 1; i < src->len; i++) ir_check_silent(bc, src->items[i]);
@@ -986,7 +1031,7 @@ static IR_NOINLINE Synth repeat_done(BodyCtx *bc, const Expr *e, IrExpr *v) {
 
 static Synth repeat_infer(BodyCtx *bc, const Expr *e, const IrType *expected) {
     const Expr *ve = e->as.array_repeat.value;
-    Synth v = synth(bc, ve);
+    Synth v = reject_pending(bc, synth(bc, ve));
     const IrType *t = deciding_type(bc, ve, v, e, expected);
     if (!t) return is_error(bc->st, e->span);
     return repeat_done(bc, e, v.node);
@@ -1037,8 +1082,17 @@ static IR_NOINLINE Synth synth_leaf(BodyCtx *bc, const Expr *e) {
             return is_group();
         case EXPR_BOOL:
             return is_node(ir_expr_bool(st, e->span, e->as.boolean.value));
-        case EXPR_IDENT:
-            return is_node(check_ident(bc, e));
+        case EXPR_IDENT: {
+            Synth s = is_node(check_ident(bc, e));
+            if (s.node->kind == IR_E_LOCAL) { /* a local that waits for its uses (its initializer's E0261 fix): this use is one of them */
+                const IrLocal *l = s.node->as.local.local;
+                if (l->fix_diag && st->diags.items[l->fix_diag - 1].fix) {
+                    s.pending = l->fix_diag;
+                    s.ptype = l->fix_type;
+                }
+            }
+            return s;
+        }
         default:
             unimplemented_kind(st, e);
     }
@@ -1090,6 +1144,7 @@ IrExpr *ir_check_expr(BodyCtx *bc, const Expr *e, const IrType *expected) {
     bc->fix = (FixCtx){FIX_TYPE, expected}; /* the expression must have exactly this type: E0261's fix may use it */
     Synth s = synth(bc, e);
     bc->fix = saved;
+    if (s.pending && expected->kind != IR_T_ERROR && s.ptype != expected) withdraw_fix(bc, s.pending); /* the place does not take the new type */
     if (s.group) return group_against(st, e, expected);
     if (is_unit(s)) { /* nothing is expected to BE unit: a call that returns nothing is not a value */
         report_unit(st, e->span);
@@ -1102,9 +1157,10 @@ IrExpr *ir_check_expr(BodyCtx *bc, const Expr *e, const IrType *expected) {
 }
 
 /* The entries whose expression is not checked against a type. An expression statement is FREE (the binary's type may become whatever the fix
- * makes it: nothing else reads it). An un-annotated `let` or `for let` initializer is NONE: the new type would become the LOCAL's type, and
- * every later use of the local is checked against it (`let r = a + b; return r;` in a `-> u8` function fails again after `u32(a) + b`), so
- * no fix is offered (re-audit 3, finding 3). A silent walk reports nothing, so its fixes do not matter. */
+ * makes it: nothing else reads it). An un-annotated `let` or `for let` initializer is FIX_LOCAL: the new type would become the LOCAL's type,
+ * so the fix is attached and WAITS (IrLocal.fix_diag): every later use of the local either accepts the new type or withdraws the fix
+ * (`let r = a + b; return r;` in a `-> u8` function, a call argument of another type, a comparison with a u8: re-audit 3, finding 3).
+ * A silent walk reports nothing, so its fixes do not matter. */
 static Synth synth_in(BodyCtx *bc, const Expr *e, int mode) {
     FixCtx saved = bc->fix;
     bc->fix = (FixCtx){mode, NULL};
@@ -1113,18 +1169,44 @@ static Synth synth_in(BodyCtx *bc, const Expr *e, int mode) {
     return s;
 }
 
-IrExpr *ir_infer_expr(BodyCtx *bc, const Expr *e) {
+/* The initializer of a new local, or the target of an assignment: the fix that waits in it (0: none) and the type it would give are
+ * handed to the caller instead of being decided here. */
+IrExpr *ir_infer_pending(BodyCtx *bc, const Expr *e, int mode, uint32_t *pending, const IrType **ptype) {
     IrState *st = bc->st;
-    Synth s = synth_in(bc, e, FIX_NONE);
+    Synth s = synth_in(bc, e, mode);
+    *pending = 0;
+    *ptype = NULL;
     if (is_unit(s)) {
         report_unit(st, e->span);
         return error_node(st, e->span);
     }
-    if (!s.group) return s.node;
-    /* A literal expression has no type of its own: it takes the one expected of it, and nothing
-     * expects one here. */
-    report_cannot_infer(st, e->span);
-    return error_node(st, e->span);
+    if (s.group) { /* a literal expression has no type of its own, and nothing expects one here */
+        report_cannot_infer(st, e->span);
+        return error_node(st, e->span);
+    }
+    *pending = s.pending;
+    *ptype = s.ptype;
+    return s.node;
+}
+
+IrExpr *ir_infer_expr(BodyCtx *bc, const Expr *e) {
+    uint32_t pending;
+    const IrType *ptype;
+    IrExpr *n = ir_infer_pending(bc, e, FIX_NONE, &pending, &ptype);
+    if (pending) withdraw_fix(bc, pending); /* the caller keeps no local for the fix to wait on */
+    return n;
+}
+
+/* `target = value` where `target` is a local that waits (pending): the value must have the type the fix would give the local. The real
+ * check (against the local's present ERROR type) said nothing about the value's type; this one asks the checker for the same value against
+ * the new type with its diagnostics muted and counted, and withdraws the fix if it would have reported any. */
+void ir_assign_to_pending(BodyCtx *bc, const Expr *value, uint32_t pending, const IrType *ptype) {
+    IrState *st = bc->st;
+    size_t hits = st->muted_hits;
+    st->muted++;
+    (void)ir_check_expr(bc, value, ptype);
+    st->muted--;
+    if (st->muted_hits != hits) withdraw_fix(bc, pending);
 }
 
 IrExpr *ir_infer_discard(BodyCtx *bc, const Expr *e) {

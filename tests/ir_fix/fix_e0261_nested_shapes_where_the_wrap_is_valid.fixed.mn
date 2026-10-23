@@ -12,5 +12,5 @@ fn k(a: i8, b: i16) -> i16 {
     return -(i16(a) + b);
 }
 fn m(a: u8, b: u16) {
-    let r = a + b;
+    let r = u16(a) + b;
 }

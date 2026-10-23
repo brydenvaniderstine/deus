@@ -225,8 +225,10 @@ typedef struct {
 
 /* Where an expression sits, for E0261's fix-it: a fix wraps one operand in a lossless widening, so the binary's type may change, and the fix
  * is offered only if the new type is known to be accepted there. FIX_NONE: unknown (no fix, except a comparison, whose result is bool
- * whatever is wrapped); FIX_FREE: nothing constrains the type (an un-annotated let, an expression statement); FIX_TYPE: exactly `type`. */
-enum { FIX_NONE = 0, FIX_FREE, FIX_TYPE, FIX_SIGNED /* free, but under a unary `-`: any signed integer type */ };
+ * whatever is wrapped); FIX_FREE: nothing constrains the type (an expression statement); FIX_TYPE: exactly `type`; FIX_LOCAL: the value
+ * becomes a new local's type (an un-annotated `let` / `for let`): the fix is attached and WAITS for the local's later uses, each of which
+ * must accept the new type or the fix is withdrawn (IrLocal.fix_diag). */
+enum { FIX_NONE = 0, FIX_FREE, FIX_TYPE, FIX_SIGNED /* free, but under a unary `-`: any signed integer type */, FIX_LOCAL };
 typedef struct { int mode; const IrType *type; } FixCtx;
 
 typedef struct {
@@ -281,6 +283,11 @@ IrExpr *ir_check_expr(BodyCtx *bc, const Expr *e, const IrType *expected);
 /* The type of `e` with no expectation: bool literals and names; an integer literal expression
  * has no type of its own (E0225). */
 IrExpr *ir_infer_expr(BodyCtx *bc, const Expr *e);
+/* As ir_infer_expr, but the fix that waits in `e` (E0261, step 19) is handed to the caller: *pending is 1 + its diagnostic index (0: none) and
+ * *ptype the type it would give `e`. `mode`: FIX_LOCAL for the initializer of a new local, FIX_NONE for an assignment target. */
+IrExpr *ir_infer_pending(BodyCtx *bc, const Expr *e, int mode, uint32_t *pending, const IrType **ptype);
+/* `target = value` where the target is a local that waits: withdraws the fix if `value` would not check against the type it gives the local. */
+void ir_assign_to_pending(BodyCtx *bc, const Expr *value, uint32_t pending, const IrType *ptype);
 /* As ir_infer_expr, but a `unit` value is fine: an expression STATEMENT may be a call to a function
  * that returns nothing. */
 IrExpr *ir_infer_discard(BodyCtx *bc, const Expr *e);

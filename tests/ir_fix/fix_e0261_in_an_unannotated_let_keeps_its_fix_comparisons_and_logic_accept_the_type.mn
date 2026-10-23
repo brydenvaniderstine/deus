@@ -1,0 +1,6 @@
+manna v0;
+fn f(a: u8, b: u32) -> bool {
+    let r = a + b;
+    let ok = r < 5;
+    return ok && r > 1;
+}
