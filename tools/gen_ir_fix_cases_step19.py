@@ -91,6 +91,11 @@ if __name__ == "__main__":
     L = ["manna v0;", "fn f(a: u8, b: u32) {", "    let r = a < b;", "}"]
     keep("fix_e0261_comparison_in_an_unannotated_let_keeps_its_fix_bool_either_way", L, {3: "    let r = u32(a) < b;"})
 
+    # the operator must be DEFINED for the type the waiting fix gives the operand, even when both operands are the same waiting local
+    L = ["manna v0;", "fn f(a: u8, b: u32) {", "    let r = a + b;", "    let ok = r < 5;", "    let q = ok + ok;", "}"]
+    drop("fix_e0261_in_an_unannotated_let_has_no_fix_arithmetic_on_the_bool_that_a_comparison_of_it_gives", L, 3, "a + b", "u8", "u32")
+    L = ["manna v0;", "fn f(a: u8, b: u32) {", "    let r = a + b;", "    let q = r && r;", "}"]
+    drop("fix_e0261_in_an_unannotated_let_has_no_fix_it_is_both_operands_of_a_logical_and", L, 3, "a + b", "u8", "u32")
     # A sibling that is silent because of ANOTHER mistake has no known type yet: once that mistake is fixed it may disagree, so the fix is not
     # known to be accepted and is withdrawn (R2_g1 of the second audit has the same shape with an oversized `let`).
     unknown = lambda n: "unknown name '%s'" % n
