@@ -1,0 +1,7 @@
+manna v0;
+fn id8(x: u8) -> u8 {
+    return x;
+}
+fn f(a: u8, b: u16) -> u16 {
+    return (a + b) + id8(zz);
+}

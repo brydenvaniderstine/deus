@@ -1,0 +1,43 @@
+manna v0;
+[kernel_hook]
+[kernel_hook]
+fn h() {
+}
+fn f0(a: T0) {
+}
+fn f1(a: T1) {
+}
+fn f2(a: T2) {
+}
+fn f3(a: T3) {
+}
+fn f4(a: T4) {
+}
+fn f5(a: T5) {
+}
+fn f6(a: T6) {
+}
+fn f7(a: T7) {
+}
+fn f8(a: T8) {
+}
+fn f9(a: T9) {
+}
+fn f10(a: T10) {
+}
+fn f11(a: T11) {
+}
+fn f12(a: T12) {
+}
+fn f13(a: T13) {
+}
+fn f14(a: T14) {
+}
+fn f15(a: T15) {
+}
+fn f16(a: T16) {
+}
+fn f17(a: T17) {
+}
+fn f18(a: T18) {
+}

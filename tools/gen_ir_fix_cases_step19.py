@@ -64,3 +64,20 @@ if __name__ == "__main__":
     F = list(L); F[2] = "    let e: i16 = (i16(c) + d) * -1;"; F[3] = "    let h: i16 = 1 + (i16(c) + d);"; F[4] = "    return (u16(a) + b) + 7;"
     write("fix_e0261_kept_when_the_literal_beside_it_fits_the_new_type", L, F)
 
+    # ---- 19c-3 (finding 5): once E0203 is reported there is no fix of any kind. 19 unknown names, then an E0261 whose fix its parent would
+    # withdraw: the 20th error unwinds before the parent can run, and the fix attached to it must go too (auditor's cap1).
+    L = ["manna v0;", "fn id8(x: u8) -> u8 {", "    return x;", "}", "fn f(a: u8, b: u16) -> u16 {"]
+    L += ["    let e%d: u8 = zz%d;" % (i, i) for i in range(19)]
+    L += ["    return (a + b) + id8(zz);", "}"]
+    errs = [g.err(L, 6 + i, "zz%d" % i, "E0230", "unknown name 'zz%d'" % i) for i in range(19)]
+    errs += [g.err(L, 25, "(a + b)", "E0261", e261("u8", "u16")), g.err(L, 25, "(a + b)", "E0203", "too many errors, stopping")]
+    write("fix_e0261_none_offered_when_the_error_cap_stops_the_build", L, L, errs)
+    # E0215 (a repeated attribute) has a fix of its own, attached in the declaration pass; when the cap is reached in that same pass (19 unknown
+    # types after it) the fix is gone too. The declarations are checked first, so the E0215 comes before the 19 E0220.
+    L = ["manna v0;", "[kernel_hook]", "[kernel_hook]", "fn h() {", "}"] + ["fn f%d(a: T%d) {\n}" % (i, i) for i in range(19)]
+    L = "\n".join(L).split("\n")
+    errs = [g.err(L, 3, "kernel_hook", "E0215", "duplicate attribute 'kernel_hook'")]
+    for i in range(19):
+        errs.append(g.err(L, 6 + 2 * i, "T%d" % i, "E0220", "unknown type 'T%d'" % i))
+    errs[-1:] = [errs[-1], g.err(L, 6 + 2 * 18, "T18", "E0203", "too many errors, stopping")]
+    write("fix_e0215_none_offered_when_the_error_cap_stops_the_build", L, L, errs)

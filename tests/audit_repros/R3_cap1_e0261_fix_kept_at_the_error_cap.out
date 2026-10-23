@@ -1,0 +1,22 @@
+ERRORS:
+6:18 E0230 unknown name 'zz0'
+7:18 E0230 unknown name 'zz1'
+8:18 E0230 unknown name 'zz2'
+9:18 E0230 unknown name 'zz3'
+10:18 E0230 unknown name 'zz4'
+11:18 E0230 unknown name 'zz5'
+12:18 E0230 unknown name 'zz6'
+13:18 E0230 unknown name 'zz7'
+14:18 E0230 unknown name 'zz8'
+15:18 E0230 unknown name 'zz9'
+16:19 E0230 unknown name 'zz10'
+17:19 E0230 unknown name 'zz11'
+18:19 E0230 unknown name 'zz12'
+19:19 E0230 unknown name 'zz13'
+20:19 E0230 unknown name 'zz14'
+21:19 E0230 unknown name 'zz15'
+22:19 E0230 unknown name 'zz16'
+23:19 E0230 unknown name 'zz17'
+24:19 E0230 unknown name 'zz18'
+25:12 E0261 operands have different types: u8 and u16; convert one explicitly
+25:12 E0203 too many errors, stopping

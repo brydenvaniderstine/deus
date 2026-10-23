@@ -1,0 +1,26 @@
+manna v0;
+fn id8(x: u8) -> u8 {
+    return x;
+}
+fn f(a: u8, b: u16) -> u16 {
+    let e0: u8 = zz0;
+    let e1: u8 = zz1;
+    let e2: u8 = zz2;
+    let e3: u8 = zz3;
+    let e4: u8 = zz4;
+    let e5: u8 = zz5;
+    let e6: u8 = zz6;
+    let e7: u8 = zz7;
+    let e8: u8 = zz8;
+    let e9: u8 = zz9;
+    let e10: u8 = zz10;
+    let e11: u8 = zz11;
+    let e12: u8 = zz12;
+    let e13: u8 = zz13;
+    let e14: u8 = zz14;
+    let e15: u8 = zz15;
+    let e16: u8 = zz16;
+    let e17: u8 = zz17;
+    let e18: u8 = zz18;
+    return (a + b) + id8(zz);
+}

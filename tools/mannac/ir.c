@@ -72,6 +72,9 @@ void ir_error(IrState *st, Diagnostic d) {
     st->error_count++;
     if (st->error_count >= IR_MAX_ERRORS) {
         diag_add(st->arena, &st->diags, diag_ir_too_many_errors(d.span));
+        /* The cap: nothing is applied from an unfinished build, whatever kind of fix it is (E0215's, E0261's: a fix attached before the
+         * cap may rest on a settlement that never ran; the renames are withheld anyway) (re-audit 3, finding 5). */
+        for (size_t i = 0; i < st->diags.len; i++) st->diags.items[i].fix = NULL;
         longjmp(st->fatal_target, 1);
     }
 }
