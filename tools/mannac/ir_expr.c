@@ -388,6 +388,14 @@ static IR_COLD uint32_t report_types_differ(BodyCtx *bc, const Expr *e, const Ir
             new_type = result;
         }
     }
+    /* A wrap adds a conversion node above the operand, one more level on every path through it. The fixed source must still be within the
+     * parser's height bound (E0111, MAX_EXPR_HEIGHT), or the cure is a different error: the longest path through this node is the nodes
+     * above it (expr_depth counts this one) plus its own height after the wrap. (docs/error_codes.md E0261, the 511-operation chain.) */
+    if (to) {
+        unsigned lh = le->height + (wrap_left ? 1u : 0u), rh = re->height + (wrap_left ? 0u : 1u);
+        size_t path = (bc->expr_depth - 1) + 1 + (lh > rh ? lh : rh);
+        if (path > MAX_EXPR_HEIGHT) { to = NULL; arith_fix = false; }
+    }
     size_t before = st->diags.len;
     ir_error(st, diag_ir_operand_types_differ(st->arena, e->span, ir_type_text(st, lt), ir_type_text(st, rt),
                                               le->span, re->span, wrap_left, to));
@@ -556,7 +564,9 @@ static IR_NOINLINE void silently_check_args(BodyCtx *bc, const Expr *e) {
     const NodeList *args = &e->as.call.args;
     for (size_t i = 0; i < args->len; i++) {
         const Expr *a = args->items[i];
+        bc->expr_depth += a->kind == EXPR_NAMED_ARG; /* a named argument is a level of the tree */
         ir_check_silent(bc, a->kind == EXPR_NAMED_ARG ? a->as.named_arg.value : a);
+        bc->expr_depth -= a->kind == EXPR_NAMED_ARG;
     }
 }
 
@@ -720,8 +730,10 @@ static IR_NOINLINE Synth synth_construct(BodyCtx *bc, const Expr *e, size_t stru
         for (size_t i = 0; i < e->as.call.args.len; i++) {
             const Expr *a = e->as.call.args.items[i];
             long k = construct_field(bc, &c, a);
+            bc->expr_depth++; /* the named argument is a node of the tree between the construction and its value */
             if (k < 0) ir_check_silent(bc, a->as.named_arg.value);
             else c.slots[k] = ir_check_expr(bc, a->as.named_arg.value, c.s->fields[k].type);
+            bc->expr_depth--;
         }
     }
     return construct_finish(bc, &c, e);
@@ -1104,9 +1116,10 @@ static Synth synth_kind(BodyCtx *bc, const Expr *e);
 static Synth synth(BodyCtx *bc, const Expr *e) {
     bc->st->expr_visits++;
     assert(ir_ast_height_ok(e)); /* the parser's E0111 bound; this stage asserts it, enforces none */
-    if (e->kind == EXPR_BINARY) return synth_binary(bc, e);
-    if (e->kind == EXPR_UNARY) return synth_unary(bc, e);
-    return synth_other(bc, e);
+    bc->expr_depth++;
+    Synth s = e->kind == EXPR_BINARY ? synth_binary(bc, e) : e->kind == EXPR_UNARY ? synth_unary(bc, e) : synth_other(bc, e);
+    bc->expr_depth--;
+    return s;
 }
 
 /* Every other kind of expression: its parts do not sit where it sits (an argument is checked against the parameter, an index against
@@ -1137,7 +1150,9 @@ IrExpr *ir_check_expr(BodyCtx *bc, const Expr *e, const IrType *expected) {
     FixCtx saved = bc->fix;
     if (e->kind == EXPR_ARRAY || e->kind == EXPR_ARRAY_REPEAT) {
         bc->fix = (FixCtx){FIX_NONE, NULL};
+        bc->expr_depth++; /* this node is not synthesized; it is a level of the tree all the same */
         IrExpr *n = check_array_literal(bc, e, expected);
+        bc->expr_depth--;
         bc->fix = saved;
         return n;
     }

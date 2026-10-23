@@ -245,6 +245,7 @@ typedef struct {
     size_t    loop_depth; /* enclosing `while`/`for` bodies: `break`/`continue` are legal only inside one */
     Rename  **renames;    /* by slot: the misnamed locals and parameters (NULL until the first) */
     size_t    renames_cap;
+    size_t        expr_depth;  /* the Expr nodes being checked above and including the one in hand, from the statement's expression down (for the height bound of an E0261 fix) */
     FixCtx        fix;         /* what the expression being checked may be fixed to (E0261): set by whoever checks it, saved and restored around every nested check */
 } BodyCtx;
 

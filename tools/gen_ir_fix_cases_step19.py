@@ -134,3 +134,42 @@ if __name__ == "__main__":
         errs.append(g.err(L, 6 + 2 * i, "T%d" % i, "E0220", "unknown type 'T%d'" % i))
     errs[-1:] = [errs[-1], g.err(L, 6 + 2 * 18, "T18", "E0203", "too many errors, stopping")]
     write("fix_e0215_none_offered_when_the_error_cap_stops_the_build", L, L, errs)
+
+
+    # ---- 19c-5: the wrap adds a level, so it is withdrawn when the fixed expression would be taller than the parser bound (MAX_EXPR_HEIGHT 512,
+    # E0111). Before: the fix on a 511-operation chain gave a source that failed with E0111 (STATUS "Known issues"). The height that counts is the
+    # longest path THROUGH the wrapped binary: a tall tree elsewhere in the same expression does not take the fix away.
+    def chain(first, term, n):          # `first term term ...` with n operators
+        return first + (" + " + term) * n
+    # (a) the chain is the wrapped operand: 510 operations (height 511) gets its fix, 511 (height 512) cannot
+    for n in (510, 511):
+        body = "a" + " + a" * (n - 1) + " + b"
+        L = ["manna v0;", "fn f(a: u8, b: u32) {", "    let r: u32 = " + body + ";", "}"]
+        if n == 510:
+            F = list(L); F[2] = "    let r: u32 = u32(" + "a" + " + a" * (n - 1) + ") + b;"
+            write("fix_e0261_chain_of_510_operations_keeps_its_fix", L, F)
+        else:
+            write("fix_e0261_chain_of_511_operations_has_no_fix_the_wrap_would_pass_the_height_bound", L, L, [g.err(L, 3, body, "E0261", e261("u8", "u32"))])
+    # (b) the wrap is at the BOTTOM of the chain: the new level is on the longest path just the same
+    for n in (510, 511):
+        body = chain("b", "c", n)
+        L = ["manna v0;", "fn f(b: u8, c: u32) {", "    let r: u32 = " + body + ";", "}"]
+        if n == 510:
+            F = list(L); F[2] = "    let r: u32 = " + chain("u32(b)", "c", n) + ";"
+            write("fix_e0261_at_the_bottom_of_a_510_operation_chain_keeps_its_fix", L, F)
+        else:
+            write("fix_e0261_at_the_bottom_of_a_511_operation_chain_has_no_fix", L, L, [g.err(L, 3, "b + c", "E0261", e261("u8", "u32"))])
+    # (c) a 510-operation chain beside it makes the expression 512 high, but the wrap is on a short path: the fix stays
+    tall = chain("c", "c", 510)
+    L = ["manna v0;", "fn f(a: u8, b: u32, c: u32) {", "    let r: u32 = (a + b) + (" + tall + ");", "}"]
+    F = list(L); F[2] = "    let r: u32 = (u32(a) + b) + (" + tall + ");"
+    write("fix_e0261_on_a_short_path_beside_a_512_high_expression_keeps_its_fix", L, F)
+    # (d) through a call argument, a field access, a construction and a named argument: four levels above the chain (measured: 507 operations is
+    # the longest chain that parses there), and every one counts
+    def deep(n, first):
+        return ["manna v0;", "struct P {", "    x: u32,", "}", "fn g(v: u32) -> u32 {", "    return v;", "}", "fn f(b: u8, c: u32) -> u32 {",
+                "    return g(P(x: " + chain(first, "c", n) + ").x);", "}"]
+    L = deep(506, "b"); F = deep(506, "u32(b)")
+    write("fix_e0261_under_a_call_a_field_and_a_named_argument_counts_every_level_keeps_its_fix", L, F)
+    L = deep(507, "b")
+    write("fix_e0261_under_a_call_a_field_and_a_named_argument_has_no_fix_when_those_levels_pass_the_bound", L, L, [g.err(L, 9, "b + c", "E0261", e261("u8", "u32"))])

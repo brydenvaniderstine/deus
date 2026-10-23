@@ -16,7 +16,7 @@ These files are not part of `make test-*`; they exist for the re-audit. The same
 | 2 | `02_*` | E0270 twice, then E0235 twice: calls inside a bad assignment target still count toward recursion (was E0270 only) |
 | 3 | `03_*` | E0257 at the declaration, E0256 at the bare `len` after the scope closed (finding 3: the spec text was changed to say "visible declaration"; the behavior is the same) |
 | 4 | `04_*`, `04b_*` | `04`: no fix offered where no lossless widen gives the expected type (fixed source == input; the re-check lists the same six E0261). `04b`: each fix widens to the expected type and the fixed source builds clean (was: a narrowing wrap, then E0223) |
-| 5 | `05_*` | **known issue, not fixed**: the fix on a 511-operation chain makes it 512 high; the re-check reports E0111 at 3:2068. Recorded in `docs/STATUS.md` Known issues |
+| 5 | `05_*` | one E0261 and **no fix** (fixed source == input) since step 19 (19c-5): the wrap would make the 511-operation chain 513 high. Before: a fix whose re-check reported E0111 at 3:2068 (it was a recorded known issue) |
 | 6 | `06_*` | the `fix` renames both `myVar` to `my_var`; the re-check reports only the real E0213 (was E0280 with no fix, forever) |
 | 7 | `07_*` | both `Idx` loops get a fix to `idx`; the fixed source builds clean (was: only the first) |
 | 8a | `08a_*` | the use is renamed with the declaration; the re-check reports E0231 on `do_it` (was E0230, an unknown name) |

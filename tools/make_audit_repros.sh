@@ -22,8 +22,8 @@ put 09_size_overflow_in_the_outer_multiplication tests/ir/one_error_let_size_ove
 
 # The re-audit's inputs (R2_*.mn, the auditor's files, copied verbatim into the directory; the loop below gives them outputs too).
 
-# Finding 5 (KNOWN ISSUE, not fixed): a 511-operation chain whose E0261 fix adds one level and fails E0111.
-python3 - "$D/05_e0261_fix_on_a_511_operation_chain_KNOWN_ISSUE.mn" <<'PY'
+# Finding 5 (fixed in step 19): a 511-operation chain whose E0261 fix would add one level and fail E0111; the fix is withdrawn.
+python3 - "$D/05_e0261_fix_on_a_511_operation_chain.mn" <<'PY'
 import sys
 n = 511
 body = "a" + " + a" * (n - 1) + " + b"      # n operations, the last one mixes u8 and u32
