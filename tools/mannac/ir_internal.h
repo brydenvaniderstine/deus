@@ -96,6 +96,8 @@ typedef struct Rename {
     size_t      diag;      /* index of its E0280/E0281 in IrState.diags: the fix is attached there at the end */
     UseList     uses;      /* every resolved use, in checking order */
     bool        blocked;   /* a name used as a value would change what it resolves to under the fix: no fix (ir_note_free_name) */
+    const char *target;    /* the converted name, computed once (ir_rename_target); NULL when there is none */
+    bool        target_done;
 } Rename;
 
 /* ---- declarations ---- */
@@ -149,8 +151,11 @@ typedef struct {
     Rename    **fn_renames;     /* per function */
     Rename   ***param_renames;  /* per function, an array per misnamed-parameter function (indexed by slot) */
     size_t      cap_decl_items; /* size of the per-item tables above (the number of top-level items) */
-    Unresolved *unresolved;    /* every name that resolved to nothing, in checking order (recorded for the renames only) */
+    Unresolved *unresolved;    /* every DISTINCT (namespace, scope, name) that resolved to nothing, in checking order (recorded only while a top-level or field rename exists) */
     size_t      n_unresolved, cap_unresolved;
+    uint32_t   *unres_hash;    /* open-addressing set over `unresolved` (index + 1; 0 = empty), so a name repeated 100,000 times is stored once */
+    size_t      unres_hash_cap;
+    size_t      n_nonlocal_renames; /* renames of structs, functions and fields: the only ones `collides` checks against `unresolved` */
 } Ctx;
 
 /* Where a type is being written, which decides what a slice may do there
@@ -250,6 +255,8 @@ void body_set_rename(BodyCtx *bc, size_t slot, Rename *r);
  * (E0230). A rename that gave a visible local that name would capture this use (it would resolve to the local, hiding the error and
  * changing what it means), and so would a rename of `top` to a name a visible local already has: those renames are blocked. */
 void ir_note_free_name(BodyCtx *bc, const char *name, Rename *top);
+/* The name `r` would be renamed to (snake_case, or PascalCase for a struct), computed once and kept: NULL when there is none. */
+const char *ir_rename_target(IrState *st, Rename *r);
 
 /* Starts a body: registers the parameters (already in func->locals, slots 0..n_params-1). */
 void body_init(BodyCtx *bc, IrState *st, Ctx *decls, IrFunc *func);

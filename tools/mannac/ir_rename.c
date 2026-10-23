@@ -20,6 +20,7 @@ static Rename **table_for(IrState *st, Rename ***slot, size_t n) {
 Rename *ir_check_naming(IrState *st, Ctx *cx, RenameKind kind, size_t scope, bool pascal, const char *name, Span at) {
     if (pascal ? ir_is_pascal_case(name) : ir_is_snake_case(name)) return NULL;
     cx->naming_errors++;
+    if (kind != REN_LOCAL) cx->n_nonlocal_renames++;
     Rename *r = arena_alloc(st->arena, sizeof(Rename), alignof(Rename));
     memset(r, 0, sizeof *r);
     r->kind = kind;
@@ -53,7 +54,42 @@ void ir_note_use(IrState *st, Rename *r, Span at) {
     u->spans[u->len++] = at;
 }
 
+const char *ir_rename_target(IrState *st, Rename *r) {
+    if (!r->target_done) {
+        r->target = r->pascal ? ir_to_pascal_case(st->arena, r->name) : ir_to_snake_case(st->arena, r->name);
+        r->target_done = true;
+    }
+    return r->target;
+}
+
+static uint64_t unres_key(int ns, size_t scope, const char *name) {
+    uint64_t h = 1469598103934665603ULL ^ (uint64_t)ns;
+    h = (h ^ (uint64_t)scope) * 1099511628211ULL;
+    for (const unsigned char *c = (const unsigned char *)name; *c; c++) h = (h ^ *c) * 1099511628211ULL;
+    return h;
+}
+
+/* Only a rename of a struct, function or field consults this list (collides), and those are all created before any body is checked, so
+ * while none exists nothing is recorded. A name repeated any number of times is stored once. */
 void ir_note_unresolved(IrState *st, Ctx *cx, int ns, size_t scope, const char *name) {
+    if (cx->n_nonlocal_renames == 0) return;
+    if ((cx->n_unresolved + 1) * 2 > cx->unres_hash_cap) { /* grow the set (and rebuild it from the list) */
+        size_t cap = cx->unres_hash_cap ? cx->unres_hash_cap * 2 : 16;
+        uint32_t *t = arena_alloc(st->arena, cap * sizeof(uint32_t), alignof(uint32_t));
+        memset(t, 0, cap * sizeof(uint32_t));
+        for (size_t i = 0; i < cx->n_unresolved; i++) {
+            size_t j = unres_key(cx->unresolved[i].ns, cx->unresolved[i].scope, cx->unresolved[i].name) & (cap - 1);
+            while (t[j]) j = (j + 1) & (cap - 1);
+            t[j] = (uint32_t)(i + 1);
+        }
+        cx->unres_hash = t;
+        cx->unres_hash_cap = cap;
+    }
+    size_t mask = cx->unres_hash_cap - 1, j = unres_key(ns, scope, name) & mask;
+    for (; cx->unres_hash[j]; j = (j + 1) & mask) {
+        const Unresolved *u = &cx->unresolved[cx->unres_hash[j] - 1];
+        if (u->ns == ns && u->scope == scope && strcmp(u->name, name) == 0) return;
+    }
     if (cx->n_unresolved == cx->cap_unresolved) {
         size_t cap = cx->cap_unresolved ? cx->cap_unresolved * 2 : 8;
         Unresolved *list = arena_alloc(st->arena, cap * sizeof(Unresolved), alignof(Unresolved));
@@ -61,7 +97,8 @@ void ir_note_unresolved(IrState *st, Ctx *cx, int ns, size_t scope, const char *
         cx->unresolved = list;
         cx->cap_unresolved = cap;
     }
-    cx->unresolved[cx->n_unresolved++] = (Unresolved){name, ns, scope};
+    cx->unresolved[cx->n_unresolved] = (Unresolved){name, ns, scope};
+    cx->unres_hash[j] = (uint32_t)(++cx->n_unresolved);
 }
 
 void body_set_rename(BodyCtx *bc, size_t slot, Rename *r) {
@@ -77,20 +114,22 @@ void body_set_rename(BodyCtx *bc, size_t slot, Rename *r) {
     r->slot = (uint32_t)slot;
 }
 
+/* Every Rename of a function's locals lives in cx->renames, and each E0280 counts toward the 20-error cap, so there are at most 20 of
+ * them in all: this loops over those, not over the function's slots, and compares converted names computed once (ir_rename_target). */
 void ir_note_free_name(BodyCtx *bc, const char *name, Rename *top) {
-    Arena *a = bc->st->arena;
+    IrState *st = bc->st;
     const char *top_target = NULL; /* where `top` is going: it must not land on a visible local, or on the target of a visible local */
     if (top) {
-        top_target = top->pascal ? ir_to_pascal_case(a, top->name) : ir_to_snake_case(a, top->name);
+        top_target = ir_rename_target(st, top);
         if (top_target && body_lookup(bc, top_target)) top->blocked = true;
     }
-    if (!bc->renames) return;
-    for (size_t s = 0; s < bc->renames_cap; s++) {
-        Rename *r = bc->renames[s];
-        if (!r || r->kind != REN_LOCAL || r->blocked) continue;
+    const Ctx *cx = bc->decls;
+    for (size_t i = 0; i < cx->n_renames; i++) {
+        Rename *r = cx->renames[i];
+        if (r->kind != REN_LOCAL || r->blocked || r->scope != bc->fn_index) continue;
         const IrLocal *seen = body_lookup(bc, r->name); /* visible here? */
         if (!seen || seen->slot != r->slot) continue;
-        const char *t = ir_to_snake_case(a, r->name);
+        const char *t = ir_rename_target(st, r);
         if (t && (strcmp(t, name) == 0 || (top_target && strcmp(t, top_target) == 0))) r->blocked = true;
     }
 }
@@ -157,7 +196,7 @@ void ir_finalize_renames(IrState *st, Ctx *cx) {
     for (size_t i = 0; i < cx->n_renames; i++) {
         Rename *r = cx->renames[i];
         granted[i] = NULL;
-        const char *target = r->pascal ? ir_to_pascal_case(st->arena, r->name) : ir_to_snake_case(st->arena, r->name);
+        const char *target = ir_rename_target(st, r);
         if (!target || r->blocked || ir_is_reserved_name(target) || collides(cx, r, target, i, granted)) continue;
         granted[i] = target;
 

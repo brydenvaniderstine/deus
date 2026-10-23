@@ -1,0 +1,6 @@
+manna v0;
+fn f() {
+    let myA: u8 = 0;
+    let myB: u8 = 0;
+    g(zz, zz, zz, zz, zz, zz, zz, zz, zz, zz, zz, zz, zz, zz, zz, zz, zz, zz, zz, zz, zz, zz, zz, zz, zz, zz, zz, zz, zz, zz, zz, zz, zz, zz, zz, zz, zz, zz, zz, zz) = myA + myB;
+}

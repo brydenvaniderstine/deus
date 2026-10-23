@@ -42,6 +42,7 @@ jobs:
       - run: make test-ir-error-codes
       - run: make test-e0261-exhaustive
       - run: make test-rename-property
+      - run: make test-ir-memory-stress
       - run: make audit-ir-poison
       - run: make test-ir-unit
       - run: make test-ir-unit-asan
