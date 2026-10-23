@@ -33,3 +33,18 @@ if __name__ == "__main__":
     L = ["manna v0;", "fn f(a: u8, b: u32, c: bool) {", "    if c {", "    } else if(a) < b {", "    }", "}"]
     F = list(L); F[3] = "    } else if u32((a)) < b {"
     write("fix_e0261_insert_after_else_if_without_a_space", L, F)
+
+    # ---- 19c-1 (finding 3): the type of an un-annotated `let` / `for let` initializer becomes the LOCAL's type, which every later use is
+    # checked against, so the E0261 fix is not offered there (an expression statement is still free; a comparison is bool either way).
+    L = ["manna v0;", "fn f(a: u8, b: u32) -> u8 {", "    let r = a + b;", "    return r;", "}"]
+    write("fix_e0261_in_an_unannotated_let_has_no_fix_the_local_is_used_later", L, L, [g.err(L, 3, "a + b", "E0261", e261("u8", "u32"))])
+    L = ["manna v0;", "fn f(a: u8, b: u32, n: u8) {", "    for let i = a + b; i < n; i = i + 1 {", "    }", "}"]
+    write("fix_e0261_in_an_unannotated_for_let_has_no_fix", L, L, [g.err(L, 3, "a + b", "E0261", e261("u8", "u32"))])
+    L = ["manna v0;", "fn g(x: u8) {", "}", "fn f(a: u8, b: u32) {", "    let r = a + b;", "    g(r);", "}"]
+    write("fix_e0261_in_an_unannotated_let_has_no_fix_the_local_is_an_argument", L, L, [g.err(L, 5, "a + b", "E0261", e261("u8", "u32"))])
+    L = ["manna v0;", "fn f(a: i8, b: i16) {", "    let r = -(a + b);", "}"]
+    write("fix_e0261_under_unary_minus_in_an_unannotated_let_has_no_fix", L, L, [g.err(L, 3, "(a + b)", "E0261", e261("i8", "i16"))])
+    L = ["manna v0;", "fn f(a: u8, b: u32) {", "    let r = a < b;", "}"]
+    F = list(L); F[2] = "    let r = u32(a) < b;"
+    write("fix_e0261_comparison_in_an_unannotated_let_keeps_its_fix_bool_either_way", L, F)
+

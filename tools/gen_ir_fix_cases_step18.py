@@ -34,8 +34,9 @@ if __name__ == "__main__":
          "fn k(a: i8, b: i16) -> i16 {", "    return -(a + b);", "}",
          "fn m(a: u8, b: u16) {", "    let r = a + b;", "}"]
     F = list(L)
-    F[5] = "    return u16(g(a + b)) + c;"; F[8] = "    return u16(a) + b + c;"; F[11] = "    return -(i16(a) + b);"; F[14] = "    let r = u16(a) + b;"
-    write("fix_e0261_nested_shapes_where_the_wrap_is_valid", L, F)
+    F[5] = "    return u16(g(a + b)) + c;"; F[8] = "    return u16(a) + b + c;"; F[11] = "    return -(i16(a) + b);"
+    # (step 19, re-audit 3 finding 3: the un-annotated `let r = a + b;` of `m` has no fix any more - the new type would become r's type)
+    write("fix_e0261_nested_shapes_where_the_wrap_is_valid", L, F, [g.err(F, 15, "a + b", "E0261", e261("u8", "u16"))])
     # A fix inside an operator whose other operand has another type is withdrawn: wrapping it would make THAT operator fail.
     L = ["manna v0;", "fn f(a: u8, b: u16, c: u8) -> u16 {", "    return a + b + c;", "}", "fn g(a: u8, b: u16, c: u8) {", "    let r = a + b + c;", "}"]
     write("fix_e0261_withdrawn_when_the_enclosing_operator_would_fail", L, L,
@@ -104,8 +105,9 @@ if __name__ == "__main__":
 
     # ---- more E0261 shapes (these cover every branch of the fix-context code: the signed place under unary minus, a fix in the right operand of
     # an enclosing operator kept or withdrawn, a fix in both operands withdrawn).
-    L = ["manna v0;", "fn f(a: i8, b: i16) {", "    let r = -(a + b);", "}"]
-    F = list(L); F[2] = "    let r = -(i16(a) + b);"
+    # (step 19: an expression statement is the unconstrained place; the same text as an un-annotated `let` has no fix, see gen_ir_fix_cases_step19.py)
+    L = ["manna v0;", "fn f(a: i8, b: i16) {", "    -(a + b);", "}"]
+    F = list(L); F[2] = "    -(i16(a) + b);"
     write("fix_e0261_under_unary_minus_in_an_unconstrained_value_needs_a_signed_type", L, F)
     L = ["manna v0;", "fn f(a: u8, b: u16) {", "    let r = -(a + b);", "}", "fn g(a: u8, b: u16) -> u16 {", "    return -(a + b);", "}"]
     write("fix_e0261_under_unary_minus_no_fix_when_the_type_would_be_unsigned", L, L,

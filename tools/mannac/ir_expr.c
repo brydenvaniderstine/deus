@@ -1073,8 +1073,10 @@ IrExpr *ir_check_expr(BodyCtx *bc, const Expr *e, const IrType *expected) {
     return error_node(st, e->span);
 }
 
-/* The two entries whose expression is not checked against a type: an un-annotated let and an expression statement are FREE (the
- * binary's type may become whatever the fix makes it); a silent walk reports nothing, so its fixes do not matter. */
+/* The entries whose expression is not checked against a type. An expression statement is FREE (the binary's type may become whatever the fix
+ * makes it: nothing else reads it). An un-annotated `let` or `for let` initializer is NONE: the new type would become the LOCAL's type, and
+ * every later use of the local is checked against it (`let r = a + b; return r;` in a `-> u8` function fails again after `u32(a) + b`), so
+ * no fix is offered (re-audit 3, finding 3). A silent walk reports nothing, so its fixes do not matter. */
 static Synth synth_in(BodyCtx *bc, const Expr *e, int mode) {
     FixCtx saved = bc->fix;
     bc->fix = (FixCtx){mode, NULL};
@@ -1085,7 +1087,7 @@ static Synth synth_in(BodyCtx *bc, const Expr *e, int mode) {
 
 IrExpr *ir_infer_expr(BodyCtx *bc, const Expr *e) {
     IrState *st = bc->st;
-    Synth s = synth_in(bc, e, FIX_FREE);
+    Synth s = synth_in(bc, e, FIX_NONE);
     if (is_unit(s)) {
         report_unit(st, e->span);
         return error_node(st, e->span);
