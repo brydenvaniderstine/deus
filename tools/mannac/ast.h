@@ -46,7 +46,7 @@ struct Type {
     TypeKind kind;
     Span     span;
     union {
-        struct { const char *name; Span name_span; } ident; /* name_span: the identifier token alone; `span` also covers any parentheses around it */          /* arena-owned, NUL-terminated */
+        struct { const char *name; } ident;          /* arena-owned, NUL-terminated */
         struct { uint64_t size; Type *elem; } array;  /* [size]elem */
         struct { Type *elem; } slice;                 /* []elem */
     } as;
