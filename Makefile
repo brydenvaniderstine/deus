@@ -322,7 +322,7 @@ test-rename-property:
 	$(MANNAC_CC) -std=c11 -Wall -Wextra -O2 -g -o $(IR_DUMP_DIR)/ir_dump $(IR_DUMP_SRCS)
 	python3 tools/rename_property_test.py $(IR_DUMP_DIR)/ir_dump 2500 0
 
-# Typed-IR step 19: the rename bookkeeping's memory is linear in the input (re-audit 3, finding 1): seven generated programs, up to 3 MB, with
+# Typed-IR step 19: the rename bookkeeping's memory is linear in the input (re-audit 3, finding 1): eight generated programs, up to 3 MB, with
 # many value uses of names that are not locals next to misnamed declarations; exact diagnostics, no E0201, a time bound (tools/ir_memory_stress.py).
 test-ir-memory-stress:
 	@mkdir -p $(IR_DUMP_DIR)

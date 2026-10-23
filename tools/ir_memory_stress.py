@@ -24,7 +24,7 @@ def codes(out):
     return re.findall(r"^\d+:\d+ (E\d{4}) ", out, re.M)
 
 
-def case(name, src, want, fixed_has=None):
+def case(name, src, want, fixed_has=None, fixed_keeps=None):
     p = os.path.join(tmp, name + ".mn")
     open(p, "w").write(src)
     r, dt = run([p])
@@ -33,7 +33,7 @@ def case(name, src, want, fixed_has=None):
     # the naming fix-its must still be there (an E0201 unwinding the build drops them)
     if ok and fixed_has is not None:
         r2, _ = run(["--fixed", p])
-        ok = fixed_has in r2.stdout
+        ok = fixed_has in r2.stdout and (fixed_keeps is None or fixed_keeps in r2.stdout)
     print(("PASS" if ok else "FAIL"), name, "%d bytes" % len(src), "%.2fs" % dt, "codes=%s" % ",".join(got[:8]) + ("..." if len(got) > 8 else ""))
     if not ok:
         print("  expected codes:", want[:8], "status", r.returncode, "stderr", r.stderr[:200], "time limit", TIME_LIMIT)
@@ -82,4 +82,11 @@ names = ["loc%dX%s" % (i, "a" * 19990) for i in range(10)]
 case("ten_20000_char_misnamed_locals_five_unknown_names",
      "manna v0;\nfn f() {\n" + "".join("    let %s: u8 = 0;\n" % n for n in names) + "    let q: u8 = zz + zz + zz + zz + zz;\n}\n",
      ["E0280"] * 10 + ["E0230"] * 5)
-print("memory stress: 7 cases, exact diagnostics, no E0201")
+# 8. collides() over a big function: 18 misnamed locals among 30,000 well-named ones (each rename looks its target up in an index of the
+# function's locals, not in all of them); one of them collides with an existing name and gets no fix, the rest are renamed
+body = "".join("    let v%d: u8 = 0;\n" % i for i in range(30000))
+bad = "".join("    let badName%d: u8 = 0;\n" % i for i in range(17)) + "    let v7Z: u8 = 0;\n    let v7_z: u8 = 0;\n"
+case("collisions_among_thirty_thousand_locals",
+     "manna v0;\nfn f() {\n" + body + bad + "}\n",
+     ["E0280"] * 18, fixed_has="bad_name16", fixed_keeps="let v7Z: u8") # v7Z would become v7_z: taken, so it keeps its name
+print("memory stress: 8 cases, exact diagnostics, no E0201")
