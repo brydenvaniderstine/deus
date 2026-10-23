@@ -229,6 +229,18 @@ static int cmp_edit(const void *pa, const void *pb) {
     return cmp_span(&((const Edit *)pa)->span, &((const Edit *)pb)->span);
 }
 
+static bool ident_byte(char c) { return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_'; }
+
+void ir_edit_padding(const char *src, size_t len, size_t start, size_t end, const char *text, bool *space_before, bool *space_after) {
+    size_t tl = strlen(text);
+    if (start != end) { /* a replacement keeps the boundaries of the token it replaces: its neighbours are not identifier characters */
+        *space_before = *space_after = false;
+        return;
+    }
+    *space_before = tl && start > 0 && start <= len && ident_byte(text[0]) && ident_byte(src[start - 1]);
+    *space_after = tl && end < len && ident_byte(text[tl - 1]) && ident_byte(src[end]);
+}
+
 char *ir_apply_fixes(const char *src, size_t len, const DiagList *diags) {
     size_t n = 0;
     for (size_t i = 0; i < diags->len; i++) if (diags->items[i].fix) n += (size_t)diags->items[i].fix->n_edits;
@@ -248,7 +260,7 @@ char *ir_apply_fixes(const char *src, size_t len, const DiagList *diags) {
     for (size_t i = 0; i < len; i++) if (src[i] == '\n') line_start[li++] = i + 1;
     line_start[li] = len;
     size_t cap = len + 1;
-    for (size_t i = 0; i < n; i++) cap += strlen(edits[i].text);
+    for (size_t i = 0; i < n; i++) cap += strlen(edits[i].text) + 2; /* + a separating space on each side (ir_edit_padding) */
     char *out = malloc(cap + 1);
     size_t o = 0, pos = 0;
     for (size_t i = 0; i < n; i++) {
@@ -257,9 +269,13 @@ char *ir_apply_fixes(const char *src, size_t len, const DiagList *diags) {
         if (a < pos) continue; /* overlapping edits are never produced; skip rather than corrupt */
         memcpy(out + o, src + pos, a - pos);
         o += a - pos;
+        bool before, after;
+        ir_edit_padding(src, len, a, b, edits[i].text, &before, &after);
         size_t tl = strlen(edits[i].text);
+        if (before) out[o++] = ' ';
         memcpy(out + o, edits[i].text, tl);
         o += tl;
+        if (after) out[o++] = ' ';
         pos = b;
     }
     memcpy(out + o, src + pos, len - pos);

@@ -1,0 +1,9 @@
+(fn@2:1-4:2 fn:f
+  (params (param@2:6-2:11 a #0 u8) (param@2:13-2:19 b #1 u32))
+  (returns u32)
+  (block@2:28-4:2
+    (return@3:5-3:25
+      (binary@3:12-3:24 + u32
+        (convert@3:12-3:20 u32
+          (local@3:16-3:19 a #0 u8))
+        (local@3:23-3:24 b #1 u32)))))

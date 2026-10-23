@@ -1,0 +1,4 @@
+manna v0;
+fn f(a: i8, b: i32) -> i32 {
+    return i32(-a) + b;
+}

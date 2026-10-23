@@ -2,6 +2,14 @@
 
 Stable codes for `manna check --json` (docs/M2_PLAN.md §7 item 4). A code, once assigned, is **never reused or renumbered** — if a diagnostic is retired, its code retires with it rather than being recycled for something unrelated.
 
+## Fix-it rules
+
+These hold for every fix-it, whichever code attaches it.
+
+- **An insert never joins two tokens; the applier adds a space.** A fix is data (spans and text); the program that applies it is the one that sees the source. If an insert's text begins with an identifier character (`[A-Za-z0-9_]`) and the byte before the edit is one, the applier writes a space first, and likewise after the text if it ends with one and the next byte is one. `return-a + b` with `i32(` inserted before `-a` becomes `return i32(-a) + b`, not `returni32(-a) + b` (re-audit 3, finding 2). The rule is one function, `ir_edit_padding` (`tools/mannac/ir.h`, `ir_rename.c`), called by every function that applies edits (`ir_apply_fixes` is the only one today); a new applier must call it. Pinned by `tests/ir_fix/fix_e0261_insert_after_*`, the unit test `test_edit_padding` and the no-space keyword forms of `make test-e0261-exhaustive`.
+- **A fix that leaves the program rejected is worse than none.** A fix is offered only where applying it is known to re-check clean (E0261's rules, below) and is withheld when the use list it needs is unknown or incomplete (E0280/E0281, below).
+- **No fix once E0203 is reported** (below).
+
 Ranges, reserved by pipeline stage (docs/M2_PLAN.md §3):
 
 | Range | Stage |

@@ -18,3 +18,18 @@ if __name__ == "__main__":
     L = ["manna v0;", "fn doIt() -> u8 {", "    return 1;", "}", "fn f() {", "    g(" + ", ".join(["doIt"] * 40) + ") = 1;", "}"]
     F = rename(L, {"doIt": "do_it"})
     write("fix_function_renamed_next_to_many_value_uses", L, F, [g.err(F, 6, "g(" + ", ".join(["do_it"] * 40) + ")", "E0270", notlv)])
+
+    # ---- 19b (finding 2): the inserted `T(` never joins the keyword before the operand (the applier adds a space). The auditor's k1-k4 and
+    # `else if`. The fixed source is written with the space; the wrap itself is the ordinary one.
+    L = ["manna v0;", "fn f(a: i8, b: i32) -> i32 {", "    return-a + b;", "}"]
+    F = list(L); F[2] = "    return i32(-a) + b;"
+    write("fix_e0261_insert_after_return_without_a_space", L, F)
+    L = ["manna v0;", "fn f(a: u8, b: u32) -> u32 {", "    return(a) + b;", "}"]
+    F = list(L); F[2] = "    return u32((a)) + b;"
+    write("fix_e0261_insert_after_return_before_a_parenthesis", L, F)
+    L = ["manna v0;", "fn f(a: u8, b: u32) {", "    if(a) < b {", "    }", "    while(a) < b {", "    }", "}"]
+    F = list(L); F[2] = "    if u32((a)) < b {"; F[4] = "    while u32((a)) < b {"
+    write("fix_e0261_insert_after_if_and_while_without_a_space", L, F)
+    L = ["manna v0;", "fn f(a: u8, b: u32, c: bool) {", "    if c {", "    } else if(a) < b {", "    }", "}"]
+    F = list(L); F[3] = "    } else if u32((a)) < b {"
+    write("fix_e0261_insert_after_else_if_without_a_space", L, F)

@@ -1679,6 +1679,51 @@ static void test_rename_edit_order_and_dedupe(void) {
     pass("rename edits: sorted by start then end, an exact duplicate use dropped (ir_note_use fed directly); overlapping edits are skipped, not applied");
 }
 
+/* The one padding rule every applier follows (ir_edit_padding, step 19b): a space is added only where the text and its neighbour are both
+ * identifier characters. The table is every combination of text start/end, byte before and byte after, at the edges of the source too. */
+static void test_edit_padding(void) {
+    static const struct { const char *src; size_t start, end; const char *text; bool before, after; } t[] = {
+        {"return-a", 6, 6, "u32(", true, false},      /* `n` before, `u` starts the text */
+        {"return(a)", 6, 6, "u32(", true, false},
+        {"if(a)", 2, 2, "u32(", true, false},
+        {"x = -a", 4, 4, "u32(", false, false},       /* a space before */
+        {"x=-a", 2, 2, "u32(", false, false},         /* `=` before */
+        {"a+b", 1, 1, "(", false, false},             /* the text starts with `(` */
+        {"(a)b", 3, 3, ")", false, false},            /* the text ends with `)` and starts with it: nothing to join */
+        {"ab", 1, 1, "_x", true, true},               /* both sides */
+        {"ab", 1, 1, "", false, false},               /* an empty text never pads */
+        {"ab", 0, 0, "x", false, true},               /* the start of the source: nothing before */
+        {"ab", 2, 2, "x", true, false},               /* the end of the source: nothing after */
+        {"foo bar", 0, 3, "baz", false, false},       /* a replacement is never padded, ... */
+        {"abcdoItZ", 3, 7, "do_it", false, false},    /* ... even between identifier characters (the edit-order test relies on it) */
+        {"1+a", 2, 2, "i8(", false, false},
+        {"x", 0, 0, "", false, false},
+    };
+    for (size_t i = 0; i < sizeof t / sizeof t[0]; i++) {
+        bool before = !t[i].before, after = !t[i].after; /* poisoned so a missing store is seen */
+        ir_edit_padding(t[i].src, strlen(t[i].src), t[i].start, t[i].end, t[i].text, &before, &after);
+        assert(before == t[i].before && after == t[i].after);
+    }
+    /* through the applier: an insert after a keyword gets its space, one after an operator does not */
+    IrState st;
+    ir_state_init(&st, 1u << 20);
+    Diagnostic d = {0};
+    DiagFix *fix = diag_fix_new(st.arena, 2);
+    fix->n_edits = 2;
+    fix->edits[0].span = (Span){1, 7, 1, 7};
+    fix->edits[0].text = "u32(";
+    fix->edits[1].span = (Span){1, 9, 1, 9};
+    fix->edits[1].text = ")";
+    d.code = "E0261"; d.severity = DIAG_ERROR; d.message = "x"; d.span = (Span){1, 7, 1, 9}; d.fix = fix;
+    DiagList dl = {0};
+    diag_add(st.arena, &dl, d);
+    char *out = ir_apply_fixes("return-a + b;", 13, &dl);
+    assert(strcmp(out, "return u32(-a) + b;") == 0);
+    free(out);
+    ir_state_destroy(&st);
+    pass("edit padding: a space only between two identifier characters (15 combinations), and the applier uses it");
+}
+
 static void test_e0261_fix(void) {
     static IrState st;
     ir_state_init(&st, 1 << 20);
@@ -2248,6 +2293,7 @@ int main(int argc, char **argv) {
     test_group_representation();
     test_operator_matrix();
     test_operator_result_types();
+    test_edit_padding();
     test_e0261_fix();
     test_construction_and_access_spans();
     test_array_spans();

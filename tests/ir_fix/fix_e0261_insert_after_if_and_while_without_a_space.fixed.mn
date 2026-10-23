@@ -1,0 +1,7 @@
+manna v0;
+fn f(a: u8, b: u32) {
+    if u32((a)) < b {
+    }
+    while u32((a)) < b {
+    }
+}

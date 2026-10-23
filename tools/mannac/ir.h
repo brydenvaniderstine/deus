@@ -287,6 +287,14 @@ IrStatus ir_build(IrState *st, const DiagList *parse_diags, const NodeList *item
  * (typed-IR step 14, ir_rename.c). */
 char *ir_apply_fixes(const char *src, size_t len, const DiagList *diags);
 
+/* The one rule every function that applies a DiagEdit to source text must follow (docs/error_codes.md, fix-it rules): an edit never
+ * joins two tokens. `start`..`end` are the byte offsets the edit replaces (equal for an insert: only an insert is padded, a replacement keeps
+ * the boundaries of the token it replaces) and `text` is what it puts there; if
+ * the text begins with an identifier character and the byte before `start` is one, the applier writes a space first (`return-a` with
+ * `u32(` inserted before `-a` is `return u32(-a)`, not `returnu32(-a)`); likewise after the text if it ends with one and the byte at
+ * `end` is one. (Typed-IR step 19, re-audit 3 finding 2; ir_apply_fixes is the only applier today.) */
+void ir_edit_padding(const char *src, size_t len, size_t start, size_t end, const char *text, bool *space_before, bool *space_after);
+
 /* ---- Expressions (ir_expr.c, typed-IR step 6) ---- */
 
 /* Stops the build with IR_UNIMPLEMENTED (st->unimplemented names the construct): unwinds
