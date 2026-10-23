@@ -48,3 +48,19 @@ if __name__ == "__main__":
     F = list(L); F[2] = "    let r = u32(a) < b;"
     write("fix_e0261_comparison_in_an_unannotated_let_keeps_its_fix_bool_either_way", L, F)
 
+    # ---- 19c-2 (finding 4): a pending fix gives the operator the place's type; an untyped literal group beside it takes that type and must fit.
+    L = ["manna v0;", "fn f(a: u8, b: u16) -> u16 {", "    return (a + b) + 70000;", "}"]
+    write("fix_e0261_withdrawn_when_a_literal_beside_it_does_not_fit_the_new_type", L, L, [g.err(L, 3, "(a + b)", "E0261", e261("u8", "u16"))])
+    L = ["manna v0;", "fn f(a: u8, b: u32) -> u32 {", "    return (a + b) * -1;", "}"]
+    write("fix_e0261_withdrawn_when_a_negated_literal_beside_it_meets_an_unsigned_type", L, L, [g.err(L, 3, "(a + b)", "E0261", e261("u8", "u32"))])
+    L = ["manna v0;", "fn f(a: i16, b: i8) -> i16 {", "    return (a - b) >> 70000;", "}"]
+    write("fix_e0261_withdrawn_when_the_shift_count_literal_does_not_fit", L, L, [g.err(L, 3, "(a - b)", "E0261", e261("i16", "i8"))])
+    L = ["manna v0;", "fn f(p: i16, q: u8) {", "    let r: i16 = 70000 + (p & q);", "}"]
+    write("fix_e0261_withdrawn_when_a_literal_on_the_left_does_not_fit", L, L, [g.err(L, 3, "(p & q)", "E0261", e261("i16", "u8"))])
+    L = ["manna v0;", "fn f(p: i16, q: u8) -> i16 {", "    return (p & q) | (100 << 40000);", "}"]
+    write("fix_e0261_withdrawn_when_a_group_of_literals_beside_it_does_not_fit", L, L, [g.err(L, 3, "(p & q)", "E0261", e261("i16", "u8"))])
+    # controls: the literal fits (or is negatable), so the fix stays
+    L = ["manna v0;", "fn f(a: u8, b: u16, c: i8, d: i16) -> u16 {", "    let e: i16 = (c + d) * -1;", "    let h: i16 = 1 + (c + d);", "    return (a + b) + 7;", "}"]
+    F = list(L); F[2] = "    let e: i16 = (i16(c) + d) * -1;"; F[3] = "    let h: i16 = 1 + (i16(c) + d);"; F[4] = "    return (u16(a) + b) + 7;"
+    write("fix_e0261_kept_when_the_literal_beside_it_fits_the_new_type", L, F)
+

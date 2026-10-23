@@ -1,0 +1,4 @@
+manna v0;
+fn f(a: i16, b: i8) -> i16 {
+    return (a - b) >> 70000;
+}

@@ -1,0 +1,4 @@
+manna v0;
+fn f(p: i16, q: u8) -> i16 {
+    return (p & q) | (100 << 40000);
+}

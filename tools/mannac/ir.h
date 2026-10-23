@@ -81,7 +81,8 @@ typedef struct {
     Arena       *arena;
     DiagList     diags;
     int          error_count;
-    int          muted;       /* > 0: ir_error records nothing (a subtree checked only for its call edges and name uses); always 0 outside one call of ir_body.c:check_muted */
+    int          muted;       /* > 0: ir_error records nothing (a subtree checked only for its call edges and name uses); always 0 outside one call of ir_body.c:check_muted or ir_expr.c:group_fits */
+    size_t       muted_hits;  /* how many diagnostics ir_error dropped because muted > 0 (a dry check compares it before and after) */
     jmp_buf      fatal_target; /* ir_build owns the setjmp; E0201/E0203 land here */
     IrType       prim[IR_N_PRIM];
     IrTypeTable  composites;

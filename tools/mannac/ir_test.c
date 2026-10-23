@@ -1838,6 +1838,13 @@ static void test_e0261_fix(void) {
         "fn f(a: u8, b: u32) { let r = (a) & b; }\n",
         "fn f(a: u8, b: u32) -> u8 { let r = a + b; return r; }\n",
         "fn f(a: u8, b: u32, n: u8) { for let i = a + b; i < n; i = i + 1 { } }\n",
+        /* STEP19B-BEGIN a pending fix beside an untyped literal group that the new type rejects (re-audit 3, finding 4) */
+        "fn f(a: u8, b: u16) -> u16 { return (a + b) + 70000; }\n",
+        "fn f(a: u8, b: u32) -> u32 { return (a + b) * -1; }\n",
+        "fn f(a: i16, b: i8) -> i16 { return (a - b) >> 70000; }\n",
+        "fn f(p: i16, q: u8) { let r: i16 = 70000 + (p & q); }\n",
+        "fn f(p: i16, q: u8) -> i16 { return (p & q) | (100 << 40000); }\n",
+        /* STEP19B-END */
     };
     for (size_t i = 0; i < sizeof nofix_ctx / sizeof nofix_ctx[0]; i++) {
         char src[200];

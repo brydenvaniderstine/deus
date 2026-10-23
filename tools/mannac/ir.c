@@ -30,6 +30,7 @@ static void prims_init(IrState *st) {
 void ir_state_reset_for_build(IrState *st) {
     st->error_count = 0;
     st->muted = 0;
+    st->muted_hits = 0;
     st->progress = (Span){1, 1, 1, 1};
     st->unimplemented = NULL;
     st->expr_visits = 0;
@@ -63,7 +64,10 @@ void ir_state_destroy(IrState *st) {
 }
 
 void ir_error(IrState *st, Diagnostic d) {
-    if (st->muted) return;
+    if (st->muted) {
+        st->muted_hits++;
+        return;
+    }
     diag_add(st->arena, &st->diags, d);
     st->error_count++;
     if (st->error_count >= IR_MAX_ERRORS) {

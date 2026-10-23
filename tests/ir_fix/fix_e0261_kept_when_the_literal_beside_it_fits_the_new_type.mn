@@ -1,0 +1,6 @@
+manna v0;
+fn f(a: u8, b: u16, c: i8, d: i16) -> u16 {
+    let e: i16 = (c + d) * -1;
+    let h: i16 = 1 + (c + d);
+    return (a + b) + 7;
+}

@@ -364,6 +364,31 @@ static IR_COLD void withdraw_fix(BodyCtx *bc, uint32_t pending) {
     if (pending) bc->st->diags.items[pending - 1].fix = NULL;
 }
 
+/* A literal, or unary `-`/`~` and arithmetic, bitwise and shift operators over literals: no name, no call, nothing that records a use or a
+ * call edge. The only subtrees that are dry-checked (group_fits). */
+static bool pure_literal_tree(const Expr *e) {
+    switch (e->kind) {
+        case EXPR_NUMBER: return true;
+        case EXPR_UNARY: return (e->as.unary.op == UNOP_NEG || e->as.unary.op == UNOP_BITNOT) && pure_literal_tree(e->as.unary.operand);
+        case EXPR_BINARY: return !is_equality(e->as.binary.op) && pure_literal_tree(e->as.binary.lhs) && pure_literal_tree(e->as.binary.rhs);
+        default: return false;
+    }
+}
+
+/* Would the literal group `g` check against `t` without a diagnostic (every literal in range, no `-` on an unsigned type)? It is resolved
+ * again with the diagnostics muted and counted. Only a pure literal tree is ever resolved this way: muted mode records name uses and call
+ * edges, and a literal tree has neither. Anything else is "no". */
+static IR_COLD bool group_fits(BodyCtx *bc, const Expr *g, const IrType *t) {
+    assert(pure_literal_tree(g));
+    if (!t || !is_int(t) || !pure_literal_tree(g)) return false;
+    IrState *st = bc->st;
+    size_t hits = st->muted_hits;
+    st->muted++;
+    (void)resolve_group(st, g, t);
+    st->muted--;
+    return st->muted_hits == hits;
+}
+
 /* A binary operator with an ERROR operand is silent, but a fix offered inside it was offered on the strength of this operator
  * accepting the wrapped type: its other operand must have that type too, or the fixed source fails at THIS operator. Only
  * FIX_TYPE contexts pass down to arithmetic operands, so only there can a fix be pending. The fix is withdrawn when the other operand is a
@@ -378,8 +403,11 @@ static IR_COLD Synth settle_pending(BodyCtx *bc, const Expr *e, Synth l, Synth r
         withdraw_fix(bc, r.pending);
         return out;
     }
+    /* an untyped literal group on the other side takes the type this fix gives the operator: it must fit it (re-audit 3, finding 4) */
     if (l.pending && typed_r && r.node->type != want) withdraw_fix(bc, l.pending);
     else if (r.pending && typed_l && l.node->type != want) withdraw_fix(bc, r.pending);
+    else if (l.pending && r.group && !group_fits(bc, e->as.binary.rhs, want)) withdraw_fix(bc, l.pending);
+    else if (r.pending && l.group && !group_fits(bc, e->as.binary.lhs, want)) withdraw_fix(bc, r.pending);
     else out.pending = l.pending ? l.pending : r.pending;
     return out;
 }

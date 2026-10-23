@@ -1,0 +1,4 @@
+manna v0;
+fn f(p: i16, q: u8) {
+    let r: i16 = 70000 + (p & q);
+}
