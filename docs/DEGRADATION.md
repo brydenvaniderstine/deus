@@ -4,7 +4,7 @@ Written 2026-10-23 from Bryden's rule "No degradation" (`CLAUDE.md`) and the rev
 
 How to read an entry: **Promise** is what the project said (a `file:line` quote), **Where it stands** is what exists, **Trigger** is the hard revisit point (a tag, milestone or step). Triggers marked "PROPOSED by Claude Code, approved by Bryden 2026-10-24" were chosen by Claude Code where the audit gave none; Bryden approved them as written. **Approval record (Bryden, 2026-10-24):** Bryden approves every entry's existence and its trigger. No entry is approved as permanent: each closes by its trigger, and no tag or milestone closes while an entry's trigger has passed. All entries below were found by the audit and predate the rule. Quotes are checked against the repository at the commit that added this file (historical quotes name their commit). Line numbers drift; the quote is the anchor.
 
-Step numbers: step 19 is the third audit round's fixes (batches 2-3 are pending), step 20 is the guardrails step (CI ratchet, CI parity, an automated check of this register's quotes), step 21 is the no-cascade proof.
+Step numbers: step 19 is the third audit round's fixes (batch 2, 19d-19f, is done locally; batch 3, 19g-19h, is pending), step 20 is the guardrails step (CI ratchet, CI parity, an automated check of this register's quotes), step 21 is the no-cascade proof.
 
 ## 1. Kernel (M1, tag `m1-boot`)
 
@@ -165,12 +165,12 @@ Step numbers: step 19 is the third audit round's fixes (batches 2-3 are pending)
 
 ### C5 - Step 19 as first approved: three degradations
 
-- **Status:** PARTLY CLOSED
-- **Reason:** 19c-1 removed working fixes in un-annotated `let`; 19d withheld renames instead of completing the use list; choice 6 documented a quadratic scan. Revised 2026-10-23: 19c-1 became 'the fix waits for the local's uses' (157534d), choice 6 became an index (90f048c), 19d is still to be redone as 'rename the stale spellings'; the 511-chain known issue was fixed (de84d89). The withheld first version of 19d sits on the local branch wip-19de, unmerged.
-- **Promise:** `docs/M2_PLAN.md:753` "the declaration and every resolved use"
-- **Where it stands:** `docs/M2_PLAN.md:753` "A rename is also **refused when it would change what a use resolves to**"
+- **Status:** CLOSED (2026-10-24, step 19 batch 2)
+- **Reason:** 19c-1 removed working fixes in un-annotated `let`; 19d withheld renames instead of completing the use list; choice 6 documented a quadratic scan. Revised 2026-10-23 and done: 19c-1 became 'the fix waits for the local's uses' (157534d), choice 6 became an index (90f048c), 19d renames the stale spellings (c460bff), and the 511-chain known issue was fixed (de84d89). The withheld first version of 19d sits on the local branch wip-19de, unmerged and not to be merged.
+- **Promise:** `docs/M2_PLAN.md@f981a51:753` "the declaration and every resolved use"
+- **Where it stands:** `docs/M2_PLAN.md:753` "renamed along rather than left stale"
 - **Owner:** Claude Code (work); Bryden (approval)
-- **Trigger:** Step 19 (batches 2-3): closes when 19d lands
+- **Trigger:** Step 19 batch 2 (done); kept for the record until the m2-ir-v0 tag
 
 ### C6 - The audit repros are not run by CI
 
