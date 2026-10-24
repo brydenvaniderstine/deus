@@ -199,6 +199,15 @@ Step numbers: step 19 is the third audit round's fixes (batches 2-3 are pending)
 - **Owner:** Bryden (decision); Claude Code (work)
 - **Trigger:** The m2-ir-v0 tag (the refinement loop's review step) (PROPOSED by Claude Code, approved by Bryden 2026-10-24)
 
+### C9 - E0261: two un-annotated lets whose fixes meet in one operator get no fix
+
+- **Status:** OPEN
+- **Reason:** `let r = a + b; let s = a + b; return r + s;` has two E0261 whose fixes would both be right (each local becomes u32, `r + s` agrees), but a binary operator with two different waiting fixes withdraws both (step 19c-4), so neither is offered. A missed fix, not a wrong one.
+- **Promise:** `docs/MANNA_PRINCIPLES.md:22` "Fix hints are machine-applicable edits"
+- **Where it stands:** `tests/ir_fix/fix_e0261_two_lets_met_in_one_operator_have_no_fix_yet.mn:5` "    return r + s;"
+- **Owner:** Claude Code (work); Bryden (approval, 2026-10-24)
+- **Trigger:** The post-m2-ir-v0 fix-it pass (a fix list may offer both fixes together, or one choice per mistake)
+
 ## 4. Verification and CI
 
 ### V1 - Fuzzing is not continuous

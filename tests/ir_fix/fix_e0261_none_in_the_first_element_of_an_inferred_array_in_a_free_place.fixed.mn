@@ -1,0 +1,4 @@
+manna v0;
+fn f(a: u8, b: u64, c: u8) {
+    [a + b, c];
+}

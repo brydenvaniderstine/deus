@@ -214,3 +214,31 @@ if __name__ == "__main__":
     write("fix_field_rename_offered_when_the_positional_construction_names_another_field", L, F, [g.err(F, 7, "1", "E0240", positional)])
     L = ["manna v0;", "fn myFn() -> u8 {", "    return 1;", "}", "struct S {", "    a: u8,", "}", "fn g() -> u8 {", "    let q: S = S(a: 1);", "    return myFn();", "}"]
     write("fix_function_rename_offered_when_the_type_positions_name_something_else", L, rename(L, {"myFn": "my_fn"}))
+    # ---- 19e (findings 7, 8): the places that must NOT hand their own place to the expression inside them. The enclosing place is FREE (an
+    # expression statement) or a type (a `return`), and the E0261 sits in the first element of an un-annotated array literal, a `len`
+    # argument, a field base, an index, a conversion operand, or under `!`: no fix, because the wrap would change what those need. Each
+    # case dies if synth_other (or the `!` case of synth_unary) hands its own place down - the auditor's mutants 2 and 3 - and would pass
+    # a wrap that re-checks to E0223, E0255, E0251, E0260.
+    L = ["manna v0;", "fn f(a: u8, b: u64, c: u8) {", "    [a + b, c];", "}"]
+    write("fix_e0261_none_in_the_first_element_of_an_inferred_array_in_a_free_place", L, L, [g.err(L, 3, "a + b", "E0261", e261("u8", "u64"))])
+    L = ["manna v0;", "fn f(a: u8, b: u16, c: u8) -> u16 {", "    return [a + b, c][0];", "}"]
+    write("fix_e0261_none_in_the_first_element_of_an_inferred_array_in_a_typed_place", L, L, [g.err(L, 3, "a + b", "E0261", e261("u8", "u16"))])
+    L = ["manna v0;", "fn f(a: u8, b: u64) -> u64 {", "    return len(a + b);", "}"]
+    write("fix_e0261_none_in_a_len_argument", L, L, [g.err(L, 3, "a + b", "E0261", e261("u8", "u64"))])
+    L = ["manna v0;", "fn f(a: u8, b: u32) -> u32 {", "    return (a + b).x;", "}"]
+    write("fix_e0261_none_in_a_field_base", L, L, [g.err(L, 3, "(a + b)", "E0261", e261("u8", "u32"))])
+    L = ["manna v0;", "fn f(xs: [4]u16, a: u8, b: u16) -> u16 {", "    return xs[a + b];", "}"]
+    write("fix_e0261_none_in_an_index", L, L, [g.err(L, 3, "a + b", "E0261", e261("u8", "u16"))])
+    L = ["manna v0;", "fn f(a: u8, b: u32) -> u32 {", "    return u32(a + b);", "}"]
+    write("fix_e0261_none_in_a_conversion_operand", L, L, [g.err(L, 3, "a + b", "E0261", e261("u8", "u32"))])
+    L = ["manna v0;", "fn f(a: u8, b: u32) {", "    !(a + b);", "}"]
+    write("fix_e0261_none_under_logical_not_in_a_free_place", L, L, [g.err(L, 3, "(a + b)", "E0261", e261("u8", "u32"))])
+    L = ["manna v0;", "fn f(a: u8, b: u32) -> bool {", "    return !(a + b);", "}"]
+    write("fix_e0261_none_under_logical_not_in_a_typed_place", L, L, [g.err(L, 3, "(a + b)", "E0261", e261("u8", "u32"))])
+
+    # ---- a MISSED fix, registered as C9 in docs/DEGRADATION.md (post-m2-ir-v0 fix-it pass): two un-annotated lets each have an E0261 whose fix
+    # would be fine (both become u32 and `r + s` agrees), but a binary with two DIFFERENT waiting fixes withdraws both (19c-4), so neither is
+    # offered. A no-fix case for now: the two E0261 stay, the source is unchanged.
+    L = ["manna v0;", "fn f(a: u8, b: u32) -> u32 {", "    let r = a + b;", "    let s = a + b;", "    return r + s;", "}"]
+    write("fix_e0261_two_lets_met_in_one_operator_have_no_fix_yet", L, L,
+          [g.err(L, 3, "a + b", "E0261", e261("u8", "u32")), g.err(L, 4, "a + b", "E0261", e261("u8", "u32"))])

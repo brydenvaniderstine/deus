@@ -1,0 +1,4 @@
+manna v0;
+fn f(a: u8, b: u32) -> bool {
+    return !(a + b);
+}

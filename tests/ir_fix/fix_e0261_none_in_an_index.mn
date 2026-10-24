@@ -1,0 +1,4 @@
+manna v0;
+fn f(xs: [4]u16, a: u8, b: u16) -> u16 {
+    return xs[a + b];
+}

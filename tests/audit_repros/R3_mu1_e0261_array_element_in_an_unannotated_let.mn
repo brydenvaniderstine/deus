@@ -1,0 +1,7 @@
+manna v0;
+struct P {
+    x: u32,
+}
+fn f(a: u8, b: u64, c: u8, arr: [2]u8) {
+    let r = [a + b, c];
+}
