@@ -334,9 +334,10 @@ test-ir-memory-stress:
 test-ir-error-codes:
 	@python3 tools/check_error_code_coverage.py
 
-# Typed-IR step 15: every poisoning line of the builder (ir_error / is_error / error_node / ir_type_error / the struct
-# `poisoned` flag, in ir_decls/expr/body/calls/build/rename.c) is RUN by at least one tests/ir golden holding exactly ONE
-# diagnostic (per-golden source coverage; needs Xcode's llvm-cov). Prints the table; fails on a line no such golden runs.
+# Typed-IR step 15, completed in step 19f: every poisoning line of the builder (ir_error / is_error / error_node / ir_type_error /
+# has_error / settle_pending / IR_T_ERROR / `.pending` / the struct `poisoned` flag, in ir_decls/expr/body/calls/build/rename.c) is RUN by at
+# least one input holding exactly ONE diagnostic (a tests/ir golden or the original of a tests/ir_fix case; per-input source coverage, llvm-cov
+# from xcrun or PATH), or has a written reason in tools/audit_ir_poison_reasons.txt. Fails on a line with neither and on a reason that is stale.
 # This is not a proof that the path cannot cascade, only that a one-diagnostic test exercises it.
 audit-ir-poison:
 	@python3 tools/audit_ir_poison.py --check

@@ -1,0 +1,4 @@
+manna v0;
+fn f(a: [4]u8) {
+    let s = a[nope..2];
+}

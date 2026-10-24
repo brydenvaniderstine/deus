@@ -1,0 +1,5 @@
+manna v0;
+fn f(a: [4]u8) -> u8 {
+    let x = a[nope];
+    return 0;
+}

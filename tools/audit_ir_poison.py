@@ -20,8 +20,15 @@ SRC = "tools/mannac/"
 FILES = ["ir_decls.c", "ir_expr.c", "ir_body.c", "ir_calls.c", "ir_build.c", "ir_rename.c"]
 BIN_SRCS = ["arena", "ast", "diag", "parser_state", "parser", "lexer", "ir", "ir_dump", "ir_build", "ir_decls",
             "ir_expr", "ir_body", "ir_calls", "ir_names", "ir_rename", "ir_main"]
-PAT = re.compile(r"\b(ir_error|is_error|error_node|ir_type_error)\(|\bpoisoned\b")
-DEF = re.compile(r"^\s*(static\s+)?[\w\s\*]+\b(is_error|error_node|ir_type_error)\([^;]*\)\s*\{?\s*$|^\s*(static\s+)?[\w\s\*]+\b(is_error|error_node)\([^;]*\)\s*\{.*\}\s*$")
+PAT = re.compile(r"\b(ir_error|is_error|error_node|ir_type_error|has_error|settle_pending)\(|\bpoisoned\b|IR_T_ERROR|\.pending")
+DEF = re.compile(r"^\s*(static\s+)?[\w\s\*]+\b(is_error|error_node|ir_type_error|settle_pending)\([^;]*\)\s*\{?\s*$|^\s*(static\s+)?[\w\s\*]+\b(is_error|error_node)\([^;]*\)\s*\{.*\}\s*$")
+
+def llvm_tool(name):
+    """llvm-cov / llvm-profdata: `xcrun` on macOS, else the plain tool or a versioned one on PATH (Linux). A missing tool is a hard failure, never a skip."""
+    if shutil.which("xcrun") and subprocess.run(["xcrun", "--find", name], capture_output=True).returncode == 0: return ["xcrun", name]
+    for cand in [name] + [name + "-" + str(v) for v in range(25, 10, -1)]:
+        if shutil.which(cand): return [cand]
+    sys.exit("audit_ir_poison: %s not found (xcrun or PATH): install LLVM; this check is not skipped" % name)
 
 def position(code, nxt):
     """(line offset, column) of the code that runs only when the poisoning path is taken: the last match, or, when that match
@@ -67,19 +74,20 @@ def build():
 
 def lines_hit(mn):
     """the set of (file, line, col) positions covered with a nonzero count, as segment starts: returns a checker"""
-    name = os.path.basename(mn)[:-3]
-    raw = "%s/%s.profraw" % (OUT, name); prof = "%s/%s.profdata" % (OUT, name)
+    name = os.path.basename(os.path.dirname(mn)) + "/" + os.path.basename(mn)[:-3]
+    tag = name.replace("/", "__"); raw = "%s/%s.profraw" % (OUT, tag); prof = "%s/%s.profdata" % (OUT, tag)
     env = dict(os.environ, LLVM_PROFILE_FILE=raw)
-    subprocess.run([OUT + "/ir_dump", mn], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    subprocess.run(["xcrun", "llvm-profdata", "merge", "-sparse", raw, "-o", prof], check=True)
-    j = json.loads(subprocess.run(["xcrun", "llvm-cov", "export", OUT + "/ir_dump", "-instr-profile=" + prof],
+    run = subprocess.run([OUT + "/ir_dump", mn], env=env, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+    ndiag = sum(1 for l in run.stdout.split("\n") if re.match(r"\d+:\d+ E\d{4} ", l))
+    subprocess.run(llvm_tool("llvm-profdata") + ["merge", "-sparse", raw, "-o", prof], check=True)
+    j = json.loads(subprocess.run(llvm_tool("llvm-cov") + ["export", OUT + "/ir_dump", "-instr-profile=" + prof],
                                   capture_output=True, text=True, check=True).stdout)
     segs = {}
     for fl in j["data"][0]["files"]:
         b = os.path.basename(fl["filename"])
         if b in FILES: segs[b] = [(s[0], s[1], s[2] if (s[3] and not s[5]) else None) for s in fl["segments"]]
     os.remove(raw); os.remove(prof)
-    return name, segs
+    return name, segs, ndiag
 
 def ran(segs, f, line, col):
     """the count of the region that covers (line, col) is nonzero"""
@@ -87,25 +95,44 @@ def ran(segs, f, line, col):
     i = bisect.bisect_right([(s[0], s[1]) for s in ss], (line, col)) - 1
     return i >= 0 and ss[i][2] is not None and ss[i][2] > 0
 
-def n_diags(name):
-    return sum(1 for l in open("tests/ir/%s.ir" % name).read().split("\n") if re.match(r"\d+:\d+ E\d{4} ", l))
+REASONS = "tools/audit_ir_poison_reasons.txt"
+
+def load_reasons():
+    """`file<TAB>source text<TAB>reason`: a poisoning line no one-diagnostic input runs, with the written reason it is not (yet) proven."""
+    out = {}
+    if os.path.exists(REASONS):
+        for l in open(REASONS).read().split("\n"):
+            if l.strip() and not l.startswith("#"):
+                f, src, why = l.split("\t", 2)
+                out[(f, src)] = why
+    return out
+
+def corpus():
+    """every input that can show a path running: the goldens (tests/ir) and the originals of the fix cases (tests/ir_fix)"""
+    ins = sorted(glob.glob("tests/ir/*.mn")) + [m for m in sorted(glob.glob("tests/ir_fix/*.mn")) if not re.search(r"\.fixed2?\.mn$", m)]
+    return ins
 
 if __name__ == "__main__":
     check = "--check" in sys.argv
     cands = candidates()
     build()
-    goldens = sorted(glob.glob("tests/ir/*.mn"))
-    with ThreadPoolExecutor(8) as ex: results = list(ex.map(lines_hit, goldens))
-    one = {name: hit for name, hit in results if n_diags(name) == 1}
-    anyhit = {name: hit for name, hit in results if n_diags(name) >= 1}
-    not_run = []
-    print("%-14s %-6s %-58s %s" % ("file:line", "ones", "source", "one-diagnostic goldens that run it (first 2)"))
+    with ThreadPoolExecutor(8) as ex: results = list(ex.map(lines_hit, corpus()))
+    one = {name: hit for name, hit, nd in results if nd == 1}
+    anyhit = {name: hit for name, hit, nd in results if nd >= 1}
+    reasons = load_reasons()
+    not_run, used = [], set()
+    print("%-14s %-6s %-58s %s" % ("file:line", "ones", "source", "one-diagnostic inputs that run it (first 2)"))
     for f, n, src, ln, col in cands:
         proof = sorted(nm for nm, hit in one.items() if ran(hit, f, ln, col))
         err = sorted(nm for nm, hit in anyhit.items() if ran(hit, f, ln, col))
-        print("%-14s %-6d %-58s %s" % ("%s:%d" % (f, n), len(proof), src[:58], ", ".join(proof[:2]) if proof else ("NOT RUN BY A ONE-DIAGNOSTIC GOLDEN (reached by %d golden(s) with several diagnostics)" % len(err) if err else "NOT RUN BY A ONE-DIAGNOSTIC GOLDEN (no golden reaches it)")))
-        if not proof: not_run.append((f, n))
-    print("\n%d poisoning lines, %d run by a one-diagnostic golden, %d not (this is not a no-cascade proof)" % (len(cands), len(cands) - len(not_run), len(not_run)))
-    for f, n in not_run: print("NOT RUN BY A ONE-DIAGNOSTIC GOLDEN %s:%d" % (f, n))
+        print("%-14s %-6d %-58s %s" % ("%s:%d" % (f, n), len(proof), src[:58], ", ".join(proof[:2]) if proof else ("NOT RUN BY A ONE-DIAGNOSTIC INPUT (reached by %d input(s) with several diagnostics)" % len(err) if err else "NOT RUN BY A ONE-DIAGNOSTIC INPUT (no input reaches it)")))
+        if proof: continue
+        if (f, src) in reasons: used.add((f, src))
+        else: not_run.append((f, n, src))
+    stale = sorted(k for k in reasons if k not in used)
+    print("\n%d poisoning lines, %d run by a one-diagnostic input, %d with a written reason (%s), %d with neither (this is not a no-cascade proof)" %
+          (len(cands), len(cands) - len(used) - len(not_run), len(used), REASONS, len(not_run)))
+    for f, n, src in not_run: print("NOT RUN, NO REASON %s:%d  %s" % (f, n, src))
+    for f, src in stale: print("STALE REASON (the line is now proven or gone) %s  %s" % (f, src))
     shutil.rmtree(OUT, ignore_errors=True)
-    sys.exit(1 if (check and not_run) else 0)
+    sys.exit(1 if (check and (not_run or stale)) else 0)

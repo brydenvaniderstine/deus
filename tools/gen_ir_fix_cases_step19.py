@@ -242,3 +242,9 @@ if __name__ == "__main__":
     L = ["manna v0;", "fn f(a: u8, b: u32) -> u32 {", "    let r = a + b;", "    let s = a + b;", "    return r + s;", "}"]
     write("fix_e0261_two_lets_met_in_one_operator_have_no_fix_yet", L, L,
           [g.err(L, 3, "a + b", "E0261", e261("u8", "u32")), g.err(L, 4, "a + b", "E0261", e261("u8", "u32"))])
+
+    # ---- 19f: a waiting fix whose new type is NOT an integer reaches an index (ir_expr.c accept_int_pending): `r < c` is bool, so the wrap that
+    # makes `r` u32 is no use as an index; the E0261 stays the only diagnostic (the bool index is silent while its operand is an ERROR) and
+    # has no fix.
+    L = ["manna v0;", "fn f(xs: [4]u8, a: u8, b: u32, c: u32) {", "    let r = a + b;", "    xs[r < c];", "}"]
+    write("fix_e0261_none_when_the_local_reaches_an_index_through_a_comparison", L, L, [g.err(L, 3, "a + b", "E0261", e261("u8", "u32"))])
