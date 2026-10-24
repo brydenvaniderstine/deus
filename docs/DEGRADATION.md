@@ -2,7 +2,7 @@
 
 Written 2026-10-23 from Bryden's rule "No degradation" (`CLAUDE.md`) and the reviewer's whole-project audit (`degradation-audit-2026-10-23.md`, kept by Bryden; sections 1-6 are seeded below). **Every entry here is a promise that is weakened, stubbed, withheld or labelled accepted.** Nothing may be added without Bryden's explicit OK; no tag or milestone closes while an entry's trigger has passed.
 
-How to read an entry: **Promise** is what the project said (a `file:line` quote), **Where it stands** is what exists, **Trigger** is the hard revisit point (a tag, milestone or step). Triggers marked "PROPOSED by Claude Code, approved by Bryden 2026-10-24" were chosen by Claude Code where the audit gave none; Bryden approved them as written. **Approval record (Bryden, 2026-10-24):** Bryden approves every entry's existence and its trigger. No entry is approved as permanent: each closes by its trigger, and no tag or milestone closes while an entry's trigger has passed. All entries below were found by the audit and predate the rule. Quotes are checked against the repository at the commit that added this file (historical quotes name their commit). Line numbers drift; the quote is the anchor.
+How to read an entry: **Promise** is what the project said (a `file:line` quote), **Where it stands** is what exists, **Trigger** is the hard revisit point (a tag, milestone or step). Triggers marked "PROPOSED by Claude Code, approved by Bryden 2026-10-24" were chosen by Claude Code where the audit gave none; Bryden approved them as written. **Approval record (Bryden, 2026-10-24; C9 and C10 and the closing of C5 approved the same day):** Bryden approves every entry's existence and its trigger. No entry is approved as permanent: each closes by its trigger, and no tag or milestone closes while an entry's trigger has passed. All entries below were found by the audit and predate the rule. Quotes are checked against the repository at the commit that added this file (historical quotes name their commit). Line numbers drift; the quote is the anchor.
 
 Step numbers: step 19 is the third audit round's fixes (batch 2, 19d-19f, is done locally; batch 3, 19g-19h, is pending), step 20 is the guardrails step (CI ratchet, CI parity, an automated check of this register's quotes), step 21 is the no-cascade proof.
 
@@ -171,6 +171,15 @@ Step numbers: step 19 is the third audit round's fixes (batch 2, 19d-19f, is don
 - **Where it stands:** `docs/M2_PLAN.md:753` "renamed along rather than left stale"
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** Step 19 batch 2 (done); kept for the record until the m2-ir-v0 tag
+
+### C10 - Renames are withheld while a declaration error or the E0203 cap stops the build
+
+- **Status:** OPEN
+- **Reason:** A declaration error (E0220 in a signature or a struct field, among others) stops the build before the bodies are checked, so the uses of every misnamed name are unknown and no rename is attached; the cap (E0203) unwinds the build the same way. The rename is offered on a second pass, once that error is fixed. Examples: a misnamed function used as a type in a parameter (`fn g(x: myFn)`), in a return type (`-> myFn`) and in a struct field (`x: myFn`) gets no rename, because the signature's E0220 stops the build. Approved by Bryden 2026-10-24.
+- **Promise:** `docs/MANNA_PRINCIPLES.md:22` "Fix hints are machine-applicable edits"
+- **Where it stands:** `docs/error_codes.md:14` "While an earlier declaration error or the E0203 cap stopped the build the uses are unknown"
+- **Owner:** Claude Code (work); Bryden (approval, 2026-10-24)
+- **Trigger:** The post-m2-ir-v0 fix-it pass (collect the uses of declarations in a pass that does not stop at a declaration error)
 
 ### C6 - The audit repros are not run by CI
 
