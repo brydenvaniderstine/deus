@@ -318,12 +318,15 @@ test-e0261-exhaustive:
 	@cat $(IR_TEST_DIR)/e0261_exhaustive.out
 	@diff -u tests/e0261_exhaustive.expected $(IR_TEST_DIR)/e0261_exhaustive.out || { echo "test-e0261-exhaustive: the counts differ from tests/e0261_exhaustive.expected (a generator that shrinks, or grows, must say so in that file)"; exit 1; }
 
-# Typed-IR step 18: a fixed-seed random property test of the rename fix-its (2,500 programs, ~35 s): after `ir_dump --fixed`, no new error
+# Typed-IR step 18 (part two in step 19): a fixed-seed random property test of the rename fix-its (2,500 programs of each part, ~70 s; the counts are
+# compared with tests/rename_property.expected): after `ir_dump --fixed`, no new error
 # and no identifier resolves to another declaration (tools/rename_property_test.py, with its own resolver).
 test-rename-property:
 	@mkdir -p $(IR_DUMP_DIR)
 	$(MANNAC_CC) -std=c11 -Wall -Wextra -O2 -g -o $(IR_DUMP_DIR)/ir_dump $(IR_DUMP_SRCS)
-	python3 tools/rename_property_test.py $(IR_DUMP_DIR)/ir_dump 2500 0
+	@python3 tools/rename_property_test.py $(IR_DUMP_DIR)/ir_dump 2500 0 > $(IR_DUMP_DIR)/rename_property.out || { cat $(IR_DUMP_DIR)/rename_property.out; exit 1; }
+	@cat $(IR_DUMP_DIR)/rename_property.out
+	@diff -u tests/rename_property.expected $(IR_DUMP_DIR)/rename_property.out || { echo "test-rename-property: the counts differ from tests/rename_property.expected (a generator that shrinks, or grows, must say so in that file)"; exit 1; }
 
 # Typed-IR step 19: the rename bookkeeping's memory is linear in the input (re-audit 3, finding 1): eight generated programs, up to 3 MB, with
 # many value uses of names that are not locals next to misnamed declarations; exact diagnostics, no E0201, a time bound (tools/ir_memory_stress.py).
