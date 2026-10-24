@@ -20,6 +20,7 @@ All Manna language changes must pass the **Feature Admission Test** at the end o
 6. **Errors teach.**
    - Every error gives line:col, what was expected, what was found, and a fix hint.
    - Fix hints are machine-applicable edits, e.g. "replace 3:5–3:6 with `==`".
+   - Clarified 2026-10-23 (Bryden): a fix hint is one edit or a short list of edits to choose from; see docs/error_codes.md.
 7. **Small core.**
    - The full spec plus the standard library fits in about 20 pages, small enough for an AI context window.
    - Every feature must justify its cost.

@@ -1,5 +1,9 @@
 # Manna compiler error code registry
 
+## Fix-it policy (policy C, Bryden 2026-10-23)
+
+Every diagnostic gets a machine-applicable fix, or a short list of fix choices (the JSON `"fixes"` array, `docs/MANNA_PRINCIPLES.md` principle 6). A fix never guesses, and every offered fix must re-check clean. The only exceptions are the safety limits **E0104, E0110, E0111, E0201, E0203 and E0222**, each listed in `docs/DEGRADATION.md` section 7a. Every other code whose fix-it column below reads "None - documented exception" is a register entry (`docs/DEGRADATION.md` section 7b) triggered by the post-m2-ir-v0 fix-it pass; the text stays as written until then.
+
 Stable codes for `manna check --json` (docs/M2_PLAN.md §7 item 4). A code, once assigned, is **never reused or renumbered** — if a diagnostic is retired, its code retires with it rather than being recycled for something unrelated.
 
 ## Fix-it rules

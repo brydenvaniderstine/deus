@@ -24,6 +24,20 @@ You are lead co-developer. Build incrementally. Every milestone must boot in QEM
 - **Compiler flags:** freestanding, `-mno-red-zone`, `-mcmodel=kernel`, `-mgeneral-regs-only`.
   - The last one avoids saving FPU/SSE state in ISRs until we add XSAVE.
 
+## No degradation (hard rule, Bryden 2026-10-23)
+
+Progress never buys a weaker product. This rule outranks every approval tier below.
+- Nothing is stubbed, removed, withheld, weakened, or labelled "accepted", "documented exception", "known issue", "stub" or "planned, not built" in order to make progress. Each such item needs Bryden's explicit OK and an entry in `docs/DEGRADATION.md` with its reason, the promise it breaks (a `file:line` quote), an owner and a hard revisit trigger (a tag or milestone).
+- No tag or milestone closes while any register entry's trigger has passed.
+- A milestone closes only on its full spec. A stub left at close is a register entry Bryden approved.
+- A test, golden, fix case, repro or diagnostic count never decreases unless the register lists why. (Enforced by CI from step 20; by review until then.)
+- Every retro rule lives in a check, or sits in the register as "unenforced" with a trigger.
+- Silent fallbacks are banned: a self-check failure is a hard failure in tests, CI and fuzzing, and a loud internal error for users, never a silent drop.
+- The batch cap (at most 3 steps, then STOP; see "Working conventions") is enforced.
+- Neither Claude Code nor the reviewer offers "turn off", "withhold" or "accept" as a way to finish. If such an option is mentioned, it is labelled "degradation" and the full fix is written next to it.
+
+**Fix-it policy (policy C, Bryden 2026-10-23).** Every diagnostic gets a machine-applicable fix, or a short list of fix choices (the JSON `"fixes"` array, `docs/MANNA_PRINCIPLES.md` principle 6). A fix never guesses, and every offered fix must re-check clean. The only exceptions are the safety limits E0104, E0110, E0111, E0201, E0203 and E0222, each listed in `docs/DEGRADATION.md` section 7a. The current "None - documented exception" entries in `docs/error_codes.md` stay for now, each a register entry (section 7b) triggered by the post-m2-ir-v0 fix-it pass.
+
 ## LBS and the language
 - Isolation is enforced by the compiler, not the MMU.
 - **Manna** descends from HolyC and has two compile targets:
@@ -149,7 +163,7 @@ See `VISION.md` for longer-range cross-platform/cloud-guest goals and R&D candid
 
 ## Session start ritual
 
-Before starting any work in a new session, in order: read this file (`CLAUDE.md`), `docs/README.md`, `docs/STATUS.md`, and `docs/history/R1_TRIAGE.md` if `docs/STATUS.md`'s "Active work" line points to it (or whatever working doc a future "Active work" line names - the ritual is "read what's currently active," not hardcoded to this one filename forever). Then run `git status` and `git log -10` to see the actual current tree state, not just what the docs claim it is. Report back: what state the repo and the active work are in, and the exact next action you'd take - then **wait for explicit OK before doing anything**, even a ROUTINE-tier step. This exists because a fresh session has no memory of what was mid-flight; skipping it risks re-deciding something already settled, duplicating work, or acting on stale assumptions about what's done.
+Before starting any work in a new session, in order: read this file (`CLAUDE.md`), `docs/README.md`, `docs/STATUS.md`, `docs/DEGRADATION.md` (the register: which promises are open and when each comes due), and `docs/history/R1_TRIAGE.md` if `docs/STATUS.md`'s "Active work" line points to it (or whatever working doc a future "Active work" line names - the ritual is "read what's currently active," not hardcoded to this one filename forever). Then run `git status` and `git log -10` to see the actual current tree state, not just what the docs claim it is. Report back: what state the repo and the active work are in, and the exact next action you'd take - then **wait for explicit OK before doing anything**, even a ROUTINE-tier step. This exists because a fresh session has no memory of what was mid-flight; skipping it risks re-deciding something already settled, duplicating work, or acting on stale assumptions about what's done.
 
 ## Lessons
 
