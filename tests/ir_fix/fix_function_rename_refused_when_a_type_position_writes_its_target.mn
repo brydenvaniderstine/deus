@@ -1,0 +1,7 @@
+manna v0;
+fn myFn() -> u8 {
+    return 1;
+}
+fn g() {
+    let q: my_fn = 1;
+}

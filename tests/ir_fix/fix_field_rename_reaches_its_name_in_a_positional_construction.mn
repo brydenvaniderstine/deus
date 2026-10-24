@@ -1,0 +1,8 @@
+manna v0;
+struct P {
+    myField: u8,
+    y: u8,
+}
+fn g() {
+    let p = P(1, myField: 2);
+}

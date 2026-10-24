@@ -1,0 +1,9 @@
+manna v0;
+struct P {
+    my_field: u8,
+    y: u8,
+}
+fn g(p: P) -> u8 {
+    let q = P(1, y: 2);
+    return p.my_field;
+}

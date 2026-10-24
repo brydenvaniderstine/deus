@@ -48,6 +48,9 @@ const IrType *ir_resolve_type(Ctx *cx, const Type *t, TypeCtx ctx) {
                 if (cx->struct_renames) ir_note_use(st, cx->struct_renames[e->index], t->span);
                 return ir_type_struct(st, &cx->irs[e->index]);
             }
+            /* A function named in a type position resolves to nothing (E0220), but the spelling is still the function's name: a rename of the
+             * function reaches it, so the fixed source says the same thing as before (re-audit 3, finding 6, r1). */
+            if (e && cx->fn_renames) ir_note_use(st, cx->fn_renames[e->index], t->span);
             ir_note_unresolved(st, cx, NS_TOP, 0, t->as.ident.name);
             ir_error(st, diag_ir_unknown_type(st->arena, t->span, t->as.ident.name));
             return ir_type_error(st);

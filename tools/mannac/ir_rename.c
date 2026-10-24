@@ -200,12 +200,11 @@ static void local_index_build(IrState *st, const Ctx *cx, LocalIndex *li, size_t
 
 /* Is `target` already a name in the scope of `r` as written, or the target of an earlier fix in that scope? */
 static bool collides(IrState *st, const Ctx *cx, LocalIndex *li, const Rename *r, const char *target, size_t upto, const char *const *granted) {
-    /* a name that resolved to nothing would start to resolve to this declaration (the target), or it spells this declaration as written
-     * and would be left stale when only the declaration is renamed: a function named in a type position, a field named in a construction
-     * the E0240 stopped (re-audit 3, finding 6). Either way the use list is incomplete: no fix. */
+    /* a name that resolved to nothing would start to resolve to this declaration: a real collision. (A name that resolved to nothing and
+     * spells the declaration AS WRITTEN is not one: it is a use that is renamed with the declaration, ir_note_use at the place that
+     * could not resolve it. Re-audit 3, finding 6.) */
     int ns = r->kind == REN_TOP ? NS_TOP : NS_FIELD;
-    if (r->kind != REN_LOCAL && (unresolved_has(cx, ns, r->kind == REN_TOP ? 0 : r->scope, target) ||
-                                 unresolved_has(cx, ns, r->kind == REN_TOP ? 0 : r->scope, r->name))) return true;
+    if (r->kind != REN_LOCAL && unresolved_has(cx, ns, r->kind == REN_TOP ? 0 : r->scope, target)) return true;
     switch (r->kind) {
         case REN_TOP:
             if (symtab_lookup(&cx->top, target)) return true;

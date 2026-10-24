@@ -178,3 +178,39 @@ if __name__ == "__main__":
     write("fix_e0261_under_a_call_a_field_and_a_named_argument_counts_every_level_keeps_its_fix", L, F)
     L = deep(507, "b")
     write("fix_e0261_under_a_call_a_field_and_a_named_argument_has_no_fix_when_those_levels_pass_the_bound", L, L, [g.err(L, 9, "b + c", "E0261", e261("u8", "u32"))])
+
+    # ---- 19d (finding 6, as revised): the stale spellings are RENAMED with the declaration, never left behind and never a reason to withhold. Two
+    # positions leave one: a function named in a type position (E0220 stops the lookup) and the field names of a construction E0240 stopped.
+    # A rename is refused only for a real collision: r3 (`my_field:` would start to resolve to the renamed field once the E0240 is fixed) and r4
+    # (`my_field:` names no field, E0242, and would resolve after the rename). The auditor's r1-r4, then controls.
+    positional = "struct construction names every field: use 'field: value'"
+    unknown_t = lambda n: "unknown type '%s'" % n
+    L = ["manna v0;", "fn myFn() -> u8 {", "    return 1;", "}", "fn g() {", "    let q: myFn = 1;", "}"]
+    F = rename(L, {"myFn": "my_fn"})
+    write("fix_function_rename_reaches_its_name_written_in_a_type_position", L, F, [g.err(F, 6, "my_fn", "E0220", unknown_t("my_fn"))])
+    L = ["manna v0;", "fn myFn() -> u8 {", "    return 1;", "}", "fn g() {", "    let q: myFn = 1;", "    let r: [2]myFn = 1;", "    let v = myFn();", "}"]
+    F = rename(L, {"myFn": "my_fn"})
+    write("fix_function_rename_reaches_every_type_position_it_is_written_in", L, F,
+          [g.err(F, 6, "my_fn", "E0220", unknown_t("my_fn")), g.err(F, 7, "my_fn", "E0220", unknown_t("my_fn"))])
+    L = ["manna v0;", "struct P {", "    myField: u8,", "    y: u8,", "}", "fn g() {", "    let p = P(1, myField: 2);", "}"]
+    F = rename(L, {"myField": "my_field"})
+    write("fix_field_rename_reaches_its_name_in_a_positional_construction", L, F, [g.err(F, 7, "1", "E0240", positional)])
+    L = ["manna v0;", "struct P {", "    myField: u8,", "    otherField: u8,", "}", "fn g() {", "    let p = P(myField: 1, 2, otherField: 3);", "}"]
+    F = rename(L, {"myField": "my_field", "otherField": "other_field"})
+    write("fix_field_renames_reach_every_name_in_a_positional_construction", L, F, [g.err(F, 7, "2", "E0240", positional)])
+    # r3 and r4: the real collisions stay refused
+    L = ["manna v0;", "struct P {", "    myField: u8,", "    y: u8,", "}", "fn g() {", "    let p = P(1, my_field: 2);", "}"]
+    write("fix_field_rename_refused_when_a_positional_construction_writes_its_target", L, L,
+          [g.err(L, 3, "myField", "E0280", snake("myField")), g.err(L, 7, "1", "E0240", positional)])
+    L = ["manna v0;", "struct P {", "    myField: u8,", "    y: u8,", "}", "fn g() {", "    let p = P(y: 1, my_field: 2);", "}"]
+    write("fix_field_rename_refused_when_a_named_argument_writes_its_target", L, L,
+          [g.err(L, 3, "myField", "E0280", snake("myField")), g.err(L, 7, "my_field", "E0242", "struct 'P' has no field 'my_field'")])
+    L = ["manna v0;", "fn myFn() -> u8 {", "    return 1;", "}", "fn g() {", "    let q: my_fn = 1;", "}"]
+    write("fix_function_rename_refused_when_a_type_position_writes_its_target", L, L,
+          [g.err(L, 2, "myFn", "E0280", snake("myFn")), g.err(L, 6, "my_fn", "E0220", unknown_t("my_fn"))])
+    # controls: the construction names another field / the type positions name something else
+    L = ["manna v0;", "struct P {", "    myField: u8,", "    y: u8,", "}", "fn g(p: P) -> u8 {", "    let q = P(1, y: 2);", "    return p.myField;", "}"]
+    F = rename(L, {"myField": "my_field"})
+    write("fix_field_rename_offered_when_the_positional_construction_names_another_field", L, F, [g.err(F, 7, "1", "E0240", positional)])
+    L = ["manna v0;", "fn myFn() -> u8 {", "    return 1;", "}", "struct S {", "    a: u8,", "}", "fn g() -> u8 {", "    let q: S = S(a: 1);", "    return myFn();", "}"]
+    write("fix_function_rename_offered_when_the_type_positions_name_something_else", L, rename(L, {"myFn": "my_fn"}))

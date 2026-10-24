@@ -1,0 +1,3 @@
+ERRORS:
+3:5 E0280 'myField' is not snake_case
+7:15 E0240 struct construction names every field: use 'field: value'

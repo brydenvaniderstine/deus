@@ -1,0 +1,3 @@
+ERRORS:
+6:12 E0220 unknown type 'my_fn'
+7:15 E0220 unknown type 'my_fn'

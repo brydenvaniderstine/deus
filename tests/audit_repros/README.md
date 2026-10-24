@@ -48,3 +48,5 @@ These files are not part of `make test-*`; they exist for the re-audit. The same
 | `R3_t1`..`t3` | one E0261 and **no fix**: the new type would become the local's type and a later use rejects it (`return r` as `u8`, `i < n` with `n: u8`, an argument `x: u8`). The fix waits for the local's uses and is withdrawn by the first that rejects it. Before: a fix whose re-check reported E0223 / E0261 |
 | `R3_g1`, `R3_g2` | one E0261 and no fix: the literal beside it (`70000`, `-1`) does not fit the new type (`u16`, `u32`). Before: a fix whose re-check reported E0224 / E0260 |
 | `R3_cap0`, `R3_cap1` | one E0261 (+ E0230 x1, or x19 and E0203) and no fix in either. Before: `cap1` kept a fix the parent would have withdrawn |
+| `R3_r1`, `R3_r2` | the rename is offered and reaches the stale spelling: `let q: my_fn = 1;` (still E0220), `P(1, my_field: 2)` (still E0240). Before: r1 was refused, r2 left `myField:` behind |
+| `R3_r3`, `R3_r4` | the rename is refused (a real collision: `my_field:` is written where it resolves to nothing and would start to resolve): the source is returned unchanged, E0280 + E0240 / E0242 |

@@ -1,0 +1,3 @@
+ERRORS:
+3:5 E0280 'myField' is not snake_case
+7:21 E0242 struct 'P' has no field 'my_field'

@@ -660,13 +660,24 @@ static IR_NOINLINE void construct_begin(BodyCtx *bc, Construct *c, size_t struct
 }
 
 /* True if every argument is `name: value`; otherwise E0240 at the first one that is not, with the
- * values checked for their own mistakes only. */
-static IR_NOINLINE bool construct_shape_ok(BodyCtx *bc, const Expr *e) {
+ * values checked for their own mistakes only. The names of the named arguments are not looked up then, but they are still spellings of
+ * the struct's fields: a name that is a field is a use of it (a rename of the field reaches it, so `myField:` becomes `my_field:` with the
+ * declaration), and a name that is none is recorded as written-but-unresolved, which makes a rename whose target is that spelling
+ * a real collision (`my_field:` would start to resolve once the E0240 is fixed). Re-audit 3, finding 6, r2 and r3. */
+static IR_NOINLINE bool construct_shape_ok(BodyCtx *bc, const Construct *c, const Expr *e) {
     const NodeList *args = &e->as.call.args;
     for (size_t i = 0; i < args->len; i++) {
         const Expr *a = args->items[i];
         if (a->kind == EXPR_NAMED_ARG) continue;
         ir_error(bc->st, diag_ir_positional_construction(a->span));
+        for (size_t j = 0; j < args->len; j++) {
+            const Expr *b = args->items[j];
+            if (b->kind != EXPR_NAMED_ARG || b->as.named_arg.name->kind != EXPR_IDENT || b->as.named_arg.name->parenthesized) continue;
+            const char *name = b->as.named_arg.name->as.ident.name;
+            size_t k = field_index(c->s, name, 0);
+            if (k != SIZE_MAX) ir_note_field_use(bc, c->s, k, b->as.named_arg.name->span);
+            else ir_note_unresolved(bc->st, bc->decls, NS_FIELD, (size_t)(c->s - bc->decls->irs), name);
+        }
         silently_check_args(bc, e);
         return false;
     }
@@ -724,7 +735,7 @@ static IR_NOINLINE Synth synth_construct(BodyCtx *bc, const Expr *e, size_t stru
     Construct c;
     if (bc->decls->struct_renames) ir_note_use(bc->st, bc->decls->struct_renames[struct_index], e->as.call.name_span);
     construct_begin(bc, &c, struct_index);
-    if (!construct_shape_ok(bc, e)) {
+    if (!construct_shape_ok(bc, &c, e)) {
         c.unrecognized = true;
     } else {
         for (size_t i = 0; i < e->as.call.args.len; i++) {
