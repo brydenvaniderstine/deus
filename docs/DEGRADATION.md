@@ -192,10 +192,10 @@ Step numbers: step 19 is the third audit round's fixes (batch 2, 19d-19f, is don
 
 ### C7 - Generated-test counts are not asserted
 
-- **Status:** OPEN
-- **Reason:** `make test-e0261-exhaustive` and `make test-rename-property` print their counts and assert only 'no violation', so a generator that silently shrinks passes. Being fixed in step 19 batch 3 (expected-count files); the trigger is step 20 so the register verifies it.
+- **Status:** PARTLY CLOSED (step 19 batch 3)
+- **Reason:** `make test-e0261-exhaustive` and `make test-rename-property` printed their counts and asserted only 'no violation', so a generator that silently shrank passed. Done in 19g/19h: both compare their whole report with `tests/e0261_exhaustive.expected` and `tests/rename_property.expected`. Still open: the other generated suites (goldens, fix cases, repros, memory-stress cases) have no asserted count; step 20 adds the ratchet.
 - **Promise:** `CLAUDE.md:160` "Rule: no behavior change without a test."
-- **Where it stands:** `Makefile:315` "$(IR_TEST_DIR)/ir_e0261_exhaustive"
+- **Where it stands:** `Makefile:319` "@diff -u tests/e0261_exhaustive.expected"
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** Step 20 (every generated-test count is asserted in the Makefile/CI)
 
