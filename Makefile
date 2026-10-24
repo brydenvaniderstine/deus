@@ -303,8 +303,9 @@ test-ir-fix:
 	$(MANNAC_CC) -std=c11 -Wall -Wextra -O2 -g -o $(IR_DUMP_DIR)/ir_dump $(IR_DUMP_SRCS)
 	@./tools/run_ir_fix_tests.sh $(IR_DUMP_DIR)/ir_dump
 
-# Typed-IR step 18: every E0261 fix-it, over operand type pairs x operators x contexts x nesting shapes (~474,000 programs, ~10 s): each offered
-# fix is one lossless wrap and re-checks clean (tools/mannac/ir_e0261_exhaustive.c).
+# Typed-IR step 18 (extended in step 19): every E0261 fix-it, over operand type pairs x operators x contexts x nesting shapes (~983,000 programs,
+# ~20 s): each offered fix is one lossless wrap and re-checks clean (tools/mannac/ir_e0261_exhaustive.c). The counts, per category, are compared
+# with tests/e0261_exhaustive.expected: a generator that silently shrinks fails.
 IR_EXH_SRCS := tools/mannac/arena.c tools/mannac/ast.c tools/mannac/diag.c \
                tools/mannac/ir.c tools/mannac/ir_dump.c tools/mannac/ir_build.c tools/mannac/ir_decls.c tools/mannac/ir_expr.c tools/mannac/ir_body.c tools/mannac/ir_calls.c tools/mannac/ir_names.c tools/mannac/ir_rename.c \
                tools/mannac/parser_state.c tools/mannac/parser.c tools/mannac/lexer.c \
@@ -313,7 +314,9 @@ IR_EXH_SRCS := tools/mannac/arena.c tools/mannac/ast.c tools/mannac/diag.c \
 test-e0261-exhaustive:
 	@mkdir -p $(IR_TEST_DIR)
 	$(MANNAC_CC) -std=c11 -Wall -Wextra -O2 -g -o $(IR_TEST_DIR)/ir_e0261_exhaustive $(IR_EXH_SRCS)
-	$(IR_TEST_DIR)/ir_e0261_exhaustive
+	@$(IR_TEST_DIR)/ir_e0261_exhaustive > $(IR_TEST_DIR)/e0261_exhaustive.out || { cat $(IR_TEST_DIR)/e0261_exhaustive.out; exit 1; }
+	@cat $(IR_TEST_DIR)/e0261_exhaustive.out
+	@diff -u tests/e0261_exhaustive.expected $(IR_TEST_DIR)/e0261_exhaustive.out || { echo "test-e0261-exhaustive: the counts differ from tests/e0261_exhaustive.expected (a generator that shrinks, or grows, must say so in that file)"; exit 1; }
 
 # Typed-IR step 18: a fixed-seed random property test of the rename fix-its (2,500 programs, ~35 s): after `ir_dump --fixed`, no new error
 # and no identifier resolves to another declaration (tools/rename_property_test.py, with its own resolver).
