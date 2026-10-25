@@ -134,7 +134,6 @@ test-wx: $(SHARED_TEST_OBJS) limine.conf limine
 # log against tests/boot_expected.txt (tools/boot_check.py smoke): memmap, GDT/IDT, the three mappings and the CR3 load, calibration source and rate, interleaved A/B.
 test-boot: stage-esp
 	@./tools/qemu_boot.sh $(BUILD)/boot_smoke 'starting A/B preemption proof' 240
-	@sleep 8
 	@python3 tools/boot_check.py smoke $(BUILD)/boot_smoke/serial.log $(BUILD)/boot_smoke/qemu.log
 
 # The checkers' own tests need no QEMU: they run on the real serial logs recorded in tests/boot/ and on damaged copies.
