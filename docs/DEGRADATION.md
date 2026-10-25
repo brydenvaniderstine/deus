@@ -4,7 +4,7 @@ Written 2026-10-23 from Bryden's rule "No degradation" (`CLAUDE.md`) and the rev
 
 How to read an entry: **Promise** is what the project said (a `file:line` quote), **Where it stands** is what exists, **Trigger** is the hard revisit point (a tag, milestone or step). Triggers marked "PROPOSED by Claude Code, approved by Bryden 2026-10-24" were chosen by Claude Code where the audit gave none; Bryden approved them as written. **Approval record (Bryden, 2026-10-24; C9 and C10 and the closing of C5 approved the same day):** Bryden approves every entry's existence and its trigger. No entry is approved as permanent: each closes by its trigger, and no tag or milestone closes while an entry's trigger has passed. All entries below were found by the audit and predate the rule. Quotes are checked against the repository at the commit that added this file (historical quotes name their commit). Line numbers drift; the quote is the anchor.
 
-Step numbers: step 19 is the third audit round's fixes (batch 2, 19d-19f, is done locally; batch 3, 19g-19h, is pending), step 20 is the guardrails step (CI ratchet, CI parity, an automated check of this register's quotes), step 21 is the no-cascade proof.
+Step numbers: step 19 is the third audit round's fixes (done and pushed), step 20 is the guardrails step (CI ratchet, CI parity, an automated check of this register's quotes), step 21 is the no-cascade proof.
 
 ## Trigger ids
 
