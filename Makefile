@@ -60,7 +60,7 @@ QEMU_FLAGS   := $(QEMU_MACHINE) \
                 -serial file:serial.log -monitor stdio -no-reboot \
                 -d int,cpu_reset -D qemu.log
 
-.PHONY: all image run debug clean limine stage-esp test-wx test-lexer test-lexer-asan test-arena test-arena-asan test-ast test-ast-asan test-parser-state test-parser-state-asan test-parser-fixes test-parser-fixes-asan test-parser test-parser-asan test-determinism test-ir test-ir-asan test-ir-unit test-ir-unit-asan test-ir-ndebug test-ir-fix test-ir-fix-asan test-ir-error-codes audit-ir-poison test-poison-paths-script test-nocascade-inject test-nocascade-inject-script check-inject-hook-absent test-e0261-exhaustive test-rename-property test-ir-memory-stress test-ratchet test-ratchet-script ratchet-update check-register register-fix-lines test-register-script check-ci-targets test-ci-targets-script test-audit-repros test-fuzz-script test-boot test-boot-check-script check-kernel-loc test-kernel-loc-script test-measure-height-script coverage-check test-coverage-check-script check-batch-cap test-batch-cap-script check-retro-rules test-retro-rules-script coverage fuzz fuzz-lexer fuzz-parser fuzz-ir fuzz-ir-ungated measure-height measure-ir-stack measure-ir-build-stack
+.PHONY: all image run debug clean limine stage-esp test-wx test-lexer test-lexer-asan test-arena test-arena-asan test-ast test-ast-asan test-parser-state test-parser-state-asan test-parser-fixes test-parser-fixes-asan test-parser test-parser-asan test-determinism test-ir test-ir-asan test-ir-unit test-ir-unit-asan test-ir-ndebug test-ir-fix test-ir-fix-asan test-ir-error-codes audit-ir-poison test-poison-paths-script check-poison-paths test-nocascade-sinks-script nocascade-sink-report test-nocascade-inject test-nocascade-inject-script check-inject-hook-absent test-e0261-exhaustive test-rename-property test-ir-memory-stress test-ratchet test-ratchet-script ratchet-update check-register register-fix-lines test-register-script check-ci-targets test-ci-targets-script test-audit-repros test-fuzz-script test-boot test-boot-check-script check-kernel-loc test-kernel-loc-script test-measure-height-script coverage-check test-coverage-check-script check-batch-cap test-batch-cap-script check-retro-rules test-retro-rules-script coverage fuzz fuzz-lexer fuzz-parser fuzz-ir fuzz-ir-ungated measure-height measure-ir-stack measure-ir-build-stack
 
 all: $(KERNEL_ELF)
 
@@ -530,6 +530,19 @@ test-retro-rules-script:
 # Step 21a: the static enumeration of the poisoning paths (tools/poison_paths.py; needs clang) and its tests.
 test-poison-paths-script:
 	@python3 tools/poison_paths_test.py
+
+# Step 21c: the sink manifest is current (tests/nocascade/sinks.json holds the identity of every sink, emitter and producer, no line numbers: regenerate with
+# python3 tools/poison_paths.py --json tests/nocascade/sinks.json when a sink is added or removed, and read the diff).
+check-poison-paths:
+	@python3 tools/poison_paths.py --check tests/nocascade/sinks.json
+
+test-nocascade-sinks-script:
+	@python3 tools/nocascade_sinks_test.py
+
+# Step 21c: REPORT, not a check (it becomes rules F3 and F7 of check-nocascade in step 21h): runs the whole sweep with coverage and lists the static sinks no
+# injection moved and the poison-only code outside every static sink. About 40 s.
+nocascade-sink-report:
+	@python3 tools/nocascade_sinks.py
 
 # Step 21b: the single-fault injection sweep (tools/nocascade_inject.py, tools/mannac/ir_inject.c, the MANNA_POISON_INJECT hook in ir.c / ir_decls.c).
 # Every value the builder creates, in every program under tests/ that builds clean, is made ERROR silently, one at a time; the build must report nothing.

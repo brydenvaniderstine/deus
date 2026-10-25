@@ -24,6 +24,18 @@
  * can be attributed (the runner re-runs a crashed program with it). --count prints `COUNT <file> N` and stops; --range A B runs only k in [A, B), so the
  * runner can split a big program across workers without dropping a point. */
 
+/* Only in a coverage build (tools/nocascade_sinks.py): the profile of a program that does not build clean must not count as "executed by a clean build",
+ * because a real mistake runs the poison paths. NC_DISCARD_PROFILE names where that profile goes instead. */
+#ifdef NC_COVERAGE
+extern void __llvm_profile_set_filename(const char *);
+static void discard_profile(void) {
+    const char *d = getenv("NC_DISCARD_PROFILE");
+    if (d) __llvm_profile_set_filename(d);
+}
+#else
+static void discard_profile(void) {}
+#endif
+
 static char *read_file(const char *path, size_t *out_len) {
     FILE *f = fopen(path, "rb");
     if (!f) { perror(path); exit(2); }
@@ -45,18 +57,8 @@ static const char *site_name(int site) {
  * In the injected run, a node the builder made ERROR on its own (orig_error, not the injected one) is a parent that gave up. Its span names the same
  * expression in the baseline run; if that expression had a real type there, the injection took a type away from a PARENT. Rows: parent kind and operator,
  * the baseline type, and which child slot the poison sat in. */
-typedef struct { Span span; const IrExpr *e; } BaseNode;
-static BaseNode *bn;
-static size_t bn_n;
-
 static bool span_eq(Span a, Span b) {
     return a.start_line == b.start_line && a.start_col == b.start_col && a.end_line == b.end_line && a.end_col == b.end_col;
-}
-
-static const IrExpr *lookup(Span s) { /* the LAST logged node with that span: a parent is created after its children */
-    for (size_t i = bn_n; i-- > 0;)
-        if (span_eq(bn[i].span, s)) return bn[i].e;
-    return NULL;
 }
 
 static unsigned long span_key(Span s) {
@@ -160,6 +162,7 @@ int main(int argc, char **argv) {
     long n = ir_inject_seen;
     if (bs == IR_BUILT) bt_build(ir_inject_log, ir_inject_nlog);
     if (bs != IR_BUILT) {
+        discard_profile();
         ir_state_destroy(&base);
         free(ir_inject_log);
         printf("SKIP %s not-clean\n", path);
@@ -192,7 +195,7 @@ int main(int argc, char **argv) {
         IrStatus status = ir_build(&st, &ps.diags, &items, &mm);
         int site = ir_inject_site, what = ir_inject_what;
         ir_inject_target = -1; /* the self-check rebuilds the source: no injection there */
-        {   /* the collapse report */
+        if (!getenv("NC_NO_COLLAPSE")) {   /* the collapse report (off in the coverage build: it would call code that only the harness runs) */
             const IrExpr *j = NULL;
             for (size_t i = 0; i < ir_inject_nlog; i++) if (ir_inject_log[i].injected) { j = bt_lookup(ir_inject_log[i].e->span); break; }
             for (size_t i = 0; i < ir_inject_nlog; i++) {

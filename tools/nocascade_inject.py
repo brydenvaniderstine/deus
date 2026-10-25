@@ -8,7 +8,7 @@ SKIPPED if it does not parse clean or build clean (an erroneous program has noth
 silently, one at a time, and the build must report nothing.
 Exit status: 0 no finding; 1 findings or a crash (a crash is a finding: the process died under a sanitizer); 2 the tool itself failed (build, I/O).
 It never samples: every point of every program is run. Prints the real size (programs, points) and the wall time, which the plan asks the report to carry."""
-import glob, os, re, subprocess, sys, time
+import glob, os, re, shutil, subprocess, sys, time
 from concurrent.futures import ThreadPoolExecutor
 
 SRCS = "arena ast diag parser_state parser lexer ir ir_dump ir_build ir_decls ir_expr ir_body ir_calls ir_names ir_rename ir_selfcheck ir_inject".split()
@@ -17,9 +17,10 @@ OUT = "build/nocascade"
 
 def build(asan=True):
     os.makedirs(OUT, exist_ok=True)
-    exe = os.path.join(OUT, "ir_inject")
+    exe = os.path.join(OUT, "ir_inject_cov" if COV else "ir_inject")
     cmd = ["clang", "-std=c11", "-Wall", "-Wextra"] + ([os.environ["MANNAC_WERROR"]] if os.environ.get("MANNAC_WERROR") else []) + ["-g", "-DMANNA_POISON_INJECT", "-Itools/mannac", "-o", exe]
-    cmd += ["-fsanitize=address,undefined", "-fno-sanitize-recover=undefined"] if asan else ["-O2"]
+    cmd += ["-fprofile-instr-generate", "-fcoverage-mapping", "-DNC_COVERAGE", "-O0"] if COV else \
+           ["-fsanitize=address,undefined", "-fno-sanitize-recover=undefined"] if asan else ["-O2"]
     cmd += ["tools/mannac/%s.c" % s for s in SRCS]
     r = subprocess.run(cmd, capture_output=True, text=True)
     if r.returncode != 0:
@@ -32,9 +33,17 @@ def default_corpus():
     return sorted(glob.glob("tests/**/*.mn", recursive=True))
 
 
-def env():
+COV = None  # --cov DIR: build without sanitizers but with source-based coverage; profiles go to DIR/{base,inj,discard} (tools/nocascade_sinks.py reads them)
+
+
+def env(phase="inj"):
     leaks = "1" if sys.platform.startswith("linux") else "0"  # LeakSanitizer does not exist on macOS
-    return dict(os.environ, ASAN_OPTIONS="abort_on_error=1:detect_leaks=" + leaks, UBSAN_OPTIONS="halt_on_error=1:print_stacktrace=1")
+    e = dict(os.environ, ASAN_OPTIONS="abort_on_error=1:detect_leaks=" + leaks, UBSAN_OPTIONS="halt_on_error=1:print_stacktrace=1")
+    if COV:
+        e["LLVM_PROFILE_FILE"] = os.path.join(COV, phase, "%p.profraw")
+        e["NC_DISCARD_PROFILE"] = os.path.join(COV, "discard", "%p.profraw")
+        e["NC_NO_COLLAPSE"] = "1"
+    return e
 
 
 SHARD = 1000  # a program with more points than this is split into ranges of this size; every point is still run
@@ -42,7 +51,7 @@ SHARD = 1000  # a program with more points than this is split into ranges of thi
 
 def count_one(args):
     exe, path = args
-    r = subprocess.run([exe, "--count", path], capture_output=True, text=True, env=env(), timeout=1800)
+    r = subprocess.run([exe, "--count", path], capture_output=True, text=True, env=env("base"), timeout=1800)
     return path, r.returncode, r.stdout, r.stderr
 
 
@@ -68,6 +77,12 @@ def main(argv):
         if argv[i] == "--corpus": corpus_dirs.append(argv[i + 1]); i += 1
         elif argv[i] == "--bin": exe = argv[i + 1]; i += 1
         elif argv[i] == "-j": jobs = int(argv[i + 1]); i += 1
+        elif argv[i] == "--cov":
+            global COV
+            COV = argv[i + 1]; i += 1
+            for sub in ("base", "inj", "discard"):
+                shutil.rmtree(os.path.join(COV, sub), ignore_errors=True)
+                os.makedirs(os.path.join(COV, sub))
         else: print(__doc__); return 2
         i += 1
     t0 = time.time()
@@ -136,8 +151,8 @@ def main(argv):
         for site, n in sorted(others.items()):
             print("  (%d parent collapses when the poison was a %s, listed in the raw rows)" % (n, site))
     print("slowest programs (s): " + ", ".join("%.1f %s" % (t, os.path.basename(p)) for t, p in slow))
-    print("nocascade sweep: %d finding(s), %d crash(es); build %.1f s, sweep %.1f s on %d workers (ASan+UBSan, every point, no sampling)" %
-          (findings, crashes, t_build, t_run, jobs))
+    print("nocascade sweep: %d finding(s), %d crash(es); build %.1f s, sweep %.1f s on %d workers (%s, every point, no sampling)" %
+          (findings, crashes, t_build, t_run, jobs, "coverage build" if COV else "ASan+UBSan"))
     return 1 if findings or crashes else 0
 
 

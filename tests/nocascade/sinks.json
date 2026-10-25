@@ -1,0 +1,1238 @@
+{
+ "aliases": [
+  "P_ERROR"
+ ],
+ "carriers": [
+  "pending",
+  "poisoned",
+  "ptype",
+  "size_error",
+  "sized"
+ ],
+ "emitters": [
+  {
+   "constructor": "diag_ir_not_assignable",
+   "file": "ir_body.c",
+   "function": "build_assign"
+  },
+  {
+   "constructor": "diag_ir_outside_loop",
+   "file": "ir_body.c",
+   "function": "build_jump"
+  },
+  {
+   "constructor": "diag_ir_already_declared",
+   "file": "ir_body.c",
+   "function": "build_let"
+  },
+  {
+   "constructor": "diag_ir_len_declared",
+   "file": "ir_body.c",
+   "function": "build_let"
+  },
+  {
+   "constructor": "diag_ir_missing_return_value",
+   "file": "ir_body.c",
+   "function": "build_return"
+  },
+  {
+   "constructor": "diag_ir_unexpected_return_value",
+   "file": "ir_body.c",
+   "function": "build_return"
+  },
+  {
+   "constructor": "diag_ir_may_end_without_return",
+   "file": "ir_body.c",
+   "function": "ir_build_body"
+  },
+  {
+   "constructor": "diag_ir_recursion",
+   "file": "ir_calls.c",
+   "function": "ir_check_recursion"
+  },
+  {
+   "constructor": "diag_ir_duplicate_field",
+   "file": "ir_decls.c",
+   "function": "build_fields"
+  },
+  {
+   "constructor": "diag_ir_duplicate_attribute",
+   "file": "ir_decls.c",
+   "function": "build_signature"
+  },
+  {
+   "constructor": "diag_ir_duplicate_param",
+   "file": "ir_decls.c",
+   "function": "build_signature"
+  },
+  {
+   "constructor": "diag_ir_len_declared",
+   "file": "ir_decls.c",
+   "function": "build_signature"
+  },
+  {
+   "constructor": "diag_ir_unknown_attribute",
+   "file": "ir_decls.c",
+   "function": "build_signature"
+  },
+  {
+   "constructor": "diag_ir_duplicate_decl",
+   "file": "ir_decls.c",
+   "function": "declare_names"
+  },
+  {
+   "constructor": "diag_ir_len_declared",
+   "file": "ir_decls.c",
+   "function": "declare_names"
+  },
+  {
+   "constructor": "diag_ir_type_too_large",
+   "file": "ir_decls.c",
+   "function": "ir_check_type_size"
+  },
+  {
+   "constructor": "diag_ir_struct_contains_itself",
+   "file": "ir_decls.c",
+   "function": "ir_declare_items"
+  },
+  {
+   "constructor": "diag_ir_type_too_large",
+   "file": "ir_decls.c",
+   "function": "ir_declare_items"
+  },
+  {
+   "constructor": "diag_ir_slice_in_field",
+   "file": "ir_decls.c",
+   "function": "ir_resolve_type"
+  },
+  {
+   "constructor": "diag_ir_unknown_type",
+   "file": "ir_decls.c",
+   "function": "ir_resolve_type"
+  },
+  {
+   "constructor": "diag_ir_named_args_to_function",
+   "file": "ir_expr.c",
+   "function": "call_shape_ok"
+  },
+  {
+   "constructor": "diag_ir_wrong_arity",
+   "file": "ir_expr.c",
+   "function": "call_shape_ok"
+  },
+  {
+   "constructor": "diag_ir_len_not_called",
+   "file": "ir_expr.c",
+   "function": "check_ident"
+  },
+  {
+   "constructor": "diag_ir_field_given_twice",
+   "file": "ir_expr.c",
+   "function": "construct_field"
+  },
+  {
+   "constructor": "diag_ir_field_out_of_order",
+   "file": "ir_expr.c",
+   "function": "construct_field"
+  },
+  {
+   "constructor": "diag_ir_no_such_field",
+   "file": "ir_expr.c",
+   "function": "construct_field"
+  },
+  {
+   "constructor": "diag_ir_not_a_field_name",
+   "file": "ir_expr.c",
+   "function": "construct_field"
+  },
+  {
+   "constructor": "diag_ir_missing_field",
+   "file": "ir_expr.c",
+   "function": "construct_finish"
+  },
+  {
+   "constructor": "diag_ir_positional_construction",
+   "file": "ir_expr.c",
+   "function": "construct_shape_ok"
+  },
+  {
+   "constructor": "diag_ir_len_argument",
+   "file": "ir_expr.c",
+   "function": "finish_len"
+  },
+  {
+   "constructor": "diag_ir_slice_of_slice",
+   "file": "ir_expr.c",
+   "function": "finish_slice"
+  },
+  {
+   "constructor": "diag_ir_len_arity",
+   "file": "ir_expr.c",
+   "function": "len_bad_arity"
+  },
+  {
+   "constructor": "diag_ir_type_mismatch",
+   "file": "ir_expr.c",
+   "function": "report_bool_expected"
+  },
+  {
+   "constructor": "diag_ir_cannot_convert",
+   "file": "ir_expr.c",
+   "function": "report_cannot_convert"
+  },
+  {
+   "constructor": "diag_ir_cannot_index",
+   "file": "ir_expr.c",
+   "function": "report_cannot_index"
+  },
+  {
+   "constructor": "diag_ir_cannot_infer",
+   "file": "ir_expr.c",
+   "function": "report_cannot_infer"
+  },
+  {
+   "constructor": "diag_ir_index_not_integer",
+   "file": "ir_expr.c",
+   "function": "report_index_type"
+  },
+  {
+   "constructor": "diag_ir_type_mismatch",
+   "file": "ir_expr.c",
+   "function": "report_mismatch"
+  },
+  {
+   "constructor": "diag_ir_type_mismatch",
+   "file": "ir_expr.c",
+   "function": "report_mismatch_types"
+  },
+  {
+   "constructor": "diag_ir_not_a_value",
+   "file": "ir_expr.c",
+   "function": "report_name"
+  },
+  {
+   "constructor": "diag_ir_type_has_no_fields",
+   "file": "ir_expr.c",
+   "function": "report_no_fields"
+  },
+  {
+   "constructor": "diag_ir_no_such_field",
+   "file": "ir_expr.c",
+   "function": "report_no_such_field"
+  },
+  {
+   "constructor": "diag_ir_operator_undefined",
+   "file": "ir_expr.c",
+   "function": "report_operator"
+  },
+  {
+   "constructor": "diag_ir_literal_range",
+   "file": "ir_expr.c",
+   "function": "report_range"
+  },
+  {
+   "constructor": "diag_ir_type_too_large",
+   "file": "ir_expr.c",
+   "function": "report_too_large"
+  },
+  {
+   "constructor": "diag_ir_operand_types_differ",
+   "file": "ir_expr.c",
+   "function": "report_types_differ"
+  },
+  {
+   "constructor": "diag_ir_unit_value",
+   "file": "ir_expr.c",
+   "function": "report_unit"
+  },
+  {
+   "constructor": "diag_ir_unknown_function",
+   "file": "ir_expr.c",
+   "function": "report_unknown_function"
+  },
+  {
+   "constructor": "diag_ir_not_pascal_case",
+   "file": "ir_rename.c",
+   "function": "ir_check_naming"
+  }
+ ],
+ "files": [
+  "tools/mannac/ir.c",
+  "tools/mannac/ir_body.c",
+  "tools/mannac/ir_build.c",
+  "tools/mannac/ir_calls.c",
+  "tools/mannac/ir_decls.c",
+  "tools/mannac/ir_expr.c",
+  "tools/mannac/ir_names.c",
+  "tools/mannac/ir_rename.c"
+ ],
+ "nullpoison": [
+  "deciding_type",
+  "indexable_element",
+  "ir_build",
+  "literal_array_type",
+  "neg_of_literal",
+  "report_types_differ",
+  "type_layout"
+ ],
+ "predicates": [
+  "fix_accepts",
+  "has_error"
+ ],
+ "producer_sites": [
+  {
+   "file": "ir.c",
+   "function": "ir_type_error",
+   "kind": "enumerator"
+  },
+  {
+   "file": "ir.c",
+   "function": "prim_text",
+   "kind": "enumerator"
+  },
+  {
+   "file": "ir.c",
+   "function": "prims_init",
+   "kind": "enumerator"
+  },
+  {
+   "file": "ir_body.c",
+   "function": "build_assign",
+   "kind": "call ir_type_error"
+  },
+  {
+   "file": "ir_body.c",
+   "function": "build_let",
+   "kind": "call ir_type_error"
+  },
+  {
+   "file": "ir_body.c",
+   "function": "build_return",
+   "kind": "call ir_type_error"
+  },
+  {
+   "file": "ir_decls.c",
+   "function": "ir_resolve_type",
+   "kind": "call ir_type_error"
+  },
+  {
+   "file": "ir_expr.c",
+   "function": "array_done",
+   "kind": "call is_error"
+  },
+  {
+   "file": "ir_expr.c",
+   "function": "array_infer",
+   "kind": "call array_done"
+  },
+  {
+   "file": "ir_expr.c",
+   "function": "array_infer",
+   "kind": "call is_error"
+  },
+  {
+   "file": "ir_expr.c",
+   "function": "check_array_literal",
+   "kind": "call error_node"
+  },
+  {
+   "file": "ir_expr.c",
+   "function": "check_ident",
+   "kind": "call error_node"
+  },
+  {
+   "file": "ir_expr.c",
+   "function": "check_index_operand",
+   "kind": "call error_node"
+  },
+  {
+   "file": "ir_expr.c",
+   "function": "check_index_operand",
+   "kind": "call group_against"
+  },
+  {
+   "file": "ir_expr.c",
+   "function": "construct_finish",
+   "kind": "call error_node"
+  },
+  {
+   "file": "ir_expr.c",
+   "function": "error_node",
+   "kind": "call ir_type_error"
+  },
+  {
+   "file": "ir_expr.c",
+   "function": "finish_binary",
+   "kind": "call is_error"
+  },
+  {
+   "file": "ir_expr.c",
+   "function": "finish_convert",
+   "kind": "call error_node"
+  },
+  {
+   "file": "ir_expr.c",
+   "function": "finish_field",
+   "kind": "call is_error"
+  },
+  {
+   "file": "ir_expr.c",
+   "function": "finish_index",
+   "kind": "call is_error"
+  },
+  {
+   "file": "ir_expr.c",
+   "function": "finish_len",
+   "kind": "call error_node"
+  },
+  {
+   "file": "ir_expr.c",
+   "function": "finish_logical",
+   "kind": "call is_error"
+  },
+  {
+   "file": "ir_expr.c",
+   "function": "finish_slice",
+   "kind": "call is_error"
+  },
+  {
+   "file": "ir_expr.c",
+   "function": "finish_unary",
+   "kind": "call is_error"
+  },
+  {
+   "file": "ir_expr.c",
+   "function": "group_against",
+   "kind": "call error_node"
+  },
+  {
+   "file": "ir_expr.c",
+   "function": "group_neg",
+   "kind": "call error_node"
+  },
+  {
+   "file": "ir_expr.c",
+   "function": "ir_check_expr",
+   "kind": "call error_node"
+  },
+  {
+   "file": "ir_expr.c",
+   "function": "ir_check_expr",
+   "kind": "call group_against"
+  },
+  {
+   "file": "ir_expr.c",
+   "function": "ir_infer_discard",
+   "kind": "call error_node"
+  },
+  {
+   "file": "ir_expr.c",
+   "function": "ir_infer_pending",
+   "kind": "call error_node"
+  },
+  {
+   "file": "ir_expr.c",
+   "function": "is_error",
+   "kind": "call error_node"
+  },
+  {
+   "file": "ir_expr.c",
+   "function": "len_bad_arity",
+   "kind": "call error_node"
+  },
+  {
+   "file": "ir_expr.c",
+   "function": "repeat_done",
+   "kind": "call is_error"
+  },
+  {
+   "file": "ir_expr.c",
+   "function": "repeat_infer",
+   "kind": "call is_error"
+  },
+  {
+   "file": "ir_expr.c",
+   "function": "repeat_infer",
+   "kind": "call repeat_done"
+  },
+  {
+   "file": "ir_expr.c",
+   "function": "settle_pending",
+   "kind": "call is_error"
+  },
+  {
+   "file": "ir_expr.c",
+   "function": "synth_call",
+   "kind": "call is_error"
+  },
+  {
+   "file": "ir_expr.c",
+   "function": "typed_binary",
+   "kind": "call group_against"
+  },
+  {
+   "file": "ir_expr.c",
+   "function": "typed_binary",
+   "kind": "call is_error"
+  }
+ ],
+ "producers": [
+  "array_done",
+  "array_infer",
+  "build_assign",
+  "build_expr_stmt",
+  "build_return",
+  "build_stmt",
+  "check_array_literal",
+  "check_ident",
+  "check_index_operand",
+  "error_node",
+  "finish_binary",
+  "finish_field",
+  "finish_index",
+  "finish_len",
+  "finish_logical",
+  "finish_slice",
+  "finish_unary",
+  "group_against",
+  "group_neg",
+  "ir_check_expr",
+  "ir_infer_discard",
+  "ir_infer_pending",
+  "ir_resolve_type",
+  "ir_type_error",
+  "is_error",
+  "len_bad_arity",
+  "repeat_done",
+  "repeat_infer",
+  "resolve_group",
+  "resolve_unary",
+  "settle_pending",
+  "synth",
+  "synth_array",
+  "synth_binary",
+  "synth_call",
+  "synth_field",
+  "synth_in",
+  "synth_index",
+  "synth_kind",
+  "synth_leaf",
+  "synth_len",
+  "synth_other",
+  "synth_repeat",
+  "synth_slice",
+  "synth_unary",
+  "typed_binary"
+ ],
+ "reporters": [
+  "array_done",
+  "array_infer",
+  "build_assign",
+  "build_block",
+  "build_expr_stmt",
+  "build_fields",
+  "build_for",
+  "build_if",
+  "build_jump",
+  "build_let",
+  "build_return",
+  "build_signature",
+  "build_stmt",
+  "build_while",
+  "call_shape_ok",
+  "call_target",
+  "check_array_literal",
+  "check_ident",
+  "check_index_operand",
+  "check_muted",
+  "construct_field",
+  "construct_finish",
+  "construct_shape_ok",
+  "deciding_type",
+  "declare_names",
+  "finish_binary",
+  "finish_convert",
+  "finish_field",
+  "finish_index",
+  "finish_len",
+  "finish_logical",
+  "finish_slice",
+  "finish_unary",
+  "group_against",
+  "group_fits",
+  "group_literal",
+  "group_neg",
+  "indexable_element",
+  "ir_assign_to_pending",
+  "ir_build",
+  "ir_build_body",
+  "ir_check_expr",
+  "ir_check_naming",
+  "ir_check_recursion",
+  "ir_check_silent",
+  "ir_check_type_size",
+  "ir_declare_items",
+  "ir_infer_discard",
+  "ir_infer_pending",
+  "ir_resolve_type",
+  "len_bad_arity",
+  "literal_array_type",
+  "neg_of_literal",
+  "repeat_done",
+  "repeat_infer",
+  "report_bool_expected",
+  "report_cannot_convert",
+  "report_cannot_index",
+  "report_cannot_infer",
+  "report_index_type",
+  "report_mismatch",
+  "report_mismatch_types",
+  "report_name",
+  "report_no_fields",
+  "report_no_such_field",
+  "report_operator",
+  "report_range",
+  "report_too_large",
+  "report_types_differ",
+  "report_unit",
+  "report_unknown_function",
+  "resolve_binary",
+  "resolve_group",
+  "resolve_unary",
+  "settle_pending",
+  "silently_check_args",
+  "synth",
+  "synth_array",
+  "synth_binary",
+  "synth_call",
+  "synth_construct",
+  "synth_convert",
+  "synth_field",
+  "synth_in",
+  "synth_index",
+  "synth_kind",
+  "synth_leaf",
+  "synth_len",
+  "synth_other",
+  "synth_repeat",
+  "synth_slice",
+  "synth_unary",
+  "typed_binary"
+ ],
+ "root": "IR_T_ERROR",
+ "sinks": [
+  {
+   "atoms": [
+    {
+     "replace": "0",
+     "text": "s.pending"
+    },
+    {
+     "replace": "0",
+     "text": "s.ptype"
+    }
+   ],
+   "file": "ir_expr.c",
+   "function": "accept_int_pending",
+   "id": "ir_expr.c::accept_int_pending::5038c940::0",
+   "text": "s.pending && !is_int(s.ptype)"
+  },
+  {
+   "atoms": [
+    {
+     "replace": "0",
+     "text": "!t"
+    }
+   ],
+   "file": "ir_expr.c",
+   "function": "array_done",
+   "id": "ir_expr.c::array_done::0a63c4a0::0",
+   "text": "!t"
+  },
+  {
+   "atoms": [
+    {
+     "replace": "0",
+     "text": "!t"
+    }
+   ],
+   "file": "ir_expr.c",
+   "function": "array_infer",
+   "id": "ir_expr.c::array_infer::0a63c4a0::0",
+   "text": "!t"
+  },
+  {
+   "atoms": [
+    {
+     "replace": "0",
+     "text": "t->kind == IR_T_ERROR"
+    }
+   ],
+   "file": "ir_decls.c",
+   "function": "build_fields",
+   "id": "ir_decls.c::build_fields::3bc4fbf1::0",
+   "text": "t->kind == IR_T_ERROR"
+  },
+  {
+   "atoms": [
+    {
+     "replace": "1",
+     "text": "expected->kind != IR_T_ERROR"
+    }
+   ],
+   "file": "ir_expr.c",
+   "function": "check_array_literal",
+   "id": "ir_expr.c::check_array_literal::a2dcdedb::0",
+   "text": "expected->kind != IR_T_ARRAY && expected->kind != IR_T_SLICE && expected->kind != IR_T_ERROR"
+  },
+  {
+   "atoms": [
+    {
+     "replace": "1",
+     "text": "s.node->type->kind != IR_T_ERROR"
+    }
+   ],
+   "file": "ir_expr.c",
+   "function": "check_array_literal",
+   "id": "ir_expr.c::check_array_literal::31a1479d::0",
+   "text": "s.node->type->kind != IR_T_ERROR"
+  },
+  {
+   "atoms": [
+    {
+     "replace": "0",
+     "text": "expected->kind == IR_T_ERROR"
+    }
+   ],
+   "file": "ir_expr.c",
+   "function": "check_array_literal",
+   "id": "ir_expr.c::check_array_literal::929fb757::0",
+   "text": "expected->kind == IR_T_ERROR"
+  },
+  {
+   "atoms": [
+    {
+     "replace": "0",
+     "text": "expected->kind == IR_T_ERROR"
+    },
+    {
+     "replace": "0",
+     "text": "hint->kind == IR_T_ERROR"
+    }
+   ],
+   "file": "ir_expr.c",
+   "function": "check_array_literal",
+   "id": "ir_expr.c::check_array_literal::73f6fb7c::0",
+   "text": "expected->kind == IR_T_ERROR || hint->kind == IR_T_ERROR"
+  },
+  {
+   "atoms": [
+    {
+     "replace": "0",
+     "text": "!t"
+    }
+   ],
+   "file": "ir_expr.c",
+   "function": "check_array_literal",
+   "id": "ir_expr.c::check_array_literal::0a63c4a0::0",
+   "text": "!t"
+  },
+  {
+   "atoms": [
+    {
+     "replace": "0",
+     "text": "has_error(s)"
+    }
+   ],
+   "file": "ir_expr.c",
+   "function": "check_index_operand",
+   "id": "ir_expr.c::check_index_operand::8b1a708a::0",
+   "text": "has_error(s)"
+  },
+  {
+   "atoms": [
+    {
+     "replace": "1",
+     "text": "expected"
+    }
+   ],
+   "file": "ir_expr.c",
+   "function": "deciding_type",
+   "id": "ir_expr.c::deciding_type::5dcbdf37::0",
+   "text": "expected"
+  },
+  {
+   "atoms": [
+    {
+     "replace": "0",
+     "text": "has_error(s)"
+    }
+   ],
+   "file": "ir_expr.c",
+   "function": "deciding_type",
+   "id": "ir_expr.c::deciding_type::8b1a708a::0",
+   "text": "has_error(s)"
+  },
+  {
+   "atoms": [
+    {
+     "replace": "1",
+     "text": "from->kind != IR_T_ERROR"
+    }
+   ],
+   "file": "ir_expr.c",
+   "function": "finish_convert",
+   "id": "ir_expr.c::finish_convert::b22c1816::0",
+   "text": "from->kind != IR_T_ERROR && !(is_int(from) && is_int(target))"
+  },
+  {
+   "atoms": [
+    {
+     "replace": "0",
+     "text": "has_error(b)"
+    }
+   ],
+   "file": "ir_expr.c",
+   "function": "finish_field",
+   "id": "ir_expr.c::finish_field::d51e23d1::0",
+   "text": "has_error(b)"
+  },
+  {
+   "atoms": [
+    {
+     "replace": "0",
+     "text": "!elem"
+    }
+   ],
+   "file": "ir_expr.c",
+   "function": "finish_index",
+   "id": "ir_expr.c::finish_index::935f7fa2::0",
+   "text": "!elem"
+  },
+  {
+   "atoms": [
+    {
+     "replace": "0",
+     "text": "has_error(a)"
+    }
+   ],
+   "file": "ir_expr.c",
+   "function": "finish_len",
+   "id": "ir_expr.c::finish_len::dae3225d::0",
+   "text": "!has_error(a) && a.node->type->kind != IR_T_ARRAY && a.node->type->kind != IR_T_SLICE"
+  },
+  {
+   "atoms": [
+    {
+     "replace": "0",
+     "text": "has_error(l)"
+    },
+    {
+     "replace": "0",
+     "text": "has_error(r)"
+    }
+   ],
+   "file": "ir_expr.c",
+   "function": "finish_logical",
+   "id": "ir_expr.c::finish_logical::1df5627f::0",
+   "text": "has_error(l) || has_error(r)"
+  },
+  {
+   "atoms": [
+    {
+     "replace": "0",
+     "text": "!elem"
+    }
+   ],
+   "file": "ir_expr.c",
+   "function": "finish_slice",
+   "id": "ir_expr.c::finish_slice::935f7fa2::0",
+   "text": "!elem"
+  },
+  {
+   "atoms": [
+    {
+     "replace": "0",
+     "text": "has_error(o)"
+    }
+   ],
+   "file": "ir_expr.c",
+   "function": "finish_unary",
+   "id": "ir_expr.c::finish_unary::cef7364d::0",
+   "text": "has_error(o)"
+  },
+  {
+   "atoms": [
+    {
+     "replace": "0",
+     "text": "o.pending"
+    }
+   ],
+   "file": "ir_expr.c",
+   "function": "finish_unary",
+   "id": "ir_expr.c::finish_unary::7a8e6b1b::0",
+   "text": "o.pending"
+  },
+  {
+   "atoms": [
+    {
+     "replace": "0",
+     "text": "expected->kind == IR_T_ERROR"
+    }
+   ],
+   "file": "ir_expr.c",
+   "function": "group_against",
+   "id": "ir_expr.c::group_against::929fb757::0",
+   "text": "expected->kind == IR_T_ERROR"
+  },
+  {
+   "atoms": [
+    {
+     "replace": "1",
+     "text": "folded"
+    }
+   ],
+   "file": "ir_expr.c",
+   "function": "group_neg",
+   "id": "ir_expr.c::group_neg::682b052d::0",
+   "text": "folded"
+  },
+  {
+   "atoms": [
+    {
+     "replace": "0",
+     "text": "has_error(b)"
+    }
+   ],
+   "file": "ir_expr.c",
+   "function": "indexable_element",
+   "id": "ir_expr.c::indexable_element::d51e23d1::0",
+   "text": "has_error(b)"
+  },
+  {
+   "atoms": [
+    {
+     "replace": "0",
+     "text": "s.pending"
+    },
+    {
+     "replace": "1",
+     "text": "expected->kind != IR_T_ERROR"
+    },
+    {
+     "replace": "0",
+     "text": "s.ptype"
+    }
+   ],
+   "file": "ir_expr.c",
+   "function": "ir_check_expr",
+   "id": "ir_expr.c::ir_check_expr::f31f3f11::0",
+   "text": "s.pending && expected->kind != IR_T_ERROR && s.ptype != expected"
+  },
+  {
+   "atoms": [
+    {
+     "replace": "0",
+     "text": "t->kind == IR_T_ERROR"
+    },
+    {
+     "replace": "0",
+     "text": "expected->kind == IR_T_ERROR"
+    }
+   ],
+   "file": "ir_expr.c",
+   "function": "ir_check_expr",
+   "id": "ir_expr.c::ir_check_expr::189dc3fa::0",
+   "text": "t->kind == IR_T_ERROR || expected->kind == IR_T_ERROR || t == expected"
+  },
+  {
+   "atoms": [
+    {
+     "replace": "0",
+     "text": "t->kind == IR_T_ERROR"
+    }
+   ],
+   "file": "ir_decls.c",
+   "function": "ir_check_type_size",
+   "id": "ir_decls.c::ir_check_type_size::3bc4fbf1::0",
+   "text": "t->kind == IR_T_ERROR"
+  },
+  {
+   "atoms": [
+    {
+     "replace": "0",
+     "text": "cx.structs[i].size_error"
+    }
+   ],
+   "file": "ir_decls.c",
+   "function": "ir_declare_items",
+   "id": "ir_decls.c::ir_declare_items::8e7a4070::0",
+   "text": "!cx.structs[i].size_error"
+  },
+  {
+   "atoms": [
+    {
+     "replace": "0",
+     "text": "elem->kind == IR_T_ERROR"
+    }
+   ],
+   "file": "ir_decls.c",
+   "function": "ir_resolve_type",
+   "id": "ir_decls.c::ir_resolve_type::2172e690::0",
+   "text": "elem->kind == IR_T_ERROR"
+  },
+  {
+   "atoms": [
+    {
+     "replace": "0",
+     "text": "elem->kind == IR_T_ERROR"
+    }
+   ],
+   "file": "ir_decls.c",
+   "function": "ir_resolve_type",
+   "id": "ir_decls.c::ir_resolve_type::2172e690::1",
+   "text": "elem->kind == IR_T_ERROR"
+  },
+  {
+   "atoms": [
+    {
+     "replace": "0",
+     "text": "s->poisoned"
+    }
+   ],
+   "file": "ir_decls.c",
+   "function": "layout_struct",
+   "id": "ir_decls.c::layout_struct::525d9880::0",
+   "text": "s->poisoned"
+  },
+  {
+   "atoms": [
+    {
+     "replace": "0",
+     "text": "r == LAY_UNSIZED"
+    }
+   ],
+   "file": "ir_decls.c",
+   "function": "layout_struct",
+   "id": "ir_decls.c::layout_struct::fb9f6d4f::0",
+   "text": "r == LAY_UNSIZED"
+  },
+  {
+   "atoms": [
+    {
+     "replace": "0",
+     "text": "r == LAY_TOO_BIG"
+    }
+   ],
+   "file": "ir_decls.c",
+   "function": "layout_struct",
+   "id": "ir_decls.c::layout_struct::fc184521::0",
+   "text": "r == LAY_TOO_BIG"
+  },
+  {
+   "atoms": [
+    {
+     "replace": "0",
+     "text": "s.pending"
+    }
+   ],
+   "file": "ir_expr.c",
+   "function": "reject_pending",
+   "id": "ir_expr.c::reject_pending::ee7646b0::0",
+   "text": "s.pending"
+  },
+  {
+   "atoms": [
+    {
+     "replace": "0",
+     "text": "!t"
+    }
+   ],
+   "file": "ir_expr.c",
+   "function": "repeat_done",
+   "id": "ir_expr.c::repeat_done::0a63c4a0::0",
+   "text": "!t"
+  },
+  {
+   "atoms": [
+    {
+     "replace": "0",
+     "text": "!t"
+    }
+   ],
+   "file": "ir_expr.c",
+   "function": "repeat_infer",
+   "id": "ir_expr.c::repeat_infer::0a63c4a0::0",
+   "text": "!t"
+  },
+  {
+   "atoms": [
+    {
+     "replace": "0",
+     "text": "fix_accepts(bc, result)"
+    }
+   ],
+   "file": "ir_expr.c",
+   "function": "report_types_differ",
+   "id": "ir_expr.c::report_types_differ::ece0845c::0",
+   "text": "to && !fix_accepts(bc, result)"
+  },
+  {
+   "atoms": [
+    {
+     "replace": "0",
+     "text": "l.pending"
+    },
+    {
+     "replace": "0",
+     "text": "r.pending"
+    }
+   ],
+   "file": "ir_expr.c",
+   "function": "settle_pending",
+   "id": "ir_expr.c::settle_pending::8bac09b0::0",
+   "text": "!l.pending && !r.pending"
+  },
+  {
+   "atoms": [
+    {
+     "replace": "0",
+     "text": "l.pending"
+    },
+    {
+     "replace": "0",
+     "text": "r.pending"
+    },
+    {
+     "replace": "0",
+     "text": "l.pending"
+    },
+    {
+     "replace": "0",
+     "text": "r.pending"
+    },
+    {
+     "replace": "0",
+     "text": "l.ptype"
+    },
+    {
+     "replace": "0",
+     "text": "r.ptype"
+    }
+   ],
+   "file": "ir_expr.c",
+   "function": "settle_pending",
+   "id": "ir_expr.c::settle_pending::76a18583::0",
+   "text": "l.pending && r.pending && (l.pending != r.pending || l.ptype != r.ptype)"
+  },
+  {
+   "atoms": [
+    {
+     "replace": "0",
+     "text": "l.pending"
+    },
+    {
+     "replace": "0",
+     "text": "r.pending"
+    }
+   ],
+   "file": "ir_expr.c",
+   "function": "settle_pending",
+   "id": "ir_expr.c::settle_pending::77988245::0",
+   "text": "bool same = l.pending && r.pending;"
+  },
+  {
+   "atoms": [
+    {
+     "replace": "0",
+     "text": "l.pending"
+    }
+   ],
+   "file": "ir_expr.c",
+   "function": "settle_pending",
+   "id": "ir_expr.c::settle_pending::406d93d4::0",
+   "text": "bool p_left = l.pending != 0;"
+  },
+  {
+   "atoms": [
+    {
+     "replace": "0",
+     "text": "has_error(o)"
+    }
+   ],
+   "file": "ir_expr.c",
+   "function": "settle_pending",
+   "id": "ir_expr.c::settle_pending::038e7864::0",
+   "text": "bool agrees = same || (!has_error(o) && (o.group ? group_fits(bc, oe, pt) : o.node->type == pt));"
+  },
+  {
+   "atoms": [
+    {
+     "replace": "0",
+     "text": "r != LAY_OK"
+    }
+   ],
+   "file": "ir_decls.c",
+   "function": "type_layout",
+   "id": "ir_decls.c::type_layout::e11146f2::0",
+   "text": "r != LAY_OK"
+  },
+  {
+   "atoms": [
+    {
+     "replace": "0",
+     "text": "r != LAY_OK"
+    }
+   ],
+   "file": "ir_decls.c",
+   "function": "type_layout",
+   "id": "ir_decls.c::type_layout::e11146f2::1",
+   "text": "r != LAY_OK"
+  },
+  {
+   "atoms": [
+    {
+     "replace": "0",
+     "text": "dep->sized"
+    }
+   ],
+   "file": "ir_decls.c",
+   "function": "type_layout",
+   "id": "ir_decls.c::type_layout::479d9259::0",
+   "text": "!dep->sized"
+  },
+  {
+   "atoms": [
+    {
+     "replace": "0",
+     "text": "has_error(l)"
+    },
+    {
+     "replace": "0",
+     "text": "has_error(r)"
+    }
+   ],
+   "file": "ir_expr.c",
+   "function": "typed_binary",
+   "id": "ir_expr.c::typed_binary::1df5627f::0",
+   "text": "has_error(l) || has_error(r)"
+  },
+  {
+   "atoms": [
+    {
+     "replace": "0",
+     "text": "ln->type->kind == IR_T_ERROR"
+    },
+    {
+     "replace": "0",
+     "text": "rn->type->kind == IR_T_ERROR"
+    }
+   ],
+   "file": "ir_expr.c",
+   "function": "typed_binary",
+   "id": "ir_expr.c::typed_binary::77640c58::0",
+   "text": "ln->type->kind == IR_T_ERROR || rn->type->kind == IR_T_ERROR"
+  }
+ ],
+ "version": 1
+}

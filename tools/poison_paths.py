@@ -160,8 +160,20 @@ class Program:
                         self.funcs[top["name"]] = (f, top)
         if not self.funcs:
             raise Fail("no functions found: the AST file tracking failed")
+        self.enumvals = {}
+        for tu in asts:
+            for n in walk(tu):
+                if n.get("kind") == "EnumDecl":
+                    prev = -1
+                    for c in kids(n):
+                        if c.get("kind") != "EnumConstantDecl":
+                            continue
+                        v = next((x.get("value") for x in walk(c) if x.get("kind") in ("ConstantExpr", "IntegerLiteral") and x.get("value") is not None), None)
+                        prev = int(v) if v is not None else prev + 1
+                        self.enumvals.setdefault(c["name"], prev)
         self.aliases = set()
         self.predicates, self.producers, self.nullpoison, self.reporters = set(), set(), set(), set()
+        self.poison_params = {}  # function -> {parameter name}: a parameter that a caller fills with a null-poison value
         self.carriers = set()
         self.derive()
 
@@ -197,10 +209,11 @@ class Program:
             raise Fail("cannot derive the poison alias enumerator (no `<array>[X].kind = %s` assignment): ir.c prims_init changed shape" % ROOT_ENUM)
         # 2. predicates, producers, null-poison, carriers: one fixpoint
         for _ in range(20):
+            self.changed = False
             before = (len(self.predicates), len(self.producers), len(self.nullpoison), len(self.carriers), len(self.reporters))
             for name, (f, fn) in self.funcs.items():
                 self.classify(name, fn)
-            if before == (len(self.predicates), len(self.producers), len(self.nullpoison), len(self.carriers), len(self.reporters)):
+            if before == (len(self.predicates), len(self.producers), len(self.nullpoison), len(self.carriers), len(self.reporters)) and not self.changed:
                 return
         raise Fail("poison fixpoint did not converge")
 
@@ -233,8 +246,20 @@ class Program:
                 if self.makes_poison(v) or ref_name(v)[0] in vars_poison:
                     self.producers.add(name)
         # null-poison
-        if rk == "ptr" and name not in self.nullpoison and self.returns_null_after_poison(body):
+        if rk in ("ptr", "struct") and name not in self.nullpoison and self.returns_null_after_poison(body):
             self.nullpoison.add(name)
+        # parameters of other functions that this one fills with a null-poison value
+        nv = self.nullvars_of(body, name)
+        for x in walk(body):
+            if x.get("kind") == "CallExpr" and callee(x) in self.funcs:
+                g = callee(x)
+                params = [c.get("name") for c in kids(self.funcs[g][1]) if c.get("kind") == "ParmVarDecl"]
+                for i, a in enumerate(kids(x)[1:]):
+                    a = strip(a)
+                    poison = (a.get("kind") == "CallExpr" and callee(a) in self.nullpoison) or (a.get("kind") == "DeclRefExpr" and ref_name(a)[0] in nv)
+                    if poison and i < len(params) and params[i] not in self.poison_params.setdefault(g, set()):
+                        self.poison_params[g].add(params[i])
+                        self.changed = True
         # carriers
         self.find_carriers(body)
 
@@ -259,10 +284,17 @@ class Program:
                 return True
         return False
 
+    def is_poison_return(self, v):
+        """a returned value that means "I could not": NULL, or an enumerator other than the one whose value is 0 (LAY_OK is 0, LAY_UNSIZED is not)"""
+        if is_null_value(v):
+            return True
+        nm, kd = ref_name(v)
+        return kd == "EnumConstantDecl" and self.enumvals.get(nm, 0) != 0
+
     def returns_null_after_poison(self, body):
         def go(n, guarded, reported):
             k = n.get("kind")
-            if k == "ReturnStmt" and kids(n) and is_null_value(kids(n)[0]):
+            if k == "ReturnStmt" and kids(n) and self.is_poison_return(kids(n)[0]):
                 return guarded or reported
             if k == "IfStmt":
                 c = kids(n)
@@ -305,6 +337,26 @@ class Program:
                 go(x, guarded)
         go(body, False)
 
+        # poison encoded by omission: `if (<poison>) return; ...; flag = true;` leaves flag at its default for a poisoned value
+        def omit(n):
+            if n.get("kind") == "CompoundStmt":
+                after = False
+                for x in kids(n):
+                    if after:
+                        for m in walk(x):
+                            if m.get("kind") == "BinaryOperator" and m.get("opcode") == "=":
+                                l, r = kids(m)
+                                l, r = strip(l), strip(r)
+                                if l.get("kind") == "MemberExpr" and l.get("type", {}).get("qualType") in ("bool", "_Bool") and \
+                                        (r.get("kind") == "CXXBoolLiteralExpr" or (r.get("kind") == "IntegerLiteral" and r.get("value") == "1")
+                                         or (r.get("kind") == "DeclRefExpr" and ref_name(r)[0] == "true")):
+                                    self.carriers.add(l.get("name"))
+                    if x.get("kind") == "IfStmt" and self.atoms_in(kids(x)[0], set()) and any(y.get("kind") == "ReturnStmt" for y in walk(kids(x)[1])):
+                        after = True
+            for c in kids(n):
+                omit(c)
+        omit(body)
+
     # ---- atoms ----
     def atom_at(self, n, nullvars, logic):
         """the replacement that makes the atom at `n` say "not poison", or None if `n` is not an atom (n is already strip()ped)"""
@@ -314,8 +366,13 @@ class Program:
             if self.is_root(a) or self.is_root(b):
                 return "0" if n["opcode"] == "==" else "1"
             for v, o in ((a, b), (b, a)):
-                if is_null_value(o) and ref_name(v)[0] in nullvars:
-                    return "0" if n["opcode"] == "==" else "1"
+                if ref_name(v)[0] in nullvars and ref_name(v)[1] in ("VarDecl", "ParmVarDecl"):
+                    if is_null_value(o):
+                        return "0" if n["opcode"] == "==" else "1"
+                    onm, okd = ref_name(o)
+                    if okd == "EnumConstantDecl":  # the value 0 is the normal result; any other enumerator is the "could not" answer
+                        normal = self.enumvals.get(onm, 0) == 0
+                        return ("1" if normal else "0") if n["opcode"] == "==" else ("0" if normal else "1")
         if k == "CallExpr" and callee(n) in self.predicates:
             return "0"
         if k == "MemberExpr" and n.get("name") in self.carriers:
@@ -344,8 +401,8 @@ class Program:
         go(expr, True)
         return out
 
-    def nullvars_of(self, body):
-        vs = set()
+    def nullvars_of(self, body, fname=None):
+        vs = set(self.poison_params.get(fname, ()))
         for n in walk(body):
             if n.get("kind") == "VarDecl" and kids(n) and any(callee(x) in self.nullpoison for x in walk(kids(n)[0]) if x.get("kind") == "CallExpr"):
                 vs.add(n.get("name"))
@@ -364,8 +421,8 @@ class Program:
             if name in self.predicates:
                 continue
             body = next(c for c in kids(fn) if c.get("kind") == "CompoundStmt")
-            nv = self.nullvars_of(body)
-            groups, flow = {}, {}
+            nv = self.nullvars_of(body, name)
+            groups, flow, owner = {}, {}, {}
 
             def visit(n, ctx, logic, dec):
                 m = strip(n)
@@ -379,11 +436,13 @@ class Program:
                 k = m.get("kind")
                 c = kids(m)
                 if k in ("IfStmt", "WhileStmt", "ConditionalOperator"):
+                    owner[id(c[0])] = m
                     visit(c[0], c[0], True, True)
                     for x in c[1:]:
                         visit(x, x if k != "ConditionalOperator" else ctx, False, False)
                 elif k == "ForStmt":
                     for x in c[:-1]:
+                        owner[id(x)] = m
                         visit(x, x, True, True)
                     visit(c[-1], c[-1], False, False)
                 elif k == "CompoundStmt":
@@ -413,9 +472,11 @@ class Program:
                 idx = seen.get((name, h), 0)
                 seen[(name, h)] = idx + 1
                 line = self.line_of(key)
+                own = owner.get(id(key), key)  # the whole if / while / for / ?: the condition decides; the statement itself otherwise
                 out.append({
                     "id": "%s::%s::%s::%d" % (os.path.basename(key["_f"]), name, h, idx),
                     "file": os.path.basename(key["_f"]), "function": name, "line": line, "text": txt[:140],
+                    "extent": [self.line_of(own), self.line_of(dict(own, _s=own["_e"] - 1))] if "_e" in own else [line, line],
                     "atoms": sorted(({"start": a["_s"], "end": a["_e"], "replace": rep, "text": self.text(a)[:100]} for a, rep in atoms if "_s" in a),
                                     key=lambda d: d["start"]),
                 })
@@ -424,6 +485,10 @@ class Program:
     def line_of(self, n):
         src = self.sources.get(n["_f"])
         return src[:n["_s"]].count(b"\n") + 1 if src else 0
+
+    def function_extents(self):
+        return [{"file": os.path.basename(f), "function": n, "start": self.line_of(fn), "end": self.line_of(dict(fn, _s=fn["_e"] - 1))}
+                for n, (f, fn) in sorted(self.funcs.items()) if "_e" in fn]
 
     def predicate_defs(self):
         out = []
@@ -475,8 +540,21 @@ class Program:
             "root": ROOT_ENUM, "aliases": sorted(self.aliases), "predicates": sorted(self.predicates), "producers": sorted(self.producers),
             "nullpoison": sorted(self.nullpoison), "reporters": sorted(self.reporters), "carriers": sorted(self.carriers),
             "emitters": self.emitters(), "producer_sites": self.producer_sites(), "sinks": self.sinks(), "flow": self.flow_sites,
-            "predicate_defs": self.predicate_defs(),
+            "predicate_defs": self.predicate_defs(), "functions": self.function_extents(),
         }
+
+
+def stable(man):
+    """the committed form of the manifest (tests/nocascade/sinks.json): identity only, nothing that moves when a line is added above (no line numbers, extents or byte
+    offsets), so `--check` fails when the SET of sinks, emitters or producers changes and not on every edit of a builder file"""
+    out = {k: man[k] for k in ("version", "files", "root", "aliases", "predicates", "producers", "nullpoison", "reporters", "carriers")}
+    out["emitters"] = sorted({(e["file"], e["function"], e["constructor"] or "?") for e in man["emitters"]})
+    out["emitters"] = [{"file": f, "function": fn, "constructor": c} for f, fn, c in out["emitters"]]
+    out["producer_sites"] = sorted({(p["file"], p["function"], p["kind"]) for p in man["producer_sites"]})
+    out["producer_sites"] = [{"file": f, "function": fn, "kind": k} for f, fn, k in out["producer_sites"]]
+    out["sinks"] = [{"id": x["id"], "file": x["file"], "function": x["function"], "text": x["text"],
+                     "atoms": [{"text": a["text"], "replace": a["replace"]} for a in x["atoms"]]} for x in man["sinks"]]
+    return out
 
 
 def load(root=None):
@@ -533,7 +611,7 @@ def main(argv):
     if "--check" in argv:
         path = argv[argv.index("--check") + 1]
         prog = load()
-        now = json.dumps(prog.manifest(), indent=1, sort_keys=True) + "\n"
+        now = json.dumps(stable(prog.manifest()), indent=1, sort_keys=True) + "\n"
         if not os.path.exists(path) or open(path).read() != now:
             print("poison_paths: %s is stale or missing: run python3 tools/poison_paths.py --json %s and commit the result" % (path, path))
             return 1
@@ -544,7 +622,7 @@ def main(argv):
     if "--json" in argv:
         out = argv[argv.index("--json") + 1]
         os.makedirs(os.path.dirname(out) or ".", exist_ok=True)
-        open(out, "w").write(json.dumps(man, indent=1, sort_keys=True) + "\n")
+        open(out, "w").write(json.dumps(stable(man), indent=1, sort_keys=True) + "\n")
     print("files %d: %s" % (len(man["files"]), " ".join(man["files"])))
     for k in ("aliases", "predicates", "producers", "nullpoison", "carriers"):  # reporters are in the manifest
         print("%-11s %s" % (k, " ".join(man[k])))
