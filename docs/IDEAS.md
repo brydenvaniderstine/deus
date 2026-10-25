@@ -302,6 +302,41 @@ Earliest milestone boundary: M3 (Wasm loader).
 Admission Test status: not applicable (runtime, not language).
 Status: candidate
 
+## 2026-10-25: Model-chosen resource policy (AI policy agent)
+
+```
+Title:                  Model-chosen resource policy: a model sets the kernel's policy dials; the kernel keeps every mechanism and enforces the bounds
+Date:                   2026-10-25
+Source:                 Bryden
+Problem it solves:      Fixed scheduler, memory and power policies are tuned for an average load; a model reading live telemetry can tune them to the actual load.
+Helps humans how / helps AI how:
+                        Humans: the machine adapts without hand-tuning, and every change carries a written reason, so behaviour is explainable after the fact.
+                        AI: telemetry and policy are a structured, bounded interface (read counters, propose settings, get an accept/reject with the reason), so an agent can operate the machine safely.
+Alternatives rejected:  A model in the kernel's fast path: inference takes ms to s, a timer tick is 1 ms; it would make scheduling slow and non-deterministic.
+                        A model inside the trusted core (ring 0 TCB): a model cannot be verified, and CLAUDE.md's TCB rule says one bug compromises everything.
+                        A model that writes kernel code or patches live: same TCB objection; out of scope.
+Earliest milestone boundary:
+                        Decision at M3 start (it resolves register entry R4: IDEAS "Deus runs no models" vs VISION's model behind an agent service). Build after M3, with the agent service.
+Admission Test status:  not applicable (not a language change)
+Status:                 candidate
+```
+
+**Shape (the hard lines).**
+- **Mechanism stays in the kernel.** Scheduling, allocation, I/O and power control run as today: fixed, verified code, every tick. The model never runs on those paths.
+- **Policy is a small set of named dials** (examples: task priorities, CPU shares, memory limits per sandbox, power and thermal limits), each with hard bounds the kernel defines and enforces.
+- **The loop is slow:** seconds to minutes. The model reads the telemetry rings (the region CLAUDE.md reserves at 0x4000000), proposes settings, and the kernel validates each one.
+- **An invalid or out-of-bounds proposal is rejected loudly and logged.** It is never clamped or applied silently (CLAUDE.md "No degradation": no silent fallbacks).
+- **Every applied change is logged with the model's stated reason** (observe, reason, choose, explain), so any behaviour can be traced to a decision.
+- **The machine runs correctly with no model at all.** The kernel's own default policy is complete. The model only tunes inside the bounds, so losing it changes performance, never correctness or safety.
+- **Where the model runs is open:** off-box over the network (simplest, nothing new in the TCB) or a local model as an isolated task (needs hardware and its own sandboxing story). This is the R4 decision.
+
+**Open questions for review.**
+1. Which dials, and which bounds for each? Each needs a test that an out-of-bounds value is rejected.
+2. Who may run the agent? The policy interface is a capability, connected to the IDEAS entry "Capabilities instead of ambient authority" (2026-10-15).
+3. The telemetry format: it becomes an interface others depend on, so it needs a version from day one.
+4. How is a policy change undone? (Connected to "Undoable agent actions", 2026-10-15.)
+5. The Spectre angle: timing telemetry exposed to the agent must not become a side channel (CLAUDE.md "Open risks").
+
 ## 2026-10-09: Considered and rejected ("Omni/AetherOS" brainstorm)
 
 One line of why each, so they aren't re-proposed:
