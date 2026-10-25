@@ -44,6 +44,16 @@ check("a skipped target that CI now runs must leave SKIPPED", any("remove it" in
 check("a workflow step for an undefined target fails", any("test-zz" in p for p in problems(tree(ci=CI + "  - run: make test-zz\n"))))
 check("a .PHONY entry without a rule fails", any("test-q" in p for p in problems(tree(mk=MK.replace("fuzz test-wx", "fuzz test-wx test-q")))))
 check("non-check targets (fuzz) need no step", problems(tree()) == [])
+# finding 4 (Linux review of batch A): only real `run:` steps count, outside YAML comments, and they must be able to fail the job
+check("finding 4: a commented-out step does not count (the reviewer's repro)", any("test-b" in p for p in problems(tree(ci=CI.replace("  - run: make test-b\n", "  # - run: echo skipped # make test-b\n")))))
+check("finding 4: a whole commented-out make line does not count", any("test-b" in p for p in problems(tree(ci=CI.replace("  - run: make test-b\n", "  # - run: make test-b\n")))))
+check("finding 4: a text that only mentions make does not count", any("test-b" in p for p in problems(tree(ci=CI.replace("make test-b", "echo make test-b")))))
+check("finding 4: continue-on-error: true fails the target", any("test-b" in p and "continue-on-error" in p for p in problems(tree(ci=CI.replace("  - run: make test-b\n", "  - run: make test-b\n    continue-on-error: true\n")))))
+check("finding 4: `|| true` fails the target", any("test-b" in p and "|| true" in p for p in problems(tree(ci=CI.replace("make test-b", "make test-b || true")))))
+check("finding 4: `if: false` fails the target", any("test-b" in p and "if: false" in p for p in problems(tree(ci=CI.replace("  - run: make test-b\n", "  - if: false\n    run: make test-b\n")))))
+check("finding 4: a block `run: |` with make lines counts", problems(tree(ci="steps:\n  - run: |\n      make test-a\n      make test-b && make audit-c\n      make check-d\n")) == [])
+check("finding 4: a trailing comment after the command is fine", problems(tree(ci=CI.replace("make test-b", "make test-b  # the b suite"))) == [])
+check("finding 4: continue-on-error: false is fine", problems(tree(ci=CI.replace("  - run: make test-b\n", "  - run: make test-b\n    continue-on-error: false\n"))) == [])
 check("the real tree passes", ct.check(os.path.dirname(HERE))[0] == [])
 
 print("ci-target tests: %d failed" % len(fails) if fails else "ci-target tests: all passed")
