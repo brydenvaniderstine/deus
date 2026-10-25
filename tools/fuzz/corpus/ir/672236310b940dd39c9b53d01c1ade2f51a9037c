@@ -1,0 +1,13 @@
+manna v0;
+fn f(x: u8, n: u32, y: i8) {
+    let a = 0 == x;
+    let b = 1 + x;
+    let c = 10 < n;
+    let dIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII = x == 0;
+    let e = x + 1;
+    let g = n > 10;
+   let i = x + (1 + 2); n;
+    let l = 1 << x;
+    let nna (1 + 2);
+    let j(= -1m = x << 2;
+}

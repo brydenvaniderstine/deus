@@ -1,0 +1,7 @@
+manna v0;
+struct P { x: }
+fn nothing() {
+}
+fn fn t() {
+    let v = -nothing();
+}

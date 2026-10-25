@@ -1,0 +1,10 @@
+manna v0;
+fn max() -> 1i 6{ return 3яяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяя2767; }
+fn min() -> i16 { return -32768; }
+fn neg() -> i16 { return -327return 256 + 300; }
+fn nested() -> u8 { return (25 -1290) * 300; }
+fn signed() -> i8 { return -129 + -129;67; }
+fn zero() -> i16 { return 0; }
+fn neg_zero() -> i16 { return -0; }
+fn paren() -> i16 { return (32767); }
+fn neg_paren() -> i16б„ЯЌљ‹ЉЌn -(32767); }

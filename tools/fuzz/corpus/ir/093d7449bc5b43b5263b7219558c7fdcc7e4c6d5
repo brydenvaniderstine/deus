@@ -1,0 +1,5 @@
+manna v0;
+fn f() {
+      lea v0;
+fn f() {
+  for let i: u32 = 0; i

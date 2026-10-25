@@ -1,0 +1,10 @@
+manna v0;
+fn outsidc() {
+    }
+fn B() {
+    a();
+}
+fn also_outside() {
+    outside();
+    b();
+}

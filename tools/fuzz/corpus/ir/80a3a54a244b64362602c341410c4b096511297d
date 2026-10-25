@@ -1,0 +1,4 @@
+manna v0;
+struct dfn { }
+struct TBadNamDfne2 { }
+struct bad_name { }

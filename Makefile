@@ -52,7 +52,7 @@ QEMU_FLAGS   := -machine q35 -m 8G -cpu qemu64,+apic,+pdpe1gb \
                 -serial file:serial.log -monitor stdio -no-reboot \
                 -d int,cpu_reset -D qemu.log
 
-.PHONY: all image run debug clean limine stage-esp test-wx test-lexer test-lexer-asan test-arena test-arena-asan test-ast test-ast-asan test-parser-state test-parser-state-asan test-parser-fixes test-parser-fixes-asan test-parser test-parser-asan test-determinism test-ir test-ir-asan test-ir-unit test-ir-unit-asan test-ir-ndebug test-ir-fix test-ir-fix-asan test-ir-error-codes audit-ir-poison test-e0261-exhaustive test-rename-property test-ir-memory-stress coverage fuzz fuzz-lexer fuzz-parser fuzz-ir fuzz-ir-ungated measure-height measure-ir-stack measure-ir-build-stack
+.PHONY: all image run debug clean limine stage-esp test-wx test-lexer test-lexer-asan test-arena test-arena-asan test-ast test-ast-asan test-parser-state test-parser-state-asan test-parser-fixes test-parser-fixes-asan test-parser test-parser-asan test-determinism test-ir test-ir-asan test-ir-unit test-ir-unit-asan test-ir-ndebug test-ir-fix test-ir-fix-asan test-ir-error-codes audit-ir-poison test-e0261-exhaustive test-rename-property test-ir-memory-stress test-ratchet test-ratchet-script ratchet-update coverage fuzz fuzz-lexer fuzz-parser fuzz-ir fuzz-ir-ungated measure-height measure-ir-stack measure-ir-build-stack
 
 all: $(KERNEL_ELF)
 
@@ -327,6 +327,18 @@ test-rename-property:
 	@python3 tools/rename_property_test.py $(IR_DUMP_DIR)/ir_dump 2500 0 > $(IR_DUMP_DIR)/rename_property.out || { cat $(IR_DUMP_DIR)/rename_property.out; exit 1; }
 	@cat $(IR_DUMP_DIR)/rename_property.out
 	@diff -u tests/rename_property.expected $(IR_DUMP_DIR)/rename_property.out || { echo "test-rename-property: the counts differ from tests/rename_property.expected (a generator that shrinks, or grows, must say so in that file)"; exit 1; }
+
+# Step 20a, the CI ratchet (tools/ratchet.py): test counts, per-file diagnostic counts and the expected-count numbers only go up, against
+# tests/ratchet.json as committed at $RATCHET_BASE (CI: the push's `before` commit; local default origin/main). `make ratchet-update` raises
+# the baseline after a deliberate addition; a decrease needs a RATCHET-WAIVER line in docs/DEGRADATION.md.
+test-ratchet:
+	@python3 tools/ratchet.py check
+
+test-ratchet-script:
+	@python3 tools/ratchet_test.py
+
+ratchet-update:
+	@python3 tools/ratchet.py update
 
 # Typed-IR step 19: the rename bookkeeping's memory is linear in the input (re-audit 3, finding 1): eight generated programs, up to 3 MB, with
 # many value uses of names that are not locals next to misnamed declarations; exact diagnostics, no E0201, a time bound (tools/ir_memory_stress.py).

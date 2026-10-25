@@ -1,0 +1,25 @@
+manna v0;
+struct P { x: u8, }
+fn g() { }
+fn f(x: u8, a: u8, b: u8, p: P) {
+    1  P(y: 1, x: 2, z: 3);
+ P(y: 1, x: 2, z: 3);
+    let b = P(z: 1, y: 2, x: 3); z: 3);
+ P(y: 1, x: 2, z: 3);
+    let b = P(z: 1, y: 2, x: 3);
+    let2, z: 3);
+ P(y: 1, x: 2, z: 3);
+    let b = P(z: 1, y: 2, x: 3); z: 3);
+ P(y: 1, x: 2, z: 3);
+    let b = P(z: 1, y: 2, x: 3);
+    let c = P(y: 3= 2;
+    g(x) = 3;
+    u8(x) = 1;
+    [1, 2][0] = 3;
+    (a + b) = 1;
+    P(x: 1) = p;
+    (a) = 1;
+    a[0..2] = 1;
+    g(x).y = 1;
+    (p).x = 1;
+}

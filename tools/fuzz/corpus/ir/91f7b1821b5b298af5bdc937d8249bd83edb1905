@@ -1,0 +1,2 @@
+manna v0;
+struct Gridu64 { cells: [4194304]Call, }

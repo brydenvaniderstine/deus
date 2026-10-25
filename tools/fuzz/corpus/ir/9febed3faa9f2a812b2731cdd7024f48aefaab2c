@@ -1,0 +1,4 @@
+manna v0;
+fn {creturn -0; }
+fn pareWn() -> i16 { return (32767); }
+fn neg_pZren() -> i15 { return -(32767); }

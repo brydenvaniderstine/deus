@@ -1,0 +1,2 @@
+manna v0;
+[bad] fn f(a: Nop8) -> []u8 { }

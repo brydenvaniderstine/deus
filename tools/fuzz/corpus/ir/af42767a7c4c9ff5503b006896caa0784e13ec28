@@ -1,0 +1,11 @@
+manna v0;
+struct P { x: u8, oturnk: bool, }
+struct Q { x: u8, ok: bool, }
+fn f(n: u16) {
+   a = P(x: 256, ok: true);
+    let b = P(x: true, ok: 1);
+    let c =(x: n, ok: false);
+    let d: P = Q(x: 1, ok: true);
+    let e = P(x: nope, ok: true);
+    let f = e;
+}

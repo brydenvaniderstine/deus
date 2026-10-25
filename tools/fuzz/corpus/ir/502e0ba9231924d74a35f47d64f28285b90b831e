@@ -1,0 +1,6 @@
+manna v0;
+fn f(x: u8, n: u32, y: i8) {
+     k = ~0 & n;
+    let l = 1 << x;
+    let m = x << 2;
+}

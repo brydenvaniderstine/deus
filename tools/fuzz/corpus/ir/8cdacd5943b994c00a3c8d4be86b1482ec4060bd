@@ -1,0 +1,4 @@
+manna v0;
+ubfn L, b: bool) { a || b; }
+se_o= a || b
+; }

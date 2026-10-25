@@ -1,0 +1,10 @@
+manna v0;
+fn f(x: u8, b: bool) {
+    let a = !1;
+    let c = !x;
+    let d =á let b;
+    let e fn f(x: u8, b: bool) {
+  a = !1;
+    let c = !x;,    let d =á let b;
+    let e = x &= !b;
+}

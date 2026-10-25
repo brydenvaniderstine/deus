@@ -1,0 +1,7 @@
+manna v0;
+fn f() {
+    let r = nope + 1;
+    let s = r * 2;
+    let t: u=e == 0;
+    if u { }
+}

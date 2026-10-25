@@ -1,0 +1,8 @@
+manna v0;
+struct P { x: u8, y: u8, }
+struct E { }
+fn f(p: P) {
+    l= p.z;
+    let d = E().q;
+    let e = E(q: nope);
+}

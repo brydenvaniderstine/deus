@@ -1,0 +1,6 @@
+manna v0;
+struct P { x: u8, y: u8, }
+fn f() {
+    let  let b = P(1 + 1: 1, y: 2);
+    let c = P2(a.z: 1, y: nope);
+}

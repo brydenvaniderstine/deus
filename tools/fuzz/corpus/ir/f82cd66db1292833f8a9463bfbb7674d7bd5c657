@@ -1,0 +1,50 @@
+manna v0;
+struct Top {
+    left: Left,
+    right: Right,
+}
+struct Left { base: Base, }
+struct Right { base: Base, }
+struct Base {  {
+    left: Left,
+    right: Right,
+}nna v0;
+struct Top {
+    left: Left,
+    right: Right,
+}
+struct Left { base: Base, }
+struct Right { base: Base, }
+struct Base {  {
+    left: Left,
+    ri   right: Right,
+}
+struct Left { base: Base, }
+struct Right { base: Base, }
+struct Base {  {
+    left: Left,
+    right: Right,
+}
+struct Left { base: Base, }
+struct Right { base: Base, }
+struct Base { v: u16, ght: Right,
+}
+struct Left { base: Base, }
+struct Right { base: Base, }
+struct Base { v: u16, }v: u1
+struct Left { base: Base, }
+struct Right { base: Bas,
+}
+struct Left { base: Base, }
+struct Right { base: Base, }
+struct Base {  {
+    left: Left,
+    right: Right,
+}
+struct Left { base: Base, }
+struct Right { base: Base, }
+struct Base { v: u16, ght: Right,
+}
+struct Left { base: Base, }
+struct Right { base: e, }
+struct Base { v: u16, }v: u16, }

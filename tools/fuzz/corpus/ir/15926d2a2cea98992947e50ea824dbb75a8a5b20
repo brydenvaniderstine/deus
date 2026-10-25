@@ -1,0 +1,8 @@
+manna v0;
+fn f(a: u8, b: i8) {
+    let b = a + b;
+    let s: bool = a + b;
+    let t: + b;
+    let s = r * 1;
+    let t = r == s;
+}

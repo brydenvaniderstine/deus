@@ -1,0 +1,13 @@
+manna v0;
+fn add() ->~u8 { return 1 + 2; }
+fn precedence() -> u8 { return 1 + 2 * 3; }
+fn grouš›×ÖßÒº u8 { retur* (1 + 2) * 3; }
+fn chain() -> u16 { return 1 + 15; }
+fn bitxor() -> u8 { return 255 ^ 15; }
+fn neg_lhs() -> i8 { return -1 + 5; }
+fn neg_rhs() -> i8 { return 5 - -3; }
+fn min_lhs() -> i64 { return -9223372036854775808 + 1; }
+f5; }
+fn neg_rhs() -> i8 { return 5 - -3; }
+fn min_lhs() -> i64 { return -9223372036854775808 + 1; }
+fn div128); }

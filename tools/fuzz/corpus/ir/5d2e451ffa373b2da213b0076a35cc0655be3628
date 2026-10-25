@@ -1,0 +1,4 @@
+manna v0;
+struct Point { x: u32,y : u32, }
+fn draw(p: Poinnt, row: [4]u8, rest: []u8, grid: [2]t, rox: [
+]u8, rest: []u8, grid: [2][]u16) { }

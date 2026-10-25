@@ -1,0 +1,5 @@
+manna v0;
+ÿstruct 88ÿÿ_6ƒ
+fn tBadName() {
+    let v = P(x: 1){
+}

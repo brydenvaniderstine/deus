@@ -192,12 +192,12 @@ Step numbers: step 19 is the third audit round's fixes (batch 2, 19d-19f, is don
 
 ### C7 - Generated-test counts are not asserted
 
-- **Status:** PARTLY CLOSED (step 19 batch 3)
-- **Reason:** `make test-e0261-exhaustive` and `make test-rename-property` printed their counts and asserted only 'no violation', so a generator that silently shrank passed. Done in 19g/19h: both compare their whole report with `tests/e0261_exhaustive.expected` and `tests/rename_property.expected`. Still open: the other generated suites (goldens, fix cases, repros, memory-stress cases) have no asserted count; step 20 adds the ratchet.
+- **Status:** CLOSED (2026-10-24, step 19 batch 3 and step 20a)
+- **Reason:** `make test-e0261-exhaustive` and `make test-rename-property` printed their counts and asserted only 'no violation', so a generator that silently shrank passed. Done in 19g/19h (both compare their whole report with `tests/e0261_exhaustive.expected` and `tests/rename_property.expected`) and in 20a (`make test-ratchet` ratchets the numbers in those files, the golden, fix-case and repro counts and the memory-stress case count).
 - **Promise:** `CLAUDE.md:160` "Rule: no behavior change without a test."
 - **Where it stands:** `Makefile:319` "@diff -u tests/e0261_exhaustive.expected"
 - **Owner:** Claude Code (work); Bryden (approval)
-- **Trigger:** Step 20 (every generated-test count is asserted in the Makefile/CI)
+- **Trigger:** Step 20 (every generated-test count is asserted in the Makefile/CI); done
 
 ### C8 - M2_PLAN: two error-policy sections still say 'pending review'
 
@@ -248,12 +248,12 @@ Step numbers: step 19 is the third audit round's fixes (batch 2, 19d-19f, is don
 
 ### V4 - The da9f01c rule (no golden may lose diagnostics) is a review rule
 
-- **Status:** OPEN
-- **Reason:** CI compares output to the golden and cannot see that the golden was edited to match.
+- **Status:** CLOSED (2026-10-24, step 20a)
+- **Reason:** CI compared output to the golden and could not see that the golden was edited to match. Now `make test-ratchet` compares the diagnostic count of every expected output under `tests/` with the baseline at the push's `before` commit, and every test count with its baseline; a decrease fails unless a `RATCHET-WAIVER` line names a register entry.
 - **Promise:** `CLAUDE.md:176` "A golden that loses diagnostics or AST nodes in a commit is STOP-tier"
-- **Where it stands:** `docs/REFINEMENT.md:75` "**No automated check enforces the rule:**"
+- **Where it stands:** `docs/REFINEMENT.md:75` "**Enforced since step 20a by `make test-ratchet` (`tools/ratchet.py`):**"
 - **Owner:** Claude Code (work); Bryden (approval)
-- **Trigger:** Step 20 (the CI ratchet: counts that never decrease, diagnostics per golden)
+- **Trigger:** Step 20 (the CI ratchet: counts that never decrease, diagnostics per golden); done in 20a
 
 ### V5 - The rc > 128 crash rule is not applied in `measure_expr_height.sh`
 

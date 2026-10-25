@@ -1,0 +1,5 @@
+manna v0;
+fn f() {
+    let Au :b8 = 1;
+    let Ab: u8 = 2;
+}

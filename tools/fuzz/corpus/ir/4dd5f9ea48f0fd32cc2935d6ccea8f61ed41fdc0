@@ -1,0 +1,6 @@
+manna v0;
+stru{
+}
+fn one(a: u8) -> u8 {
+      let v = one(a: 1);
+}

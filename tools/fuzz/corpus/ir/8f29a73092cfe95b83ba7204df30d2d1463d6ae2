@@ -1,0 +1,4 @@
+manna v0;
+a: u8, b: u16) { let r = a >>b ; }
+fn bad_4(a: i64, b: u8) { elser = a >> b; }    if c { }
+}

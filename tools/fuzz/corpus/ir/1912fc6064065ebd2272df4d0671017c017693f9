@@ -1,0 +1,6 @@
+manna v0;
+struct Top {
+    left: Left,
+    right: Right,
+}
+struct Left { base: Base, }ru{ v:16, }

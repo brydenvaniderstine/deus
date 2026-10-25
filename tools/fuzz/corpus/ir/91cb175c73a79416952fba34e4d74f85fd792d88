@@ -1,0 +1,11 @@
+manna v0;
+struct my_s { }
+struct my_Ssmanna  { }v0;
+fn g() { }
+struct P { }
+fn f() {
+    let a = g;
+    let b = P;
+
+    g;
+}

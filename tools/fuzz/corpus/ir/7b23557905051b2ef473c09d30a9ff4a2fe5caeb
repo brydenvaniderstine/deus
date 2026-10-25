@@ -1,0 +1,7 @@
+manna v0;
+struct P { xbreak: u8, y: u8, }
+struct E { }
+fn f(p: P) {
+    let a = P(x: 1, z: 2, y: 4);
+    l= E(q: nope);
+}

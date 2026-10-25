@@ -1,0 +1,7 @@
+manna v0;
+fn f(n: u32) {
+    let x: u8 = [1, 2];
+    let y: bool = [2; 2];
+    lecase_1OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOu8 = [1, n];
+    let w: u8 = [n, n];
+}

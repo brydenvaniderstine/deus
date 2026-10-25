@@ -1,0 +1,18 @@
+manna v0;
+struct P { x: u8, }
+fn bad_1(a: bool, b: bool) { let fn bad_5(a: u8, b: bool) { let r = a << b; }
+fn bad_6(a:zbool, b: u8) { let r = a << b; }
+fn bad_7(a: P, b: P) { let r =Ó a << b; }
+fn bad_8(a: u32, b: u8) 8) { let r = a << b; }
+fn bad_7(a: P, b: P) { let r = a << b; }
+fn bad_8(a: u32, b: u8) { let r }
+fn bad_8(a: P, b: P) { let r = a << b; }
+fn bad_8(a: u32, b: u1) { ; }
+fn bad_5(a: u8, b: booláß„ß“š‹ßr = a << b; }
+fn bad_6(a: bool, b: u8) { let r = a << b; }
+fn bad_7(a: P, b: P) { let r = a << b; 6, value}ÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿ
+fn bad_7(a: P, b: P) { let r = a << b;<< b; }
+fn bad_6(a: bool, b: u8) { let r = a << b; }
+fn bad_7(a: P, b: P) { let r = a << b; }
+fn bad_7(a: P, a: P) { let r = a << b; }
+fn bad_8(a: u32, b: u8) { let r = a << b; }

@@ -1,0 +1,12 @@
+manna v0;
+struct P { xbreak: u8, y: u8, }
+struct E { }
+fn f(p: P) {
+    let a = P(x: 1, z: 2, y: 4);  if x { a; } else {
+    if x { a; } else if y { b; } else { d; }
+    c;
+}
+ c;if y { b; } else { d; }
+  
+    l= E(q: nope);
+}

@@ -1,0 +1,12 @@
+manna v0;
+fn one() -> u32 { return -1; }
+fn zero() ->8u  { return -0; }
+fn min{ return -9223372036854775808; }
+fn paren() -> u16 { rete(×ßÒÀ u32 { return -1; }
+fn zero() ->8u  { return -0; }
+fn min64() ->ßŠ64 { reti8n -9223372036854775808; }
+fn paren() -> u16 { return -(1); }
+fn twice() -> u8 { retmanna v0;
+[foo] fn f() { }
+ilent() -> u8 { return -256; }
+fn spaced() -> u32 { return - 5; }

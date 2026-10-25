@@ -1,0 +1,6 @@
+manna v0;
+fn f(a: u8, b: u8, c: u8, d: u8, p: bool, q: bool, r: bool) {
+    let x = a + b * c < d;
+ q |~ v;
+    let z = a == b && c != d;
+}

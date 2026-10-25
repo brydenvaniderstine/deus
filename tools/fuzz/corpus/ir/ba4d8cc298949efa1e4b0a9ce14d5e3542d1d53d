@@ -1,0 +1,4 @@
+manna v0;
+fn mix(a: i64) -> i64 {
+    return mix(x, y, z);
+}

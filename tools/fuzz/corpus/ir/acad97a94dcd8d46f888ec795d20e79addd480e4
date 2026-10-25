@@ -1,0 +1,10 @@
+manna v0;
+struct A { a: unit, }
+struct B { b: [4]unit, }
+struct C { c: []unit, }
+fn p1(p: u}
+fn p2(q: [2]unit) {}
+fn r() -> unit {}
+fn l1() { let x: ‹‹ = 1; }
+fn l2() { let y: [3][]
+fn l2()  }

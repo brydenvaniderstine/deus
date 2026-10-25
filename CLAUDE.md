@@ -30,7 +30,7 @@ Progress never buys a weaker product. This rule outranks every approval tier bel
 - Nothing is stubbed, removed, withheld, weakened, or labelled "accepted", "documented exception", "known issue", "stub" or "planned, not built" in order to make progress. Each such item needs Bryden's explicit OK and an entry in `docs/DEGRADATION.md` with its reason, the promise it breaks (a `file:line` quote), an owner and a hard revisit trigger (a tag or milestone).
 - No tag or milestone closes while any register entry's trigger has passed.
 - A milestone closes only on its full spec. A stub left at close is a register entry Bryden approved.
-- A test, golden, fix case, repro or diagnostic count never decreases unless the register lists why. (Enforced by CI from step 20; by review until then.)
+- A test, golden, fix case, repro or diagnostic count never decreases unless the register lists why. (Enforced by CI since step 20a: `make test-ratchet`, `tools/ratchet.py`; a decrease needs a `RATCHET-WAIVER` line in the register.)
 - Every retro rule lives in a check, or sits in the register as "unenforced" with a trigger.
 - Silent fallbacks are banned: a self-check failure is a hard failure in tests, CI and fuzzing, and a loud internal error for users, never a silent drop.
 - The batch cap (at most 3 steps, then STOP; see "Working conventions") is enforced.

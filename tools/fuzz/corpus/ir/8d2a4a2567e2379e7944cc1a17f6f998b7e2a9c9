@@ -1,0 +1,10 @@
+manna v0;
+fn nstothing() {
+}
+fn f(a: [2]u8, n: u8) {
+    let x = [nothing()];
+    let y = [non, thing()];
+    let z = [nothing(); 2];
+ hing()];
+    let t: [2]u8 = [nothing(), 1];
+}

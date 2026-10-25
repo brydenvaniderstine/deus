@@ -1,0 +1,13 @@
+manna v0;
+fn outside() {
+    a();
+}
+fn a() {
+    b();
+}
+fn B() {
+    a();
+}
+fn also_outside() {   outside();
+    b();
+}

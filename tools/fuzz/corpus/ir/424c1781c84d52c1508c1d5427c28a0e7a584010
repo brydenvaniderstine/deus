@@ -1,0 +1,7 @@
+manna v0;
+ætruct P{  xturn a;
+}
+fn t() {
+    let a: u8 = 1;
+ a[0];
+}

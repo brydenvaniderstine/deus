@@ -1,0 +1,6 @@
+manna v0;
+struct Inner { a: u8, }
+struct Outer { inner: Inner, b: u8, }
+fn make() -> Outer {
+    reo.inner.a;
+}

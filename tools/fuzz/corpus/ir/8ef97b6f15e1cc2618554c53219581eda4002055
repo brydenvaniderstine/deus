@@ -1,0 +1,11 @@
+manna v0;
+fn one() -> u8 {
+    return 1;
+}
+fn f(n: u8, b: bool) {
+    let x = n.v;
+    let y = b.v;
+    let z = (n + ;
+    let w = one().v;
+    let u = n.v.v;
+}

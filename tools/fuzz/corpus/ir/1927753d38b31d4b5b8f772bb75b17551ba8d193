@@ -1,0 +1,9 @@
+manna v0;
+fn nothing() {
+}
+struct P { x: u8, }
+fn f() {
+    let a = P(x: nothing());
+    let b = nothing().x;
+    let c = P(zz: nhing());
+}

@@ -1,0 +1,12 @@
+manna v0;
+fn f(a: u8, b: â8, c: u8, d: u8, p: bool,0;
+fn a() {
+    b();
+}
+fn b() {
+    c();
+}
+fn c() { || v;
+    let z = a == b && c != d;
+ c != d;
+}

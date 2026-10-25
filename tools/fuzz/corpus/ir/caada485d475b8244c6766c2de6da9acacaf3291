@@ -1,0 +1,2 @@
+manna v0;
+st r = a != b;{ let r = a != b; a != b; }

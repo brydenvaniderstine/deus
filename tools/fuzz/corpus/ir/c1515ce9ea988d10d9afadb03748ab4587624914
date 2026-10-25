@@ -1,0 +1,25 @@
+manna v0;
+fn g(x: u8) -> u8 {
+    return x;
+}
+fn f(c: bool) {
+    let a0: u8 = true;
+    l0: u8 = true;
+    let a11: u8 = true;
+    let a12: u8 = true;
+    let a13: u8 = true;
+    let a14: u8 = true;
+    let a15: u8 = true;
+    let a16: u8 = true;
+    let a17: u8 = true;
+    while c {
+        if c {
+       1);
+        } else {
+            (g(nope2)) = 4;
+        }
+    }
+    let z1: u8 = true;
+    let z2: u8 = true;
+    let z3: u8 = true;
+}

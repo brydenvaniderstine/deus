@@ -1,0 +1,8 @@
+manna v0;
+struct P { x: u8, y: u8, }
+fn f() {
+    bbbbbbibbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbP(x: 1, 2);
+    let c = P(1, y: 2);
+   n=  P(dope, y: nope2);
+    let e = a;
+}

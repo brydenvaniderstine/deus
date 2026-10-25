@@ -1,0 +1,5 @@
+manna v0;
+stru -> u8 a;
+}
+fn t() {
+    let 

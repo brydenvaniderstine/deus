@@ -1,0 +1,5 @@
+manna v0;
+fn f(a: [][]u8) { a v0;
+fn f(a: [][]u4) { };
+fn f(a: [][]u8) { a v0;
+fn f(a: [][]u4) { }

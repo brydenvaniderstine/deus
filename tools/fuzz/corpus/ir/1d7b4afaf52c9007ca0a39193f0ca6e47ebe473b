@@ -1,0 +1,11 @@
+manna v0;
+þÿÿÿstruct P { x: u8, y: u8, }
+fn f() {
+    let a = P(x: 1,P(x: 0, y: 2, x, x: 2, y: 3);
+    let b = P(x: 1, y: 2, x: : 3);
+ = P(x: 1, y: 2,  let b = P(x: 1, y: 2, x: : 3);
+ =;
+    let d = P(x: 0x: : 3);
+    let c = P(x: 1, x: nope, y: 2);
+    let d = P(x: 0, x: *);
+}

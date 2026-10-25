@@ -1,0 +1,10 @@
+manna v0;
+fn f(Bad: u8) -> u8 { a = Bad;
+   
+    let a = Bad;
+    let b = Bad + a;
+    return Bad + b + Bad;
+}
+f {
+  
+}

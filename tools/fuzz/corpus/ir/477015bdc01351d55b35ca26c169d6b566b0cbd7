@@ -1,0 +1,11 @@
+manna v0;
+struct P { x: u8, }
+fn bad_1(a: bool
+fn bad_1(a: bool, b: bool) { let r = a >> b;et r = a >> b;urn 0; }
+fn paren() -> u32 { return (4294967295ad_>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>8(a: u); 32, b: u8) { let r >> b; }
+fn bad_7(a: P, b: P) { let r = a >> b; }
+fn bmanna v0;
+fn max() -> u32 { ret295; }
+fn zero() -> u32 { return 0; }
+fn paren() -> u32 { return (4294967295ad_>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>8(a: u); 32, b: u8) { let r = a} 
+>

@@ -1,0 +1,2 @@
+manna v0;
+fn add(a: u32, b:u32) { }

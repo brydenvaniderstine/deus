@@ -1,0 +1,5 @@
+manna v0;
+stru}
+fn t() {
+    let v = 1 == true;
+}

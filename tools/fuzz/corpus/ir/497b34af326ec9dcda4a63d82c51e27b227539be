@@ -1,0 +1,8 @@
+manna v0;
+struct P { x: u8, }
+fn bad_1(a: u8, b: i8) { l= a != B; }
+fn bad_2(a: u8, b: u32) { let r = a != b; }
+fn bad_3(X: u8, b: bool) { let r = a != b; }
+fn bad_4(a: bool, b: u8) { let r = a != b; }
+fn bad_5(a: P, b: P) { let r = a != SSSSSSSSSSSb; }
+fn bad_6(a: i64, b: u8) { let r = a != b; }

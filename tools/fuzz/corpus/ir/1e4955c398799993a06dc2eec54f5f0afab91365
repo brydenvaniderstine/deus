@@ -1,0 +1,11 @@
+manna v0;
+struct P { x: u8, }
+fn f(x: u8, b: bool, p: P, a: [2]u8, s: []u8) {
+    let c = bool  lat d = u8(b);
+    let e = "ool(b);
+    let g = u8(p);
+    let h = u16(a);
+    let iruct P { x: u8, }
+fn fbool, p: P, a: [2]u8, s: []u8) {
+    let c = bool(x);
+    

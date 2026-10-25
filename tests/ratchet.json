@@ -1,0 +1,3983 @@
+{
+ "diags": {
+  "tests/audit_repros/01_oversized_let_annotation_with_a_literal.fixed.out": [
+   1,
+   "02e3286f91423f7a"
+  ],
+  "tests/audit_repros/01_oversized_let_annotation_with_a_literal.out": [
+   1,
+   "02e3286f91423f7a"
+  ],
+  "tests/audit_repros/02_assign_target_calls.fixed.out": [
+   4,
+   "254b67bf87802cbe"
+  ],
+  "tests/audit_repros/02_assign_target_calls.out": [
+   4,
+   "254b67bf87802cbe"
+  ],
+  "tests/audit_repros/03_len_after_a_closed_scope_of_a_local_len.fixed.out": [
+   2,
+   "a6f161119a006056"
+  ],
+  "tests/audit_repros/03_len_after_a_closed_scope_of_a_local_len.out": [
+   2,
+   "a6f161119a006056"
+  ],
+  "tests/audit_repros/04_e0261_fix_respects_the_expected_type.fixed.out": [
+   6,
+   "0915dab20847c2b6"
+  ],
+  "tests/audit_repros/04_e0261_fix_respects_the_expected_type.out": [
+   6,
+   "0915dab20847c2b6"
+  ],
+  "tests/audit_repros/04b_e0261_fix_widens_to_the_expected_type.fixed.out": [
+   0,
+   "6d6cd16d9707e460"
+  ],
+  "tests/audit_repros/04b_e0261_fix_widens_to_the_expected_type.out": [
+   6,
+   "56b0b6487e579b65"
+  ],
+  "tests/audit_repros/05_e0261_fix_on_a_511_operation_chain.fixed.out": [
+   1,
+   "3a3f7ad02d2b2697"
+  ],
+  "tests/audit_repros/05_e0261_fix_on_a_511_operation_chain.out": [
+   1,
+   "3a3f7ad02d2b2697"
+  ],
+  "tests/audit_repros/06_duplicate_let_rename.fixed.out": [
+   1,
+   "a1d0de611ffaa920"
+  ],
+  "tests/audit_repros/06_duplicate_let_rename.out": [
+   2,
+   "e5f7a1e4f773521b"
+  ],
+  "tests/audit_repros/07_sibling_loops_share_a_fix_target.fixed.out": [
+   0,
+   "9ea85150b250db15"
+  ],
+  "tests/audit_repros/07_sibling_loops_share_a_fix_target.out": [
+   3,
+   "6f2881497d117eed"
+  ],
+  "tests/audit_repros/08a_function_used_as_a_value.fixed.out": [
+   1,
+   "839d5f8cac25b58d"
+  ],
+  "tests/audit_repros/08a_function_used_as_a_value.out": [
+   2,
+   "a1d24a96142622b5"
+  ],
+  "tests/audit_repros/08b_field_given_twice.fixed.out": [
+   1,
+   "64d85ceb1556b8d7"
+  ],
+  "tests/audit_repros/08b_field_given_twice.out": [
+   2,
+   "6a144aba6047bcc7"
+  ],
+  "tests/audit_repros/09_size_overflow_in_the_outer_multiplication.fixed.out": [
+   1,
+   "02e3286f91423f7a"
+  ],
+  "tests/audit_repros/09_size_overflow_in_the_outer_multiplication.out": [
+   1,
+   "02e3286f91423f7a"
+  ],
+  "tests/audit_repros/R2_F1a_e0261_expected_type_lost_through_call_arg.fixed.out": [
+   1,
+   "d4397069668811fa"
+  ],
+  "tests/audit_repros/R2_F1a_e0261_expected_type_lost_through_call_arg.out": [
+   1,
+   "d4397069668811fa"
+  ],
+  "tests/audit_repros/R2_F1b_e0261_lossy_fix_in_condition.fixed.out": [
+   1,
+   "cdfc5611841157b2"
+  ],
+  "tests/audit_repros/R2_F1b_e0261_lossy_fix_in_condition.out": [
+   1,
+   "cdfc5611841157b2"
+  ],
+  "tests/audit_repros/R2_F1c_e0261_narrowing_shift_count.fixed.out": [
+   1,
+   "dee79b26071348af"
+  ],
+  "tests/audit_repros/R2_F1c_e0261_narrowing_shift_count.out": [
+   1,
+   "dee79b26071348af"
+  ],
+  "tests/audit_repros/R2_F1d_e0261_expected_type_lost_through_construction.fixed.out": [
+   1,
+   "d4397069668811fa"
+  ],
+  "tests/audit_repros/R2_F1d_e0261_expected_type_lost_through_construction.out": [
+   1,
+   "d4397069668811fa"
+  ],
+  "tests/audit_repros/R2_F1e_e0261_expected_type_lost_through_array_element.fixed.out": [
+   1,
+   "b91da7519f052865"
+  ],
+  "tests/audit_repros/R2_F1e_e0261_expected_type_lost_through_array_element.out": [
+   1,
+   "b91da7519f052865"
+  ],
+  "tests/audit_repros/R2_F2a_rename_deletes_parens_of_bad_target.fixed.out": [
+   1,
+   "5b6c65c6a3ad864f"
+  ],
+  "tests/audit_repros/R2_F2a_rename_deletes_parens_of_bad_target.out": [
+   2,
+   "e966cd167036ca0e"
+  ],
+  "tests/audit_repros/R2_F2b_rename_deletes_parens_field_and_index_target.fixed.out": [
+   2,
+   "3987da9dfb76e482"
+  ],
+  "tests/audit_repros/R2_F2b_rename_deletes_parens_field_and_index_target.out": [
+   3,
+   "dd835fe7e458c7f0"
+  ],
+  "tests/audit_repros/R2_F3a_fn_rename_moves_e0231_use_onto_local.fixed.out": [
+   2,
+   "6d75a87d5826a113"
+  ],
+  "tests/audit_repros/R2_F3a_fn_rename_moves_e0231_use_onto_local.out": [
+   2,
+   "6d75a87d5826a113"
+  ],
+  "tests/audit_repros/R2_F3b_local_rename_onto_function_name.fixed.out": [
+   2,
+   "a01b427abdd1ac54"
+  ],
+  "tests/audit_repros/R2_F3b_local_rename_onto_function_name.out": [
+   2,
+   "a01b427abdd1ac54"
+  ],
+  "tests/audit_repros/R2_F4a_nested_operand_fix_not_clean.fixed.out": [
+   1,
+   "6c1d2c38cd9668a6"
+  ],
+  "tests/audit_repros/R2_F4a_nested_operand_fix_not_clean.out": [
+   1,
+   "6c1d2c38cd9668a6"
+  ],
+  "tests/audit_repros/R2_F4b_unary_operand_fix_not_clean.fixed.out": [
+   1,
+   "ad40db877b4e6a28"
+  ],
+  "tests/audit_repros/R2_F4b_unary_operand_fix_not_clean.out": [
+   1,
+   "ad40db877b4e6a28"
+  ],
+  "tests/audit_repros/R2_d1_sibling_rename_captures_unknown_name.fixed.out": [
+   2,
+   "e110a41a0700cda7"
+  ],
+  "tests/audit_repros/R2_d1_sibling_rename_captures_unknown_name.out": [
+   2,
+   "e110a41a0700cda7"
+  ],
+  "tests/audit_repros/R2_f1_mute_cap.fixed.out": [
+   21,
+   "72c61b233221ddee"
+  ],
+  "tests/audit_repros/R2_f1_mute_cap.out": [
+   21,
+   "72c61b233221ddee"
+  ],
+  "tests/audit_repros/R2_f2_mute_branches.fixed.out": [
+   6,
+   "21d99add9319fb7a"
+  ],
+  "tests/audit_repros/R2_f2_mute_branches.out": [
+   6,
+   "21d99add9319fb7a"
+  ],
+  "tests/audit_repros/R2_g1_oversized_let.fixed.out": [
+   4,
+   "297304cf1913ac35"
+  ],
+  "tests/audit_repros/R2_g1_oversized_let.out": [
+   4,
+   "297304cf1913ac35"
+  ],
+  "tests/audit_repros/R3_cap0_e0261_fix_withdrawn_by_its_parent_below_the_cap.fixed.out": [
+   2,
+   "cf4fc65c5f0a996d"
+  ],
+  "tests/audit_repros/R3_cap0_e0261_fix_withdrawn_by_its_parent_below_the_cap.out": [
+   2,
+   "cf4fc65c5f0a996d"
+  ],
+  "tests/audit_repros/R3_cap1_e0261_fix_kept_at_the_error_cap.fixed.out": [
+   21,
+   "f7c88171fcb73912"
+  ],
+  "tests/audit_repros/R3_cap1_e0261_fix_kept_at_the_error_cap.out": [
+   21,
+   "f7c88171fcb73912"
+  ],
+  "tests/audit_repros/R3_g1_e0261_fix_beside_a_literal_that_does_not_fit.fixed.out": [
+   1,
+   "4bcceb5f61d5585c"
+  ],
+  "tests/audit_repros/R3_g1_e0261_fix_beside_a_literal_that_does_not_fit.out": [
+   1,
+   "4bcceb5f61d5585c"
+  ],
+  "tests/audit_repros/R3_g2_e0261_fix_beside_a_negated_literal_on_an_unsigned_type.fixed.out": [
+   1,
+   "051f3cf7a3f8a835"
+  ],
+  "tests/audit_repros/R3_g2_e0261_fix_beside_a_negated_literal_on_an_unsigned_type.out": [
+   1,
+   "051f3cf7a3f8a835"
+  ],
+  "tests/audit_repros/R3_k1_e0261_insert_glued_to_a_keyword.fixed.out": [
+   0,
+   "e2217bd45fd9aea7"
+  ],
+  "tests/audit_repros/R3_k1_e0261_insert_glued_to_a_keyword.out": [
+   1,
+   "45ee83ea27cf8214"
+  ],
+  "tests/audit_repros/R3_k2_e0261_insert_glued_to_a_keyword.fixed.out": [
+   0,
+   "008328583e725a73"
+  ],
+  "tests/audit_repros/R3_k2_e0261_insert_glued_to_a_keyword.out": [
+   1,
+   "b04a2c66a7436ad1"
+  ],
+  "tests/audit_repros/R3_k3_e0261_insert_glued_to_a_keyword.fixed.out": [
+   0,
+   "a076afccfe75a6be"
+  ],
+  "tests/audit_repros/R3_k3_e0261_insert_glued_to_a_keyword.out": [
+   1,
+   "bc5b9df07297c61b"
+  ],
+  "tests/audit_repros/R3_k4_e0261_insert_glued_to_a_keyword.fixed.out": [
+   0,
+   "ba583e462f721a90"
+  ],
+  "tests/audit_repros/R3_k4_e0261_insert_glued_to_a_keyword.out": [
+   1,
+   "fd6f60e636aa789a"
+  ],
+  "tests/audit_repros/R3_mem_min.fixed.out": [
+   1,
+   "5b6c65c6a3ad864f"
+  ],
+  "tests/audit_repros/R3_mem_min.out": [
+   3,
+   "f6cc4d05a9ec8bac"
+  ],
+  "tests/audit_repros/R3_mem_min_snake_control.fixed.out": [
+   1,
+   "5b6c65c6a3ad864f"
+  ],
+  "tests/audit_repros/R3_mem_min_snake_control.out": [
+   1,
+   "5b6c65c6a3ad864f"
+  ],
+  "tests/audit_repros/R3_mu1_e0261_array_element_in_an_unannotated_let.fixed.out": [
+   1,
+   "c0fbca2a6cef4605"
+  ],
+  "tests/audit_repros/R3_mu1_e0261_array_element_in_an_unannotated_let.out": [
+   1,
+   "c0fbca2a6cef4605"
+  ],
+  "tests/audit_repros/R3_mu2_e0261_len_argument.fixed.out": [
+   1,
+   "5f6ca96d6c5751c9"
+  ],
+  "tests/audit_repros/R3_mu2_e0261_len_argument.out": [
+   1,
+   "5f6ca96d6c5751c9"
+  ],
+  "tests/audit_repros/R3_mu3_e0261_field_base.fixed.out": [
+   1,
+   "051f3cf7a3f8a835"
+  ],
+  "tests/audit_repros/R3_mu3_e0261_field_base.out": [
+   1,
+   "051f3cf7a3f8a835"
+  ],
+  "tests/audit_repros/R3_mu4_e0261_under_logical_not.fixed.out": [
+   1,
+   "614ac72cfdc33821"
+  ],
+  "tests/audit_repros/R3_mu4_e0261_under_logical_not.out": [
+   1,
+   "614ac72cfdc33821"
+  ],
+  "tests/audit_repros/R3_r1_rename_of_a_function_written_in_a_type_position.fixed.out": [
+   1,
+   "180e4e09399071c4"
+  ],
+  "tests/audit_repros/R3_r1_rename_of_a_function_written_in_a_type_position.out": [
+   2,
+   "30f3432a6e655143"
+  ],
+  "tests/audit_repros/R3_r2_rename_of_a_field_written_in_a_positional_construction.fixed.out": [
+   1,
+   "68c10f4d30baedb8"
+  ],
+  "tests/audit_repros/R3_r2_rename_of_a_field_written_in_a_positional_construction.out": [
+   2,
+   "36133dbcf64d0eff"
+  ],
+  "tests/audit_repros/R3_r3_rename_refused_when_a_positional_construction_writes_the_target.fixed.out": [
+   2,
+   "36133dbcf64d0eff"
+  ],
+  "tests/audit_repros/R3_r3_rename_refused_when_a_positional_construction_writes_the_target.out": [
+   2,
+   "36133dbcf64d0eff"
+  ],
+  "tests/audit_repros/R3_r4_rename_refused_when_a_named_argument_writes_the_target.fixed.out": [
+   2,
+   "24eae1b6d7877354"
+  ],
+  "tests/audit_repros/R3_r4_rename_refused_when_a_named_argument_writes_the_target.out": [
+   2,
+   "24eae1b6d7877354"
+  ],
+  "tests/audit_repros/R3_t1_e0261_unannotated_let_local_used_later.fixed.out": [
+   1,
+   "85dcac770bbfa818"
+  ],
+  "tests/audit_repros/R3_t1_e0261_unannotated_let_local_used_later.out": [
+   1,
+   "85dcac770bbfa818"
+  ],
+  "tests/audit_repros/R3_t2_e0261_unannotated_for_let_init.fixed.out": [
+   1,
+   "3d1e7f18fb20610b"
+  ],
+  "tests/audit_repros/R3_t2_e0261_unannotated_for_let_init.out": [
+   1,
+   "3d1e7f18fb20610b"
+  ],
+  "tests/audit_repros/R3_t3_e0261_unannotated_let_used_as_an_argument.fixed.out": [
+   1,
+   "84a5bc08aef6ce1e"
+  ],
+  "tests/audit_repros/R3_t3_e0261_unannotated_let_used_as_an_argument.out": [
+   1,
+   "84a5bc08aef6ce1e"
+  ],
+  "tests/ir/array_is_a_value_assignment_copy.ir": [
+   0,
+   "118e9ee76b2702bf"
+  ],
+  "tests/ir/array_is_a_value_let_and_return_copy.ir": [
+   0,
+   "54d04bc3e24d9f1a"
+  ],
+  "tests/ir/array_literal_against_a_failed_annotation_is_silent.ir": [
+   2,
+   "76f87f9565a24bcf"
+  ],
+  "tests/ir/array_literal_as_argument_and_return_value.ir": [
+   0,
+   "c7e36ac5d3910863"
+  ],
+  "tests/ir/array_literal_basic.ir": [
+   0,
+   "8764ba00457d29ea"
+  ],
+  "tests/ir/array_literal_needs_an_element_type.ir": [
+   4,
+   "bad3783a91ea1f7e"
+  ],
+  "tests/ir/array_literal_size_limit.ir": [
+   3,
+   "b1c5db4126035e9c"
+  ],
+  "tests/ir/array_literal_size_limit_bool_elements.ir": [
+   1,
+   "1b3b714640f6b4d8"
+  ],
+  "tests/ir/array_literal_size_limit_slices_and_structs.ir": [
+   2,
+   "6b40e1ed8fe65979"
+  ],
+  "tests/ir/array_literal_where_a_non_array_is_expected.ir": [
+   4,
+   "22720c8176732955"
+  ],
+  "tests/ir/array_type_mismatches.ir": [
+   9,
+   "227bb3ebef2860d5"
+  ],
+  "tests/ir/array_unit_values_are_not_values.ir": [
+   7,
+   "49dee2e96e925f05"
+  ],
+  "tests/ir/assign_target_calls_count_toward_recursion.ir": [
+   4,
+   "254b67bf87802cbe"
+  ],
+  "tests/ir/assign_target_is_silent_but_later_errors_still_print.ir": [
+   5,
+   "ebfc5c8132e6468a"
+  ],
+  "tests/ir/assign_target_muted_in_a_for_step_and_both_branches_later_errors_print.ir": [
+   6,
+   "f4934fb7907f3098"
+  ],
+  "tests/ir/assign_target_muted_in_loops_and_branches_with_the_error_cap_reached.ir": [
+   21,
+   "72c61b233221ddee"
+  ],
+  "tests/ir/attribute_camel_case.ir": [
+   1,
+   "bcf7a64718e9838f"
+  ],
+  "tests/ir/attribute_duplicate.ir": [
+   1,
+   "0ce20732519c8893"
+  ],
+  "tests/ir/attribute_kernel_hook.ir": [
+   0,
+   "37917e4344656520"
+  ],
+  "tests/ir/attribute_kernel_hook_with_params.ir": [
+   0,
+   "902286b4e5e9a89f"
+  ],
+  "tests/ir/attribute_mixed.ir": [
+   2,
+   "b6a676725ebe900f"
+  ],
+  "tests/ir/attribute_triple.ir": [
+   2,
+   "35fea08acb5a6063"
+  ],
+  "tests/ir/attribute_unknown.ir": [
+   1,
+   "0d2c710737937dde"
+  ],
+  "tests/ir/attribute_unknown_twice.ir": [
+   2,
+   "79783dff70a59c4e"
+  ],
+  "tests/ir/attribute_wrong_case.ir": [
+   1,
+   "d1c3270f095e6eeb"
+  ],
+  "tests/ir/body_assign_basic.ir": [
+   0,
+   "d595f19884286c4e"
+  ],
+  "tests/ir/body_assign_mismatch.ir": [
+   4,
+   "1aac888217716355"
+  ],
+  "tests/ir/body_assign_not_an_lvalue.ir": [
+   10,
+   "394c7670a0913868"
+  ],
+  "tests/ir/body_assign_to_function_or_struct_name.ir": [
+   2,
+   "7b488f41fcc7f28b"
+  ],
+  "tests/ir/body_assign_unknown_target.ir": [
+   3,
+   "11e21cca72f9f89d"
+  ],
+  "tests/ir/body_bad_annotation_is_one_error.ir": [
+   2,
+   "0ca39274eec409a1"
+  ],
+  "tests/ir/body_cannot_infer_a_literal.ir": [
+   4,
+   "a821eb0bbf18f180"
+  ],
+  "tests/ir/body_cannot_infer_is_one_error.ir": [
+   1,
+   "a2bbc89ff604e947"
+  ],
+  "tests/ir/body_condition_may_be_a_bool_literal.ir": [
+   0,
+   "9cbf1f6abc314bec"
+  ],
+  "tests/ir/body_condition_must_be_bool.ir": [
+   3,
+   "9a48d74f02810349"
+  ],
+  "tests/ir/body_function_and_struct_names_are_not_values.ir": [
+   3,
+   "71463e53d805c71a"
+  ],
+  "tests/ir/body_if_else_chain_reuses_a_name.ir": [
+   0,
+   "41c23eb73b77d341"
+  ],
+  "tests/ir/body_let_basic.ir": [
+   0,
+   "bcf5e85e46203158"
+  ],
+  "tests/ir/body_let_infers_from_a_name.ir": [
+   0,
+   "763c36d0101d2896"
+  ],
+  "tests/ir/body_let_mismatch.ir": [
+   4,
+   "8392cfcf1d5f48ed"
+  ],
+  "tests/ir/body_local_may_share_a_function_name.ir": [
+   0,
+   "f40c3890e3138a73"
+  ],
+  "tests/ir/body_name_is_gone_after_its_block.ir": [
+   1,
+   "3c65a18403b31e62"
+  ],
+  "tests/ir/body_not_visible_in_own_initializer.ir": [
+   1,
+   "553febacfe9ad6cc"
+  ],
+  "tests/ir/body_outer_names_are_visible_inside_blocks.ir": [
+   0,
+   "096cf942f383331e"
+  ],
+  "tests/ir/body_redeclare_in_inner_block.ir": [
+   1,
+   "a413c45322f10497"
+  ],
+  "tests/ir/body_redeclare_keeps_the_first_binding.ir": [
+   1,
+   "7c8ad012ba874b03"
+  ],
+  "tests/ir/body_redeclare_parameter.ir": [
+   1,
+   "7c7b220bc566232d"
+  ],
+  "tests/ir/body_redeclare_parameter_in_inner_block.ir": [
+   1,
+   "e7a49e5ed7fae37c"
+  ],
+  "tests/ir/body_redeclare_same_block.ir": [
+   1,
+   "7c8ad012ba874b03"
+  ],
+  "tests/ir/body_redeclare_still_checks_the_initializer.ir": [
+   2,
+   "c095ca125f446175"
+  ],
+  "tests/ir/body_sibling_blocks_reuse_a_name_with_their_own_slots.ir": [
+   0,
+   "a4d6059ffdc05871"
+  ],
+  "tests/ir/body_then_names_are_not_visible_in_else.ir": [
+   1,
+   "2d67cf1f3d2d6426"
+  ],
+  "tests/ir/body_unknown_name.ir": [
+   3,
+   "9070d8a26a05513e"
+  ],
+  "tests/ir/body_unknown_name_is_one_error.ir": [
+   1,
+   "ef637b22fd5648b7"
+  ],
+  "tests/ir/body_use_before_let.ir": [
+   1,
+   "b5afc72073cee24d"
+  ],
+  "tests/ir/call_a_local_is_not_a_function.ir": [
+   1,
+   "0826593148a58670"
+  ],
+  "tests/ir/call_argument_types.ir": [
+   4,
+   "8413ff3edd7a23aa"
+  ],
+  "tests/ir/call_arguments_stay_in_written_order.ir": [
+   0,
+   "5173635b7f60422e"
+  ],
+  "tests/ir/call_arity_error_keeps_the_result_type_and_checks_the_arguments.ir": [
+   4,
+   "8d0e9ac61ae5368f"
+  ],
+  "tests/ir/call_as_an_operand.ir": [
+   0,
+   "7f2c46478c639aa6"
+  ],
+  "tests/ir/call_basic.ir": [
+   0,
+   "c90c7c3a2a27fcf0"
+  ],
+  "tests/ir/call_forward_reference.ir": [
+   0,
+   "bbf2cc2360fd64aa"
+  ],
+  "tests/ir/call_literal_takes_the_parameter_type.ir": [
+   0,
+   "2beae101bf8cdc4b"
+  ],
+  "tests/ir/call_looks_only_at_top_level_names.ir": [
+   0,
+   "5f6657a490b21a41"
+  ],
+  "tests/ir/call_named_arguments_to_a_function.ir": [
+   4,
+   "5ebca648033591e9"
+  ],
+  "tests/ir/call_nested.ir": [
+   0,
+   "a8fef3a8d3229c59"
+  ],
+  "tests/ir/call_statements_may_discard_any_result.ir": [
+   0,
+   "a0bfdb4a64c86b68"
+  ],
+  "tests/ir/call_unknown_function.ir": [
+   3,
+   "49bccafad4e48caa"
+  ],
+  "tests/ir/call_with_an_array_argument.ir": [
+   0,
+   "0cc284e2be58481c"
+  ],
+  "tests/ir/call_wrong_number_of_arguments.ir": [
+   5,
+   "437132d5ffe69267"
+  ],
+  "tests/ir/construct_an_unattributable_argument_does_not_also_report_a_missing_field.ir": [
+   3,
+   "c7f565e0f75b3526"
+  ],
+  "tests/ir/construct_as_an_argument.ir": [
+   0,
+   "2317f58291c3e890"
+  ],
+  "tests/ir/construct_basic.ir": [
+   0,
+   "272bd01f77514681"
+  ],
+  "tests/ir/construct_field_given_twice.ir": [
+   6,
+   "182c6702c6ec7f96"
+  ],
+  "tests/ir/construct_field_names_are_not_looked_up_as_locals.ir": [
+   0,
+   "f4b0022c8f5717b4"
+  ],
+  "tests/ir/construct_fields_out_of_order.ir": [
+   8,
+   "572fc4226a4156aa"
+  ],
+  "tests/ir/construct_left_of_the_colon_must_be_a_field_name.ir": [
+   4,
+   "4ed4c0c94d123633"
+  ],
+  "tests/ir/construct_literals_take_the_field_types.ir": [
+   0,
+   "ded0b6b1d76cb25c"
+  ],
+  "tests/ir/construct_missing_fields.ir": [
+   7,
+   "7543ba70348bdc64"
+  ],
+  "tests/ir/construct_nested_structs.ir": [
+   0,
+   "092bbd93cdff0bd3"
+  ],
+  "tests/ir/construct_positional_arguments.ir": [
+   6,
+   "3a926a610df8eef0"
+  ],
+  "tests/ir/construct_structs_have_no_operators.ir": [
+   1,
+   "901067d346f175d8"
+  ],
+  "tests/ir/construct_value_types.ir": [
+   6,
+   "84662331d79deff2"
+  ],
+  "tests/ir/construct_with_an_array_field.ir": [
+   0,
+   "a2e1c0598c2ce360"
+  ],
+  "tests/ir/construct_zero_fields.ir": [
+   0,
+   "03860996c75ae9da"
+  ],
+  "tests/ir/convert_bool_and_non_integers.ir": [
+   8,
+   "2d581ee4affa4f59"
+  ],
+  "tests/ir/convert_from_i16.ir": [
+   0,
+   "163a85ede3fb3532"
+  ],
+  "tests/ir/convert_from_i32.ir": [
+   0,
+   "ce73d776b03b9aeb"
+  ],
+  "tests/ir/convert_from_i64.ir": [
+   0,
+   "b1b42712e0443d83"
+  ],
+  "tests/ir/convert_from_i8.ir": [
+   0,
+   "0b69bac942691328"
+  ],
+  "tests/ir/convert_from_u16.ir": [
+   0,
+   "e1200794bd85cf12"
+  ],
+  "tests/ir/convert_from_u32.ir": [
+   0,
+   "1d9a99048900902c"
+  ],
+  "tests/ir/convert_from_u64.ir": [
+   0,
+   "1f377bdb689b83b6"
+  ],
+  "tests/ir/convert_from_u8.ir": [
+   0,
+   "d1f3fc7caf7319d9"
+  ],
+  "tests/ir/convert_in_index_array_and_construction.ir": [
+   0,
+   "8fab3014c3fe724d"
+  ],
+  "tests/ir/convert_is_not_an_lvalue.ir": [
+   2,
+   "3b0687bc0d55f9db"
+  ],
+  "tests/ir/convert_literal_255_has_no_type.ir": [
+   1,
+   "e293e14281293c08"
+  ],
+  "tests/ir/convert_literal_300_has_no_type.ir": [
+   1,
+   "e293e14281293c08"
+  ],
+  "tests/ir/convert_literal_groups_have_no_type.ir": [
+   5,
+   "f89c54bfbc5e2698"
+  ],
+  "tests/ir/convert_nested_and_in_expressions.ir": [
+   0,
+   "d1e766addff4bc21"
+  ],
+  "tests/ir/convert_operand_is_typed_on_its_own.ir": [
+   0,
+   "7c51ff7cb59d3fca"
+  ],
+  "tests/ir/convert_unit_error_operands_and_the_result_type.ir": [
+   6,
+   "4339410565660ce3"
+  ],
+  "tests/ir/cycle_and_unknown_type.ir": [
+   2,
+   "bfc9553997ef076a"
+  ],
+  "tests/ir/cycle_dependent_is_silent.ir": [
+   1,
+   "32d3c9ac87eccddf"
+  ],
+  "tests/ir/cycle_direct.ir": [
+   1,
+   "d6044cf90adba50a"
+  ],
+  "tests/ir/cycle_entered_from_higher_index.ir": [
+   1,
+   "32d3c9ac87eccddf"
+  ],
+  "tests/ir/cycle_mutual.ir": [
+   1,
+   "5664f53dbec844b7"
+  ],
+  "tests/ir/cycle_mutual_via_arrays.ir": [
+   1,
+   "5664f53dbec844b7"
+  ],
+  "tests/ir/cycle_overlapping.ir": [
+   1,
+   "5664f53dbec844b7"
+  ],
+  "tests/ir/cycle_three.ir": [
+   1,
+   "264b823b80ebe694"
+  ],
+  "tests/ir/cycle_two_disjoint.ir": [
+   2,
+   "cd8e46f8ed365bc2"
+  ],
+  "tests/ir/cycle_via_array.ir": [
+   1,
+   "5664f53dbec844b7"
+  ],
+  "tests/ir/dup_field.ir": [
+   1,
+   "b992ca5dcb9f815b"
+  ],
+  "tests/ir/dup_field_is_not_a_field.ir": [
+   1,
+   "a6ff7ce67004b0cf"
+  ],
+  "tests/ir/dup_function.ir": [
+   1,
+   "fead31dcd268b9ae"
+  ],
+  "tests/ir/dup_param.ir": [
+   1,
+   "521051675b864269"
+  ],
+  "tests/ir/dup_param_type_still_checked.ir": [
+   2,
+   "a3f3760518b34e4a"
+  ],
+  "tests/ir/dup_struct.ir": [
+   1,
+   "cfbc70a405286a92"
+  ],
+  "tests/ir/dup_struct_vs_function.ir": [
+   1,
+   "164786a8de2b41f3"
+  ],
+  "tests/ir/e0261_on_a_510_operation_chain.ir": [
+   1,
+   "3a3f7ad02d2b2697"
+  ],
+  "tests/ir/e0261_on_a_511_operation_chain.ir": [
+   1,
+   "3a3f7ad02d2b2697"
+  ],
+  "tests/ir/empty_function.ir": [
+   0,
+   "83d6c54282c0b455"
+  ],
+  "tests/ir/empty_function_multiline.ir": [
+   0,
+   "ea257da4814e499c"
+  ],
+  "tests/ir/empty_module.ir": [
+   0,
+   "e3b0c44298fc1c14"
+  ],
+  "tests/ir/field_access_basic.ir": [
+   0,
+   "47f25dead3026ce6"
+  ],
+  "tests/ir/field_access_on_a_call_result_and_a_construction.ir": [
+   0,
+   "743b5286d2662582"
+  ],
+  "tests/ir/field_access_on_a_type_without_fields.ir": [
+   5,
+   "fa86a0026e942022"
+  ],
+  "tests/ir/field_access_on_an_integer_literal.ir": [
+   2,
+   "e5e30f82d9dfdf5f"
+  ],
+  "tests/ir/field_assignment.ir": [
+   0,
+   "78d81f6178cbcfd9"
+  ],
+  "tests/ir/field_assignment_errors.ir": [
+   7,
+   "c3132d75e1d0ade5"
+  ],
+  "tests/ir/field_assignment_target_must_be_rooted_in_a_name.ir": [
+   5,
+   "6eed22e2d3322cd2"
+  ],
+  "tests/ir/field_unknown_in_a_construction_and_in_an_access.ir": [
+   6,
+   "2a02f7fb109f8d1d"
+  ],
+  "tests/ir/gate_e0105_recovered.ir": [
+   1,
+   "6dfb7c5d98c80455"
+  ],
+  "tests/ir/gate_e0106.ir": [
+   1,
+   "ff66f2c2a595bdc2"
+  ],
+  "tests/ir/gate_e0107.ir": [
+   1,
+   "e35e4d7201fc57e8"
+  ],
+  "tests/ir/gate_e0109.ir": [
+   1,
+   "3b49cf51e4f56326"
+  ],
+  "tests/ir/gate_e0111_fatal.ir": [
+   1,
+   "7bc8af49e6fd58e0"
+  ],
+  "tests/ir/index_and_bounds_must_be_integers.ir": [
+   6,
+   "3fd364e859f3daf1"
+  ],
+  "tests/ir/index_assignment.ir": [
+   0,
+   "0fa678cf9e0cf892"
+  ],
+  "tests/ir/index_assignment_errors.ir": [
+   6,
+   "3ff332d978d1fd11"
+  ],
+  "tests/ir/index_base_must_be_an_array_or_a_slice.ir": [
+   8,
+   "647a528d4ba35770"
+  ],
+  "tests/ir/index_basic.ir": [
+   0,
+   "52b07065cd34a4e5"
+  ],
+  "tests/ir/index_every_integer_type.ir": [
+   0,
+   "d7b10d32d781a86a"
+  ],
+  "tests/ir/index_negative_literal_is_an_unsigned_operator_error.ir": [
+   1,
+   "5af9d54a014005ce"
+  ],
+  "tests/ir/index_postfix_chains_over_structs.ir": [
+   0,
+   "be85909ed4560d9f"
+  ],
+  "tests/ir/len_argument_must_be_an_array_or_a_slice.ir": [
+   9,
+   "f93fa1e909b324bb"
+  ],
+  "tests/ir/len_bare_after_the_scope_of_a_local_named_len_closed.ir": [
+   2,
+   "a6f161119a006056"
+  ],
+  "tests/ir/len_cannot_name_a_function.ir": [
+   1,
+   "7490cce8cb0126ba"
+  ],
+  "tests/ir/len_cannot_name_a_local_but_the_call_stays_the_builtin.ir": [
+   1,
+   "691e863c9d4e5cd4"
+  ],
+  "tests/ir/len_cannot_name_a_loop_variable.ir": [
+   1,
+   "06978283cf00120c"
+  ],
+  "tests/ir/len_cannot_name_a_parameter.ir": [
+   1,
+   "51105e6666af6ac4"
+  ],
+  "tests/ir/len_cannot_name_a_struct.ir": [
+   1,
+   "50a855c789c7b33d"
+  ],
+  "tests/ir/len_is_not_a_value.ir": [
+   3,
+   "08a21cadf2de4408"
+  ],
+  "tests/ir/len_of_array_slice_and_call_result.ir": [
+   0,
+   "23ba0919547baa45"
+  ],
+  "tests/ir/len_unit_argument_is_not_a_value.ir": [
+   1,
+   "d80b27d02cc37e44"
+  ],
+  "tests/ir/len_wrong_argument_count_or_named_argument.ir": [
+   6,
+   "16e7fda1f90853ee"
+  ],
+  "tests/ir/let_oversized_annotation_is_one_error.ir": [
+   6,
+   "775d8d3d1e91ad77"
+  ],
+  "tests/ir/lit_binary_ok.ir": [
+   0,
+   "6b7ecbcdfa667ce9"
+  ],
+  "tests/ir/lit_binary_range.ir": [
+   7,
+   "495b5e3123345bfa"
+  ],
+  "tests/ir/lit_binary_unsigned_neg.ir": [
+   4,
+   "7c2ffe3440630a24"
+  ],
+  "tests/ir/lit_bool_ok.ir": [
+   0,
+   "3812cf671b9585fc"
+  ],
+  "tests/ir/lit_double_neg.ir": [
+   0,
+   "ce05322724c4e0af"
+  ],
+  "tests/ir/lit_double_neg_over.ir": [
+   1,
+   "b0769ea8bd4640a7"
+  ],
+  "tests/ir/lit_hex_i64_min.ir": [
+   0,
+   "22f4099247e21dc9"
+  ],
+  "tests/ir/lit_i16_ok.ir": [
+   0,
+   "2e10012c5a80a8db"
+  ],
+  "tests/ir/lit_i16_range.ir": [
+   4,
+   "6c5c377daccbd011"
+  ],
+  "tests/ir/lit_i32_ok.ir": [
+   0,
+   "f93f2560799a8f7e"
+  ],
+  "tests/ir/lit_i32_range.ir": [
+   4,
+   "d9f19c7713914938"
+  ],
+  "tests/ir/lit_i64_ok.ir": [
+   0,
+   "6c5241c6422a46a2"
+  ],
+  "tests/ir/lit_i64_range.ir": [
+   4,
+   "882cef5d017bb564"
+  ],
+  "tests/ir/lit_i8_ok.ir": [
+   0,
+   "51097ea1cc925ca3"
+  ],
+  "tests/ir/lit_i8_range.ir": [
+   4,
+   "3ab65ad1a0871152"
+  ],
+  "tests/ir/lit_spaced_neg.ir": [
+   0,
+   "c34a5150cbba4f2a"
+  ],
+  "tests/ir/lit_u16_ok.ir": [
+   0,
+   "836ec4541d0eee57"
+  ],
+  "tests/ir/lit_u16_range.ir": [
+   3,
+   "5e619071e6bd3495"
+  ],
+  "tests/ir/lit_u32_ok.ir": [
+   0,
+   "c4d06016d8a12bb2"
+  ],
+  "tests/ir/lit_u32_range.ir": [
+   3,
+   "7ab532d29352188b"
+  ],
+  "tests/ir/lit_u64_ok.ir": [
+   0,
+   "8b6d67e7cedc05de"
+  ],
+  "tests/ir/lit_u8_ok.ir": [
+   0,
+   "f6a22951475e7f0b"
+  ],
+  "tests/ir/lit_u8_range.ir": [
+   3,
+   "a8775e557c671942"
+  ],
+  "tests/ir/lit_unsigned_neg.ir": [
+   7,
+   "1ab5a8e42bc4b525"
+  ],
+  "tests/ir/loop_break_after_a_loop.ir": [
+   2,
+   "6dadf827077408f8"
+  ],
+  "tests/ir/loop_break_continue_ok.ir": [
+   0,
+   "3ec46388406fd1e0"
+  ],
+  "tests/ir/loop_break_outside_a_loop.ir": [
+   4,
+   "483624ad3fe774c5"
+  ],
+  "tests/ir/loop_condition_error_is_silent.ir": [
+   1,
+   "cd49012ada590806"
+  ],
+  "tests/ir/loop_condition_must_be_bool.ir": [
+   4,
+   "bef087b8fb2db161"
+  ],
+  "tests/ir/loop_for_assign_init.ir": [
+   0,
+   "36f814597f0cb5c0"
+  ],
+  "tests/ir/loop_for_basic.ir": [
+   0,
+   "1c3d80a059ffa4f8"
+  ],
+  "tests/ir/loop_for_init_not_visible_after.ir": [
+   1,
+   "18c39cf244a5c423"
+  ],
+  "tests/ir/loop_for_init_redeclare.ir": [
+   3,
+   "2ce0098d9170554e"
+  ],
+  "tests/ir/loop_for_init_scope_reuse.ir": [
+   0,
+   "3424de7465bfeeac"
+  ],
+  "tests/ir/loop_for_nested_same_name.ir": [
+   1,
+   "63719f16201b1ecd"
+  ],
+  "tests/ir/loop_for_step_is_checked.ir": [
+   1,
+   "60cca01435f2f4ed"
+  ],
+  "tests/ir/loop_nested_break_continue.ir": [
+   0,
+   "999f1ad8c8e4f344"
+  ],
+  "tests/ir/loop_while_basic.ir": [
+   0,
+   "3a7521f908c995bb"
+  ],
+  "tests/ir/mismatch_array_return.ir": [
+   2,
+   "9417410c1ae7989d"
+  ],
+  "tests/ir/mismatch_bool_in_int.ir": [
+   2,
+   "6397338b8e76ca12"
+  ],
+  "tests/ir/mismatch_int_in_bool.ir": [
+   5,
+   "868de6a5f13a4f9d"
+  ],
+  "tests/ir/mismatch_no_poison_of_literals.ir": [
+   3,
+   "36999e29cdf5e79a"
+  ],
+  "tests/ir/mismatch_struct_return.ir": [
+   2,
+   "2a172d77b97b648f"
+  ],
+  "tests/ir/multi_error_order.ir": [
+   3,
+   "ed9b963e807fd1e3"
+  ],
+  "tests/ir/naming_accepted_forms.ir": [
+   0,
+   "174970c90cf7a98f"
+  ],
+  "tests/ir/naming_does_not_stop_body_checking.ir": [
+   2,
+   "92876faf6d17c50e"
+  ],
+  "tests/ir/naming_duplicate_field_and_parameter_are_not_also_checked.ir": [
+   4,
+   "e156ab810e87ad2e"
+  ],
+  "tests/ir/naming_duplicate_local_is_not_also_checked.ir": [
+   2,
+   "a31f3b109679b7a4"
+  ],
+  "tests/ir/naming_duplicate_struct_is_not_also_checked.ir": [
+   2,
+   "dcbd5f731d9fb481"
+  ],
+  "tests/ir/naming_field_not_snake_case.ir": [
+   2,
+   "62cfbd65aa939ab5"
+  ],
+  "tests/ir/naming_function_not_snake_case.ir": [
+   1,
+   "3672118df9832ca1"
+  ],
+  "tests/ir/naming_len_struct_is_e0257_only_and_stops_the_build.ir": [
+   2,
+   "35ce4ed589e4751b"
+  ],
+  "tests/ir/naming_local_not_snake_case.ir": [
+   1,
+   "a6dfbc45ff2bb0a7"
+  ],
+  "tests/ir/naming_loop_variable_not_snake_case.ir": [
+   1,
+   "b256d35de21af216"
+  ],
+  "tests/ir/naming_parameter_not_snake_case.ir": [
+   1,
+   "20ac5b55d0e35705"
+  ],
+  "tests/ir/naming_reported_once_at_the_declaration_not_per_use.ir": [
+   2,
+   "2929e330083527ea"
+  ],
+  "tests/ir/naming_struct_not_pascal_case.ir": [
+   1,
+   "63c38008ae442284"
+  ],
+  "tests/ir/naming_underscores_and_capitals.ir": [
+   5,
+   "5666862be4fa73b2"
+  ],
+  "tests/ir/one_error_array_for_an_unknown_type.ir": [
+   1,
+   "baee28719acda336"
+  ],
+  "tests/ir/one_error_array_of_arrays_over_the_size_limit.ir": [
+   1,
+   "f34b8b512a401462"
+  ],
+  "tests/ir/one_error_array_of_bool_for_u8.ir": [
+   1,
+   "009fe00819ca9785"
+  ],
+  "tests/ir/one_error_array_of_integer_literals.ir": [
+   1,
+   "541d38e6518272d3"
+  ],
+  "tests/ir/one_error_array_of_the_wrong_length.ir": [
+   1,
+   "d81952b56ad8905d"
+  ],
+  "tests/ir/one_error_array_whose_first_element_is_a_unit_call.ir": [
+   1,
+   "6b3218925796a44f"
+  ],
+  "tests/ir/one_error_array_whose_first_element_is_unknown.ir": [
+   1,
+   "5300f2b9e9b9e573"
+  ],
+  "tests/ir/one_error_assign_to_a_call.ir": [
+   1,
+   "f800949496e889a9"
+  ],
+  "tests/ir/one_error_bare_len.ir": [
+   1,
+   "d247fbc61739d8d9"
+  ],
+  "tests/ir/one_error_binary_with_a_unit_call.ir": [
+   1,
+   "56c062cc5269f60a"
+  ],
+  "tests/ir/one_error_break_outside_a_loop.ir": [
+   1,
+   "8045ca06e20faa8f"
+  ],
+  "tests/ir/one_error_compare_literal_with_bool.ir": [
+   1,
+   "91349df713f12c37"
+  ],
+  "tests/ir/one_error_construction_field_twice.ir": [
+   1,
+   "e3d98816b94772f7"
+  ],
+  "tests/ir/one_error_construction_missing_field.ir": [
+   1,
+   "3365c96e8ba7eb34"
+  ],
+  "tests/ir/one_error_construction_name_in_parentheses.ir": [
+   1,
+   "30defa0a24a2c639"
+  ],
+  "tests/ir/one_error_construction_out_of_order.ir": [
+   1,
+   "3c4b7f03e9342abe"
+  ],
+  "tests/ir/one_error_construction_unknown_field.ir": [
+   1,
+   "aca4dacedbea697f"
+  ],
+  "tests/ir/one_error_convert_a_unit_call.ir": [
+   1,
+   "c785665c92c71145"
+  ],
+  "tests/ir/one_error_convert_bool_to_integer.ir": [
+   1,
+   "c3c0b1f616f588f8"
+  ],
+  "tests/ir/one_error_field_of_a_non_struct.ir": [
+   1,
+   "7855f4bbd9ae7b1b"
+  ],
+  "tests/ir/one_error_field_of_a_unit_call.ir": [
+   1,
+   "56c062cc5269f60a"
+  ],
+  "tests/ir/one_error_field_of_an_integer_literal.ir": [
+   1,
+   "d3969249ac4a72c9"
+  ],
+  "tests/ir/one_error_field_of_an_unknown_name.ir": [
+   1,
+   "0847bd74d873b2c3"
+  ],
+  "tests/ir/one_error_field_that_does_not_exist.ir": [
+   1,
+   "182eb3b57bb1c595"
+  ],
+  "tests/ir/one_error_index_a_non_array.ir": [
+   1,
+   "fdfeceb70daca81c"
+  ],
+  "tests/ir/one_error_index_a_unit_call.ir": [
+   1,
+   "56c062cc5269f60a"
+  ],
+  "tests/ir/one_error_index_an_integer_literal.ir": [
+   1,
+   "d3969249ac4a72c9"
+  ],
+  "tests/ir/one_error_index_an_unknown_name.ir": [
+   1,
+   "0847bd74d873b2c3"
+  ],
+  "tests/ir/one_error_index_with_a_bool.ir": [
+   1,
+   "64e437ad66c64e1d"
+  ],
+  "tests/ir/one_error_index_with_a_unit_call.ir": [
+   1,
+   "567dcede1541bb0d"
+  ],
+  "tests/ir/one_error_integer_literal_as_a_statement.ir": [
+   1,
+   "e4547ccececd43d3"
+  ],
+  "tests/ir/one_error_len_of_a_non_array.ir": [
+   1,
+   "8af7408f25d85058"
+  ],
+  "tests/ir/one_error_len_of_a_unit_call.ir": [
+   1,
+   "93063be5a163b151"
+  ],
+  "tests/ir/one_error_len_of_an_integer_literal.ir": [
+   1,
+   "3c0132bc32814f8b"
+  ],
+  "tests/ir/one_error_len_without_arguments.ir": [
+   1,
+   "1406fa4285d1dfa2"
+  ],
+  "tests/ir/one_error_let_oversized_annotation_with_a_literal.ir": [
+   1,
+   "02e3286f91423f7a"
+  ],
+  "tests/ir/one_error_let_size_overflow_in_the_outer_multiplication.ir": [
+   1,
+   "02e3286f91423f7a"
+  ],
+  "tests/ir/one_error_logical_with_a_typed_non_bool.ir": [
+   1,
+   "1d5983a9fac85306"
+  ],
+  "tests/ir/one_error_logical_with_an_integer_literal.ir": [
+   1,
+   "91349df713f12c37"
+  ],
+  "tests/ir/one_error_logical_with_an_unknown_name.ir": [
+   1,
+   "e31df34caea3d0d6"
+  ],
+  "tests/ir/one_error_mismatch_array_literal_for_u8.ir": [
+   1,
+   "154a964ce56b4440"
+  ],
+  "tests/ir/one_error_mismatch_int_literal_for_bool.ir": [
+   1,
+   "75d1b632276bbb90"
+  ],
+  "tests/ir/one_error_named_argument_to_a_function.ir": [
+   1,
+   "d4e19cbb9496047e"
+  ],
+  "tests/ir/one_error_negate_a_bool.ir": [
+   1,
+   "6d28eeb9df53440f"
+  ],
+  "tests/ir/one_error_negate_a_unit_call.ir": [
+   1,
+   "6b3218925796a44f"
+  ],
+  "tests/ir/one_error_not_of_an_integer_literal.ir": [
+   1,
+   "ddda845859d8e2f3"
+  ],
+  "tests/ir/one_error_positional_construction.ir": [
+   1,
+   "a22cb31f6d478704"
+  ],
+  "tests/ir/one_error_repeat_of_a_unit_call.ir": [
+   1,
+   "6b3218925796a44f"
+  ],
+  "tests/ir/one_error_repeat_of_an_unknown_name.ir": [
+   1,
+   "5300f2b9e9b9e573"
+  ],
+  "tests/ir/one_error_repeat_too_large_for_the_expected_array.ir": [
+   1,
+   "4882a222aa893a68"
+  ],
+  "tests/ir/one_error_slice_a_non_array.ir": [
+   1,
+   "fdfeceb70daca81c"
+  ],
+  "tests/ir/one_error_slice_an_integer_literal.ir": [
+   1,
+   "d3969249ac4a72c9"
+  ],
+  "tests/ir/one_error_unit_call_bound_without_a_type.ir": [
+   1,
+   "56c062cc5269f60a"
+  ],
+  "tests/ir/one_error_unit_call_for_an_expected_type.ir": [
+   1,
+   "93063be5a163b151"
+  ],
+  "tests/ir/one_error_unknown_index_bound.ir": [
+   1,
+   "fb5cd4c6441ef192"
+  ],
+  "tests/ir/one_error_unknown_index_bound_as_an_assignment_target.ir": [
+   1,
+   "513851c67ae63285"
+  ],
+  "tests/ir/one_error_unknown_slice_bound.ir": [
+   1,
+   "fb5cd4c6441ef192"
+  ],
+  "tests/ir/one_error_wrong_argument_count.ir": [
+   1,
+   "11763677f7bf984a"
+  ],
+  "tests/ir/op_add_bad.ir": [
+   7,
+   "6c268b11918a1d0c"
+  ],
+  "tests/ir/op_add_ok.ir": [
+   0,
+   "0985308fa22eaeb1"
+  ],
+  "tests/ir/op_and_bad.ir": [
+   5,
+   "d962d5d47159214a"
+  ],
+  "tests/ir/op_and_ok.ir": [
+   0,
+   "c01fb6d1b01b9536"
+  ],
+  "tests/ir/op_bitand_bad.ir": [
+   7,
+   "328e5b7d8aa64fb7"
+  ],
+  "tests/ir/op_bitand_ok.ir": [
+   0,
+   "4755b942dddca1c5"
+  ],
+  "tests/ir/op_bitnot_bad.ir": [
+   2,
+   "eeddf95de9ced218"
+  ],
+  "tests/ir/op_bitnot_ok.ir": [
+   0,
+   "bc156cd2bf94db7a"
+  ],
+  "tests/ir/op_bitor_bad.ir": [
+   7,
+   "d5aa201bc8de9c1e"
+  ],
+  "tests/ir/op_bitor_ok.ir": [
+   0,
+   "16e04ce7a352a0a6"
+  ],
+  "tests/ir/op_bitxor_bad.ir": [
+   7,
+   "b07b5b75760ee59a"
+  ],
+  "tests/ir/op_bitxor_ok.ir": [
+   0,
+   "5484a1b00d950bcc"
+  ],
+  "tests/ir/op_div_bad.ir": [
+   7,
+   "e2bd573e2e375a0d"
+  ],
+  "tests/ir/op_div_ok.ir": [
+   0,
+   "ed185348e46bf6ae"
+  ],
+  "tests/ir/op_eq_bad.ir": [
+   6,
+   "0ef8bd872a4b383f"
+  ],
+  "tests/ir/op_eq_is_not_defined_on_arrays_and_slices.ir": [
+   3,
+   "be5e3cb9336cc455"
+  ],
+  "tests/ir/op_eq_ok.ir": [
+   0,
+   "4c77786176cdc842"
+  ],
+  "tests/ir/op_expected_type_mismatch.ir": [
+   3,
+   "5a37a26243aeded4"
+  ],
+  "tests/ir/op_ge_bad.ir": [
+   7,
+   "6a9f14c2740a6a08"
+  ],
+  "tests/ir/op_ge_ok.ir": [
+   0,
+   "f01483f3e7bc5cd8"
+  ],
+  "tests/ir/op_gt_bad.ir": [
+   7,
+   "0ce6edb22c7e7086"
+  ],
+  "tests/ir/op_gt_ok.ir": [
+   0,
+   "4916a826a1573c8e"
+  ],
+  "tests/ir/op_le_bad.ir": [
+   7,
+   "9c713eba9760044c"
+  ],
+  "tests/ir/op_le_ok.ir": [
+   0,
+   "16317c66fcd1deed"
+  ],
+  "tests/ir/op_literal_cannot_infer.ir": [
+   4,
+   "0790b9e8e408d918"
+  ],
+  "tests/ir/op_literal_sibling_bool.ir": [
+   4,
+   "3e493766f1eabbff"
+  ],
+  "tests/ir/op_literal_sibling_ok.ir": [
+   0,
+   "52a48003b679fe66"
+  ],
+  "tests/ir/op_literal_sibling_range.ir": [
+   4,
+   "31b922edb9d721fc"
+  ],
+  "tests/ir/op_logical_and_not_forms.ir": [
+   5,
+   "f100ba9c2da5f01e"
+  ],
+  "tests/ir/op_lt_bad.ir": [
+   7,
+   "1fdfa780e6ad7803"
+  ],
+  "tests/ir/op_lt_ok.ir": [
+   0,
+   "6829e925759f615e"
+  ],
+  "tests/ir/op_mod_bad.ir": [
+   7,
+   "8067a7edfa7dbef5"
+  ],
+  "tests/ir/op_mod_ok.ir": [
+   0,
+   "26afcf40d5e1f11d"
+  ],
+  "tests/ir/op_mul_bad.ir": [
+   7,
+   "d72a27ba54e9f7d4"
+  ],
+  "tests/ir/op_mul_ok.ir": [
+   0,
+   "d527da20567cedc7"
+  ],
+  "tests/ir/op_ne_bad.ir": [
+   6,
+   "f6c9a5b89ac6b1e6"
+  ],
+  "tests/ir/op_ne_ok.ir": [
+   0,
+   "0c765c7b319989ff"
+  ],
+  "tests/ir/op_neg_bad.ir": [
+   4,
+   "d6ba06db53c35130"
+  ],
+  "tests/ir/op_neg_ok.ir": [
+   0,
+   "d388ce4082b80665"
+  ],
+  "tests/ir/op_not_bad.ir": [
+   3,
+   "780b6ad7b81df6ab"
+  ],
+  "tests/ir/op_not_ok.ir": [
+   0,
+   "c225aa8edd37b883"
+  ],
+  "tests/ir/op_or_bad.ir": [
+   5,
+   "cb743f794ca5816a"
+  ],
+  "tests/ir/op_or_ok.ir": [
+   0,
+   "079cdbe3ee80007e"
+  ],
+  "tests/ir/op_poison_bad_operator_once.ir": [
+   1,
+   "8cd4b6ae46f2f280"
+  ],
+  "tests/ir/op_poison_nested.ir": [
+   1,
+   "67df47fdec30acfc"
+  ],
+  "tests/ir/op_poison_types_differ_once.ir": [
+   1,
+   "67df47fdec30acfc"
+  ],
+  "tests/ir/op_poison_unknown_name.ir": [
+   2,
+   "8cbc06499ced8c9d"
+  ],
+  "tests/ir/op_precedence_ok.ir": [
+   0,
+   "81cf3bf00b7df083"
+  ],
+  "tests/ir/op_shl_bad.ir": [
+   8,
+   "b5de4e920755c25a"
+  ],
+  "tests/ir/op_shl_ok.ir": [
+   0,
+   "72c2f27210f62f9e"
+  ],
+  "tests/ir/op_shr_bad.ir": [
+   8,
+   "803ad0651586eb68"
+  ],
+  "tests/ir/op_shr_ok.ir": [
+   0,
+   "4edbecc2e491a496"
+  ],
+  "tests/ir/op_sub_bad.ir": [
+   7,
+   "2291c388e4417de3"
+  ],
+  "tests/ir/op_sub_ok.ir": [
+   0,
+   "af75822de10344f2"
+  ],
+  "tests/ir/op_two_independent_errors.ir": [
+   2,
+   "ddc98d0738a897b3"
+  ],
+  "tests/ir/oversized_let_annotation_used_in_every_position_stays_silent.ir": [
+   4,
+   "1f8f13e3889fd327"
+  ],
+  "tests/ir/param_array_of_slices_over_limit_by_one.ir": [
+   1,
+   "0f16b271b083db12"
+  ],
+  "tests/ir/param_array_of_slices_too_large.ir": [
+   1,
+   "0f16b271b083db12"
+  ],
+  "tests/ir/param_slice_of_slice.ir": [
+   1,
+   "a66115e1a07a7067"
+  ],
+  "tests/ir/param_slice_of_slice_in_array.ir": [
+   1,
+   "9035ec306be31c07"
+  ],
+  "tests/ir/param_slice_of_too_large_array.ir": [
+   1,
+   "48291e639954b240"
+  ],
+  "tests/ir/param_too_large.ir": [
+   1,
+   "0f16b271b083db12"
+  ],
+  "tests/ir/param_unknown_type.ir": [
+   1,
+   "482bbd29212e580b"
+  ],
+  "tests/ir/param_unsized_struct_is_silent.ir": [
+   1,
+   "38948fd6adf678fd"
+  ],
+  "tests/ir/params_array_of_slices_at_limit.ir": [
+   0,
+   "e8c2886aed62c526"
+  ],
+  "tests/ir/params_basic.ir": [
+   0,
+   "ab02b0934889d2e6"
+  ],
+  "tests/ir/params_slice_of_array.ir": [
+   0,
+   "6e848755618da0b3"
+  ],
+  "tests/ir/params_types.ir": [
+   0,
+   "79ca2e968453daa1"
+  ],
+  "tests/ir/recursion_a_diamond_is_not_recursion.ir": [
+   0,
+   "b6611f83182ed8e2"
+  ],
+  "tests/ir/recursion_callers_outside_the_cycle_stay_silent.ir": [
+   1,
+   "e7c5f86f208ffb2f"
+  ],
+  "tests/ir/recursion_cycle_entered_from_a_later_function.ir": [
+   1,
+   "e7c5f86f208ffb2f"
+  ],
+  "tests/ir/recursion_is_reported_after_the_bodys_own_errors.ir": [
+   2,
+   "cb5220c61ec567d7"
+  ],
+  "tests/ir/recursion_overlapping_cycles_are_one_error.ir": [
+   1,
+   "402ec4d9765b19e4"
+  ],
+  "tests/ir/recursion_self.ir": [
+   1,
+   "5e33456d49601ec5"
+  ],
+  "tests/ir/recursion_self_call_inside_an_if.ir": [
+   1,
+   "e9d58ec186cd71b7"
+  ],
+  "tests/ir/recursion_three_functions.ir": [
+   1,
+   "5e33456d49601ec5"
+  ],
+  "tests/ir/recursion_through_a_call_with_a_wrong_arity.ir": [
+   2,
+   "bd6dab956790098f"
+  ],
+  "tests/ir/recursion_two_functions.ir": [
+   1,
+   "5e33456d49601ec5"
+  ],
+  "tests/ir/recursion_two_separate_cycles_two_errors.ir": [
+   2,
+   "345ebd1f4b2008cc"
+  ],
+  "tests/ir/repeat_at_the_size_limit_is_accepted.ir": [
+   0,
+   "1880a5ecff7d6e74"
+  ],
+  "tests/ir/repeat_basic_including_zero_count.ir": [
+   0,
+   "ee4c48a5e8b45c20"
+  ],
+  "tests/ir/ret_a_failed_return_still_counts_as_returning.ir": [
+   1,
+   "ab13f1d6ce48e5d9"
+  ],
+  "tests/ir/ret_bare_in_a_non_unit_function.ir": [
+   1,
+   "553a896580dc51ed"
+  ],
+  "tests/ir/ret_missing_after_the_bodys_own_errors.ir": [
+   2,
+   "542fb010a40f9403"
+  ],
+  "tests/ir/ret_missing_break_is_not_a_return.ir": [
+   1,
+   "544831a759feb188"
+  ],
+  "tests/ir/ret_missing_constant_condition_is_not_folded.ir": [
+   1,
+   "544831a759feb188"
+  ],
+  "tests/ir/ret_missing_else_if_chain_without_final_else.ir": [
+   1,
+   "58e7be957b1e8304"
+  ],
+  "tests/ir/ret_missing_empty_body.ir": [
+   1,
+   "11abe85783520ba4"
+  ],
+  "tests/ir/ret_missing_empty_body_one_line.ir": [
+   1,
+   "f099cfd96e739ff0"
+  ],
+  "tests/ir/ret_missing_if_without_else.ir": [
+   1,
+   "544831a759feb188"
+  ],
+  "tests/ir/ret_missing_nested_inner_if_without_else.ir": [
+   1,
+   "5077cf64b42ad22c"
+  ],
+  "tests/ir/ret_missing_one_branch_does_not_return.ir": [
+   2,
+   "c16de20fcbb87176"
+  ],
+  "tests/ir/ret_missing_reported_once_per_function.ir": [
+   2,
+   "cd6910991ebbe08c"
+  ],
+  "tests/ir/ret_missing_return_inside_for_never_counts.ir": [
+   1,
+   "544831a759feb188"
+  ],
+  "tests/ir/ret_missing_statements_only.ir": [
+   1,
+   "d6422d04c1bf18de"
+  ],
+  "tests/ir/ret_missing_while_true_never_counts.ir": [
+   1,
+   "544831a759feb188"
+  ],
+  "tests/ir/ret_ok_code_after_if_else_that_returns.ir": [
+   0,
+   "e90d379e1a97d694"
+  ],
+  "tests/ir/ret_ok_code_after_return.ir": [
+   0,
+   "2be37eea86a4f932"
+  ],
+  "tests/ir/ret_ok_else_if_chain_with_final_else.ir": [
+   0,
+   "8a444cd360035891"
+  ],
+  "tests/ir/ret_ok_ends_in_return.ir": [
+   0,
+   "4a01aabfe8523635"
+  ],
+  "tests/ir/ret_ok_if_else_both_return.ir": [
+   0,
+   "34831786e33d2b45"
+  ],
+  "tests/ir/ret_ok_if_without_else_then_final_return.ir": [
+   0,
+   "15c94fe11c98c216"
+  ],
+  "tests/ir/ret_ok_loop_then_final_return.ir": [
+   0,
+   "f07982f538f2a878"
+  ],
+  "tests/ir/ret_ok_nested_if_else.ir": [
+   0,
+   "5ab262e494d364ff"
+  ],
+  "tests/ir/ret_ok_return_only_in_else_then_final.ir": [
+   0,
+   "4f8ca8c87d3906a0"
+  ],
+  "tests/ir/ret_ok_unit_functions.ir": [
+   0,
+   "61cf50d133c01042"
+  ],
+  "tests/ir/ret_shape_and_missing_are_independent.ir": [
+   2,
+   "ccfaa7936f2c25a6"
+  ],
+  "tests/ir/ret_two_functions_two_shape_errors.ir": [
+   2,
+   "e05a9d4de3d184b0"
+  ],
+  "tests/ir/ret_value_in_a_unit_function.ir": [
+   1,
+   "d8f81d920f69e795"
+  ],
+  "tests/ir/ret_value_in_a_unit_function_inside_if.ir": [
+   1,
+   "62b6647ad24ce27e"
+  ],
+  "tests/ir/ret_value_in_a_unit_function_is_still_checked.ir": [
+   2,
+   "5f720b87e8a08736"
+  ],
+  "tests/ir/ret_wrong_type_is_e0223_not_e0276.ir": [
+   1,
+   "bb302235ad4c958e"
+  ],
+  "tests/ir/return_array_of_slices.ir": [
+   1,
+   "fa1aa454350d33ea"
+  ],
+  "tests/ir/return_slice.ir": [
+   1,
+   "31a7a1f3aa36acc3"
+  ],
+  "tests/ir/return_too_large.ir": [
+   1,
+   "48291e639954b240"
+  ],
+  "tests/ir/return_unknown_type.ir": [
+   1,
+   "d064f6b4b67db01a"
+  ],
+  "tests/ir/signature_error_order.ir": [
+   4,
+   "d3ad48f35dfbe9b2"
+  ],
+  "tests/ir/signature_forward_reference.ir": [
+   0,
+   "91825b31a193fb9c"
+  ],
+  "tests/ir/size_array_of_struct_over_limit.ir": [
+   1,
+   "3a928bd68859af84"
+  ],
+  "tests/ir/size_array_over_limit.ir": [
+   1,
+   "38948fd6adf678fd"
+  ],
+  "tests/ir/size_computation_overflowing_u64.ir": [
+   4,
+   "ecccf6354d458c84"
+  ],
+  "tests/ir/size_error_is_silent_downstream.ir": [
+   1,
+   "38948fd6adf678fd"
+  ],
+  "tests/ir/size_max_length.ir": [
+   1,
+   "4d76eb8ce5170ee2"
+  ],
+  "tests/ir/size_nested_over_limit.ir": [
+   1,
+   "38948fd6adf678fd"
+  ],
+  "tests/ir/size_overflow_in_the_outer_multiplication.ir": [
+   3,
+   "42fc9835f5c60b7d"
+  ],
+  "tests/ir/size_padding_over_limit.ir": [
+   1,
+   "8b5340d149185a4b"
+  ],
+  "tests/ir/size_two_fields_over_limit.ir": [
+   1,
+   "8b5340d149185a4b"
+  ],
+  "tests/ir/slice_basic.ir": [
+   0,
+   "706e75f81ef05c31"
+  ],
+  "tests/ir/slice_element_type_follows_the_base.ir": [
+   0,
+   "783fc51bf24b2579"
+  ],
+  "tests/ir/slice_field.ir": [
+   1,
+   "4d3a48c15c022dd5"
+  ],
+  "tests/ir/slice_field_in_array.ir": [
+   1,
+   "9aea244f5baa139e"
+  ],
+  "tests/ir/slice_of_an_array_of_arrays.ir": [
+   0,
+   "b543f5c102239c2e"
+  ],
+  "tests/ir/slice_of_an_array_of_slices_is_a_slice_of_slice.ir": [
+   1,
+   "18a55e300f327e5e"
+  ],
+  "tests/ir/struct_array_field.ir": [
+   0,
+   "dfb6f6d6ba497a52"
+  ],
+  "tests/ir/struct_array_of_struct.ir": [
+   0,
+   "76a548a3d13ffcd6"
+  ],
+  "tests/ir/struct_at_size_limit.ir": [
+   0,
+   "18af89a2a596aa81"
+  ],
+  "tests/ir/struct_diamond.ir": [
+   0,
+   "720bc02bb89eb000"
+  ],
+  "tests/ir/struct_empty.ir": [
+   0,
+   "c3ea78cb77a1383d"
+  ],
+  "tests/ir/struct_huge_array_of_zero_size.ir": [
+   0,
+   "a510527fd289c965"
+  ],
+  "tests/ir/struct_nested_array_below_limit.ir": [
+   0,
+   "711fed746fcdc8e9"
+  ],
+  "tests/ir/struct_nested_arrays.ir": [
+   0,
+   "cefbeedf5b8e1a25"
+  ],
+  "tests/ir/struct_nested_forward_reference.ir": [
+   0,
+   "c1c948beb298780f"
+  ],
+  "tests/ir/struct_padding.ir": [
+   0,
+   "093f406b25cf105b"
+  ],
+  "tests/ir/struct_point.ir": [
+   0,
+   "72c8ad473a876547"
+  ],
+  "tests/ir/struct_primitives.ir": [
+   0,
+   "ee1cd5e15b39639d"
+  ],
+  "tests/ir/struct_with_function.ir": [
+   0,
+   "aea2bda8ef20dfb5"
+  ],
+  "tests/ir/struct_zero_length_array.ir": [
+   0,
+   "0f528c18e6ec1c21"
+  ],
+  "tests/ir/too_many_errors.ir": [
+   21,
+   "9ebea209c1180bac"
+  ],
+  "tests/ir/two_empty_functions.ir": [
+   0,
+   "55ea70bb50573c47"
+  ],
+  "tests/ir/unit_value_as_a_field_value_and_as_a_field_base.ir": [
+   3,
+   "7946cf04f8071598"
+  ],
+  "tests/ir/unit_value_cannot_be_a_condition_or_assigned.ir": [
+   5,
+   "6551120aa54be639"
+  ],
+  "tests/ir/unit_value_cannot_be_bound_passed_operated_or_returned.ir": [
+   8,
+   "600d8484d85750fb"
+  ],
+  "tests/ir/unit_value_is_not_blamed_where_another_error_already_says_so.ir": [
+   3,
+   "b9a533e03be09f8a"
+  ],
+  "tests/ir/unknown_type_field.ir": [
+   1,
+   "ab7a9a42947779f5"
+  ],
+  "tests/ir/unknown_type_function_name.ir": [
+   1,
+   "587fa94cdb92f6d4"
+  ],
+  "tests/ir/unknown_type_nested.ir": [
+   1,
+   "832201efdca42122"
+  ],
+  "tests/ir_fix/fix_duplicate_let_is_renamed_with_the_first.remaining": [
+   1,
+   "a1d0de611ffaa920"
+  ],
+  "tests/ir_fix/fix_duplicate_loop_variable_is_renamed_with_the_first.remaining": [
+   1,
+   "770adf6929385f19"
+  ],
+  "tests/ir_fix/fix_e0215_none_offered_when_the_error_cap_stops_the_build.remaining": [
+   21,
+   "496c5cdd63534c64"
+  ],
+  "tests/ir_fix/fix_e0261_array_element_keeps_the_expected_type.remaining": [
+   1,
+   "e77ee7b6a0b671ed"
+  ],
+  "tests/ir_fix/fix_e0261_at_the_bottom_of_a_511_operation_chain_has_no_fix.remaining": [
+   1,
+   "3a3f7ad02d2b2697"
+  ],
+  "tests/ir_fix/fix_e0261_chain_of_511_operations_has_no_fix_the_wrap_would_pass_the_height_bound.remaining": [
+   1,
+   "3a3f7ad02d2b2697"
+  ],
+  "tests/ir_fix/fix_e0261_comparison_with_no_lossless_widening_has_no_fix.remaining": [
+   1,
+   "8f75b4f10818f816"
+  ],
+  "tests/ir_fix/fix_e0261_construction_field_keeps_the_expected_type.remaining": [
+   1,
+   "eff206d1f7356f82"
+  ],
+  "tests/ir_fix/fix_e0261_in_an_unannotated_for_let_has_no_fix_the_condition_compares_another_type.remaining": [
+   1,
+   "3d1e7f18fb20610b"
+  ],
+  "tests/ir_fix/fix_e0261_in_an_unannotated_let_has_no_fix_a_comparison_of_it_is_returned_as_another_type.remaining": [
+   1,
+   "85dcac770bbfa818"
+  ],
+  "tests/ir_fix/fix_e0261_in_an_unannotated_let_has_no_fix_a_copy_of_it_is_returned_as_another_type.remaining": [
+   1,
+   "85dcac770bbfa818"
+  ],
+  "tests/ir_fix/fix_e0261_in_an_unannotated_let_has_no_fix_a_later_operand_is_silent_because_of_another_mistake.remaining": [
+   2,
+   "0294ae583e1cfe2e"
+  ],
+  "tests/ir_fix/fix_e0261_in_an_unannotated_let_has_no_fix_a_later_operator_mixes_it_with_another_type.remaining": [
+   1,
+   "85dcac770bbfa818"
+  ],
+  "tests/ir_fix/fix_e0261_in_an_unannotated_let_has_no_fix_a_literal_beside_it_does_not_fit.remaining": [
+   1,
+   "6b61594f8a0d8ba4"
+  ],
+  "tests/ir_fix/fix_e0261_in_an_unannotated_let_has_no_fix_arithmetic_on_the_bool_that_a_comparison_of_it_gives.remaining": [
+   1,
+   "85dcac770bbfa818"
+  ],
+  "tests/ir_fix/fix_e0261_in_an_unannotated_let_has_no_fix_it_is_a_condition.remaining": [
+   1,
+   "85dcac770bbfa818"
+  ],
+  "tests/ir_fix/fix_e0261_in_an_unannotated_let_has_no_fix_it_is_an_array_element_that_decides_a_type.remaining": [
+   1,
+   "85dcac770bbfa818"
+  ],
+  "tests/ir_fix/fix_e0261_in_an_unannotated_let_has_no_fix_it_is_assigned_another_type.remaining": [
+   1,
+   "85dcac770bbfa818"
+  ],
+  "tests/ir_fix/fix_e0261_in_an_unannotated_let_has_no_fix_it_is_both_operands_of_a_logical_and.remaining": [
+   1,
+   "85dcac770bbfa818"
+  ],
+  "tests/ir_fix/fix_e0261_in_an_unannotated_let_has_no_fix_it_is_negated_and_unsigned.remaining": [
+   1,
+   "6b61594f8a0d8ba4"
+  ],
+  "tests/ir_fix/fix_e0261_in_an_unannotated_let_has_no_fix_it_is_the_argument_of_len.remaining": [
+   1,
+   "85dcac770bbfa818"
+  ],
+  "tests/ir_fix/fix_e0261_in_an_unannotated_let_has_no_fix_the_local_is_an_argument_of_another_type.remaining": [
+   1,
+   "dd349967b5b34f36"
+  ],
+  "tests/ir_fix/fix_e0261_in_an_unannotated_let_has_no_fix_the_local_is_returned_as_another_type.remaining": [
+   1,
+   "85dcac770bbfa818"
+  ],
+  "tests/ir_fix/fix_e0261_in_the_right_operand_withdrawn_when_the_left_has_another_type.remaining": [
+   1,
+   "7a767f44c9518840"
+  ],
+  "tests/ir_fix/fix_e0261_inner_operand_would_not_make_the_result_the_expected_type.remaining": [
+   1,
+   "4bcceb5f61d5585c"
+  ],
+  "tests/ir_fix/fix_e0261_nested_call_argument_keeps_the_expected_type.remaining": [
+   1,
+   "eff206d1f7356f82"
+  ],
+  "tests/ir_fix/fix_e0261_no_fix_when_no_lossless_wrap_gives_the_expected_type.remaining": [
+   6,
+   "0915dab20847c2b6"
+  ],
+  "tests/ir_fix/fix_e0261_none_in_a_conversion_operand.remaining": [
+   1,
+   "0623b18ad81a2007"
+  ],
+  "tests/ir_fix/fix_e0261_none_in_a_field_base.remaining": [
+   1,
+   "051f3cf7a3f8a835"
+  ],
+  "tests/ir_fix/fix_e0261_none_in_a_len_argument.remaining": [
+   1,
+   "5f6ca96d6c5751c9"
+  ],
+  "tests/ir_fix/fix_e0261_none_in_an_index.remaining": [
+   1,
+   "bdae75653ca10f1f"
+  ],
+  "tests/ir_fix/fix_e0261_none_in_the_first_element_of_an_inferred_array_in_a_free_place.remaining": [
+   1,
+   "ce471341565ca006"
+  ],
+  "tests/ir_fix/fix_e0261_none_in_the_first_element_of_an_inferred_array_in_a_typed_place.remaining": [
+   1,
+   "6b61594f8a0d8ba4"
+  ],
+  "tests/ir_fix/fix_e0261_none_offered_when_the_error_cap_stops_the_build.remaining": [
+   21,
+   "f7c88171fcb73912"
+  ],
+  "tests/ir_fix/fix_e0261_none_under_logical_not_in_a_free_place.remaining": [
+   1,
+   "614ac72cfdc33821"
+  ],
+  "tests/ir_fix/fix_e0261_none_under_logical_not_in_a_typed_place.remaining": [
+   1,
+   "85dcac770bbfa818"
+  ],
+  "tests/ir_fix/fix_e0261_none_when_the_local_reaches_an_index_through_a_comparison.remaining": [
+   1,
+   "85dcac770bbfa818"
+  ],
+  "tests/ir_fix/fix_e0261_shift_count_is_never_narrowed.remaining": [
+   1,
+   "1afa9db6cc3a83fa"
+  ],
+  "tests/ir_fix/fix_e0261_two_fixes_inside_one_operator_are_both_withdrawn.remaining": [
+   2,
+   "bce67aefc8acd538"
+  ],
+  "tests/ir_fix/fix_e0261_two_lets_met_in_one_operator_have_no_fix_yet.remaining": [
+   2,
+   "8ed742d483fc07f0"
+  ],
+  "tests/ir_fix/fix_e0261_two_waiting_fixes_meeting_in_one_operator_are_both_withdrawn.remaining": [
+   2,
+   "7c085e0529bd420e"
+  ],
+  "tests/ir_fix/fix_e0261_under_a_call_a_field_and_a_named_argument_has_no_fix_when_those_levels_pass_the_bound.remaining": [
+   1,
+   "b355467b471625f8"
+  ],
+  "tests/ir_fix/fix_e0261_under_unary_minus_keeps_the_expected_type.remaining": [
+   1,
+   "0325c3343d63e8bd"
+  ],
+  "tests/ir_fix/fix_e0261_under_unary_minus_no_fix_when_the_type_would_be_unsigned.remaining": [
+   2,
+   "d70bead3df6cd35d"
+  ],
+  "tests/ir_fix/fix_e0261_withdrawn_when_a_group_of_literals_beside_it_does_not_fit.remaining": [
+   1,
+   "525a16f5110503d2"
+  ],
+  "tests/ir_fix/fix_e0261_withdrawn_when_a_literal_beside_it_does_not_fit_the_new_type.remaining": [
+   1,
+   "4bcceb5f61d5585c"
+  ],
+  "tests/ir_fix/fix_e0261_withdrawn_when_a_literal_on_the_left_does_not_fit.remaining": [
+   1,
+   "461f891ab49c1193"
+  ],
+  "tests/ir_fix/fix_e0261_withdrawn_when_a_negated_literal_beside_it_meets_an_unsigned_type.remaining": [
+   1,
+   "051f3cf7a3f8a835"
+  ],
+  "tests/ir_fix/fix_e0261_withdrawn_when_the_enclosing_operator_would_fail.remaining": [
+   2,
+   "eaa1cddaa57d784b"
+  ],
+  "tests/ir_fix/fix_e0261_withdrawn_when_the_other_operand_is_silent_because_of_another_mistake.remaining": [
+   2,
+   "8b5e3e7e77bf18f7"
+  ],
+  "tests/ir_fix/fix_e0261_withdrawn_when_the_shift_count_literal_does_not_fit.remaining": [
+   1,
+   "fb8975a477785ebb"
+  ],
+  "tests/ir_fix/fix_field_given_twice_in_a_construction.remaining": [
+   1,
+   "64d85ceb1556b8d7"
+  ],
+  "tests/ir_fix/fix_field_rename_offered_when_the_positional_construction_names_another_field.remaining": [
+   1,
+   "68c10f4d30baedb8"
+  ],
+  "tests/ir_fix/fix_field_rename_onto_an_unknown_construction_field.remaining": [
+   2,
+   "71d5ae5edcf0c905"
+  ],
+  "tests/ir_fix/fix_field_rename_onto_an_unknown_field.remaining": [
+   2,
+   "71d5ae5edcf0c905"
+  ],
+  "tests/ir_fix/fix_field_rename_reaches_its_name_in_a_positional_construction.remaining": [
+   1,
+   "68c10f4d30baedb8"
+  ],
+  "tests/ir_fix/fix_field_rename_refused_when_a_named_argument_writes_its_target.remaining": [
+   2,
+   "24eae1b6d7877354"
+  ],
+  "tests/ir_fix/fix_field_rename_refused_when_a_positional_construction_writes_its_target.remaining": [
+   2,
+   "36133dbcf64d0eff"
+  ],
+  "tests/ir_fix/fix_field_renames_reach_every_name_in_a_positional_construction.remaining": [
+   1,
+   "4cf6f41ee0e3ed37"
+  ],
+  "tests/ir_fix/fix_field_target_is_an_existing_field.remaining": [
+   1,
+   "9f826b90c3bbb30b"
+  ],
+  "tests/ir_fix/fix_function_rename_is_offered_when_the_local_is_declared_after_the_use.remaining": [
+   1,
+   "4ed6fb2f7bb8e112"
+  ],
+  "tests/ir_fix/fix_function_rename_onto_an_unknown_callee.remaining": [
+   2,
+   "6d5f6fd71054e5e5"
+  ],
+  "tests/ir_fix/fix_function_rename_onto_an_unknown_name_used_elsewhere.remaining": [
+   2,
+   "4191772dbb79b1b2"
+  ],
+  "tests/ir_fix/fix_function_rename_reaches_every_type_position_it_is_written_in.remaining": [
+   2,
+   "9c0029b085dc2cdc"
+  ],
+  "tests/ir_fix/fix_function_rename_reaches_its_name_written_in_a_type_position.remaining": [
+   1,
+   "180e4e09399071c4"
+  ],
+  "tests/ir_fix/fix_function_rename_refused_when_a_type_position_writes_its_target.remaining": [
+   2,
+   "b302eeefcb142dc9"
+  ],
+  "tests/ir_fix/fix_function_rename_that_a_visible_local_would_capture.remaining": [
+   2,
+   "1982cd54cb4d3d74"
+  ],
+  "tests/ir_fix/fix_function_renamed_next_to_many_value_uses.remaining": [
+   1,
+   "0f084790a8f81b67"
+  ],
+  "tests/ir_fix/fix_function_used_as_a_value.remaining": [
+   1,
+   "839d5f8cac25b58d"
+  ],
+  "tests/ir_fix/fix_local_rename_is_offered_when_the_unknown_name_comes_before_its_declaration.remaining": [
+   1,
+   "3f8e6dc2599cf2fe"
+  ],
+  "tests/ir_fix/fix_local_rename_onto_a_function_used_as_a_value.remaining": [
+   2,
+   "2433d804f91447aa"
+  ],
+  "tests/ir_fix/fix_local_rename_onto_an_unknown_name_used_in_its_scope.remaining": [
+   2,
+   "2f4c44d6255033e8"
+  ],
+  "tests/ir_fix/fix_locals_renamed_next_to_many_uses_of_an_unknown_name.remaining": [
+   1,
+   "5b6c65c6a3ad864f"
+  ],
+  "tests/ir_fix/fix_no_fix_for_a_keyword_len_or_an_empty_result.remaining": [
+   5,
+   "61187da0578d1699"
+  ],
+  "tests/ir_fix/fix_none_offered_when_the_error_cap_stops_the_build.remaining": [
+   21,
+   "415ed2f1a44eeaac"
+  ],
+  "tests/ir_fix/fix_only_the_open_block_is_blocked_by_an_unknown_name_spelling_its_target.remaining": [
+   2,
+   "17770bec9d75ba7e"
+  ],
+  "tests/ir_fix/fix_parameter_rename_onto_an_unknown_name_used_in_the_body.remaining": [
+   2,
+   "fb0c8dc58d5c3462"
+  ],
+  "tests/ir_fix/fix_rename_keeps_nested_and_spaced_parentheses.remaining": [
+   2,
+   "ba694f599fb3f1e4"
+  ],
+  "tests/ir_fix/fix_rename_keeps_the_parentheses_of_a_bad_target.remaining": [
+   1,
+   "1e590bf26ae5e367"
+  ],
+  "tests/ir_fix/fix_rename_keeps_the_parentheses_of_a_field_and_an_index_target.remaining": [
+   2,
+   "d9dd4d65bf19f42d"
+  ],
+  "tests/ir_fix/fix_rename_omitted_when_another_declaration_error_hides_the_uses.remaining": [
+   1,
+   "a9c04d0bb311cb25"
+  ],
+  "tests/ir_fix/fix_sibling_blocks_with_the_same_misnamed_local_and_an_unknown_name.remaining": [
+   1,
+   "a02c42f5182d19e1"
+  ],
+  "tests/ir_fix/fix_struct_and_local_that_would_swap_names.remaining": [
+   3,
+   "42fb2d5bd5834a81"
+  ],
+  "tests/ir_fix/fix_struct_rename_onto_an_unknown_type.remaining": [
+   2,
+   "3c7d100cd837ed29"
+  ],
+  "tests/ir_fix/fix_struct_target_is_an_existing_struct.remaining": [
+   1,
+   "5ab276da12477205"
+  ],
+  "tests/ir_fix/fix_struct_used_as_a_value.remaining": [
+   1,
+   "918829649fe07b89"
+  ],
+  "tests/ir_fix/fix_target_is_an_existing_name.remaining": [
+   1,
+   "413a336d449c7757"
+  ],
+  "tests/ir_fix/fix_target_visible_from_the_declaration_is_still_refused.remaining": [
+   3,
+   "133709eb5917679c"
+  ],
+  "tests/ir_fix/fix_three_declarations_of_one_name.remaining": [
+   2,
+   "b1d4aa8cd803bc42"
+  ],
+  "tests/ir_fix/fix_two_names_converting_to_the_same_name.remaining": [
+   1,
+   "e10b6a3b64691e41"
+  ],
+  "tests/parser/additive_add.ast": [
+   0,
+   "b33ccf9a981f433d"
+  ],
+  "tests/parser/additive_sub.ast": [
+   0,
+   "2a47867ae3db37cc"
+  ],
+  "tests/parser/array_basic.ast": [
+   0,
+   "baf3313996a44ae7"
+  ],
+  "tests/parser/array_in_call_args.ast": [
+   0,
+   "cda16c4a38ade92f"
+  ],
+  "tests/parser/array_in_conversion.ast": [
+   0,
+   "1591f669a89ca873"
+  ],
+  "tests/parser/array_in_expression.ast": [
+   0,
+   "39df8cc5a349583d"
+  ],
+  "tests/parser/array_in_let.ast": [
+   0,
+   "f25c13e7ba017301"
+  ],
+  "tests/parser/array_index_chain.ast": [
+   0,
+   "cdb3d2ccbad01b5a"
+  ],
+  "tests/parser/array_nested.ast": [
+   0,
+   "d599afb1664dfd37"
+  ],
+  "tests/parser/array_of_conversions.ast": [
+   0,
+   "f1e1a9fbb681330e"
+  ],
+  "tests/parser/array_single.ast": [
+   0,
+   "131f8cf811d6f2a0"
+  ],
+  "tests/parser/array_statement_after_if_block.ast": [
+   0,
+   "fca7ff4c9a8074f9"
+  ],
+  "tests/parser/array_statement_index_assign.ast": [
+   0,
+   "f693f71b0d204b31"
+  ],
+  "tests/parser/attribute_vs_array_toplevel.ast": [
+   0,
+   "521c28ab330ac48a"
+  ],
+  "tests/parser/bitand.ast": [
+   0,
+   "ac94803d5f278b93"
+  ],
+  "tests/parser/bitor.ast": [
+   0,
+   "143058dc87f834d7"
+  ],
+  "tests/parser/bitxor.ast": [
+   0,
+   "ea92242df298b03f"
+  ],
+  "tests/parser/block_break.ast": [
+   0,
+   "fc803b0360608849"
+  ],
+  "tests/parser/block_continue.ast": [
+   0,
+   "32bff7fc14c475e3"
+  ],
+  "tests/parser/block_empty.ast": [
+   0,
+   "192fa702a86b95c9"
+  ],
+  "tests/parser/block_expr_stmt_number.ast": [
+   0,
+   "23871042c809240f"
+  ],
+  "tests/parser/block_let_array_type.ast": [
+   0,
+   "64171cec86e44dc8"
+  ],
+  "tests/parser/block_let_basic.ast": [
+   0,
+   "52b1a22d467db3a3"
+  ],
+  "tests/parser/block_let_nested_array_type.ast": [
+   0,
+   "5caedd52b73aff4c"
+  ],
+  "tests/parser/block_let_slice_type.ast": [
+   0,
+   "551719994a3ad829"
+  ],
+  "tests/parser/block_let_typed.ast": [
+   0,
+   "7a3cf67899b95526"
+  ],
+  "tests/parser/block_many_statements.ast": [
+   0,
+   "bd773afe6f2862be"
+  ],
+  "tests/parser/block_multi_stmt.ast": [
+   0,
+   "e6801b4f3d933365"
+  ],
+  "tests/parser/block_no_leftover_trailing_comment.ast": [
+   0,
+   "910a84d5b738cefd"
+  ],
+  "tests/parser/block_no_leftover_whitespace.ast": [
+   0,
+   "910a84d5b738cefd"
+  ],
+  "tests/parser/block_return_bare.ast": [
+   0,
+   "ea6189b696d223ba"
+  ],
+  "tests/parser/block_return_value.ast": [
+   0,
+   "55ca9aea6b6db210"
+  ],
+  "tests/parser/bool_false.ast": [
+   0,
+   "0993d8e7967dac05"
+  ],
+  "tests/parser/bool_true.ast": [
+   0,
+   "3486670caa3c1d25"
+  ],
+  "tests/parser/call_nested.ast": [
+   0,
+   "a00571ec18ee5734"
+  ],
+  "tests/parser/call_no_args.ast": [
+   0,
+   "990a0ace12e74959"
+  ],
+  "tests/parser/call_with_args.ast": [
+   0,
+   "da4aa13d67f1eb80"
+  ],
+  "tests/parser/comparison_ge.ast": [
+   0,
+   "f40cf4bedfa68c80"
+  ],
+  "tests/parser/comparison_gt.ast": [
+   0,
+   "50632a7a68435323"
+  ],
+  "tests/parser/comparison_le.ast": [
+   0,
+   "fc6e61a16da224f9"
+  ],
+  "tests/parser/comparison_lt.ast": [
+   0,
+   "ea8a279b18cd479c"
+  ],
+  "tests/parser/convert_as_statement.ast": [
+   0,
+   "97af21afd61c50c9"
+  ],
+  "tests/parser/convert_assign_target.ast": [
+   0,
+   "2ed1b591bee3e140"
+  ],
+  "tests/parser/convert_basic.ast": [
+   0,
+   "e18049a5a8cdeb6d"
+  ],
+  "tests/parser/convert_bool_of_int.ast": [
+   0,
+   "a7de37d4fc88c63e"
+  ],
+  "tests/parser/convert_every_type.ast": [
+   0,
+   "354c91a4efaff809"
+  ],
+  "tests/parser/convert_in_expression.ast": [
+   0,
+   "ffaf2c544c9b480f"
+  ],
+  "tests/parser/convert_in_let_and_args.ast": [
+   0,
+   "e57e9525a008c3ae"
+  ],
+  "tests/parser/convert_int_of_bool.ast": [
+   0,
+   "47f98f5f38613dd2"
+  ],
+  "tests/parser/convert_literal_operand.ast": [
+   0,
+   "66b9a925bcd4eb6e"
+  ],
+  "tests/parser/convert_nested.ast": [
+   0,
+   "3c9638e5e6adff34"
+  ],
+  "tests/parser/convert_postfix.ast": [
+   0,
+   "28d7de51281b8345"
+  ],
+  "tests/parser/depth_array_255_ok.ast": [
+   0,
+   "c9f7269abb9197cd"
+  ],
+  "tests/parser/depth_array_256_fail.ast": [
+   1,
+   "2e315d33aa886dca"
+  ],
+  "tests/parser/depth_array_300_fail.ast": [
+   1,
+   "2e315d33aa886dca"
+  ],
+  "tests/parser/depth_calls_255_ok.ast": [
+   0,
+   "975613e3ea6b1cde"
+  ],
+  "tests/parser/depth_calls_256_fail.ast": [
+   1,
+   "ba74edd8a1ab6363"
+  ],
+  "tests/parser/depth_calls_300_fail.ast": [
+   1,
+   "ba74edd8a1ab6363"
+  ],
+  "tests/parser/depth_conv_255_ok.ast": [
+   0,
+   "dc33d3cae7b757cd"
+  ],
+  "tests/parser/depth_conv_256_fail.ast": [
+   1,
+   "9a46b008a2e8e2d0"
+  ],
+  "tests/parser/depth_conv_300_fail.ast": [
+   1,
+   "9a46b008a2e8e2d0"
+  ],
+  "tests/parser/depth_elseif_254_ok.ast": [
+   0,
+   "4bd25f806a3f77bc"
+  ],
+  "tests/parser/depth_elseif_255_fail.ast": [
+   1,
+   "902bc224dfd1e5eb"
+  ],
+  "tests/parser/depth_elseif_300_fail.ast": [
+   1,
+   "902bc224dfd1e5eb"
+  ],
+  "tests/parser/depth_elseif_recovered_254_ok.ast": [
+   1,
+   "ef818c87fb06800c"
+  ],
+  "tests/parser/depth_elseif_recovered_255_fail.ast": [
+   2,
+   "c0b68d71dc8403f3"
+  ],
+  "tests/parser/depth_elseif_recovered_300_fail.ast": [
+   2,
+   "c0b68d71dc8403f3"
+  ],
+  "tests/parser/depth_index_255_ok.ast": [
+   0,
+   "6a4fe3bcf447cef8"
+  ],
+  "tests/parser/depth_index_256_fail.ast": [
+   1,
+   "ba74edd8a1ab6363"
+  ],
+  "tests/parser/depth_index_300_fail.ast": [
+   1,
+   "ba74edd8a1ab6363"
+  ],
+  "tests/parser/depth_mixed_127_ok.ast": [
+   0,
+   "d2d04a445c407ae4"
+  ],
+  "tests/parser/depth_mixed_128_fail.ast": [
+   1,
+   "2e315d33aa886dca"
+  ],
+  "tests/parser/depth_mixed_300_fail.ast": [
+   1,
+   "2e315d33aa886dca"
+  ],
+  "tests/parser/depth_namedarg_255_ok.ast": [
+   0,
+   "7170fef0f7d61c0e"
+  ],
+  "tests/parser/depth_namedarg_256_fail.ast": [
+   1,
+   "f99bffc036e5d09b"
+  ],
+  "tests/parser/depth_namedarg_300_fail.ast": [
+   1,
+   "f99bffc036e5d09b"
+  ],
+  "tests/parser/depth_nested_if_127_ok.ast": [
+   0,
+   "bf66b59342776a6c"
+  ],
+  "tests/parser/depth_nested_if_128_fail.ast": [
+   1,
+   "f6322b526657407d"
+  ],
+  "tests/parser/depth_nested_if_300_fail.ast": [
+   1,
+   "f6322b526657407d"
+  ],
+  "tests/parser/depth_nested_if_in_function_127_ok.ast": [
+   0,
+   "1267e1d5b6fe604d"
+  ],
+  "tests/parser/depth_nested_if_in_function_128_fail.ast": [
+   1,
+   "156cdfe8661e59f3"
+  ],
+  "tests/parser/depth_parens_255_ok.ast": [
+   0,
+   "4051a5428561ac10"
+  ],
+  "tests/parser/depth_parens_256_fail.ast": [
+   1,
+   "2e315d33aa886dca"
+  ],
+  "tests/parser/depth_parens_300_fail.ast": [
+   1,
+   "2e315d33aa886dca"
+  ],
+  "tests/parser/depth_repeat_255_ok.ast": [
+   0,
+   "f50ca269b5f5eceb"
+  ],
+  "tests/parser/depth_repeat_256_fail.ast": [
+   1,
+   "2e315d33aa886dca"
+  ],
+  "tests/parser/depth_repeat_300_fail.ast": [
+   1,
+   "2e315d33aa886dca"
+  ],
+  "tests/parser/depth_type_254_ok.ast": [
+   0,
+   "a290b6933100e2e8"
+  ],
+  "tests/parser/depth_type_255_fail.ast": [
+   1,
+   "523bcc1c24435ce0"
+  ],
+  "tests/parser/depth_type_300_fail.ast": [
+   1,
+   "523bcc1c24435ce0"
+  ],
+  "tests/parser/depth_unary_255_ok.ast": [
+   0,
+   "2a20d181e5d4652d"
+  ],
+  "tests/parser/depth_unary_256_fail.ast": [
+   1,
+   "7c90f41a2c25fcea"
+  ],
+  "tests/parser/depth_unary_300_fail.ast": [
+   1,
+   "7c90f41a2c25fcea"
+  ],
+  "tests/parser/equality_eq.ast": [
+   0,
+   "385405a73d959d75"
+  ],
+  "tests/parser/equality_ne.ast": [
+   0,
+   "50ceba395d027059"
+  ],
+  "tests/parser/err_array_empty.ast": [
+   1,
+   "e96d897b3994c809"
+  ],
+  "tests/parser/err_array_semi_after_list.ast": [
+   1,
+   "04a7b9acd4002078"
+  ],
+  "tests/parser/err_array_trailing_comma.ast": [
+   1,
+   "748c7fa6d51422f1"
+  ],
+  "tests/parser/err_array_unclosed.ast": [
+   1,
+   "8cdc11257f51b898"
+  ],
+  "tests/parser/err_assign_after_binary.ast": [
+   1,
+   "e10046cf07bf9614"
+  ],
+  "tests/parser/err_assign_chain.ast": [
+   1,
+   "e10046cf07bf9614"
+  ],
+  "tests/parser/err_attribute_missing_name.ast": [
+   1,
+   "dbfd0c727c635493"
+  ],
+  "tests/parser/err_bad_char.ast": [
+   1,
+   "e67fb2d5c958a8d2"
+  ],
+  "tests/parser/err_binary_missing_rhs.ast": [
+   1,
+   "2f72ee7d15d3b213"
+  ],
+  "tests/parser/err_block_bad_stmt.ast": [
+   1,
+   "6507f04d58f5c2b3"
+  ],
+  "tests/parser/err_block_leftover_after_nested.ast": [
+   1,
+   "eae95832a9b5a595"
+  ],
+  "tests/parser/err_block_leftover_close_brace.ast": [
+   1,
+   "0477bef711b82ff1"
+  ],
+  "tests/parser/err_block_leftover_ident.ast": [
+   1,
+   "5ca161a7f4ef363f"
+  ],
+  "tests/parser/err_block_leftover_open_brace.ast": [
+   1,
+   "137a51372532997d"
+  ],
+  "tests/parser/err_block_leftover_second_block.ast": [
+   1,
+   "137a51372532997d"
+  ],
+  "tests/parser/err_block_unclosed.ast": [
+   1,
+   "362dfc8c2f2307ac"
+  ],
+  "tests/parser/err_break_missing_semi.ast": [
+   1,
+   "92bef5aa90b4fccd"
+  ],
+  "tests/parser/err_chained_cross_cmp.ast": [
+   1,
+   "10eb9dcf28847435"
+  ],
+  "tests/parser/err_chained_eq_ne.ast": [
+   1,
+   "ee4057e5685a3937"
+  ],
+  "tests/parser/err_chained_le_gt.ast": [
+   1,
+   "ee4057e5685a3937"
+  ],
+  "tests/parser/err_chained_same_cmp.ast": [
+   1,
+   "10eb9dcf28847435"
+  ],
+  "tests/parser/err_chained_same_eq.ast": [
+   1,
+   "75f21ff015b00b8d"
+  ],
+  "tests/parser/err_colon_in_statement.ast": [
+   1,
+   "2c446cda41f4fcdd"
+  ],
+  "tests/parser/err_continue_missing_semi.ast": [
+   1,
+   "c67ae3b47dccc0c7"
+  ],
+  "tests/parser/err_convert_bare.ast": [
+   1,
+   "6089f1402f9556c8"
+  ],
+  "tests/parser/err_convert_bare_in_expr.ast": [
+   1,
+   "b3b3d9fa7d71d485"
+  ],
+  "tests/parser/err_convert_bare_in_stmt.ast": [
+   1,
+   "c6d57308de49b23d"
+  ],
+  "tests/parser/err_convert_call_result.ast": [
+   1,
+   "0a53687e255fb09f"
+  ],
+  "tests/parser/err_convert_empty.ast": [
+   1,
+   "c21ec65d7fcedaa3"
+  ],
+  "tests/parser/err_convert_two_args.ast": [
+   1,
+   "9b132a901306005c"
+  ],
+  "tests/parser/err_convert_unclosed.ast": [
+   1,
+   "3c0bca346b506719"
+  ],
+  "tests/parser/err_convert_unit_is_not_a_conversion.ast": [
+   1,
+   "98c95c2197f8efdb"
+  ],
+  "tests/parser/err_empty.ast": [
+   1,
+   "5da5fe602a5e04a1"
+  ],
+  "tests/parser/err_empty_call_arg.ast": [
+   1,
+   "85ca65201fe0f534"
+  ],
+  "tests/parser/err_empty_index.ast": [
+   1,
+   "f976f43639265a4c"
+  ],
+  "tests/parser/err_empty_slice_hi.ast": [
+   1,
+   "937d50b2e88a19f4"
+  ],
+  "tests/parser/err_expr_leftover_after_paren.ast": [
+   1,
+   "d940f6702eed5a0d"
+  ],
+  "tests/parser/err_expr_leftover_after_postfix.ast": [
+   1,
+   "cace865181cf1a01"
+  ],
+  "tests/parser/err_expr_leftover_close_parens.ast": [
+   1,
+   "38d4210927b3269c"
+  ],
+  "tests/parser/err_expr_leftover_colon.ast": [
+   1,
+   "d76d620adb0e9d9d"
+  ],
+  "tests/parser/err_expr_leftover_ident.ast": [
+   1,
+   "44d30a3bc89f1598"
+  ],
+  "tests/parser/err_expr_leftover_lexer_error.ast": [
+   1,
+   "359c9ab2c7020572"
+  ],
+  "tests/parser/err_expr_stmt_missing_semi.ast": [
+   1,
+   "d68ebfc8660c4d1e"
+  ],
+  "tests/parser/err_field_missing_colon.ast": [
+   1,
+   "7663a1e0d4dc662b"
+  ],
+  "tests/parser/err_field_missing_name.ast": [
+   1,
+   "c3321fa22f377335"
+  ],
+  "tests/parser/err_field_missing_type.ast": [
+   1,
+   "be49dc2c09eba7ed"
+  ],
+  "tests/parser/err_for_missing_brace.ast": [
+   1,
+   "60f2156312c79bf1"
+  ],
+  "tests/parser/err_for_missing_cond_semi.ast": [
+   1,
+   "a7a7b5f11c50cf82"
+  ],
+  "tests/parser/err_for_missing_init.ast": [
+   1,
+   "1761f66f13d89017"
+  ],
+  "tests/parser/err_function_attribute_unclosed.ast": [
+   1,
+   "f8ce481cd9536911"
+  ],
+  "tests/parser/err_function_missing_fn_after_attribute.ast": [
+   1,
+   "41856d1baf40e906"
+  ],
+  "tests/parser/err_function_missing_name.ast": [
+   1,
+   "7ece86e95a8c31dd"
+  ],
+  "tests/parser/err_function_missing_paren.ast": [
+   1,
+   "949207422683de55"
+  ],
+  "tests/parser/err_function_param_malformed.ast": [
+   1,
+   "f2afe4751144c06d"
+  ],
+  "tests/parser/err_function_param_missing_comma.ast": [
+   1,
+   "69445fec798f86cb"
+  ],
+  "tests/parser/err_if_assign_condition.ast": [
+   1,
+   "ccf25a0f3b01e758"
+  ],
+  "tests/parser/err_if_bad_condition.ast": [
+   1,
+   "64bd2992cf3f09b2"
+  ],
+  "tests/parser/err_if_else_bad_block.ast": [
+   1,
+   "dd38b4311821b491"
+  ],
+  "tests/parser/err_if_missing_brace.ast": [
+   1,
+   "9bc5e75d510c8ad2"
+  ],
+  "tests/parser/err_let_bad_init.ast": [
+   1,
+   "46b0058a682ef3ba"
+  ],
+  "tests/parser/err_let_bad_type.ast": [
+   1,
+   "d92904e9b6bafeaa"
+  ],
+  "tests/parser/err_let_missing_assign.ast": [
+   1,
+   "1e1615db75c71f41"
+  ],
+  "tests/parser/err_let_missing_ident.ast": [
+   1,
+   "f2d38831df71d6e3"
+  ],
+  "tests/parser/err_let_missing_semi.ast": [
+   1,
+   "a400330e38882993"
+  ],
+  "tests/parser/err_missing_field_name.ast": [
+   1,
+   "17e8bd165cef142c"
+  ],
+  "tests/parser/err_missing_version.ast": [
+   1,
+   "fb840ffad1928f50"
+  ],
+  "tests/parser/err_mixed_assign_rhs.ast": [
+   1,
+   "23a04f62dea90b15"
+  ],
+  "tests/parser/err_mixed_call_arg.ast": [
+   1,
+   "5376596a55cd2ba5"
+  ],
+  "tests/parser/err_mixed_cmp_eq_lhs.ast": [
+   1,
+   "9d00dc2853bc88a3"
+  ],
+  "tests/parser/err_mixed_cmp_eq_rhs.ast": [
+   1,
+   "11c7cd23b74b4d0d"
+  ],
+  "tests/parser/err_mixed_eq_lt_eq.ast": [
+   1,
+   "223dba48177d28c8"
+  ],
+  "tests/parser/err_mixed_for_cond.ast": [
+   1,
+   "38b478814700feb7"
+  ],
+  "tests/parser/err_mixed_for_step.ast": [
+   1,
+   "cbe68a41c39068e5"
+  ],
+  "tests/parser/err_mixed_full_chain.ast": [
+   1,
+   "fca3c750fda91e97"
+  ],
+  "tests/parser/err_mixed_ge_ne.ast": [
+   1,
+   "02e3e47baee48546"
+  ],
+  "tests/parser/err_mixed_if_condition.ast": [
+   1,
+   "721eb08281d9b932"
+  ],
+  "tests/parser/err_mixed_in_and_operand.ast": [
+   1,
+   "02e3e47baee48546"
+  ],
+  "tests/parser/err_mixed_return.ast": [
+   1,
+   "db897f78309d9bb3"
+  ],
+  "tests/parser/err_mixed_second_operand_unparseable.ast": [
+   1,
+   "4e9739b4b421a681"
+  ],
+  "tests/parser/err_mixed_statement.ast": [
+   1,
+   "85b7ee50c3c02c9f"
+  ],
+  "tests/parser/err_mixed_three_ops.ast": [
+   1,
+   "788af1739bbed929"
+  ],
+  "tests/parser/err_mixed_two_statements.ast": [
+   2,
+   "93de976e3c46c917"
+  ],
+  "tests/parser/err_namedarg_chained.ast": [
+   1,
+   "f93b701c5753f2ff"
+  ],
+  "tests/parser/err_namedarg_colon_only.ast": [
+   1,
+   "40754c0fe49cc91f"
+  ],
+  "tests/parser/err_namedarg_double_colon.ast": [
+   1,
+   "4aa1ab8c3857d85c"
+  ],
+  "tests/parser/err_namedarg_in_array.ast": [
+   1,
+   "37e48f8a134f17c8"
+  ],
+  "tests/parser/err_namedarg_in_conversion.ast": [
+   1,
+   "62132735146e499b"
+  ],
+  "tests/parser/err_namedarg_in_index.ast": [
+   1,
+   "24d1ef4f2dbeb6a7"
+  ],
+  "tests/parser/err_namedarg_missing_value.ast": [
+   1,
+   "35a9a9a9afc648ef"
+  ],
+  "tests/parser/err_namedarg_trailing_comma.ast": [
+   1,
+   "85ca65201fe0f534"
+  ],
+  "tests/parser/err_namedarg_unclosed.ast": [
+   1,
+   "9814cf57363c622f"
+  ],
+  "tests/parser/err_param_missing_colon.ast": [
+   1,
+   "61fc09c81c784429"
+  ],
+  "tests/parser/err_recovery_20_error_cap.ast": [
+   21,
+   "2ce9061ca471107b"
+  ],
+  "tests/parser/err_recovery_array_shaped_attribute.ast": [
+   1,
+   "e3ca073022420509"
+  ],
+  "tests/parser/err_recovery_array_unclosed_then_fn.ast": [
+   1,
+   "3c151269d29ec0a9"
+  ],
+  "tests/parser/err_recovery_array_unclosed_then_let.ast": [
+   1,
+   "6cd5e3693c588e89"
+  ],
+  "tests/parser/err_recovery_array_unclosed_then_rbrace.ast": [
+   1,
+   "6245841191ce5418"
+  ],
+  "tests/parser/err_recovery_bracket_attribute_recognized.ast": [
+   1,
+   "c4769f9870008484"
+  ],
+  "tests/parser/err_recovery_bracket_index_not_attribute.ast": [
+   1,
+   "6660e32c85fe9fc9"
+  ],
+  "tests/parser/err_recovery_depth_preserved_255_ok.ast": [
+   1,
+   "7f2295ed7ea8414d"
+  ],
+  "tests/parser/err_recovery_depth_preserved_256_fail.ast": [
+   2,
+   "3918c3b677ffc19e"
+  ],
+  "tests/parser/err_recovery_else_branch_error_next_stmt_preserved.ast": [
+   2,
+   "e8dbcb8a965b0681"
+  ],
+  "tests/parser/err_recovery_else_branch_header_failure_nested.ast": [
+   2,
+   "cde2991205f5a65d"
+  ],
+  "tests/parser/err_recovery_else_branch_one_diagnostic.ast": [
+   2,
+   "fa5cfa83035ce7a5"
+  ],
+  "tests/parser/err_recovery_else_if_branch_error.ast": [
+   2,
+   "d7ddf922b3e50b9e"
+  ],
+  "tests/parser/err_recovery_else_if_header_failure_next_stmt_kept.ast": [
+   2,
+   "3aaa64fc293e587b"
+  ],
+  "tests/parser/err_recovery_else_without_block_next_stmt_kept.ast": [
+   2,
+   "5e8913094e854a8d"
+  ],
+  "tests/parser/err_recovery_elseif_chain_else_branch_error.ast": [
+   2,
+   "cc6c6d7d262f2961"
+  ],
+  "tests/parser/err_recovery_elseif_header_else_preserved.ast": [
+   1,
+   "2b37d26e90a110df"
+  ],
+  "tests/parser/err_recovery_elseif_header_recovered_next_stmt_preserved.ast": [
+   1,
+   "3bd4c5ba5060c258"
+  ],
+  "tests/parser/err_recovery_for_cond_assignment.ast": [
+   1,
+   "5c031e9ab00e7ac6"
+  ],
+  "tests/parser/err_recovery_for_header_cond_fails.ast": [
+   1,
+   "aca42fd80c3bdf0f"
+  ],
+  "tests/parser/err_recovery_for_header_mask_swallows_filler.ast": [
+   1,
+   "cf8b6e9aa19fe900"
+  ],
+  "tests/parser/err_recovery_for_header_recovered_next_stmt_preserved.ast": [
+   1,
+   "d13ef272fa34b227"
+  ],
+  "tests/parser/err_recovery_for_header_step_fails.ast": [
+   1,
+   "5c72cb24486b4e5b"
+  ],
+  "tests/parser/err_recovery_for_mask_not_leaked_into_body.ast": [
+   3,
+   "9561ecdc5705cfca"
+  ],
+  "tests/parser/err_recovery_header_no_body_before_fn.ast": [
+   1,
+   "fb76c3bef6a3292f"
+  ],
+  "tests/parser/err_recovery_if_header_else_preserved.ast": [
+   1,
+   "10ee2cabd38276e1"
+  ],
+  "tests/parser/err_recovery_if_header_elseif_chain_preserved.ast": [
+   1,
+   "10ee2cabd38276e1"
+  ],
+  "tests/parser/err_recovery_if_header_not_masked.ast": [
+   1,
+   "672f3a8b3cf45419"
+  ],
+  "tests/parser/err_recovery_if_header_recovered_next_stmt_preserved.ast": [
+   1,
+   "4359604a487af904"
+  ],
+  "tests/parser/err_recovery_in_call_cascade_accepted.ast": [
+   2,
+   "28ce02fec3796f06"
+  ],
+  "tests/parser/err_recovery_missing_rbrace_next_fn_preserved.ast": [
+   1,
+   "a8e2729cd3ef5597"
+  ],
+  "tests/parser/err_recovery_nested_missing_braces.ast": [
+   1,
+   "d22ef285b11891f6"
+  ],
+  "tests/parser/err_recovery_no_cascade.ast": [
+   1,
+   "875ea083930dd9d3"
+  ],
+  "tests/parser/err_recovery_no_cascade_top_level.ast": [
+   1,
+   "92e759dab1c2641f"
+  ],
+  "tests/parser/err_recovery_no_infinite_loop.ast": [
+   1,
+   "6325a856a28a0cc0"
+  ],
+  "tests/parser/err_recovery_one_stray_token_one_diagnostic.ast": [
+   1,
+   "7c5b61b32eb3ccbf"
+  ],
+  "tests/parser/err_recovery_open_parens_then_decls.ast": [
+   1,
+   "e6ca4b91fc89da27"
+  ],
+  "tests/parser/err_recovery_repeat_in_bracket_cascade.ast": [
+   2,
+   "f1831adbbcf427b2"
+  ],
+  "tests/parser/err_recovery_semi_in_bracket_not_boundary.ast": [
+   1,
+   "2a7bda6f715ff0f1"
+  ],
+  "tests/parser/err_recovery_semi_in_paren_not_boundary.ast": [
+   1,
+   "ff3ff957d9b82234"
+  ],
+  "tests/parser/err_recovery_stray_attributed_fn_in_body.ast": [
+   2,
+   "7a61819b0add98ec"
+  ],
+  "tests/parser/err_recovery_stray_fn_after_header_failure.ast": [
+   1,
+   "8ce4993282f62c7e"
+  ],
+  "tests/parser/err_recovery_stray_fn_after_skip.ast": [
+   1,
+   "5ac65918b64f1ace"
+  ],
+  "tests/parser/err_recovery_stray_fn_in_body.ast": [
+   2,
+   "71e986116fbd41f7"
+  ],
+  "tests/parser/err_recovery_stray_fn_in_body_nonempty.ast": [
+   2,
+   "b24aed0041e37289"
+  ],
+  "tests/parser/err_recovery_stray_fn_in_nested_blocks.ast": [
+   2,
+   "17b70203922b700f"
+  ],
+  "tests/parser/err_recovery_stray_fn_nested_header_failure_one_report.ast": [
+   1,
+   "a12cf0eecc24a08e"
+  ],
+  "tests/parser/err_recovery_stray_fn_nested_skip_one_report.ast": [
+   1,
+   "441f41114b6e6eb8"
+  ],
+  "tests/parser/err_recovery_stray_fn_recovered_header_body_one_report.ast": [
+   2,
+   "a99f03e38971ad7e"
+  ],
+  "tests/parser/err_recovery_stray_fn_then_fn.ast": [
+   2,
+   "f458891d891bcab6"
+  ],
+  "tests/parser/err_recovery_stray_struct_in_body.ast": [
+   2,
+   "69961c1fba24cc45"
+  ],
+  "tests/parser/err_recovery_stress_no_infinite_loop.ast": [
+   7,
+   "e7d6fcb91fb5cdc3"
+  ],
+  "tests/parser/err_recovery_struct_orphaned_brace.ast": [
+   1,
+   "d8515b89425ce6b7"
+  ],
+  "tests/parser/err_recovery_toplevel_open_paren.ast": [
+   1,
+   "11239bfc82c201f7"
+  ],
+  "tests/parser/err_recovery_unclosed_bracket_in_block.ast": [
+   1,
+   "1b6234a4b62fa14d"
+  ],
+  "tests/parser/err_recovery_unclosed_call_then_decl.ast": [
+   1,
+   "159a9db2a9f26110"
+  ],
+  "tests/parser/err_recovery_while_header_not_masked.ast": [
+   1,
+   "3cf18d0c144d5727"
+  ],
+  "tests/parser/err_recovery_while_header_recovered_next_stmt_preserved.ast": [
+   1,
+   "e91285ac1b1dffd6"
+  ],
+  "tests/parser/err_repeat_count_ident.ast": [
+   1,
+   "c3c65c309a1cfec8"
+  ],
+  "tests/parser/err_repeat_count_negative.ast": [
+   1,
+   "eb7523f8a3cbfd0f"
+  ],
+  "tests/parser/err_repeat_missing_count.ast": [
+   1,
+   "afaaba54c64ea8a5"
+  ],
+  "tests/parser/err_repeat_two_semis.ast": [
+   1,
+   "d67469a89c11ae6f"
+  ],
+  "tests/parser/err_repeat_unclosed.ast": [
+   1,
+   "631177da00a3ccde"
+  ],
+  "tests/parser/err_reserved_word_attribute.ast": [
+   10,
+   "09f90e2f41dcc08f"
+  ],
+  "tests/parser/err_reserved_word_field_name.ast": [
+   10,
+   "8ee1e079a3104cc5"
+  ],
+  "tests/parser/err_reserved_word_fn_name.ast": [
+   10,
+   "4058b7e2ee02d751"
+  ],
+  "tests/parser/err_reserved_word_let_name.ast": [
+   10,
+   "b5fc0e0636dcb7df"
+  ],
+  "tests/parser/err_reserved_word_param_name.ast": [
+   10,
+   "f4085056479cf64a"
+  ],
+  "tests/parser/err_reserved_word_struct_name.ast": [
+   10,
+   "45701baaefdc682a"
+  ],
+  "tests/parser/err_return_bad_value.ast": [
+   1,
+   "fb463d7aae493a1c"
+  ],
+  "tests/parser/err_return_missing_semi.ast": [
+   1,
+   "531db6a86ba7147d"
+  ],
+  "tests/parser/err_return_unit.ast": [
+   1,
+   "c686e7af8046e09c"
+  ],
+  "tests/parser/err_return_unit_array_element.ast": [
+   1,
+   "60e0dd012c22128d"
+  ],
+  "tests/parser/err_return_unit_between_valid_fns.ast": [
+   1,
+   "a2d4dcbdf2ae37a1"
+  ],
+  "tests/parser/err_return_unit_body_also_has_error.ast": [
+   2,
+   "e4b696c05b317736"
+  ],
+  "tests/parser/err_return_unit_comment.ast": [
+   1,
+   "aa9a0df577638b32"
+  ],
+  "tests/parser/err_return_unit_line_comment.ast": [
+   1,
+   "2b811921b729fa8a"
+  ],
+  "tests/parser/err_return_unit_missing_body.ast": [
+   1,
+   "a0f270e6500cd3d8"
+  ],
+  "tests/parser/err_return_unit_newline.ast": [
+   1,
+   "066b1863fa8fe761"
+  ],
+  "tests/parser/err_return_unit_then_bracket.ast": [
+   1,
+   "3189928a3654e08b"
+  ],
+  "tests/parser/err_struct_missing_brace.ast": [
+   1,
+   "22c1719289217e4c"
+  ],
+  "tests/parser/err_struct_missing_name.ast": [
+   1,
+   "f0e25a3203464cae"
+  ],
+  "tests/parser/err_struct_missing_trailing_comma.ast": [
+   1,
+   "b57a213d1927225b"
+  ],
+  "tests/parser/err_struct_unclosed.ast": [
+   1,
+   "c1d172d7cf71ac50"
+  ],
+  "tests/parser/err_top_level_garbage.ast": [
+   1,
+   "dfc1e9cd25726f92"
+  ],
+  "tests/parser/err_type_bad_array_size.ast": [
+   1,
+   "007a6b60016e7eda"
+  ],
+  "tests/parser/err_type_unclosed_array.ast": [
+   1,
+   "11ad645e5621dc6c"
+  ],
+  "tests/parser/err_unary_missing_operand.ast": [
+   1,
+   "57fa75bd2e3a7e08"
+  ],
+  "tests/parser/err_unclosed_bracket.ast": [
+   1,
+   "b01f66f01917c860"
+  ],
+  "tests/parser/err_unclosed_call.ast": [
+   1,
+   "dfb0ee46c2928ef4"
+  ],
+  "tests/parser/err_unclosed_paren.ast": [
+   1,
+   "b1a8c4458a6792e4"
+  ],
+  "tests/parser/err_unexpected_token.ast": [
+   1,
+   "0c8c9a9bd975fe33"
+  ],
+  "tests/parser/err_unit_type_positions.ast": [
+   8,
+   "b7faad7d7916ea53"
+  ],
+  "tests/parser/err_version_missing_ident.ast": [
+   1,
+   "2f56eba1e7292f3e"
+  ],
+  "tests/parser/err_version_missing_semi.ast": [
+   1,
+   "884c57f8a1dfa94c"
+  ],
+  "tests/parser/err_while_assign_condition.ast": [
+   1,
+   "71b0fb04fa8488dd"
+  ],
+  "tests/parser/err_while_missing_brace.ast": [
+   1,
+   "815f68a772483a11"
+  ],
+  "tests/parser/err_wrong_version.ast": [
+   1,
+   "bf544c491e469611"
+  ],
+  "tests/parser/expr_no_leftover_trailing_whitespace.ast": [
+   0,
+   "23ff0fdfb3ce3101"
+  ],
+  "tests/parser/field_access.ast": [
+   0,
+   "ac3fbdf46c5aba03"
+  ],
+  "tests/parser/field_access_chain.ast": [
+   0,
+   "50a8df26e543e00c"
+  ],
+  "tests/parser/full_chain_smoke.ast": [
+   0,
+   "74c7df027d8d9c12"
+  ],
+  "tests/parser/height_binary_fail.ast": [
+   1,
+   "abfc13891f63a325"
+  ],
+  "tests/parser/height_binary_far_fail.ast": [
+   1,
+   "abfc13891f63a325"
+  ],
+  "tests/parser/height_field_fail.ast": [
+   1,
+   "abfc13891f63a325"
+  ],
+  "tests/parser/height_field_far_fail.ast": [
+   1,
+   "abfc13891f63a325"
+  ],
+  "tests/parser/height_in_calls_fail.ast": [
+   1,
+   "24dc90c9ab4178ca"
+  ],
+  "tests/parser/height_in_ifs_fail.ast": [
+   1,
+   "1634c56b4963e72c"
+  ],
+  "tests/parser/height_index_fail.ast": [
+   1,
+   "a5cede744d893453"
+  ],
+  "tests/parser/height_index_far_fail.ast": [
+   1,
+   "a5cede744d893453"
+  ],
+  "tests/parser/height_mixed_prec_fail.ast": [
+   1,
+   "ed068db5ba99d2c1"
+  ],
+  "tests/parser/height_postfix_mix_fail.ast": [
+   1,
+   "05839713d9c42f7f"
+  ],
+  "tests/parser/height_postfix_mix_far_fail.ast": [
+   1,
+   "05839713d9c42f7f"
+  ],
+  "tests/parser/ident.ast": [
+   0,
+   "be2011954e53d787"
+  ],
+  "tests/parser/index.ast": [
+   0,
+   "90de6fff239662a1"
+  ],
+  "tests/parser/left_assoc_division.ast": [
+   0,
+   "5d06a683d3b007aa"
+  ],
+  "tests/parser/left_assoc_subtraction.ast": [
+   0,
+   "3a6788bfa47b4568"
+  ],
+  "tests/parser/logic_and.ast": [
+   0,
+   "1e11e434fe89c1d1"
+  ],
+  "tests/parser/logic_or.ast": [
+   0,
+   "a09ebbe3b5522fcf"
+  ],
+  "tests/parser/multiplicative_div.ast": [
+   0,
+   "2d68e921bb262ee8"
+  ],
+  "tests/parser/multiplicative_mod.ast": [
+   0,
+   "9466fd122ae6dbac"
+  ],
+  "tests/parser/multiplicative_mul.ast": [
+   0,
+   "9b8317e5080a8239"
+  ],
+  "tests/parser/namedarg_array_value.ast": [
+   0,
+   "518cf6be21818ab6"
+  ],
+  "tests/parser/namedarg_call_left.ast": [
+   0,
+   "880a8ea24c0c18df"
+  ],
+  "tests/parser/namedarg_conversion_value.ast": [
+   0,
+   "dc8c3de9afbde3e2"
+  ],
+  "tests/parser/namedarg_in_array_element.ast": [
+   0,
+   "9bf5c90670ab2331"
+  ],
+  "tests/parser/namedarg_in_conversion_operand.ast": [
+   0,
+   "72646fdad5ce5583"
+  ],
+  "tests/parser/namedarg_in_let_and_stmt.ast": [
+   0,
+   "6959f4a0ed2d8a3c"
+  ],
+  "tests/parser/namedarg_mixed_named_first.ast": [
+   0,
+   "fecd0f803529f2e7"
+  ],
+  "tests/parser/namedarg_mixed_positional_first.ast": [
+   0,
+   "1b44dd346bea2032"
+  ],
+  "tests/parser/namedarg_nested.ast": [
+   0,
+   "92a4a9ac616f9921"
+  ],
+  "tests/parser/namedarg_nonname_left.ast": [
+   0,
+   "cf32efd93f2fa1d5"
+  ],
+  "tests/parser/namedarg_single.ast": [
+   0,
+   "d7212a8154571518"
+  ],
+  "tests/parser/namedarg_struct_construction.ast": [
+   0,
+   "c50b86a5c7b8fe4c"
+  ],
+  "tests/parser/namedarg_value_expression.ast": [
+   0,
+   "8375995f6e77a967"
+  ],
+  "tests/parser/nested_parens.ast": [
+   0,
+   "9800964516b38f6c"
+  ],
+  "tests/parser/number.ast": [
+   0,
+   "36d1f4443e6d554a"
+  ],
+  "tests/parser/paren_group.ast": [
+   0,
+   "6f6675b5ce751610"
+  ],
+  "tests/parser/peek_array_before_fn_is_file_mode.ast": [
+   1,
+   "fb840ffad1928f50"
+  ],
+  "tests/parser/peek_array_then_operator_is_expression.ast": [
+   0,
+   "53f9971fcbf25519"
+  ],
+  "tests/parser/peek_attribute_is_file_mode.ast": [
+   1,
+   "fb840ffad1928f50"
+  ],
+  "tests/parser/peek_attribute_shape_without_fn_is_expression.ast": [
+   0,
+   "814fa05666ecc19c"
+  ],
+  "tests/parser/peek_two_attributes_is_file_mode.ast": [
+   1,
+   "fb840ffad1928f50"
+  ],
+  "tests/parser/postfix_chain.ast": [
+   0,
+   "51664008fe57c084"
+  ],
+  "tests/parser/precedence_bitwise_tighter_than_comparison.ast": [
+   0,
+   "68e98f3d9c86a2db"
+  ],
+  "tests/parser/precedence_logic_and_tighter_than_or.ast": [
+   0,
+   "b69232dbd5f1ea6e"
+  ],
+  "tests/parser/precedence_mul_tighter_than_add.ast": [
+   0,
+   "09be56bfef06b7e2"
+  ],
+  "tests/parser/precedence_unary_tighter_than_mul.ast": [
+   0,
+   "2cb63ac03ded234a"
+  ],
+  "tests/parser/prim_types_every_position.ast": [
+   0,
+   "6c0b2d9a7cf82740"
+  ],
+  "tests/parser/program_basic.ast": [
+   0,
+   "8a10254e03634ff8"
+  ],
+  "tests/parser/program_multiple_attributes.ast": [
+   0,
+   "ab7270a17cce7d23"
+  ],
+  "tests/parser/program_param_array_type.ast": [
+   0,
+   "1f9084f1820b54df"
+  ],
+  "tests/parser/program_struct_array_slice_fields.ast": [
+   0,
+   "1232ea5b85e0e0c9"
+  ],
+  "tests/parser/program_struct_function_kernel_hook.ast": [
+   0,
+   "1fd70205c842e039"
+  ],
+  "tests/parser/relational_bitand_equality.ast": [
+   0,
+   "4deb1d3e821ca13f"
+  ],
+  "tests/parser/relational_each_operand_one.ast": [
+   0,
+   "85b2326781d34b45"
+  ],
+  "tests/parser/relational_in_logical_operands.ast": [
+   0,
+   "4323f65b56baf047"
+  ],
+  "tests/parser/relational_parenthesized_lhs.ast": [
+   0,
+   "310dfc0101f21adc"
+  ],
+  "tests/parser/relational_parenthesized_rhs.ast": [
+   0,
+   "2ac5facfa63869af"
+  ],
+  "tests/parser/relational_unary_not.ast": [
+   0,
+   "7cc8f88b69fb901f"
+  ],
+  "tests/parser/repeat_basic.ast": [
+   0,
+   "eabf72d384a7bd5e"
+  ],
+  "tests/parser/repeat_hex.ast": [
+   0,
+   "a63fe71e6f95930d"
+  ],
+  "tests/parser/repeat_nested_value.ast": [
+   0,
+   "9d3934c27b571eeb"
+  ],
+  "tests/parser/repeat_of_conversion.ast": [
+   0,
+   "ce467ba0057ab477"
+  ],
+  "tests/parser/repeat_one.ast": [
+   0,
+   "c9728e4dde139c25"
+  ],
+  "tests/parser/repeat_zero.ast": [
+   0,
+   "4d0b32bafa8115dd"
+  ],
+  "tests/parser/reserved_words_whole_token_only.ast": [
+   0,
+   "c557f4b7e6a52dee"
+  ],
+  "tests/parser/return_type_absent.ast": [
+   0,
+   "b043ec3e1fba24dd"
+  ],
+  "tests/parser/shift_left.ast": [
+   0,
+   "6fb70b3d0c3be764"
+  ],
+  "tests/parser/shift_right.ast": [
+   0,
+   "5f5f1ab56dd9cb44"
+  ],
+  "tests/parser/slice.ast": [
+   0,
+   "d513fb25dcf7b849"
+  ],
+  "tests/parser/stmt_assign_basic.ast": [
+   0,
+   "485ed01606e63c69"
+  ],
+  "tests/parser/stmt_assign_field.ast": [
+   0,
+   "cf1f485d10fe9930"
+  ],
+  "tests/parser/stmt_assign_index.ast": [
+   0,
+   "c7f8af7984a3f57f"
+  ],
+  "tests/parser/stmt_expr_binary.ast": [
+   0,
+   "92b44cdfad9b3043"
+  ],
+  "tests/parser/stmt_expr_call.ast": [
+   0,
+   "8fde0ad57a70565e"
+  ],
+  "tests/parser/stmt_expr_unary_neg.ast": [
+   0,
+   "d95e56ef0d528116"
+  ],
+  "tests/parser/stmt_expr_unary_not.ast": [
+   0,
+   "aa0ad1b4048072c9"
+  ],
+  "tests/parser/stmt_for_basic.ast": [
+   0,
+   "d0e82cc6fb9aa907"
+  ],
+  "tests/parser/stmt_for_init_expr.ast": [
+   0,
+   "9fa7b4bacee86ec8"
+  ],
+  "tests/parser/stmt_for_init_postfix.ast": [
+   0,
+   "ccc1739988685573"
+  ],
+  "tests/parser/stmt_if_basic.ast": [
+   0,
+   "394ad1f70011736a"
+  ],
+  "tests/parser/stmt_if_else.ast": [
+   0,
+   "995609121510fa1f"
+  ],
+  "tests/parser/stmt_if_elseif_else.ast": [
+   0,
+   "7f79f5f557a867d9"
+  ],
+  "tests/parser/stmt_while_basic.ast": [
+   0,
+   "fca602ed7eab5d1d"
+  ],
+  "tests/parser/unary_bitnot.ast": [
+   0,
+   "b9fbbd058981863e"
+  ],
+  "tests/parser/unary_chain.ast": [
+   0,
+   "b4ab50c8b4edcdb2"
+  ],
+  "tests/parser/unary_neg.ast": [
+   0,
+   "9e511a4109ae4dbb"
+  ],
+  "tests/parser/unary_not.ast": [
+   0,
+   "76309ef5690b1e11"
+  ]
+ },
+ "metrics": {
+  "audit_poison_reasons": 3,
+  "audit_repro_inputs": 47,
+  "e0261_exhaustive.fixes_offered": 286968,
+  "e0261_exhaustive.programs": 995456,
+  "error_codes_documented": 55,
+  "error_codes_with_fix": 8,
+  "ir_fix_cases": 125,
+  "ir_goldens": 429,
+  "lexer_goldens": 15,
+  "memory_stress_cases": 8,
+  "parser_goldens": 376,
+  "rename_property.part1.fixes_changed": 1618,
+  "rename_property.part1.programs": 2500,
+  "rename_property.part2.fixes_changed": 1355,
+  "rename_property.part2.programs": 2500,
+  "unit_test_functions.arena_test.c": 7,
+  "unit_test_functions.ast_test.c": 6,
+  "unit_test_functions.ir_ndebug_test.c": 0,
+  "unit_test_functions.ir_test.c": 47,
+  "unit_test_functions.parser_fixes_test.c": 20,
+  "unit_test_functions.parser_state_test.c": 5
+ }
+}

@@ -1,0 +1,6 @@
+manna v0;
+fn add(a: u8, b: u8) -> u8 {
+    dd(a: 1, b: 2);
+    add(1, b: 2);
+    add(a: nope);
+}

@@ -1,0 +1,8 @@
+manna v0;
+fn f(c: bool) {
+    if c {
+  y: u8 = 1;
+    } else {
+        y;
+    }
+}

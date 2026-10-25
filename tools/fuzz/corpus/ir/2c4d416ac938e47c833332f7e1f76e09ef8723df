@@ -1,0 +1,3 @@
+manna v0;
+fn min() -> i8 { return --1 /* none
+}lain() -> i16 { return --5; }

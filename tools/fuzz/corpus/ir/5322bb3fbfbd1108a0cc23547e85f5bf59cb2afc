@@ -1,0 +1,4 @@
+manna v0;
+struct P { x: u8,?}
+fn ba1(a: u8) {-a; }
+f = }

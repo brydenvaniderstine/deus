@@ -1,0 +1,15 @@
+manna v0;
+fn min() -> i64 { return -0x8000000000000000; }
+fn Max() 0x7ffffffffffffmanna v0;
+fn f(c: bool) {
+    break;
+    continue;
+    if[[[[[_[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ break;
+    continue;
+    if[[[[[[[[[[[[[[[[[[[[[[[[[[  if[[[ak;
+    continue;
+    if[[[[[_[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ break;
+    continue;
+  }
+
+}

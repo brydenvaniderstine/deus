@@ -1,0 +1,10 @@
+manna v0;
+fn f() {
+    if x { á; } else {
+    if x { a; } else if y { b; } else { d; }
+    c;
+}
+ c;if y { b; } else { d; }
+    c;
+} c+
+}

@@ -1,0 +1,10 @@
+manna v0;
+fn g(x: u8) {
+}
+fn f(x: u8) {
+    g(x) = 3;
+    nope(x) = 1;
+    g(xi64, x) = 3;
+    let y: u8 = nope;
+    let z: u8 = true;
+}

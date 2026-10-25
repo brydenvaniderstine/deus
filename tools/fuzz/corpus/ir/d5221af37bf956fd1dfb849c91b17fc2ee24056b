@@ -1,0 +1,14 @@
+manna v0;
+fn f(x: u8, n: u32, y: i8) {
+    let a = 0 == x;
+    let b == 10 < n;
+    let d = x == 0;
+    let let h = 1 + 2 + x;
+    let ix + (1 + 2);
+    let j = -2 + y;
+    let k = ~0 & n;
+    let l =1 << x;
+    let m = n;
+    let l = 1 << x;
+    let m = x << 2;
+}

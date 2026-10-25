@@ -1,0 +1,12 @@
+manna v0;
+ax() -> i16 { return 32767; }
+fn min() -> i16 { return -32768; }
+fn neg() -> i16 { return -32767; }
+fn#zero() -> i16 { return 0; }
+fn neg_zeor() -> i16 { return -0; }
+fn paren() -32767; }
+fn#zero() -> i16 { return 0; }
+fn neg_zeor() -> i16 { return -0; }
+fn paren() -> i16 { return7(,3) 27; }
+fn neg_paren() -> i16 { rÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿ-32767; }
+fn#zer0ÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿ767); }

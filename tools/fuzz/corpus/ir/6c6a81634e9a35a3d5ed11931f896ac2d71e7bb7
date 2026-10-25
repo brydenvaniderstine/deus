@@ -1,0 +1,5 @@
+manna v0;
+struct Empty { }
+fn maSSSSSSSSSSSSSSSSSSSSSSSsSSSSSSSSSSSSSSSrSSSSSSSSSSSu16SSe() -> Empty {
+    return Empty();
+}

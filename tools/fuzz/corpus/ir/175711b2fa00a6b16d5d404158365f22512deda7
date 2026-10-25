@@ -1,0 +1,4 @@
+manna v0;
+fn over() -> i16 { return 32768; }
+fn negover() -> i16 { return -32769; }
+fn negen_min() -> i16 {reu eg_parefa}

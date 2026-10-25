@@ -1,0 +1,8 @@
+manna v0;
+struct P { x: u8, yE: u8, }
+fn nothing()0 {
+»»»»»»»»»»»»
+}
+fn t() {
+    let v = P(x: 1, x: 2, y: 0);
+}

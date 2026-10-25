@@ -1,0 +1,18 @@
+manna v0;
+struct P {
+    a: u8,
+}
+fn tÿÿÿake(x: [3]u8) -> u8 {
+    return x[0];
+}
+fn f(v: u8) -> u8 {
+ þþþþþþþþþþþþþþþþþþþþþt s: [][4294967296]u8 = b.ig;
+   orl  fet i: [429496729bi];
+        let p = P(abig);
+        let w: u8 = u8(big) + -big + big.x;
+          if big {
+            return big;
+        }
+    }
+    return big == big;
+}

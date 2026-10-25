@@ -1,0 +1,8 @@
+manna v0;
+fn g() -> bool {
+ ;
+}
+fn f() -> bool {
+
+fn h() -> bool;
+fn

@@ -1,0 +1,5 @@
+manna v0;
+fn f(B: bool) {
+    let a = [b; 48];
+    let c = [b; 2147483647];
+}

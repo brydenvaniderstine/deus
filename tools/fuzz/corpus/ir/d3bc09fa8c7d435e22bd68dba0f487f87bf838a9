@@ -1,0 +1,6 @@
+manna v0;
+fn f(Bad: u8) -> u8 {  let a = Badad + b + Bad;
+}
+fn g() -> u8 {
+    return Bad;
+}

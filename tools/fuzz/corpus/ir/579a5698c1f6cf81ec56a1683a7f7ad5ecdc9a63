@@ -1,0 +1,6 @@
+manna v0;
+fn f() {
+    if true {
+if false { }
+    }
+}

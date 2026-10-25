@@ -1,0 +1,16 @@
+manna v0;
+struc 'if y { b; } else { d; }
+   5 { a; } else if y { b; } else { d; } = p; u} else { d; } = p; u8 { return 1 + 256; }
+fn both_reported() ->  u 8bool {
+    let u64lse if y { b; } else { d; }
+  urn 1 + 256; }
+fn both_reported() ->  u 8bool {
+    let u64lse if y { b; } else { d; }
+   5 { a; } 1 + 256; }
+fn both_reported() ->  u 8bool {
+    let ulet s ;c =
+   5 { a; } 1 + 256; }
+fn both_reported() ->  u 8bool {
+    let ulet s ;c =
+    return s;
+}
