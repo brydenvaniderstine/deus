@@ -1,0 +1,4 @@
+manna v0;
+fn f(a: u8, b: u16) {
+    let r: u8 = a == b;
+}

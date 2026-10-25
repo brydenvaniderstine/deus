@@ -491,6 +491,12 @@ static IR_NOINLINE Synth typed_binary(BodyCtx *bc, const Expr *e, Synth l, Synth
     if (ln->type != rn->type) {
         Synth s = is_error(st, e->span);
         s.pending = report_types_differ(bc, e, ln->type, rn->type, &s.ptype);
+        if (!is_arith_class(op)) {
+            /* A comparison's result is bool whatever its operands are (step 20f, Bryden 2026-10-25): the E0261 mismatch is reported, and the
+             * comparison is NOT poisoned. A context that rejects bool (`return a < b;` in a `-> u32`) reports its own diagnostic next to the E0261, so
+             * the fix of the E0261 cannot make a hidden error appear. Only this case; comparisons over unknown operands stay silent (step 21). */
+            s = is_node(ir_expr_bool(st, e->span, false)); /* a stand-in of the right type: the build has failed, nothing reads its value */
+        }
         return s;
     }
     const IrType *result = is_arith_class(op) ? ln->type : ir_type_bool(st);

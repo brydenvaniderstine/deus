@@ -1,0 +1,6 @@
+manna v0;
+fn take(x: i64) {
+}
+fn f(a: u8, b: u16) {
+    take(a >= b);
+}
