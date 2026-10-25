@@ -51,7 +51,7 @@ Each entry's **Trigger-id** is one of the ids below, in the order they fall due.
 
 - **Status:** OPEN
 - **Reason:** The same physical bytes stay reachable read/write through the 1 GiB identity and HHDM aliases; closing it needs the kernel's range split out of those pages.
-- **Promise:** `docs/STATUS.md:26` "W^X+NX enforced and regression-tested (`make test-wx`)"
+- **Promise:** `docs/STATUS.md:30` "W^X+NX enforced and regression-tested (`make test-wx`)"
 - **Where it stands:** `CLAUDE.md:142` "Kernel `.text` is writable via identity/HHDM aliases (1 GiB RW pages)."; `CLAUDE.md:142` "Revisit before untrusted code runs."
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** Before any untrusted code runs
@@ -61,7 +61,7 @@ Each entry's **Trigger-id** is one of the ids below, in the order they fall due.
 
 - **Status:** OPEN
 - **Reason:** CI compiles the kernel and never boots it, so the W^X regression test runs only when someone runs it.
-- **Promise:** `docs/STATUS.md:26` "W^X+NX enforced and regression-tested (`make test-wx`)"
+- **Promise:** `docs/STATUS.md:30` "W^X+NX enforced and regression-tested (`make test-wx`)"
 - **Where it stands:** `VISION.md:97` "`make test-wx` is run by hand; CI builds the kernel (`make all`) but does not run it."
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** Step 20 (guardrails: a QEMU boot smoke test plus `make test-wx` in CI)
@@ -185,8 +185,8 @@ Each entry's **Trigger-id** is one of the ids below, in the order they fall due.
 
 - **Status:** PARTLY CLOSED
 - **Reason:** The 511-operation E0261 fix that produced E0111 was fixed in step 19 (19c-5, de84d89). Open: `ir_dump --fixed` truncates at a NUL byte; field lookup in an access is a linear scan (0.8 s to 1.7 s plain, 5 s to 10 s under ASan for 20,000 fields accessed 20,000 times).
-- **Promise:** `docs/STATUS.md:22` "Revisit (per-struct hash) at the `m2-ir-v0` tag."
-- **Where it stands:** `docs/STATUS.md:21` "`--fixed` is a test harness, not the compiler."; `docs/STATUS.md:22` "Field lookup in an access is a linear scan:"
+- **Promise:** `docs/STATUS.md:26` "Revisit (per-struct hash) at the `m2-ir-v0` tag."
+- **Where it stands:** `docs/STATUS.md:25` "`--fixed` is a test harness, not the compiler."; `docs/STATUS.md:26` "Field lookup in an access is a linear scan:"
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** The m2-ir-v0 tag (STATUS already says so for the lookup; the NUL truncation is added to it) (PROPOSED by Claude Code, approved by Bryden 2026-10-24)
 - **Trigger-id:** `m2-ir-v0`

@@ -13,8 +13,11 @@
      counts as due at `m2-ir-v0` and at every later tag.
   4. Sections 7a / 7b: the codes in the two tables are exactly the codes whose Fix column in docs/error_codes.md starts with "None", and every
      quoted exception is on its line.
-  5. Every `RATCHET-WAIVER <name> <from> -> <to> <entry>` line names an existing entry.
-  6. CLAUDE.md and docs/STATUS.md point to the register.
+  5. Every `RATCHET-WAIVER <name> <from> -> <to> <entry>` line names an existing entry that is OPEN or PARTLY CLOSED (a closed entry permits
+     nothing).
+  6. CLAUDE.md and docs/STATUS.md point to the register; docs/STATUS.md carries a `**Current point:** `id`` line equal to the register's; and
+     a git tag named like a trigger id that comes AFTER the Current point fails (the point was not advanced when the tag was made).
+  Citation quotes must be at least 8 characters (an empty or tiny quote matches nearly every line).
 Exit 1 on any problem; every problem is printed.
 """
 import os, re, subprocess, sys
@@ -59,6 +62,9 @@ def check_cites(text, root, fix):
         for m in reversed(found):
             path, rev, quote = m.group(1) or m.group(3), m.group(2), m.group(5).replace("\\|", "|")
             n = int(m.group(4))
+            if len(quote.strip()) < 8:
+                problems.append("%s:%d: %s:%d: the quote %r is too short to anchor a citation (at least 8 characters)" % (REG, lineno, path, n, quote))
+                continue
             ls = file_lines(path, rev, root, cache)
             where = "%s%s:%d" % (path, "@" + rev if rev else "", n)
             if ls is None:
@@ -161,17 +167,31 @@ def check_tables(text, root):
 
 def check_waivers_and_pointers(text, root):
     problems = []
-    ids = set(re.findall(r"^### (\S+) - ", text, re.M)) | {"7a", "7b"}
+    entries, ids, current = parse(text)
     for lineno, line in enumerate(text.split("\n"), 1):
         if line.startswith("RATCHET-WAIVER"):
             m = re.fullmatch(r"RATCHET-WAIVER (\S+) (\d+) -> (\d+) (\S+)", line.strip())
             if not m:
                 problems.append("%s:%d: a malformed RATCHET-WAIVER line" % (REG, lineno))
-            elif m.group(4) not in ids:
+            elif m.group(4) in ("7a", "7b"):
+                continue
+            elif m.group(4) not in entries:
                 problems.append("%s:%d: RATCHET-WAIVER names the unknown entry %s" % (REG, lineno, m.group(4)))
+            elif not entries[m.group(4)].get("Status", "").startswith(("OPEN", "PARTLY CLOSED")):
+                problems.append("%s:%d: RATCHET-WAIVER names %s, which is not OPEN or PARTLY CLOSED (a closed entry permits nothing)" % (REG, lineno, m.group(4)))
     for f in ("CLAUDE.md", "docs/STATUS.md"):
         if "docs/DEGRADATION.md" not in read(f, root):
             problems.append("%s does not point to docs/DEGRADATION.md" % f)
+    m = re.search(r"\*\*Current point:\*\* `([a-z0-9-]+)`", read("docs/STATUS.md", root))
+    if not m:
+        problems.append("docs/STATUS.md has no `**Current point:** `id`` line (it must equal the register's)")
+    elif m.group(1) != current:
+        problems.append("docs/STATUS.md says the Current point is %s, the register says %s" % (m.group(1), current))
+    order = {t: i for i, t in enumerate(ids)}
+    tags = subprocess.run(["git", "-C", root, "tag", "-l"], capture_output=True, text=True).stdout.split()
+    for t in tags:
+        if t in order and current in order and order[t] > order[current]:
+            problems.append("the git tag %s exists but the Current point is %s: advance it (and close the entries due) in the commit that makes a tag" % (t, current))
     return problems
 
 

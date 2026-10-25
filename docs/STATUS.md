@@ -2,6 +2,10 @@
 
 Updated at every tag (`docs/README.md`'s consistency check runs at the same time). Open risks are tracked in `CLAUDE.md` ("Open risks") and `VISION.md` ("Candidate directions") - not duplicated here, just pointed to.
 
+**Current point:** `step-20`
+
+(The register's position in the order of trigger ids, `docs/DEGRADATION.md` "Trigger ids". It must equal the register's own `Current point`; `make check-register` fails otherwise. Advance both in the commit that finishes a step or makes a tag.)
+
 ## Current milestone
 
 **M2: the Manna compiler**, host-side on macOS (`docs/M2_PLAN.md`). Spec frozen at tag `m2-spec`; the parser is complete and tagged `m2-parser`, with a post-tag audit ("r1") tagged `m2-parser-r1` (`tools/mannac/`); the #4 step then finished the v0 grammar (constructors, conversions, reserved words, one relational level, `-> unit`) - tagged **`m2-parser-v0`** (on `12f1d3d`, CI run 38096081907 green) after two external audits and a reviewer Linux run. The typed-IR plan's step 2 then added name spans and the E0111 tree-height bound - tagged **`m2-parser-v0.1`** (on `ee46cbc`, CI run 38186822150 green; reviewer's Linux run clean, see "Verification snapshot").

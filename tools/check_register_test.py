@@ -59,7 +59,10 @@ TAIL = """
 """
 
 
-def make(entry=ENTRY, head=HEAD, tail=TAIL, errcodes=None, claude="see docs/DEGRADATION.md\n", status="see docs/DEGRADATION.md\n", extra=""):
+STATUS_OK = "see docs/DEGRADATION.md\n\n**Current point:** `step-20`\n"
+
+
+def make(entry=ENTRY, head=HEAD, tail=TAIL, errcodes=None, claude="see docs/DEGRADATION.md\n", status=STATUS_OK, extra=""):
     root = tempfile.mkdtemp()
     os.makedirs(os.path.join(root, "docs"))
     open(os.path.join(root, "a.txt"), "w").write("first line\nsecond line\nthird line\n")
@@ -142,6 +145,33 @@ shutil.rmtree(root)
 
 root, rev = make(claude="nothing\n")
 check("CLAUDE.md without the pointer fails", any("CLAUDE.md does not point" in x for x in run(root)))
+shutil.rmtree(root)
+
+# finding 5: STATUS.md carries the Current point, and it must equal the register's
+root, rev = make(status="see docs/DEGRADATION.md\n")
+check("finding 5: STATUS.md without a Current point line fails", any("STATUS.md" in x and "Current point" in x for x in run(root)))
+shutil.rmtree(root)
+root, rev = make(status="see docs/DEGRADATION.md\n\n**Current point:** `step-21`\n")
+check("finding 5: STATUS.md and the register disagreeing about the Current point fails", any("step-21" in x and "step-20" in x for x in run(root)))
+shutil.rmtree(root)
+root, rev = make()
+subprocess.run(["git", "-C", root, "tag", "m2-ir-v0"], capture_output=True)
+check("finding 5: a git tag for a trigger id later than the Current point fails", any("tag m2-ir-v0 exists" in x for x in run(root)))
+shutil.rmtree(root)
+root, rev = make()
+subprocess.run(["git", "-C", root, "tag", "step-20"], capture_output=True)
+check("finding 5: a tag at the Current point is fine", run(root) == [])
+shutil.rmtree(root)
+
+# finding 6: short quotes and waivers
+root, rev = make(entry=ENTRY.replace('"second line"', '"se"'))
+check("finding 6: a quote shorter than 8 characters fails", any("too short" in x for x in run(root)))
+shutil.rmtree(root)
+root, rev = make(entry=ENTRY.replace('"second line"', '""'))
+check("finding 6: an empty quote fails", any("too short" in x or "without a quote" in x for x in run(root)))
+shutil.rmtree(root)
+root, rev = make(entry=ENTRY.replace("OPEN", "CLOSED (x)").replace("`step-21`", "`step-20`"), extra="\nRATCHET-WAIVER ir_goldens 10 -> 9 X1\n")
+check("finding 6: a waiver naming a CLOSED entry fails", any("not OPEN or PARTLY CLOSED" in x for x in run(root)))
 shutil.rmtree(root)
 
 # the real register must pass
