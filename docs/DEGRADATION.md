@@ -8,7 +8,7 @@ Step numbers: step 19 is the third audit round's fixes (done and pushed), step 2
 
 ## Trigger ids
 
-Each entry's **Trigger-id** is one of the ids below, in the order they fall due. **Current point:** `step-20`. `make check-register` fails if an OPEN or PARTLY CLOSED entry's id comes BEFORE the current point (its trigger has passed); `make check-register AT=<id>` (run when a tag or milestone closes) also fails for an id equal to or before `<id>`. The person closing a step or tag advances the current point in the same commit. `each-tag` recurs at every tag, so it is never "passed" by position: instead, `make check-register AT=<tag>` requires every OPEN `each-tag` entry to carry a `- **Checked at:** <tag>, ...` line naming that tag (the field is empty until the first tag).
+Each entry's **Trigger-id** is one of the ids below, in the order they fall due. **Current point:** `step-21`. `make check-register` fails if an OPEN or PARTLY CLOSED entry's id comes BEFORE the current point (its trigger has passed); `make check-register AT=<id>` (run when a tag or milestone closes) also fails for an id equal to or before `<id>`. The person closing a step or tag advances the current point in the same commit. `each-tag` recurs at every tag, so it is never "passed" by position: instead, `make check-register AT=<tag>` requires every OPEN `each-tag` entry to carry a `- **Checked at:** <tag>, ...` line naming that tag (the field is empty until the first tag).
 
 - `step-19` - the third audit round's fixes
 - `step-20` - this guardrails step
@@ -59,20 +59,20 @@ Each entry's **Trigger-id** is one of the ids below, in the order they fall due.
 
 ### K4 - `make test-wx` is not run by CI
 
-- **Status:** OPEN
-- **Reason:** CI compiles the kernel and never boots it, so the W^X regression test runs only when someone runs it.
+- **Status:** CLOSED (2026-10-25, ci.yml run 40213325096 on d478be8)
+- **Reason:** CI compiles the kernel and never boots it, so the W^X regression test runs only when someone runs it. CLOSED: `make test-wx` now asserts (vector 14, the exact error code, cr2 = the printed address, rip for the execute case, a halt; `tools/boot_check.py wx`) and runs in the `boot` job of ci.yml run 40213325096 on d478be8 (QEMU 8.2.2, OVMF 4M, the 8 GiB machine, TCG): WX_TEST=1, 2 and 3 each `boot_check wx N: ok`. Mutation proof on the Mac: `.text` writable and `.data` not NX each make it fail.
 - **Promise:** `docs/STATUS.md:34` "W^X+NX enforced and regression-tested (`make test-wx`)"
-- **Where it stands:** `VISION.md:97` "`make test-wx` is run by hand; CI builds the kernel (`make all`) but does not run it."
+- **Where it stands:** (before step 20) `VISION.md:97` "`make test-wx` is run by hand; CI builds the kernel (`make all`) but does not run it."
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** Step 20 (guardrails: a QEMU boot smoke test plus `make test-wx` in CI)
 - **Trigger-id:** `step-20`
 
 ### K5 - No automated boot test
 
-- **Status:** OPEN
-- **Reason:** The CI job is a compile check; boots are manual.
+- **Status:** CLOSED (2026-10-25, ci.yml run 40213325096 on d478be8)
+- **Reason:** The CI job is a compile check; boots are manual. CLOSED: the `boot` job of ci.yml run 40213325096 on d478be8 runs `make test-boot` on the 8 GiB machine (never shrunk; the runner has 7.9 GiB of RAM and TCG booted it): `qemu_boot: reached /starting A/B preemption proof/ after 3s`, `boot_check smoke: ok` against `tests/boot_expected.txt` (memmap, GDT, IDT, the three mappings and the CR3 load, calibration source and rate, interleaved A/B).
 - **Promise:** `CLAUDE.md:7` "Every milestone must boot in QEMU."
-- **Where it stands:** `.github/workflows/ci.yml:80` "# Kernel compile check only (make all -> build/kernel.elf). Does not"
+- **Where it stands:** (before step 20) `.github/workflows/ci.yml:80` "# Kernel compile check only (make all -> build/kernel.elf). Does not"
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** Step 20 (a QEMU boot smoke test asserting the M1 serial-log lines)
 - **Trigger-id:** `step-20`
@@ -89,10 +89,10 @@ Each entry's **Trigger-id** is one of the ids below, in the order they fall due.
 
 ### K7 - The kernel LOC budget is not checked
 
-- **Status:** OPEN
-- **Reason:** A goal, not a hard constraint, so nothing measures it.
+- **Status:** CLOSED (2026-10-25, ci.yml run 40213325096 on d478be8)
+- **Reason:** A goal, not a hard constraint, so nothing measures it. CLOSED: `make check-kernel-loc` (`tools/check_kernel_loc.sh`) ran in the macOS and Linux jobs of ci.yml run 40213325096 on d478be8: `1247 lines in 25 files under kernel; budget 120000`. Note for the day kernel code is written in Manna: the count covers .c/.S/.h only, and `.mn` files under `kernel/` must be added to it then (Linux review of batch C, finding 6).
 - **Promise:** `CLAUDE.md:80` "**Kernel scope: single-person-comprehensible, ~120k LOC max.**"
-- **Where it stands:** `CLAUDE.md:79` "aspirational, not enforced by any build check today."
+- **Where it stands:** (before step 20) `CLAUDE.md:79` "aspirational, not enforced by any build check today."
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** Step 20 (a kernel LOC count in CI against the 120k budget)
 - **Trigger-id:** `step-20`
@@ -305,20 +305,20 @@ Each entry's **Trigger-id** is one of the ids below, in the order they fall due.
 
 ### V5 - The rc > 128 crash rule is not applied in `measure_expr_height.sh`
 
-- **Status:** OPEN
-- **Reason:** Stated in REFINEMENT, applied in `measure_ir_stack.sh` only.
+- **Status:** CLOSED (2026-10-25, ci.yml run 40213325096 on d478be8)
+- **Reason:** Stated in REFINEMENT, applied in `measure_ir_stack.sh` only. CLOSED: `tools/measure_expr_height.sh` now counts only a signal exit (rc > 128) as a crash and exports `abort_on_error=1`; `make test-measure-height-script` (fake probes and the real ASan probe under a 128 KB stack) ran green in the macOS and Linux jobs of ci.yml run 40213325096 on d478be8.
 - **Promise:** `docs/REFINEMENT.md:82` "a measurement script counts only a signal exit (rc > 128) as a crash"
-- **Where it stands:** `docs/REFINEMENT.md:83` "`tools/measure_expr_height.sh` is not yet changed to follow it."
+- **Where it stands:** (before step 20) `docs/REFINEMENT.md:83` "`tools/measure_expr_height.sh` is not yet changed to follow it."
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** Step 20
 - **Trigger-id:** `step-20`
 
 ### V6 - Coverage justification at every tag is manual
 
-- **Status:** OPEN
-- **Reason:** `make coverage` is not in CI; the uncovered-line list is written by hand at each tag.
+- **Status:** CLOSED (2026-10-25, ci.yml run 40213325096 on d478be8)
+- **Reason:** `make coverage` is not in CI; the uncovered-line list is written by hand at each tag. CLOSED: `make coverage-check` (clang + llvm-cov) ran in the Linux job of ci.yml run 40213325096 on d478be8: `33 uncovered lines in lexer.c, parser.c and ir*.c; 33 justified in tests/coverage_justified.txt; 0 without a reason; 0 stale reasons`; `make test-coverage-check-script` passes on both toolchain shapes.
 - **Promise:** `CLAUDE.md:161` "- **At every tag**, list uncovered lines in `lexer.c`, `parser.c` and the typed-IR files `ir*.c`"
-- **Where it stands:** `make coverage` is a Makefile target that `.github/workflows/ci.yml` does not run.
+- **Where it stands:** (before step 20) `make coverage` is a Makefile target that `.github/workflows/ci.yml` does not run.
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** The m2-ir-v0 tag: a coverage job in CI that fails on any uncovered line not on a committed justified list (PROPOSED by Claude Code, approved by Bryden 2026-10-24)
 - **Trigger-id:** `m2-ir-v0`
