@@ -846,6 +846,18 @@ static void test_height_bound_fatal_and_reuse(void) {
  * follows it, which is what tells its guard apart from the enclosing call's).
  * The control wraps a chain one shorter, so the wrapper is at height 512 and
  * the file parses clean. */
+/* Parses `src` into `ps` (initialized here) and says whether the parse hit a fatal error (the longjmp). The setjmp lives in this small function so the
+ * callers keep no variable across it. */
+static bool guard_parse(ParserState *ps, const char *src) {
+    NodeList items;
+    Lexer lx;
+    parser_state_init(ps, 1 << 22);
+    if (setjmp(ps->fatal_target) != 0) return true;
+    lexer_init(&lx, src, strlen(src));
+    parser_parse_file(ps, &lx, &items);
+    return false;
+}
+
 typedef struct { const char *name; const char *before; const char *after; int extra_for_control; } GuardCase;
 
 static void test_height_guard_every_site(void) {
@@ -882,21 +894,10 @@ static void test_height_guard_every_site(void) {
             size_t n = strlen(pre) + strlen(c->before) + strlen(adds) + strlen(c->after) + 64;
             char *src = malloc(n);
             snprintf(src, n, "%s%s(1%s)%s; }\n", pre, c->before, adds, c->after);
-            /* static: ps is modified after setjmp (the parse) and read again after
-             * the longjmp (diags), which C11 7.13.2.1 makes indeterminate for an
-             * automatic non-volatile object; same treatment as parser_main.c and
-             * test_height_bound_fatal_and_reuse above. */
+            /* static: ps is read again after the longjmp (diags), which C11 7.13.2.1 makes indeterminate for an automatic non-volatile object changed after
+             * setjmp; the parse itself is in guard_parse, so this loop has no setjmp frame of its own (gcc -Wclobbered / -Wmaybe-uninitialized). */
             static ParserState ps;
-            parser_state_init(&ps, 1 << 22);
-            Lexer lx;
-            NodeList items;
-            bool fatal = false;
-            if (setjmp(ps.fatal_target) != 0) {
-                fatal = true;
-            } else {
-                lexer_init(&lx, src, strlen(src));
-                parser_parse_file(&ps, &lx, &items);
-            }
+            bool fatal = guard_parse(&ps, src);
             if (control) {
                 if (fatal || ps.diags.len != 0) {
                     fprintf(stderr, "FAIL: guard control (%s): a tree at height %d was rejected\n", c->name, MAX_EXPR_HEIGHT);

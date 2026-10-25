@@ -8,6 +8,8 @@ LIMINE_DIR   := limine
 CC           := clang
 # The host-side Manna tools (lexer, parser, IR, tests) build with MANNAC_CC; the Linux CI job sets it to gcc (ASan + UBSan + LSan).
 MANNAC_CC    ?= clang
+# Both CI jobs build the host-side tools with MANNAC_WERROR=-Werror: no warning may return (step 20g-2).
+MANNAC_WERROR ?=
 AS           := clang
 LD           := ld.lld
 
@@ -145,7 +147,7 @@ MANNAC_SRCS := tools/mannac/lexer.c tools/mannac/main.c
 
 $(MANNAC_BIN): $(MANNAC_SRCS) tools/mannac/lexer.h
 	@mkdir -p $(MANNAC_DIR)
-	$(MANNAC_CC) -std=c11 -Wall -Wextra -O2 -g -o $@ $(MANNAC_SRCS)
+	$(MANNAC_CC) -std=c11 -Wall -Wextra $(MANNAC_WERROR) -O2 -g -o $@ $(MANNAC_SRCS)
 
 test-lexer: $(MANNAC_BIN)
 	@./tools/run_lexer_goldens.sh $(MANNAC_BIN)
@@ -154,7 +156,7 @@ MANNAC_ASAN_BIN := $(MANNAC_DIR)/mannac-asan
 
 $(MANNAC_ASAN_BIN): $(MANNAC_SRCS) tools/mannac/lexer.h
 	@mkdir -p $(MANNAC_DIR)
-	$(MANNAC_CC) -std=c11 -Wall -Wextra -g -fsanitize=address,undefined -o $@ $(MANNAC_SRCS)
+	$(MANNAC_CC) -std=c11 -Wall -Wextra $(MANNAC_WERROR) -g -fsanitize=address,undefined -o $@ $(MANNAC_SRCS)
 
 test-lexer-asan: $(MANNAC_ASAN_BIN)
 	@./tools/run_lexer_goldens.sh $(MANNAC_ASAN_BIN)
@@ -166,12 +168,12 @@ ARENA_TEST_SRCS := tools/mannac/arena.c tools/mannac/arena_test.c
 
 test-arena:
 	@mkdir -p $(ARENA_TEST_DIR)
-	$(MANNAC_CC) -std=c11 -Wall -Wextra -O2 -g -o $(ARENA_TEST_DIR)/arena_test $(ARENA_TEST_SRCS)
+	$(MANNAC_CC) -std=c11 -Wall -Wextra $(MANNAC_WERROR) -O2 -g -o $(ARENA_TEST_DIR)/arena_test $(ARENA_TEST_SRCS)
 	@./tools/run_arena_test.sh $(ARENA_TEST_DIR)/arena_test
 
 test-arena-asan:
 	@mkdir -p $(ARENA_TEST_DIR)
-	$(MANNAC_CC) -std=c11 -Wall -Wextra -g -fsanitize=address,undefined -o $(ARENA_TEST_DIR)/arena_test-asan $(ARENA_TEST_SRCS)
+	$(MANNAC_CC) -std=c11 -Wall -Wextra $(MANNAC_WERROR) -g -fsanitize=address,undefined -o $(ARENA_TEST_DIR)/arena_test-asan $(ARENA_TEST_SRCS)
 	@./tools/run_arena_test.sh $(ARENA_TEST_DIR)/arena_test-asan
 
 # AST node types + pretty-printer unit test (plain + ASan/UBSan). Also not
@@ -182,12 +184,12 @@ AST_TEST_SRCS := tools/mannac/arena.c tools/mannac/ast.c tools/mannac/ast_test.c
 
 test-ast:
 	@mkdir -p $(AST_TEST_DIR)
-	$(MANNAC_CC) -std=c11 -Wall -Wextra -O2 -g -o $(AST_TEST_DIR)/ast_test $(AST_TEST_SRCS)
+	$(MANNAC_CC) -std=c11 -Wall -Wextra $(MANNAC_WERROR) -O2 -g -o $(AST_TEST_DIR)/ast_test $(AST_TEST_SRCS)
 	$(AST_TEST_DIR)/ast_test
 
 test-ast-asan:
 	@mkdir -p $(AST_TEST_DIR)
-	$(MANNAC_CC) -std=c11 -Wall -Wextra -g -fsanitize=address,undefined -o $(AST_TEST_DIR)/ast_test-asan $(AST_TEST_SRCS)
+	$(MANNAC_CC) -std=c11 -Wall -Wextra $(MANNAC_WERROR) -g -fsanitize=address,undefined -o $(AST_TEST_DIR)/ast_test-asan $(AST_TEST_SRCS)
 	$(AST_TEST_DIR)/ast_test-asan
 
 # Diagnostics + shared parser-state (depth bound, error cap, unified
@@ -198,12 +200,12 @@ PARSER_STATE_TEST_SRCS := tools/mannac/arena.c tools/mannac/ast.c tools/mannac/d
 
 test-parser-state:
 	@mkdir -p $(PARSER_STATE_TEST_DIR)
-	$(MANNAC_CC) -std=c11 -Wall -Wextra -O2 -g -o $(PARSER_STATE_TEST_DIR)/parser_state_test $(PARSER_STATE_TEST_SRCS)
+	$(MANNAC_CC) -std=c11 -Wall -Wextra $(MANNAC_WERROR) -O2 -g -o $(PARSER_STATE_TEST_DIR)/parser_state_test $(PARSER_STATE_TEST_SRCS)
 	$(PARSER_STATE_TEST_DIR)/parser_state_test
 
 test-parser-state-asan:
 	@mkdir -p $(PARSER_STATE_TEST_DIR)
-	$(MANNAC_CC) -std=c11 -Wall -Wextra -g -fsanitize=address,undefined -o $(PARSER_STATE_TEST_DIR)/parser_state_test-asan $(PARSER_STATE_TEST_SRCS)
+	$(MANNAC_CC) -std=c11 -Wall -Wextra $(MANNAC_WERROR) -g -fsanitize=address,undefined -o $(PARSER_STATE_TEST_DIR)/parser_state_test-asan $(PARSER_STATE_TEST_SRCS)
 	$(PARSER_STATE_TEST_DIR)/parser_state_test-asan
 
 # Direct-assertion unit tests for fixes that a golden-dump test can't
@@ -219,13 +221,13 @@ PARSER_FIXES_TEST_SRCS := tools/mannac/arena.c tools/mannac/ast.c tools/mannac/d
 
 test-parser-fixes:
 	@mkdir -p $(PARSER_FIXES_TEST_DIR)
-	$(MANNAC_CC) -std=c11 -Wall -Wextra -O2 -g -o $(PARSER_FIXES_TEST_DIR)/parser_fixes_test $(PARSER_FIXES_TEST_SRCS)
+	$(MANNAC_CC) -std=c11 -Wall -Wextra $(MANNAC_WERROR) -O2 -g -o $(PARSER_FIXES_TEST_DIR)/parser_fixes_test $(PARSER_FIXES_TEST_SRCS)
 	@# explicit 8 MB stack: the E0111 tests claim "survives an 8 MB stack" (docs/M2_PLAN.md, Input contract)
 	sh -c 'ulimit -s 8192 && $(PARSER_FIXES_TEST_DIR)/parser_fixes_test'
 
 test-parser-fixes-asan:
 	@mkdir -p $(PARSER_FIXES_TEST_DIR)
-	$(MANNAC_CC) -std=c11 -Wall -Wextra -g -fsanitize=address,undefined -o $(PARSER_FIXES_TEST_DIR)/parser_fixes_test-asan $(PARSER_FIXES_TEST_SRCS)
+	$(MANNAC_CC) -std=c11 -Wall -Wextra $(MANNAC_WERROR) -g -fsanitize=address,undefined -o $(PARSER_FIXES_TEST_DIR)/parser_fixes_test-asan $(PARSER_FIXES_TEST_SRCS)
 	sh -c 'ulimit -s 8192 && $(PARSER_FIXES_TEST_DIR)/parser_fixes_test-asan'
 
 # Parser golden tests (plain + ASan/UBSan) - docs/M2_PLAN.md's "Golden test
@@ -241,12 +243,12 @@ PARSER_DUMP_SRCS := tools/mannac/arena.c tools/mannac/ast.c tools/mannac/diag.c 
 
 test-parser:
 	@mkdir -p $(PARSER_DUMP_DIR)
-	$(MANNAC_CC) -std=c11 -Wall -Wextra -O2 -g -o $(PARSER_DUMP_DIR)/parser_dump $(PARSER_DUMP_SRCS)
+	$(MANNAC_CC) -std=c11 -Wall -Wextra $(MANNAC_WERROR) -O2 -g -o $(PARSER_DUMP_DIR)/parser_dump $(PARSER_DUMP_SRCS)
 	@./tools/run_parser_tests.sh $(PARSER_DUMP_DIR)/parser_dump
 
 test-parser-asan:
 	@mkdir -p $(PARSER_DUMP_DIR)
-	$(MANNAC_CC) -std=c11 -Wall -Wextra -g -fsanitize=address,undefined -o $(PARSER_DUMP_DIR)/parser_dump-asan $(PARSER_DUMP_SRCS)
+	$(MANNAC_CC) -std=c11 -Wall -Wextra $(MANNAC_WERROR) -g -fsanitize=address,undefined -o $(PARSER_DUMP_DIR)/parser_dump-asan $(PARSER_DUMP_SRCS)
 	@./tools/run_parser_tests.sh $(PARSER_DUMP_DIR)/parser_dump-asan
 
 # Step 11: determinism (docs/M2_PLAN.md S5) - same input must produce
@@ -257,13 +259,13 @@ test-parser-asan:
 # ordering dependency on those having already run.
 test-determinism:
 	@mkdir -p $(MANNAC_DIR) $(PARSER_DUMP_DIR)
-	$(MANNAC_CC) -std=c11 -Wall -Wextra -O2 -g -o $(MANNAC_BIN) $(MANNAC_SRCS)
-	$(MANNAC_CC) -std=c11 -Wall -Wextra -g -fsanitize=address,undefined -o $(MANNAC_ASAN_BIN) $(MANNAC_SRCS)
-	$(MANNAC_CC) -std=c11 -Wall -Wextra -O2 -g -o $(PARSER_DUMP_DIR)/parser_dump $(PARSER_DUMP_SRCS)
-	$(MANNAC_CC) -std=c11 -Wall -Wextra -g -fsanitize=address,undefined -o $(PARSER_DUMP_DIR)/parser_dump-asan $(PARSER_DUMP_SRCS)
+	$(MANNAC_CC) -std=c11 -Wall -Wextra $(MANNAC_WERROR) -O2 -g -o $(MANNAC_BIN) $(MANNAC_SRCS)
+	$(MANNAC_CC) -std=c11 -Wall -Wextra $(MANNAC_WERROR) -g -fsanitize=address,undefined -o $(MANNAC_ASAN_BIN) $(MANNAC_SRCS)
+	$(MANNAC_CC) -std=c11 -Wall -Wextra $(MANNAC_WERROR) -O2 -g -o $(PARSER_DUMP_DIR)/parser_dump $(PARSER_DUMP_SRCS)
+	$(MANNAC_CC) -std=c11 -Wall -Wextra $(MANNAC_WERROR) -g -fsanitize=address,undefined -o $(PARSER_DUMP_DIR)/parser_dump-asan $(PARSER_DUMP_SRCS)
 	@mkdir -p $(IR_DUMP_DIR)
-	$(MANNAC_CC) -std=c11 -Wall -Wextra -O2 -g -o $(IR_DUMP_DIR)/ir_dump $(IR_DUMP_SRCS)
-	$(MANNAC_CC) -std=c11 -Wall -Wextra -g -fsanitize=address,undefined -o $(IR_DUMP_DIR)/ir_dump-asan $(IR_DUMP_SRCS)
+	$(MANNAC_CC) -std=c11 -Wall -Wextra $(MANNAC_WERROR) -O2 -g -o $(IR_DUMP_DIR)/ir_dump $(IR_DUMP_SRCS)
+	$(MANNAC_CC) -std=c11 -Wall -Wextra $(MANNAC_WERROR) -g -fsanitize=address,undefined -o $(IR_DUMP_DIR)/ir_dump-asan $(IR_DUMP_SRCS)
 	@./tools/run_determinism_test.sh $(MANNAC_BIN) $(MANNAC_ASAN_BIN) $(PARSER_DUMP_DIR)/parser_dump $(PARSER_DUMP_DIR)/parser_dump-asan $(IR_DUMP_DIR)/ir_dump $(IR_DUMP_DIR)/ir_dump-asan
 
 # Typed IR (docs/history/TYPED_IR.md step 3). The IR targets honor MANNAC_CC so a
@@ -289,19 +291,19 @@ IR_DUMP_SRCS := tools/mannac/arena.c tools/mannac/ast.c tools/mannac/diag.c \
 
 test-ir:
 	@mkdir -p $(IR_DUMP_DIR)
-	$(MANNAC_CC) -std=c11 -Wall -Wextra -O2 -g -o $(IR_DUMP_DIR)/ir_dump $(IR_DUMP_SRCS)
+	$(MANNAC_CC) -std=c11 -Wall -Wextra $(MANNAC_WERROR) -O2 -g -o $(IR_DUMP_DIR)/ir_dump $(IR_DUMP_SRCS)
 	@./tools/run_ir_tests.sh $(IR_DUMP_DIR)/ir_dump
 
 test-ir-asan:
 	@mkdir -p $(IR_DUMP_DIR)
-	$(MANNAC_CC) -std=c11 -Wall -Wextra -g -fsanitize=address,undefined -o $(IR_DUMP_DIR)/ir_dump-asan $(IR_DUMP_SRCS)
+	$(MANNAC_CC) -std=c11 -Wall -Wextra $(MANNAC_WERROR) -g -fsanitize=address,undefined -o $(IR_DUMP_DIR)/ir_dump-asan $(IR_DUMP_SRCS)
 	@./tools/run_ir_tests.sh $(IR_DUMP_DIR)/ir_dump-asan
 
 # Typed-IR step 14: every rename fix applied to tests/ir_fix/*.mn must give tests/ir_fix/*.fixed.mn, and the
 # fixed source must re-check clean (or give *.remaining); tools/run_ir_fix_tests.sh.
 test-ir-fix:
 	@mkdir -p $(IR_DUMP_DIR)
-	$(MANNAC_CC) -std=c11 -Wall -Wextra -O2 -g -o $(IR_DUMP_DIR)/ir_dump $(IR_DUMP_SRCS)
+	$(MANNAC_CC) -std=c11 -Wall -Wextra $(MANNAC_WERROR) -O2 -g -o $(IR_DUMP_DIR)/ir_dump $(IR_DUMP_SRCS)
 	@./tools/run_ir_fix_tests.sh $(IR_DUMP_DIR)/ir_dump
 
 # Typed-IR step 18 (extended in step 19): every E0261 fix-it, over operand type pairs x operators x contexts x nesting shapes (~983,000 programs,
@@ -314,7 +316,7 @@ IR_EXH_SRCS := tools/mannac/arena.c tools/mannac/ast.c tools/mannac/diag.c \
 
 test-e0261-exhaustive:
 	@mkdir -p $(IR_TEST_DIR)
-	$(MANNAC_CC) -std=c11 -Wall -Wextra -O2 -g -o $(IR_TEST_DIR)/ir_e0261_exhaustive $(IR_EXH_SRCS)
+	$(MANNAC_CC) -std=c11 -Wall -Wextra $(MANNAC_WERROR) -O2 -g -o $(IR_TEST_DIR)/ir_e0261_exhaustive $(IR_EXH_SRCS)
 	@$(IR_TEST_DIR)/ir_e0261_exhaustive > $(IR_TEST_DIR)/e0261_exhaustive.out || { cat $(IR_TEST_DIR)/e0261_exhaustive.out; exit 1; }
 	@cat $(IR_TEST_DIR)/e0261_exhaustive.out
 	@diff -u tests/e0261_exhaustive.expected $(IR_TEST_DIR)/e0261_exhaustive.out || { echo "test-e0261-exhaustive: the counts differ from tests/e0261_exhaustive.expected (a generator that shrinks, or grows, must say so in that file)"; exit 1; }
@@ -324,7 +326,7 @@ test-e0261-exhaustive:
 # and no identifier resolves to another declaration (tools/rename_property_test.py, with its own resolver).
 test-rename-property:
 	@mkdir -p $(IR_DUMP_DIR)
-	$(MANNAC_CC) -std=c11 -Wall -Wextra -O2 -g -o $(IR_DUMP_DIR)/ir_dump $(IR_DUMP_SRCS)
+	$(MANNAC_CC) -std=c11 -Wall -Wextra $(MANNAC_WERROR) -O2 -g -o $(IR_DUMP_DIR)/ir_dump $(IR_DUMP_SRCS)
 	@python3 tools/rename_property_test.py $(IR_DUMP_DIR)/ir_dump 2500 0 > $(IR_DUMP_DIR)/rename_property.out || { cat $(IR_DUMP_DIR)/rename_property.out; exit 1; }
 	@cat $(IR_DUMP_DIR)/rename_property.out
 	@diff -u tests/rename_property.expected $(IR_DUMP_DIR)/rename_property.out || { echo "test-rename-property: the counts differ from tests/rename_property.expected (a generator that shrinks, or grows, must say so in that file)"; exit 1; }
@@ -366,7 +368,7 @@ test-ci-targets-script:
 # many value uses of names that are not locals next to misnamed declarations; exact diagnostics, no E0201, a time bound (tools/ir_memory_stress.py).
 test-ir-memory-stress:
 	@mkdir -p $(IR_DUMP_DIR)
-	$(MANNAC_CC) -std=c11 -Wall -Wextra -O2 -g -o $(IR_DUMP_DIR)/ir_dump $(IR_DUMP_SRCS)
+	$(MANNAC_CC) -std=c11 -Wall -Wextra $(MANNAC_WERROR) -O2 -g -o $(IR_DUMP_DIR)/ir_dump $(IR_DUMP_SRCS)
 	python3 tools/ir_memory_stress.py $(IR_DUMP_DIR)/ir_dump
 
 # Typed-IR step 15: every E02xx code docs/error_codes.md calls emitted has a golden or unit test (and a constructor in
@@ -386,19 +388,19 @@ audit-ir-poison:
 # and the ASan dumper. Every output, including the fixed source and its re-check, must match byte for byte.
 test-audit-repros:
 	@mkdir -p $(IR_DUMP_DIR)
-	$(MANNAC_CC) -std=c11 -Wall -Wextra -O2 -g -o $(IR_DUMP_DIR)/ir_dump $(IR_DUMP_SRCS)
-	$(MANNAC_CC) -std=c11 -Wall -Wextra -g -fsanitize=address,undefined -o $(IR_DUMP_DIR)/ir_dump-asan $(IR_DUMP_SRCS)
+	$(MANNAC_CC) -std=c11 -Wall -Wextra $(MANNAC_WERROR) -O2 -g -o $(IR_DUMP_DIR)/ir_dump $(IR_DUMP_SRCS)
+	$(MANNAC_CC) -std=c11 -Wall -Wextra $(MANNAC_WERROR) -g -fsanitize=address,undefined -o $(IR_DUMP_DIR)/ir_dump-asan $(IR_DUMP_SRCS)
 	@./tools/run_audit_repros.sh $(IR_DUMP_DIR)/ir_dump
 	@./tools/run_audit_repros.sh $(IR_DUMP_DIR)/ir_dump-asan
 
 test-ir-fix-asan:
 	@mkdir -p $(IR_DUMP_DIR)
-	$(MANNAC_CC) -std=c11 -Wall -Wextra -g -fsanitize=address,undefined -o $(IR_DUMP_DIR)/ir_dump-asan $(IR_DUMP_SRCS)
+	$(MANNAC_CC) -std=c11 -Wall -Wextra $(MANNAC_WERROR) -g -fsanitize=address,undefined -o $(IR_DUMP_DIR)/ir_dump-asan $(IR_DUMP_SRCS)
 	@./tools/run_ir_fix_tests.sh $(IR_DUMP_DIR)/ir_dump-asan
 
 test-ir-unit:
 	@mkdir -p $(IR_TEST_DIR)
-	$(MANNAC_CC) -std=c11 -Wall -Wextra -O2 -g -pthread -o $(IR_TEST_DIR)/ir_test $(IR_TEST_SRCS)
+	$(MANNAC_CC) -std=c11 -Wall -Wextra $(MANNAC_WERROR) -O2 -g -pthread -o $(IR_TEST_DIR)/ir_test $(IR_TEST_SRCS)
 	sh -c 'ulimit -s 8192 && $(IR_TEST_DIR)/ir_test'
 	sh -c 'ulimit -s 2048 && $(IR_TEST_DIR)/ir_test --stack'
 	sh -c 'ulimit -s 2048 && $(IR_TEST_DIR)/ir_test --build-stack'
@@ -412,12 +414,12 @@ IR_NDEBUG_SRCS := tools/mannac/arena.c tools/mannac/ast.c tools/mannac/diag.c \
 
 test-ir-ndebug:
 	@mkdir -p $(IR_TEST_DIR)
-	$(MANNAC_CC) -std=c11 -Wall -Wextra -O2 -DNDEBUG -o $(IR_TEST_DIR)/ir_ndebug_test $(IR_NDEBUG_SRCS)
+	$(MANNAC_CC) -std=c11 -Wall -Wextra $(MANNAC_WERROR) -O2 -DNDEBUG -o $(IR_TEST_DIR)/ir_ndebug_test $(IR_NDEBUG_SRCS)
 	$(IR_TEST_DIR)/ir_ndebug_test
 
 test-ir-unit-asan:
 	@mkdir -p $(IR_TEST_DIR)
-	$(MANNAC_CC) -std=c11 -Wall -Wextra -g -fsanitize=address,undefined -pthread -o $(IR_TEST_DIR)/ir_test-asan $(IR_TEST_SRCS)
+	$(MANNAC_CC) -std=c11 -Wall -Wextra $(MANNAC_WERROR) -g -fsanitize=address,undefined -pthread -o $(IR_TEST_DIR)/ir_test-asan $(IR_TEST_SRCS)
 	sh -c 'ulimit -s 8192 && $(IR_TEST_DIR)/ir_test-asan'
 	sh -c 'ulimit -s 2048 && $(IR_TEST_DIR)/ir_test-asan --stack'
 	sh -c 'ulimit -s 2048 && $(IR_TEST_DIR)/ir_test-asan --build-stack'

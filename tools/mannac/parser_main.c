@@ -30,8 +30,9 @@ static char *read_file(const char *path, size_t *out_len) {
     long size = ftell(f);
     fseek(f, 0, SEEK_SET);
     char *buf = malloc((size_t)size);
-    if (size > 0) {
-        fread(buf, 1, (size_t)size, f);
+    if (size > 0 && fread(buf, 1, (size_t)size, f) != (size_t)size) {
+        perror(path);
+        exit(1);
     }
     fclose(f);
     *out_len = (size_t)size;

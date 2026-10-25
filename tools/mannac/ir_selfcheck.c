@@ -99,6 +99,17 @@ static bool has_code(const DiagList *d, const char *code) {
     return false;
 }
 
+/* Parses `text` into `ps` (initialized here). The setjmp is in this small function so ir_fix_selfcheck keeps no variable across it (gcc -Wclobbered). */
+static void parse_fixed(ParserState *ps, NodeList *items, const char *text, size_t len) {
+    node_list_init(items);
+    parser_state_init(ps, 16 * 1024 * 1024);
+    if (setjmp(ps->fatal_target) == 0) {
+        Lexer lx;
+        lexer_init(&lx, text, len);
+        (void)parser_parse_file(ps, &lx, items);
+    }
+}
+
 char *ir_fix_selfcheck(const char *src, size_t len, const IrState *orig) {
     const DiagList *od = &orig->diags;
     size_t nfix = 0;
@@ -142,13 +153,7 @@ char *ir_fix_selfcheck(const char *src, size_t len, const IrState *orig) {
     char *why = NULL;
     static ParserState ps;   /* large: kept off the stack */
     NodeList items;
-    node_list_init(&items);
-    parser_state_init(&ps, 16 * 1024 * 1024);
-    if (setjmp(ps.fatal_target) == 0) {
-        Lexer lx;
-        lexer_init(&lx, fixed, fixed_len);
-        (void)parser_parse_file(&ps, &lx, &items);
-    }
+    parse_fixed(&ps, &items, fixed, fixed_len);
     IrState st;
     ir_state_init(&st, IR_ARENA_CAP);
     IrModule *m = NULL;

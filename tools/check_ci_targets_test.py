@@ -16,7 +16,7 @@ def check(name, cond):
 
 
 MK = ".PHONY: all test-a test-b audit-c check-d fuzz test-wx\n\nall:\n\ttrue\ntest-a:\n\ttrue\ntest-b:\n\ttrue\naudit-c:\n\ttrue\ncheck-d:\n\ttrue\nfuzz:\n\ttrue\ntest-wx:\n\ttrue\n"
-CI = "steps:\n  - run: make test-a\n  - run: make test-b\n  - run: make audit-c\n  - run: make check-d\n"
+CI = "jobs:\n  one:\n    runs-on: x\n    env:\n      MANNAC_WERROR: -Werror\n    steps:\n  - run: make test-a\n  - run: make test-b\n  - run: make audit-c\n  - run: make check-d\n"
 REG = "### K4 - w\n\n- **Status:** OPEN\n"
 
 
@@ -54,6 +54,10 @@ check("finding 4: `if: false` fails the target", any("test-b" in p and "if: fals
 check("finding 4: a block `run: |` with make lines counts", problems(tree(ci="steps:\n  - run: |\n      make test-a\n      make test-b && make audit-c\n      make check-d\n")) == [])
 check("finding 4: a trailing comment after the command is fine", problems(tree(ci=CI.replace("make test-b", "make test-b  # the b suite"))) == [])
 check("finding 4: continue-on-error: false is fine", problems(tree(ci=CI.replace("  - run: make test-b\n", "  - run: make test-b\n    continue-on-error: false\n"))) == [])
+# -Werror (step 20g-2)
+check("-Werror: a host compile without MANNAC_WERROR fails", any("without $(MANNAC_WERROR)" in p for p in problems(tree(mk=MK + "x:\n\t$(MANNAC_CC) -std=c11 -Wall -o a b.c\n"))))
+check("-Werror: a host compile with MANNAC_WERROR passes", problems(tree(mk=MK + "x:\n\t$(MANNAC_CC) -std=c11 -Wall $(MANNAC_WERROR) -o a b.c\n")) == [])
+check("-Werror: a job that does not set MANNAC_WERROR: -Werror fails", any("job 'one' does not set" in p for p in problems(tree(ci=CI.replace("      MANNAC_WERROR: -Werror\n", "")))))
 check("the real tree passes", ct.check(os.path.dirname(HERE))[0] == [])
 
 print("ci-target tests: %d failed" % len(fails) if fails else "ci-target tests: all passed")

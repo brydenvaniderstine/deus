@@ -625,15 +625,17 @@ static void test_stack_shapes(void) {
 static ParserState g_ps;
 static NodeList g_items;
 
-static void parse_src(const char *src) {
+static void parse_bytes(const char *src, size_t len) {
     parser_state_init(&g_ps, 16 * 1024 * 1024);
     node_list_init(&g_items);
     if (setjmp(g_ps.fatal_target) == 0) {
         Lexer lx;
-        lexer_init(&lx, src, strlen(src));
+        lexer_init(&lx, src, len);
         (void)parser_parse_file(&g_ps, &lx, &g_items);
     }
 }
+
+static void parse_src(const char *src) { parse_bytes(src, strlen(src)); }
 
 static void parse_done(void) {
     parser_state_destroy(&g_ps);
@@ -2402,13 +2404,7 @@ static void test_fix_selfcheck(void) {
         size_t n = sizeof nul_src - 1, out_len = 0;
         IrModule *m = NULL;
         ir_state_init(&st, 4 << 20);
-        parser_state_init(&g_ps, 16 * 1024 * 1024);
-        node_list_init(&g_items);
-        if (setjmp(g_ps.fatal_target) == 0) {
-            Lexer lx;
-            lexer_init(&lx, nul_src, n);
-            (void)parser_parse_file(&g_ps, &lx, &g_items);
-        }
+        parse_bytes(nul_src, n);
         assert(g_ps.diags.len == 0 && ir_build(&st, &g_ps.diags, &g_items, &m) == IR_ERRORS && st.diags.len == 2);
         char *fx = ir_apply_fixes_n(nul_src, n, &st.diags, &out_len);
         assert(out_len == n && memcmp(fx, "// a\0b\nmanna v0;\n", 17) == 0);   /* iThng -> IThng and Thing -> thing keep the length */

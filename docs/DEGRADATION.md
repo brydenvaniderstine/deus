@@ -72,7 +72,7 @@ Each entry's **Trigger-id** is one of the ids below, in the order they fall due.
 - **Status:** OPEN
 - **Reason:** The CI job is a compile check; boots are manual.
 - **Promise:** `CLAUDE.md:7` "Every milestone must boot in QEMU."
-- **Where it stands:** `.github/workflows/ci.yml:61` "# Kernel compile check only (make all -> build/kernel.elf). Does not"
+- **Where it stands:** `.github/workflows/ci.yml:63` "# Kernel compile check only (make all -> build/kernel.elf). Does not"
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** Step 20 (a QEMU boot smoke test asserting the M1 serial-log lines)
 - **Trigger-id:** `step-20`
@@ -236,7 +236,7 @@ Each entry's **Trigger-id** is one of the ids below, in the order they fall due.
 - **Status:** CLOSED (2026-10-24, step 19 batch 3 and step 20a)
 - **Reason:** `make test-e0261-exhaustive` and `make test-rename-property` printed their counts and asserted only 'no violation', so a generator that silently shrank passed. Done in 19g/19h (both compare their whole report with `tests/e0261_exhaustive.expected` and `tests/rename_property.expected`) and in 20a (`make test-ratchet` ratchets the numbers in those files, the golden, fix-case and repro counts and the memory-stress case count).
 - **Promise:** `CLAUDE.md:160` "Rule: no behavior change without a test."
-- **Where it stands:** `Makefile:320` "@diff -u tests/e0261_exhaustive.expected"
+- **Where it stands:** `Makefile:322` "@diff -u tests/e0261_exhaustive.expected"
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** Step 20 (every generated-test count is asserted in the Makefile/CI); done
 - **Trigger-id:** `step-20`

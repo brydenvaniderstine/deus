@@ -4005,7 +4005,7 @@
   "rename_property.part1.programs": 2500,
   "rename_property.part2.fixes_changed": 1355,
   "rename_property.part2.programs": 2500,
-  "script_checks.check_ci_targets_test.py": 18,
+  "script_checks.check_ci_targets_test.py": 21,
   "script_checks.check_register_test.py": 35,
   "script_checks.ratchet_test.py": 32,
   "unit_test_functions.arena_test.c": 7,

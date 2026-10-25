@@ -130,6 +130,16 @@ def check(root):
     for t in sorted((run | set(unreliable)) - defined - {"all"}):
         if t not in phony and t not in defined:
             problems.append("a workflow runs `make %s`, which the Makefile does not define" % t)
+    # -Werror (step 20g-2): every host-side compile recipe takes $(MANNAC_WERROR), and each CI job sets MANNAC_WERROR: -Werror, so no warning returns
+    for n, line in enumerate(mk.split("\n"), 1):
+        if line.startswith("\t$(MANNAC_CC) -std=c11") and "$(MANNAC_WERROR)" not in line:
+            problems.append("Makefile:%d: a host-side compile without $(MANNAC_WERROR)" % n)
+    ci = read(root, ".github/workflows/ci.yml")
+    jobs = re.split(r"^  (?=[a-z][a-z0-9_-]*:\s*$)", ci, flags=re.M)
+    for j in jobs:
+        m = re.match(r"([a-z][a-z0-9_-]*):", j)
+        if m and "runs-on:" in j and not re.search(r"^\s+MANNAC_WERROR:\s*-Werror\s*$", j, re.M):
+            problems.append("ci.yml: job '%s' does not set MANNAC_WERROR: -Werror" % m.group(1))
     return problems, checks, run
 
 
