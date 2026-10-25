@@ -2180,10 +2180,6 @@
    1,
    "6b61594f8a0d8ba4"
   ],
-  "tests/ir_fix/fix_e0261_in_an_unannotated_let_has_no_fix_arithmetic_on_the_bool_that_a_comparison_of_it_gives.remaining": [
-   1,
-   "85dcac770bbfa818"
-  ],
   "tests/ir_fix/fix_e0261_in_an_unannotated_let_has_no_fix_it_is_a_condition.remaining": [
    1,
    "85dcac770bbfa818"
@@ -2213,6 +2209,10 @@
    "dd349967b5b34f36"
   ],
   "tests/ir_fix/fix_e0261_in_an_unannotated_let_has_no_fix_the_local_is_returned_as_another_type.remaining": [
+   1,
+   "85dcac770bbfa818"
+  ],
+  "tests/ir_fix/fix_e0261_in_an_unannotated_let_keeps_its_fix_arithmetic_on_the_bool_that_a_comparison_of_it_gives.remaining": [
    1,
    "85dcac770bbfa818"
   ],
