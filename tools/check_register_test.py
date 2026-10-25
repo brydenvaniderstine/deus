@@ -37,6 +37,7 @@ HEAD = """# Degradation register
 - `step-21` - next
 - `m2-ir-v0` - the tag
 - `each-tag` - every tag
+- `post-m2-ir-v0` - after
 - `v1` - v1
 
 ## 1. Section
@@ -128,8 +129,22 @@ root, rev = make(entry=ENTRY.replace("OPEN", "CLOSED (2026-10-24, step 21)").rep
 check("a CLOSED entry past its trigger is fine", run(root, at="m2-ir-v0") == [])
 shutil.rmtree(root)
 
+root, rev = make(entry=ENTRY.replace("`step-21`", "`each-tag`") + "- **Checked at:** \n")
+check("each-tag is due at the first tag (it needs a Checked at line naming it)", any("Checked at" in x for x in run(root, at="m2-ir-v0")))
+shutil.rmtree(root)
+
+# finding 8 (Linux review of batch A2): an each-tag entry is never "passed" by position; AT=<tag> needs "Checked at: <tag>"
+EACH = ENTRY.replace("`step-21`", "`each-tag`") + "- **Checked at:** \n"
+root, rev = make(entry=EACH, head=HEAD.replace("**Current point:** `step-20`", "**Current point:** `post-m2-ir-v0`"), status="see docs/DEGRADATION.md\n\n**Current point:** `post-m2-ir-v0`\n")
+check("finding 8: with the Current point past the tag an OPEN each-tag entry does not fail", run(root) == [])
+check("finding 8: AT=m2-ir-v0 without the tag in Checked at fails", any("Checked at" in x and "m2-ir-v0" in x for x in run(root, at="m2-ir-v0")))
+shutil.rmtree(root)
+root, rev = make(entry=EACH.replace("Checked at:** ", "Checked at:** m2-ir-v0, 2026-11-01"), head=HEAD.replace("**Current point:** `step-20`", "**Current point:** `post-m2-ir-v0`"), status="see docs/DEGRADATION.md\n\n**Current point:** `post-m2-ir-v0`\n")
+check("finding 8: AT=m2-ir-v0 with the tag in Checked at passes", run(root, at="m2-ir-v0") == [])
+check("finding 8: naming another tag does not satisfy it", any("Checked at" in x and "v1" in x for x in run(root, at="v1")))
+shutil.rmtree(root)
 root, rev = make(entry=ENTRY.replace("`step-21`", "`each-tag`"))
-check("each-tag is due at the first tag", any("closing" in x for x in run(root, at="m2-ir-v0")) and run(root, at="step-21") == [])
+check("finding 8: an each-tag entry must carry the Checked at field (even empty)", any("Checked at" in x for x in run(root)))
 shutil.rmtree(root)
 
 root, rev = make(errcodes="| Code | Message | Meaning | Fix |\n|---|---|---|---|\n| `E0104` | m | x | None - documented exception: a |\n| `E0101` | m | x | None - documented exception: b |\n| `E0105` | m | x | None - documented exception: c |\n")

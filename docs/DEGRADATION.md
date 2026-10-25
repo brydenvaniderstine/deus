@@ -8,13 +8,13 @@ Step numbers: step 19 is the third audit round's fixes (done and pushed), step 2
 
 ## Trigger ids
 
-Each entry's **Trigger-id** is one of the ids below, in the order they fall due. **Current point:** `step-20`. `make check-register` fails if an OPEN or PARTLY CLOSED entry's id comes BEFORE the current point (its trigger has passed); `make check-register AT=<id>` (run when a tag or milestone closes) also fails for an id equal to or before `<id>`. The person closing a step or tag advances the current point in the same commit. `each-tag` is due at every tag: it counts as due at the next tag (`m2-ir-v0`) and again at each later one.
+Each entry's **Trigger-id** is one of the ids below, in the order they fall due. **Current point:** `step-20`. `make check-register` fails if an OPEN or PARTLY CLOSED entry's id comes BEFORE the current point (its trigger has passed); `make check-register AT=<id>` (run when a tag or milestone closes) also fails for an id equal to or before `<id>`. The person closing a step or tag advances the current point in the same commit. `each-tag` recurs at every tag, so it is never "passed" by position: instead, `make check-register AT=<tag>` requires every OPEN `each-tag` entry to carry a `- **Checked at:** <tag>, ...` line naming that tag (the field is empty until the first tag).
 
 - `step-19` - the third audit round's fixes
 - `step-20` - this guardrails step
 - `step-21` - the no-cascade proof
 - `m2-ir-v0` - the tag `m2-ir-v0`
-- `each-tag` - every tag (checked as due at `m2-ir-v0`)
+- `each-tag` - every tag (never passed by position; `Checked at` names the tags it was checked at)
 - `post-m2-ir-v0` - the fix-it / recovery pass after the tag
 - `tag-after-m2-ir-v0` - the first tag after `m2-ir-v0`
 - `loop-counter-injection` - before loop-counter injection starts
@@ -344,6 +344,7 @@ Each entry's **Trigger-id** is one of the ids below, in the order they fall due.
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** Enforced from 2026-10-23 (CLAUDE.md 'No degradation'); verified at each tag (PROPOSED by Claude Code, approved by Bryden 2026-10-24)
 - **Trigger-id:** `each-tag`
+- **Checked at:** 
 
 ### R2 - The refinement loop is due at m2-ir-v0
 
@@ -384,6 +385,7 @@ Each entry's **Trigger-id** is one of the ids below, in the order they fall due.
 - **Owner:** Bryden (decision); Claude Code (work)
 - **Trigger:** Closed by the CLAUDE.md rule of 2026-10-23; re-checked at each tag (PROPOSED by Claude Code, approved by Bryden 2026-10-24)
 - **Trigger-id:** `each-tag`
+- **Checked at:** 
 
 ## 6. Planned work: degradation risks ahead
 

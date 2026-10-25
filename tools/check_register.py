@@ -9,8 +9,10 @@
   2. Every entry (### X - title, sections 1-6) has Status, Reason, Promise, Where it stands, Owner, Trigger and Trigger-id; the Status is
      OPEN, PARTLY CLOSED, CLOSED (...) or NOT A DEGRADATION; the Trigger-id is in the ordered list under "## Trigger ids"; the entry id is unique.
   3. No OPEN / PARTLY CLOSED entry's trigger has passed: its id must not come before the register's **Current point**. With --at ID (run
-     when a tag or milestone closes) it must also not be at or before ID ("no tag closes while an entry's trigger has passed"). `each-tag`
-     counts as due at `m2-ir-v0` and at every later tag.
+     when a tag or milestone closes) it must also not be at or before ID ("no tag closes while an entry's trigger has passed"). An `each-tag`
+     entry recurs, so it is NEVER "passed" by position (the Current point can move beyond the first tag); instead, with --at <tag>, an
+     OPEN or PARTLY CLOSED `each-tag` entry must carry a `- **Checked at:** <tag>, ...` line naming that tag, or the tag does not close.
+     Every `each-tag` entry must have the field (empty until its first tag).
   4. Sections 7a / 7b: the codes in the two tables are exactly the codes whose Fix column in docs/error_codes.md starts with "None", and every
      quoted exception is on its line.
   5. Every `RATCHET-WAIVER <name> <from> -> <to> <entry>` line names an existing entry that is OPEN or PARTLY CLOSED (a closed entry permits
@@ -25,6 +27,7 @@ import os, re, subprocess, sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 REG = "docs/DEGRADATION.md"
 FIELDS = ["Status", "Reason", "Promise", "Where it stands", "Owner", "Trigger", "Trigger-id"]
+OPTIONAL = ["Checked at"]   # required (even empty) on each-tag entries
 STATUS = re.compile(r"^(OPEN|PARTLY CLOSED|CLOSED( \(.*\))?|NOT A DEGRADATION)$")
 CITE = re.compile(r"`(?:([^`\s@]+)\s?@([0-9a-f]{7,40})|([^`\s@]+)):(\d+)`\s+(?:\|\s+)?\"(.*?)\"(?=\.?\s*(?:;|\||$))")
 BARE = re.compile(r"`[\w./-]+:\d+`")
@@ -103,7 +106,7 @@ def parse(text):
             cur = None
         if cur is not None:
             f = re.match(r"- \*\*([A-Za-z -]+):\*\* ?(.*)$", line)
-            if f and f.group(1) in FIELDS:
+            if f and f.group(1) in FIELDS + OPTIONAL:
                 cur[f.group(1)] = f.group(2).strip()
     return entries, ids, current
 
@@ -133,10 +136,15 @@ def check_entries(text, at):
             problems.append("%s: Trigger-id %r is not in the list" % (where, tid))
             continue
         if tid and (st.startswith("OPEN") or st.startswith("PARTLY")):
-            eff = "m2-ir-v0" if tid == "each-tag" and at else tid
+            if tid == "each-tag":   # recurring: never passed by position; a tag closing needs the entry checked at that tag
+                if "Checked at" not in e:
+                    problems.append("%s: an each-tag entry must carry a '- **Checked at:** <tag>, ...' line (empty until its first tag)" % where)
+                elif at and at not in [t.strip() for t in e["Checked at"].replace(";", ",").split(",")]:
+                    problems.append("%s: the tag %s cannot close: this each-tag entry has no '- **Checked at:** %s, ...' line naming it" % (where, at, at))
+                continue
             if current in order and order[tid] < order[current]:
                 problems.append("%s: OPEN but its trigger %s has passed (the current point is %s)" % (where, tid, current))
-            elif at in order and order[eff] <= order[at]:
+            elif at in order and order[tid] <= order[at]:
                 problems.append("%s: OPEN but its trigger %s is at or before %s, which is closing" % (where, tid, at))
     return problems
 
