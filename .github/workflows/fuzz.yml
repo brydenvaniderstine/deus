@@ -1,0 +1,57 @@
+name: Nightly fuzz
+
+# Step 20e (register V1). 30 minutes per target, every night, on Linux (clang + libFuzzer + ASan + UBSan); the corpus is cached between runs. A crash,
+# timeout, out-of-memory or sanitizer report leaves an artifact, tools/fuzz/run_fuzzers.sh exits 1, the job turns RED and the artifact is uploaded:
+# a finding cannot pass unnoticed. A finding becomes a golden (minimized first), never just a file under build/fuzz.
+on:
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+    inputs:
+      minutes:
+        description: 'minutes per target'
+        default: '30'
+
+jobs:
+  fuzz:
+    name: fuzz ${{ matrix.target }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [lexer, parser, ir, ir-ungated]
+    env:
+      UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain (clang with libFuzzer)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang llvm
+          v=$(clang -dumpversion | cut -d. -f1)
+          sudo apt-get install -y "libclang-rt-${v}-dev"
+          echo "LLVM_CLANG=$(command -v clang)" >> "$GITHUB_ENV"
+      - name: Corpus cache
+        uses: actions/cache@v4
+        with:
+          path: tools/fuzz/corpus
+          key: fuzz-corpus-${{ matrix.target }}-${{ github.run_id }}
+          restore-keys: |
+            fuzz-corpus-${{ matrix.target }}-
+      - name: Fuzz (30 minutes)
+        run: |
+          secs=$(( ${{ github.event.inputs.minutes || '30' }} * 60 ))
+          export DURATION_LEXER=$secs DURATION_PARSER=$secs DURATION_IR=$secs
+          tools/fuzz/run_fuzzers.sh ${{ matrix.target }}
+      - name: Upload artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-artifacts-${{ matrix.target }}
+          path: build/fuzz/artifacts
+          if-no-files-found: ignore
+      - name: Say so in the run summary
+        if: failure()
+        run: |
+          echo "FUZZ FINDING in target ${{ matrix.target }} - see the uploaded artifact; minimize it and add it as a golden." >> "$GITHUB_STEP_SUMMARY"

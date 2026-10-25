@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Step 12: libFuzzer harness runner (docs/M2_PLAN.md). Not run in CI -
-# invoke locally, for a fixed wall-clock budget per target.
+# Step 12: libFuzzer harness runner (docs/M2_PLAN.md), for a fixed wall-clock budget per target. Step 20e: CI runs it too (60 s per target on
+# every push in the Linux job; 30 min per target nightly, .github/workflows/fuzz.yml). Any crash, timeout, out-of-memory or sanitizer report
+# leaves an artifact under build/fuzz/artifacts and makes the script EXIT 1 (it used to print them and exit 0).
 #
 # Usage: tools/fuzz/run_fuzzers.sh [lexer|parser|ir|ir-ungated|both]   (default: both = lexer + parser)
 #   ir / ir-ungated: the typed-IR target (typed-IR step 16), gated as used, and with the parse-diagnostics gate
@@ -34,6 +35,8 @@ set -euo pipefail
 # describing what broke) - never left as just a file under build/fuzz.
 
 TARGET="${1:-both}"
+# a UBSan report must stop the run (recoverable by default, so libFuzzer would see no crash and save no artifact)
+export UBSAN_OPTIONS="${UBSAN_OPTIONS:-halt_on_error=1:print_stacktrace=1}"
 LLVM_CLANG="${LLVM_CLANG:-/usr/local/opt/llvm/bin/clang}"
 DURATION_LEXER="${DURATION_LEXER:-180}"   # seconds
 DURATION_PARSER="${DURATION_PARSER:-600}" # seconds
@@ -102,8 +105,9 @@ esac
 
 echo "==> Done."
 if ls "$ARTIFACTS"/* >/dev/null 2>&1; then
-    echo "Crash/timeout artifacts found under $ARTIFACTS:"
+    echo "FAILED: crash/timeout/sanitizer artifacts found under $ARTIFACTS:"
     ls -la "$ARTIFACTS"
+    exit 1
 else
     echo "No crash/timeout artifacts."
 fi
