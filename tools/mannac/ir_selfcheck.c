@@ -120,6 +120,19 @@ char *ir_fix_selfcheck(const char *src, size_t len, const IrState *orig) {
         n_rn++;
     }
 
+    /* A build stopped by E0201 or E0203 is unfinished: it must have cleared every fix (ir_error, on_arena_overflow). A fix that survives is a bug. */
+    if (has_code(od, "E0203") || has_code(od, "E0201")) {
+        for (size_t i = 0; i < od->len; i++) {
+            if (od->items[i].fix) {
+                char buf[256];
+                snprintf(buf, sizeof buf, "a fix survives a build stopped by %s (an unfinished build offers none): line %d %s %s",
+                         has_code(od, "E0203") ? "E0203" : "E0201", od->items[i].span.start_line, od->items[i].code, od->items[i].message);
+                for (size_t k = 0; k < n_rn; k++) { free(rn[k].old_name); free(rn[k].new_name); }
+                free(rn);
+                return dup(buf);
+            }
+        }
+    }
     size_t decl1 = orig->bodies_reached ? orig->decl_diags_end : od->len;
     bool stopped = !orig->bodies_reached || has_code(od, "E0203") || has_code(od, "E0201");
 

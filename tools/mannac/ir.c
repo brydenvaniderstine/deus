@@ -49,6 +49,9 @@ void ir_state_reset_for_build(IrState *st) {
 static void on_arena_overflow(void *ctx) {
     IrState *st = ctx;
     diag_add(st->arena, &st->diags, diag_ir_input_too_large(st->progress));
+    /* An overflowed build is unfinished, like the cap's (ir_error): nothing is applied from it, whatever kind of fix it is (Linux review of batch B,
+     * finding 1; the self-check fails if a fix survives either stop). */
+    for (size_t i = 0; i < st->diags.len; i++) st->diags.items[i].fix = NULL;
 }
 
 void ir_state_init(IrState *st, size_t arena_max_size) {

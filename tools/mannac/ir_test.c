@@ -2355,6 +2355,31 @@ static void test_fix_selfcheck(void) {
         parse_done();
     }
     ir_state_destroy(&st);
+    /* a build stopped by E0201 (the arena overflowed) is unfinished: it keeps NO fix, and the self-check fails if one survives (Linux review of batch B,
+     * finding 1). An E0261 with its fix comes first, then a function that overflows a small arena. */
+    {
+        char big[40000];
+        size_t o = (size_t)snprintf(big, sizeof big, "manna v0;\nfn f(a: u8, b: u32) -> u32 {\n    return a + b;\n}\nfn g() {\n");
+        for (int i = 0; i < 1500 && o < sizeof big - 80; i++) o += (size_t)snprintf(big + o, sizeof big - o, "    let x%d: u8 = 0;\n", i);
+        snprintf(big + o, sizeof big - o, "}\n");
+        IrModule *m = NULL;
+        ir_state_init(&st, 48 * 1024);
+        parse_src(big);
+        assert(g_ps.diags.len == 0 && ir_build(&st, &g_ps.diags, &g_items, &m) == IR_ERRORS);
+        bool e261 = false, e201 = false;
+        for (size_t i = 0; i < st.diags.len; i++) {
+            e261 = e261 || strcmp(st.diags.items[i].code, "E0261") == 0;
+            e201 = e201 || strcmp(st.diags.items[i].code, "E0201") == 0;
+            assert(!st.diags.items[i].fix);                       /* the overflow cleared the E0261's fix */
+        }
+        assert(e261 && e201);
+        ((Diagnostic *)&st.diags.items[0])->fix = diag_fix_new(st.arena, 0); /* a surviving fix (any) is what the self-check must refuse */
+        why = ir_fix_selfcheck(big, strlen(big), &st);
+        assert(why && strstr(why, "survives a build stopped by E0201"));
+        free(why);
+        parse_done();
+        ir_state_destroy(&st);
+    }
     /* a build that did not stop gets no exception: a body diagnostic that appears after the fix is a violation */
     ir_state_init(&st, 4 << 20);
     {
