@@ -189,6 +189,16 @@ root, rev = make(entry=ENTRY.replace("OPEN", "CLOSED (x)").replace("`step-21`", 
 check("finding 6: a waiver naming a CLOSED entry fails", any("not OPEN or PARTLY CLOSED" in x for x in run(root)))
 shutil.rmtree(root)
 
+# a section 7 row is bound to its CODE's row: two rows with the same quote cannot be swapped (found while adding a line to error_codes.md)
+SAME = "| Code | Message | Meaning | Fix |\n|---|---|---|---|\n| `E0104` | m | x | None - documented exception: same |\n| `E0101` | m | x | None - documented exception: same |\n"
+TAIL_SAME = TAIL.replace("None - documented exception: a", "None - documented exception: same").replace("None - documented exception: b", "None - documented exception: same")
+root, rev = make(tail=TAIL_SAME, errcodes=SAME)
+check("a table row citing its own code's line passes", run(root) == [])
+shutil.rmtree(root)
+root, rev = make(tail=TAIL_SAME.replace("error_codes.md:3", "error_codes.md:4").replace("error_codes.md:4` | \"None - documented exception: same\" |\n\n### 7b", "error_codes.md:4` | \"None - documented exception: same\" |\n\n### 7b"), errcodes=SAME)
+check("a table row citing ANOTHER code's line (same quote) fails and --fix-lines repairs it", any("the row of E0104" in x for x in run(root)) and run(root, fix=True) == [])
+shutil.rmtree(root)
+
 # the real register must pass
 check("the real register passes", cr.run(os.path.dirname(HERE)) == [])
 

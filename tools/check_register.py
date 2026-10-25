@@ -70,6 +70,16 @@ def check_cites(text, root, fix):
                 continue
             ls = file_lines(path, rev, root, cache)
             where = "%s%s:%d" % (path, "@" + rev if rev else "", n)
+            row = re.match(r"\| (E\d{4}) \|", line)
+            if row and ls is not None and not rev:
+                # a section 7 table row: the cited line must be THAT code's row (many rows share the same quote), so a drifted number is repaired by code
+                at = [i + 1 for i, l in enumerate(ls) if l.startswith("| `%s` |" % row.group(1))]
+                if len(at) == 1 and at[0] != n:
+                    if fix:
+                        new = new[:m.start(4)] + str(at[0]) + new[m.end(4):]
+                        continue
+                    problems.append("%s:%d: %s: the row of %s is on line %d, not line %d" % (REG, lineno, where, row.group(1), at[0], n))
+                    continue
             if ls is None:
                 problems.append("%s:%d: %s: no such file%s" % (REG, lineno, where, " at that revision" if rev else ""))
             elif 1 <= n <= len(ls) and quote in ls[n - 1]:

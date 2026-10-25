@@ -3974,12 +3974,12 @@
   "rename_property.part2.fixes_changed": 1355,
   "rename_property.part2.programs": 2500,
   "script_checks.check_ci_targets_test.py": 18,
-  "script_checks.check_register_test.py": 32,
+  "script_checks.check_register_test.py": 34,
   "script_checks.ratchet_test.py": 32,
   "unit_test_functions.arena_test.c": 7,
   "unit_test_functions.ast_test.c": 6,
   "unit_test_functions.ir_ndebug_test.c": 0,
-  "unit_test_functions.ir_test.c": 47,
+  "unit_test_functions.ir_test.c": 48,
   "unit_test_functions.parser_fixes_test.c": 20,
   "unit_test_functions.parser_state_test.c": 5
  }

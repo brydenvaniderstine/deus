@@ -82,6 +82,8 @@ typedef struct {
     DiagList     diags;
     int          error_count;
     int          muted;       /* > 0: ir_error records nothing (a subtree checked only for its call edges and name uses); always 0 outside one call of ir_body.c:check_muted or ir_expr.c:group_fits */
+    size_t       decl_diags_end; /* diagnostics before this index came from the declaration pass; set when the bodies are reached (the whole list if they never were) */
+    bool         bodies_reached; /* the build got past the declaration pass (a naming error alone does not stop it) */
     size_t       muted_hits;  /* how many diagnostics ir_error dropped because muted > 0 (a dry check compares it before and after) */
     jmp_buf      fatal_target; /* ir_build owns the setjmp; E0201/E0203 land here */
     IrType       prim[IR_N_PRIM];
@@ -289,6 +291,18 @@ IrStatus ir_build(IrState *st, const DiagList *parse_diags, const NodeList *item
  * (the edits of one fix, and of different fixes, never overlap). Returns a malloc'd NUL-terminated copy
  * (typed-IR step 14, ir_rename.c). */
 char *ir_apply_fixes(const char *src, size_t len, const DiagList *diags);
+
+/* The self-check (step 20f; docs/error_codes.md "Fix-it rules"). A fix-it the compiler offers must make the program better and change nothing else.
+ * `orig` is a state whose ir_build just returned IR_ERRORS for `src`. Applies every fix, rebuilds the fixed source with a fresh state and compares:
+ *   (a) every diagnostic that offered a fix is gone;
+ *   (b) every other diagnostic is unchanged (same line, code and message; a name quoted in a message may differ only if an applied rename fix
+ *       renamed it: the rename titles are the only source of the mapping);
+ *   (c) no diagnostic appears that was not there.
+ * Exception, only when the original build STOPPED (a declaration error, E0203 or E0201): the diagnostics of the declaration pass must still
+ * satisfy (a)-(c), and the body pass, which did not run (or not to the end) before, may report new diagnostics.
+ * Returns NULL if the fixes hold, else a malloc'd explanation (the caller prints "internal error: a fix-it did not re-check" with it and
+ * exits non-zero, or aborts: a failure is a bug in the compiler, never filtered or hidden). Also NULL when `orig` offers no fix. */
+char *ir_fix_selfcheck(const char *src, size_t len, const IrState *orig);
 
 /* The one rule every function that applies a DiagEdit to source text must follow (docs/error_codes.md, fix-it rules): an edit never
  * joins two tokens. `start`..`end` are the byte offsets the edit replaces (equal for an insert: only an insert is padded, a replacement keeps

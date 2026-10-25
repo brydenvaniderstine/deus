@@ -77,6 +77,20 @@ int main(int argc, char **argv) {
     IrModule *m = NULL;
     IrStatus status = ir_build(&st, &ps.diags, &items, &m);
     int rc = 0;
+    /* The self-check (step 20f): every fix the diagnostics carry must hold up (ir.h ir_fix_selfcheck). A failure is a bug in the compiler: say so
+     * loudly and exit 4, in both modes, so no golden, fix case, property program or fuzz input can pass with a wrong fix. */
+    if (status == IR_ERRORS) {
+        char *why = ir_fix_selfcheck(src, len, &st);
+        if (why) {
+            if (!fixed) print_diags(&st.diags);
+            fprintf(stderr, "ir_dump: internal error: a fix-it did not re-check (please report this): %s\n", why);
+            free(why);
+            ir_state_destroy(&st);
+            parser_state_destroy(&ps);
+            free(src);
+            return 4;
+        }
+    }
     if (fixed) {
         char *out = status == IR_ERRORS ? ir_apply_fixes(src, len, &st.diags) : NULL;
         fwrite(out ? out : src, 1, out ? strlen(out) : len, stdout);

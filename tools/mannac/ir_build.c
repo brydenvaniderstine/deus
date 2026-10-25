@@ -34,6 +34,8 @@ IrStatus ir_build(IrState *st, const DiagList *parse_diags, const NodeList *item
     if (!ir_declare_items(st, items, m, &decls)) return IR_ERRORS;
     /* ir_declare_items built every struct and every function SIGNATURE (module order
      * is declaration order); the bodies are filled in here. */
+    st->bodies_reached = true;
+    st->decl_diags_end = st->diags.len;
     size_t fi = 0;
     for (size_t i = 0; i < items->len; i++) {
         const Decl *d = items->items[i];

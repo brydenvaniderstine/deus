@@ -31,6 +31,8 @@ void ir_state_reset_for_build(IrState *st) {
     st->error_count = 0;
     st->muted = 0;
     st->muted_hits = 0;
+    st->bodies_reached = false;
+    st->decl_diags_end = 0;
     st->progress = (Span){1, 1, 1, 1};
     st->unimplemented = NULL;
     st->expr_visits = 0;

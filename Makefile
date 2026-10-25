@@ -273,7 +273,7 @@ test-determinism:
 MANNAC_CC      ?= clang
 IR_TEST_DIR    := $(BUILD)/ir_test
 IR_TEST_SRCS   := tools/mannac/arena.c tools/mannac/ast.c tools/mannac/diag.c \
-                  tools/mannac/ir.c tools/mannac/ir_dump.c tools/mannac/ir_build.c tools/mannac/ir_decls.c tools/mannac/ir_expr.c tools/mannac/ir_body.c tools/mannac/ir_calls.c tools/mannac/ir_names.c tools/mannac/ir_rename.c \
+                  tools/mannac/ir.c tools/mannac/ir_dump.c tools/mannac/ir_build.c tools/mannac/ir_decls.c tools/mannac/ir_expr.c tools/mannac/ir_body.c tools/mannac/ir_calls.c tools/mannac/ir_names.c tools/mannac/ir_rename.c tools/mannac/ir_selfcheck.c \
                   tools/mannac/parser_state.c tools/mannac/parser.c tools/mannac/lexer.c \
                   tools/mannac/ir_test.c
 
@@ -283,7 +283,7 @@ IR_TEST_SRCS   := tools/mannac/arena.c tools/mannac/ast.c tools/mannac/diag.c \
 IR_DUMP_DIR  := $(BUILD)/ir_dump
 IR_DUMP_SRCS := tools/mannac/arena.c tools/mannac/ast.c tools/mannac/diag.c \
                 tools/mannac/parser_state.c tools/mannac/parser.c tools/mannac/lexer.c \
-                tools/mannac/ir.c tools/mannac/ir_dump.c tools/mannac/ir_build.c tools/mannac/ir_decls.c tools/mannac/ir_expr.c tools/mannac/ir_body.c tools/mannac/ir_calls.c tools/mannac/ir_names.c tools/mannac/ir_rename.c \
+                tools/mannac/ir.c tools/mannac/ir_dump.c tools/mannac/ir_build.c tools/mannac/ir_decls.c tools/mannac/ir_expr.c tools/mannac/ir_body.c tools/mannac/ir_calls.c tools/mannac/ir_names.c tools/mannac/ir_rename.c tools/mannac/ir_selfcheck.c \
                 tools/mannac/ir_main.c
 
 test-ir:
@@ -307,7 +307,7 @@ test-ir-fix:
 # ~20 s): each offered fix is one lossless wrap and re-checks clean (tools/mannac/ir_e0261_exhaustive.c). The counts, per category, are compared
 # with tests/e0261_exhaustive.expected: a generator that silently shrinks fails.
 IR_EXH_SRCS := tools/mannac/arena.c tools/mannac/ast.c tools/mannac/diag.c \
-               tools/mannac/ir.c tools/mannac/ir_dump.c tools/mannac/ir_build.c tools/mannac/ir_decls.c tools/mannac/ir_expr.c tools/mannac/ir_body.c tools/mannac/ir_calls.c tools/mannac/ir_names.c tools/mannac/ir_rename.c \
+               tools/mannac/ir.c tools/mannac/ir_dump.c tools/mannac/ir_build.c tools/mannac/ir_decls.c tools/mannac/ir_expr.c tools/mannac/ir_body.c tools/mannac/ir_calls.c tools/mannac/ir_names.c tools/mannac/ir_rename.c tools/mannac/ir_selfcheck.c \
                tools/mannac/parser_state.c tools/mannac/parser.c tools/mannac/lexer.c \
                tools/mannac/ir_e0261_exhaustive.c
 
@@ -396,7 +396,7 @@ test-ir-unit:
 # The IR with asserts compiled out (-DNDEBUG): the code after the two asserts that replaced IR_UNIMPLEMENTED raisers
 # must still stop the build (tools/mannac/ir_ndebug_test.c). Uses the IR sources only, no ir_test.c.
 IR_NDEBUG_SRCS := tools/mannac/arena.c tools/mannac/ast.c tools/mannac/diag.c \
-                  tools/mannac/ir.c tools/mannac/ir_dump.c tools/mannac/ir_build.c tools/mannac/ir_decls.c tools/mannac/ir_expr.c tools/mannac/ir_body.c tools/mannac/ir_calls.c tools/mannac/ir_names.c tools/mannac/ir_rename.c \
+                  tools/mannac/ir.c tools/mannac/ir_dump.c tools/mannac/ir_build.c tools/mannac/ir_decls.c tools/mannac/ir_expr.c tools/mannac/ir_body.c tools/mannac/ir_calls.c tools/mannac/ir_names.c tools/mannac/ir_rename.c tools/mannac/ir_selfcheck.c \
                   tools/mannac/parser_state.c tools/mannac/parser.c tools/mannac/lexer.c \
                   tools/mannac/ir_ndebug_test.c
 

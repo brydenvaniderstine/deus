@@ -2261,6 +2261,118 @@ static void test_builder_stack(void) {
     printf("PASS: builder stack: a 512-high index chain over an unknown base recurses the full height, one error\n");
 }
 
+/* ---- the fix-it self-check (step 20f; ir.h ir_fix_selfcheck) ----
+ * A fix the compiler offers must remove the diagnostic that offered it and change nothing else; the exception is a build that stopped. */
+static char *selfcheck_of(const char *src, IrState *st) {
+    IrModule *m = NULL;
+    parse_src(src);
+    assert(g_ps.diags.len == 0);
+    assert(ir_build(st, &g_ps.diags, &g_items, &m) == IR_ERRORS);
+    char *why = ir_fix_selfcheck(src, strlen(src), st);
+    parse_done();
+    return why;
+}
+
+static void test_fix_selfcheck(void) {
+    static IrState st;
+    /* the fixes the compiler offers hold: an arithmetic wrap, a rename with its uses, the stale spelling of a function in a type position */
+    ir_state_init(&st, 4 << 20);
+    assert(selfcheck_of("manna v0;\nfn f(a: u8, b: u32) -> u32 {\n    return a + b;\n}\n", &st) == NULL);
+    assert(st.diags.items[0].fix);
+    ir_state_destroy(&st);
+    ir_state_init(&st, 4 << 20);
+    assert(selfcheck_of("manna v0;\nfn doIt(Count: u8) -> u8 {\n    return Count;\n}\nfn g() -> u8 {\n    return doIt(1);\n}\n", &st) == NULL);
+    ir_state_destroy(&st);
+    ir_state_init(&st, 4 << 20);   /* r1: the function written as a type stays E0220, with the renamed spelling (the one approved shape) */
+    assert(selfcheck_of("manna v0;\nfn myFn() -> u8 {\n    return 1;\n}\nfn g() {\n    let q: myFn = 1;\n}\n", &st) == NULL);
+    ir_state_destroy(&st);
+    /* nothing to check without a fix */
+    ir_state_init(&st, 4 << 20);
+    assert(selfcheck_of("manna v0;\nfn f() -> u8 {\n    return nope;\n}\n", &st) == NULL);
+    ir_state_destroy(&st);
+
+    /* a fix that does the wrong thing is reported: the wrap in the wrong type leaves the mistake */
+    char *why;
+    ir_state_init(&st, 4 << 20);
+    {
+        IrModule *m = NULL;
+        const char *src = "manna v0;\nfn f(a: u8, b: u32) -> u32 {\n    return a + b;\n}\n";
+        parse_src(src);
+        assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_ERRORS);
+        DiagEdit *ed = (DiagEdit *)&st.diags.items[0].fix->edits[0];
+        ed->text = "u16(";   /* u16(a) + b is still a mismatch */
+        why = ir_fix_selfcheck(src, strlen(src), &st);
+        assert(why && strstr(why, "E0261"));
+        free(why);
+        parse_done();
+    }
+    ir_state_destroy(&st);
+    /* a rename that misses a use leaves an unknown name: a diagnostic that is new */
+    ir_state_init(&st, 4 << 20);
+    {
+        IrModule *m = NULL;
+        const char *src = "manna v0;\nfn doIt() -> u8 {\n    return 1;\n}\nfn g() -> u8 {\n    return doIt();\n}\n";
+        parse_src(src);
+        assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_ERRORS && st.diags.items[0].fix && st.diags.items[0].fix->n_edits == 2);
+        ((DiagFix *)st.diags.items[0].fix)->n_edits = 1;   /* drop the use */
+        why = ir_fix_selfcheck(src, strlen(src), &st);
+        assert(why && strstr(why, "E0232"));
+        free(why);
+        parse_done();
+    }
+    ir_state_destroy(&st);
+    /* a fix that does not remove the diagnostic that offered it */
+    ir_state_init(&st, 4 << 20);
+    {
+        IrModule *m = NULL;
+        const char *src = "manna v0;\nfn f(a: u8, b: u32) -> u32 {\n    return a + b;\n}\n";
+        parse_src(src);
+        assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_ERRORS);
+        ((DiagFix *)st.diags.items[0].fix)->n_edits = 0;
+        why = ir_fix_selfcheck(src, strlen(src), &st);
+        assert(why && strstr(why, "(a)/(c)"));
+        free(why);
+        parse_done();
+    }
+    ir_state_destroy(&st);
+    /* the exception: the original build STOPPED at a declaration error (E0215), so the bodies were never checked; after the fix they are, and
+     * their new diagnostic (E0230) is allowed. The same fix, with an unrelated declaration diagnostic changed, is not. */
+    ir_state_init(&st, 4 << 20);
+    assert(selfcheck_of("manna v0;\n[kernel_hook]\n[kernel_hook]\nfn h() {\n    nope;\n}\n", &st) == NULL);
+    assert(!st.bodies_reached && strcmp(st.diags.items[0].code, "E0215") == 0);
+    ir_state_destroy(&st);
+    ir_state_init(&st, 4 << 20);
+    {
+        IrModule *m = NULL;
+        const char *src = "manna v0;\n[kernel_hook]\n[kernel_hook]\nfn h(x: Zed) {\n    nope;\n}\n";   /* E0215 and E0220, both declaration errors */
+        parse_src(src);
+        assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_ERRORS && st.diags.len >= 2);
+        assert(ir_fix_selfcheck(src, strlen(src), &st) == NULL);   /* the E0220 (no fix) is unchanged, the body error is new and allowed */
+        ((DiagFix *)st.diags.items[0].fix)->n_edits = 0;           /* a fix that does nothing: the E0215 is still there */
+        why = ir_fix_selfcheck(src, strlen(src), &st);
+        assert(why && strstr(why, "E0215"));
+        free(why);
+        parse_done();
+    }
+    ir_state_destroy(&st);
+    /* a build that did not stop gets no exception: a body diagnostic that appears after the fix is a violation */
+    ir_state_init(&st, 4 << 20);
+    {
+        IrModule *m = NULL;
+        const char *src = "manna v0;\nfn f(a: u8, b: u32) -> u32 {\n    return a + b;\n}\n";
+        parse_src(src);
+        assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_ERRORS && st.bodies_reached);
+        ((DiagEdit *)&st.diags.items[0].fix->edits[0])->text = "u32(";
+        ((DiagEdit *)&st.diags.items[0].fix->edits[1])->text = ")) + (";   /* breaks the parse of the fixed source */
+        why = ir_fix_selfcheck(src, strlen(src), &st);
+        assert(why && strstr(why, "does not parse"));
+        free(why);
+        parse_done();
+    }
+    ir_state_destroy(&st);
+    printf("PASS: fix-it self-check: real fixes hold (wrap, rename, the E0220 stale spelling), a wrong wrap / a missed use / a fix that removes nothing / a fixed source that does not parse are reported, and a stopped build (E0215 before the bodies) is the only exception\n");
+}
+
 int main(int argc, char **argv) {
     setvbuf(stdout, NULL, _IOLBF, 0); /* a hang or abort must not swallow the PASS lines before it */
     if (argc == 2 && strcmp(argv[1], "--stack") == 0) { /* the Makefile's 2 MB (4x) gate */
@@ -2319,6 +2431,7 @@ int main(int argc, char **argv) {
     test_naming_predicates_and_converter();
     test_naming_errors();
     test_rename_fixes();
+    test_fix_selfcheck();
     test_rename_edit_order_and_dedupe();
     test_array_checker_is_linear();
     test_checker_is_linear();

@@ -19,7 +19,7 @@ OUT = os.path.join(ROOT, "build", "audit_poison")
 SRC = "tools/mannac/"
 FILES = ["ir_decls.c", "ir_expr.c", "ir_body.c", "ir_calls.c", "ir_build.c", "ir_rename.c"]
 BIN_SRCS = ["arena", "ast", "diag", "parser_state", "parser", "lexer", "ir", "ir_dump", "ir_build", "ir_decls",
-            "ir_expr", "ir_body", "ir_calls", "ir_names", "ir_rename", "ir_main"]
+            "ir_expr", "ir_body", "ir_calls", "ir_names", "ir_rename", "ir_selfcheck", "ir_main"]
 PAT = re.compile(r"\b(ir_error|is_error|error_node|ir_type_error|has_error|settle_pending)\(|\bpoisoned\b|IR_T_ERROR|\.pending")
 DEF = re.compile(r"^\s*(static\s+)?[\w\s\*]+\b(is_error|error_node|ir_type_error|settle_pending)\([^;]*\)\s*\{?\s*$|^\s*(static\s+)?[\w\s\*]+\b(is_error|error_node)\([^;]*\)\s*\{.*\}\s*$")
 

@@ -85,7 +85,7 @@ run_ir() { # $1 = gated | ungated
         tools/mannac/parser_state.c tools/mannac/parser.c tools/mannac/lexer.c \
         tools/mannac/ir.c tools/mannac/ir_dump.c tools/mannac/ir_build.c tools/mannac/ir_decls.c \
         tools/mannac/ir_expr.c tools/mannac/ir_body.c tools/mannac/ir_calls.c tools/mannac/ir_names.c \
-        tools/mannac/ir_rename.c tools/mannac/fuzz_ir.c
+        tools/mannac/ir_rename.c tools/mannac/ir_selfcheck.c tools/mannac/fuzz_ir.c
     echo "==> Fuzzing the IR ($1) for ${DURATION_IR}s"
     "$BUILD_DIR/fuzz_ir_$1" -max_total_time="$DURATION_IR" \
         -artifact_prefix="$ARTIFACTS/ir_$1_" "$CORPUS_IR" tests/parser tests/ir 2>&1 | tee "$BUILD_DIR/fuzz_ir_$1.log" || true
