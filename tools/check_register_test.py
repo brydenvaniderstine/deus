@@ -117,6 +117,10 @@ root, rev = make(entry=ENTRY.replace("OPEN", "ACCEPTED"))
 check("a status outside the list fails", any("Status 'ACCEPTED'" in x for x in run(root)))
 shutil.rmtree(root)
 
+root, rev = make(entry=ENTRY.replace("OPEN", "PARTLY CLOSED (written; closes at the first green run)"))
+check("a PARTLY CLOSED status with a qualifier is accepted (and still counts as open)", run(root) == [] and any("closing" in x for x in run(root, at="step-21")))
+shutil.rmtree(root)
+
 root, rev = make(entry=ENTRY.replace("`step-21`", "`someday`"))
 check("an unknown trigger id fails", any("'someday' is not in the list" in x for x in run(root)))
 shutil.rmtree(root)

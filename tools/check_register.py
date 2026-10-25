@@ -28,7 +28,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 REG = "docs/DEGRADATION.md"
 FIELDS = ["Status", "Reason", "Promise", "Where it stands", "Owner", "Trigger", "Trigger-id"]
 OPTIONAL = ["Checked at"]   # required (even empty) on each-tag entries
-STATUS = re.compile(r"^(OPEN|PARTLY CLOSED|CLOSED( \(.*\))?|NOT A DEGRADATION)$")
+STATUS = re.compile(r"^((OPEN|PARTLY CLOSED|CLOSED)( \(.*\))?|NOT A DEGRADATION)$")
 CITE = re.compile(r"`(?:([^`\s@]+)\s?@([0-9a-f]{7,40})|([^`\s@]+)):(\d+)`\s+(?:\|\s+)?\"(.*?)\"(?=\.?\s*(?:;|\||$))")
 BARE = re.compile(r"`[\w./-]+:\d+`")
 

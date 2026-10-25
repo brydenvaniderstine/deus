@@ -56,6 +56,7 @@ jobs:
       - run: make test-ci-targets-script
       - run: make check-ci-targets
       - run: make test-ratchet
+      - run: make test-audit-repros
 
       # Kernel compile check only (make all -> build/kernel.elf). Does not
       # boot it - no Limine/QEMU/OVMF needed for that, just clang + ld.lld.
@@ -73,3 +74,71 @@ jobs:
       # limine/ is gitignored (vendored, not tracked); make all fetches it
       # at the pinned tag/hash automatically - see tools/fetch-limine.sh.
       - run: make all
+
+  # Step 20d/20e (register V2, V3, V1, C6, V7): the same host-side suites on Linux with gcc, ASan + UBSan + LSan, the audit repros, the poison audit with
+  # clang + llvm-cov, and a short fuzz run (60 s per target) on every push. Cost decision (register V7, Bryden 2026-10-25): this job runs on every
+  # push, the macOS job is unchanged; an Ubuntu minute costs a tenth of a macOS minute, and what each job covers is listed here.
+  linux:
+    name: Linux gcc (ASan + UBSan + LSan), audit repros, clang audit, short fuzz
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      MANNAC_CC: gcc
+      ASAN_OPTIONS: detect_leaks=1:abort_on_error=1
+      UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Toolchain (gcc, clang with libFuzzer and llvm-cov)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc make python3 clang llvm
+          v=$(clang -dumpversion | cut -d. -f1)
+          sudo apt-get install -y "libclang-rt-${v}-dev" "llvm-${v}"
+          gcc --version | head -1
+          clang --version | head -1
+          echo "LLVM_CLANG=$(command -v clang)" >> "$GITHUB_ENV"
+
+      - run: make test-lexer
+      - run: make test-lexer-asan
+      - run: make test-arena
+      - run: make test-arena-asan
+      - run: make test-ast
+      - run: make test-ast-asan
+      - run: make test-parser-state
+      - run: make test-parser-state-asan
+      - run: make test-parser-fixes
+      - run: make test-parser-fixes-asan
+      - run: make test-parser
+      - run: make test-parser-asan
+      - run: make test-ir
+      - run: make test-ir-asan
+      - run: make test-ir-fix
+      - run: make test-ir-fix-asan
+      - run: make test-ir-error-codes
+      - run: make test-e0261-exhaustive
+      - run: make test-rename-property
+      - run: make test-ir-memory-stress
+      - run: make audit-ir-poison
+      - run: make test-ir-unit
+      - run: make test-ir-unit-asan
+      - run: make test-ir-ndebug
+      - run: make test-determinism
+      - run: make test-audit-repros
+      - run: make test-fuzz-script
+      # The short fuzz run: lexer, parser, typed IR gated and ungated, 60 s each, from the committed corpora. Any crash, timeout, out-of-memory
+      # or sanitizer report leaves an artifact and fails the step (tools/fuzz/run_fuzzers.sh exits 1).
+      - name: Short fuzz run (60 s per target)
+        run: |
+          export DURATION_LEXER=60 DURATION_PARSER=60 DURATION_IR=60
+          make fuzz
+          make fuzz-ir
+          make fuzz-ir-ungated
+      - name: Upload fuzz artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-artifacts
+          path: build/fuzz/artifacts
+          if-no-files-found: ignore

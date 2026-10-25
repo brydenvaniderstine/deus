@@ -6,6 +6,8 @@ IMAGE        := deus_disk.img
 LIMINE_DIR   := limine
 
 CC           := clang
+# The host-side Manna tools (lexer, parser, IR, tests) build with MANNAC_CC; the Linux CI job sets it to gcc (ASan + UBSan + LSan).
+MANNAC_CC    ?= clang
 AS           := clang
 LD           := ld.lld
 
@@ -52,7 +54,7 @@ QEMU_FLAGS   := -machine q35 -m 8G -cpu qemu64,+apic,+pdpe1gb \
                 -serial file:serial.log -monitor stdio -no-reboot \
                 -d int,cpu_reset -D qemu.log
 
-.PHONY: all image run debug clean limine stage-esp test-wx test-lexer test-lexer-asan test-arena test-arena-asan test-ast test-ast-asan test-parser-state test-parser-state-asan test-parser-fixes test-parser-fixes-asan test-parser test-parser-asan test-determinism test-ir test-ir-asan test-ir-unit test-ir-unit-asan test-ir-ndebug test-ir-fix test-ir-fix-asan test-ir-error-codes audit-ir-poison test-e0261-exhaustive test-rename-property test-ir-memory-stress test-ratchet test-ratchet-script ratchet-update check-register register-fix-lines test-register-script check-ci-targets test-ci-targets-script coverage fuzz fuzz-lexer fuzz-parser fuzz-ir fuzz-ir-ungated measure-height measure-ir-stack measure-ir-build-stack
+.PHONY: all image run debug clean limine stage-esp test-wx test-lexer test-lexer-asan test-arena test-arena-asan test-ast test-ast-asan test-parser-state test-parser-state-asan test-parser-fixes test-parser-fixes-asan test-parser test-parser-asan test-determinism test-ir test-ir-asan test-ir-unit test-ir-unit-asan test-ir-ndebug test-ir-fix test-ir-fix-asan test-ir-error-codes audit-ir-poison test-e0261-exhaustive test-rename-property test-ir-memory-stress test-ratchet test-ratchet-script ratchet-update check-register register-fix-lines test-register-script check-ci-targets test-ci-targets-script test-audit-repros test-fuzz-script coverage fuzz fuzz-lexer fuzz-parser fuzz-ir fuzz-ir-ungated measure-height measure-ir-stack measure-ir-build-stack
 
 all: $(KERNEL_ELF)
 
@@ -143,7 +145,7 @@ MANNAC_SRCS := tools/mannac/lexer.c tools/mannac/main.c
 
 $(MANNAC_BIN): $(MANNAC_SRCS) tools/mannac/lexer.h
 	@mkdir -p $(MANNAC_DIR)
-	clang -std=c11 -Wall -Wextra -O2 -g -o $@ $(MANNAC_SRCS)
+	$(MANNAC_CC) -std=c11 -Wall -Wextra -O2 -g -o $@ $(MANNAC_SRCS)
 
 test-lexer: $(MANNAC_BIN)
 	@./tools/run_lexer_goldens.sh $(MANNAC_BIN)
@@ -152,7 +154,7 @@ MANNAC_ASAN_BIN := $(MANNAC_DIR)/mannac-asan
 
 $(MANNAC_ASAN_BIN): $(MANNAC_SRCS) tools/mannac/lexer.h
 	@mkdir -p $(MANNAC_DIR)
-	clang -std=c11 -Wall -Wextra -g -fsanitize=address,undefined -o $@ $(MANNAC_SRCS)
+	$(MANNAC_CC) -std=c11 -Wall -Wextra -g -fsanitize=address,undefined -o $@ $(MANNAC_SRCS)
 
 test-lexer-asan: $(MANNAC_ASAN_BIN)
 	@./tools/run_lexer_goldens.sh $(MANNAC_ASAN_BIN)
@@ -164,12 +166,12 @@ ARENA_TEST_SRCS := tools/mannac/arena.c tools/mannac/arena_test.c
 
 test-arena:
 	@mkdir -p $(ARENA_TEST_DIR)
-	clang -std=c11 -Wall -Wextra -O2 -g -o $(ARENA_TEST_DIR)/arena_test $(ARENA_TEST_SRCS)
+	$(MANNAC_CC) -std=c11 -Wall -Wextra -O2 -g -o $(ARENA_TEST_DIR)/arena_test $(ARENA_TEST_SRCS)
 	@./tools/run_arena_test.sh $(ARENA_TEST_DIR)/arena_test
 
 test-arena-asan:
 	@mkdir -p $(ARENA_TEST_DIR)
-	clang -std=c11 -Wall -Wextra -g -fsanitize=address,undefined -o $(ARENA_TEST_DIR)/arena_test-asan $(ARENA_TEST_SRCS)
+	$(MANNAC_CC) -std=c11 -Wall -Wextra -g -fsanitize=address,undefined -o $(ARENA_TEST_DIR)/arena_test-asan $(ARENA_TEST_SRCS)
 	@./tools/run_arena_test.sh $(ARENA_TEST_DIR)/arena_test-asan
 
 # AST node types + pretty-printer unit test (plain + ASan/UBSan). Also not
@@ -180,12 +182,12 @@ AST_TEST_SRCS := tools/mannac/arena.c tools/mannac/ast.c tools/mannac/ast_test.c
 
 test-ast:
 	@mkdir -p $(AST_TEST_DIR)
-	clang -std=c11 -Wall -Wextra -O2 -g -o $(AST_TEST_DIR)/ast_test $(AST_TEST_SRCS)
+	$(MANNAC_CC) -std=c11 -Wall -Wextra -O2 -g -o $(AST_TEST_DIR)/ast_test $(AST_TEST_SRCS)
 	$(AST_TEST_DIR)/ast_test
 
 test-ast-asan:
 	@mkdir -p $(AST_TEST_DIR)
-	clang -std=c11 -Wall -Wextra -g -fsanitize=address,undefined -o $(AST_TEST_DIR)/ast_test-asan $(AST_TEST_SRCS)
+	$(MANNAC_CC) -std=c11 -Wall -Wextra -g -fsanitize=address,undefined -o $(AST_TEST_DIR)/ast_test-asan $(AST_TEST_SRCS)
 	$(AST_TEST_DIR)/ast_test-asan
 
 # Diagnostics + shared parser-state (depth bound, error cap, unified
@@ -196,12 +198,12 @@ PARSER_STATE_TEST_SRCS := tools/mannac/arena.c tools/mannac/ast.c tools/mannac/d
 
 test-parser-state:
 	@mkdir -p $(PARSER_STATE_TEST_DIR)
-	clang -std=c11 -Wall -Wextra -O2 -g -o $(PARSER_STATE_TEST_DIR)/parser_state_test $(PARSER_STATE_TEST_SRCS)
+	$(MANNAC_CC) -std=c11 -Wall -Wextra -O2 -g -o $(PARSER_STATE_TEST_DIR)/parser_state_test $(PARSER_STATE_TEST_SRCS)
 	$(PARSER_STATE_TEST_DIR)/parser_state_test
 
 test-parser-state-asan:
 	@mkdir -p $(PARSER_STATE_TEST_DIR)
-	clang -std=c11 -Wall -Wextra -g -fsanitize=address,undefined -o $(PARSER_STATE_TEST_DIR)/parser_state_test-asan $(PARSER_STATE_TEST_SRCS)
+	$(MANNAC_CC) -std=c11 -Wall -Wextra -g -fsanitize=address,undefined -o $(PARSER_STATE_TEST_DIR)/parser_state_test-asan $(PARSER_STATE_TEST_SRCS)
 	$(PARSER_STATE_TEST_DIR)/parser_state_test-asan
 
 # Direct-assertion unit tests for fixes that a golden-dump test can't
@@ -217,13 +219,13 @@ PARSER_FIXES_TEST_SRCS := tools/mannac/arena.c tools/mannac/ast.c tools/mannac/d
 
 test-parser-fixes:
 	@mkdir -p $(PARSER_FIXES_TEST_DIR)
-	clang -std=c11 -Wall -Wextra -O2 -g -o $(PARSER_FIXES_TEST_DIR)/parser_fixes_test $(PARSER_FIXES_TEST_SRCS)
+	$(MANNAC_CC) -std=c11 -Wall -Wextra -O2 -g -o $(PARSER_FIXES_TEST_DIR)/parser_fixes_test $(PARSER_FIXES_TEST_SRCS)
 	@# explicit 8 MB stack: the E0111 tests claim "survives an 8 MB stack" (docs/M2_PLAN.md, Input contract)
 	sh -c 'ulimit -s 8192 && $(PARSER_FIXES_TEST_DIR)/parser_fixes_test'
 
 test-parser-fixes-asan:
 	@mkdir -p $(PARSER_FIXES_TEST_DIR)
-	clang -std=c11 -Wall -Wextra -g -fsanitize=address,undefined -o $(PARSER_FIXES_TEST_DIR)/parser_fixes_test-asan $(PARSER_FIXES_TEST_SRCS)
+	$(MANNAC_CC) -std=c11 -Wall -Wextra -g -fsanitize=address,undefined -o $(PARSER_FIXES_TEST_DIR)/parser_fixes_test-asan $(PARSER_FIXES_TEST_SRCS)
 	sh -c 'ulimit -s 8192 && $(PARSER_FIXES_TEST_DIR)/parser_fixes_test-asan'
 
 # Parser golden tests (plain + ASan/UBSan) - docs/M2_PLAN.md's "Golden test
@@ -239,12 +241,12 @@ PARSER_DUMP_SRCS := tools/mannac/arena.c tools/mannac/ast.c tools/mannac/diag.c 
 
 test-parser:
 	@mkdir -p $(PARSER_DUMP_DIR)
-	clang -std=c11 -Wall -Wextra -O2 -g -o $(PARSER_DUMP_DIR)/parser_dump $(PARSER_DUMP_SRCS)
+	$(MANNAC_CC) -std=c11 -Wall -Wextra -O2 -g -o $(PARSER_DUMP_DIR)/parser_dump $(PARSER_DUMP_SRCS)
 	@./tools/run_parser_tests.sh $(PARSER_DUMP_DIR)/parser_dump
 
 test-parser-asan:
 	@mkdir -p $(PARSER_DUMP_DIR)
-	clang -std=c11 -Wall -Wextra -g -fsanitize=address,undefined -o $(PARSER_DUMP_DIR)/parser_dump-asan $(PARSER_DUMP_SRCS)
+	$(MANNAC_CC) -std=c11 -Wall -Wextra -g -fsanitize=address,undefined -o $(PARSER_DUMP_DIR)/parser_dump-asan $(PARSER_DUMP_SRCS)
 	@./tools/run_parser_tests.sh $(PARSER_DUMP_DIR)/parser_dump-asan
 
 # Step 11: determinism (docs/M2_PLAN.md S5) - same input must produce
@@ -255,10 +257,10 @@ test-parser-asan:
 # ordering dependency on those having already run.
 test-determinism:
 	@mkdir -p $(MANNAC_DIR) $(PARSER_DUMP_DIR)
-	clang -std=c11 -Wall -Wextra -O2 -g -o $(MANNAC_BIN) $(MANNAC_SRCS)
-	clang -std=c11 -Wall -Wextra -g -fsanitize=address,undefined -o $(MANNAC_ASAN_BIN) $(MANNAC_SRCS)
-	clang -std=c11 -Wall -Wextra -O2 -g -o $(PARSER_DUMP_DIR)/parser_dump $(PARSER_DUMP_SRCS)
-	clang -std=c11 -Wall -Wextra -g -fsanitize=address,undefined -o $(PARSER_DUMP_DIR)/parser_dump-asan $(PARSER_DUMP_SRCS)
+	$(MANNAC_CC) -std=c11 -Wall -Wextra -O2 -g -o $(MANNAC_BIN) $(MANNAC_SRCS)
+	$(MANNAC_CC) -std=c11 -Wall -Wextra -g -fsanitize=address,undefined -o $(MANNAC_ASAN_BIN) $(MANNAC_SRCS)
+	$(MANNAC_CC) -std=c11 -Wall -Wextra -O2 -g -o $(PARSER_DUMP_DIR)/parser_dump $(PARSER_DUMP_SRCS)
+	$(MANNAC_CC) -std=c11 -Wall -Wextra -g -fsanitize=address,undefined -o $(PARSER_DUMP_DIR)/parser_dump-asan $(PARSER_DUMP_SRCS)
 	@mkdir -p $(IR_DUMP_DIR)
 	$(MANNAC_CC) -std=c11 -Wall -Wextra -O2 -g -o $(IR_DUMP_DIR)/ir_dump $(IR_DUMP_SRCS)
 	$(MANNAC_CC) -std=c11 -Wall -Wextra -g -fsanitize=address,undefined -o $(IR_DUMP_DIR)/ir_dump-asan $(IR_DUMP_SRCS)
@@ -270,7 +272,6 @@ test-determinism:
 # an 8 MB stack, the host default the stack tests are about, and the stack
 # shapes run again at 2 MB: the dumper must keep a 4x margin on the maximal
 # (512-high) trees at that limit, plain and ASan.
-MANNAC_CC      ?= clang
 IR_TEST_DIR    := $(BUILD)/ir_test
 IR_TEST_SRCS   := tools/mannac/arena.c tools/mannac/ast.c tools/mannac/diag.c \
                   tools/mannac/ir.c tools/mannac/ir_dump.c tools/mannac/ir_build.c tools/mannac/ir_decls.c tools/mannac/ir_expr.c tools/mannac/ir_body.c tools/mannac/ir_calls.c tools/mannac/ir_names.c tools/mannac/ir_rename.c tools/mannac/ir_selfcheck.c \
@@ -381,6 +382,15 @@ test-ir-error-codes:
 audit-ir-poison:
 	@python3 tools/audit_ir_poison.py --check
 
+# Step 20d: the audit repros (tests/audit_repros, one input per audit finding with the output the current code gives; register C6) on the plain
+# and the ASan dumper. Every output, including the fixed source and its re-check, must match byte for byte.
+test-audit-repros:
+	@mkdir -p $(IR_DUMP_DIR)
+	$(MANNAC_CC) -std=c11 -Wall -Wextra -O2 -g -o $(IR_DUMP_DIR)/ir_dump $(IR_DUMP_SRCS)
+	$(MANNAC_CC) -std=c11 -Wall -Wextra -g -fsanitize=address,undefined -o $(IR_DUMP_DIR)/ir_dump-asan $(IR_DUMP_SRCS)
+	@./tools/run_audit_repros.sh $(IR_DUMP_DIR)/ir_dump
+	@./tools/run_audit_repros.sh $(IR_DUMP_DIR)/ir_dump-asan
+
 test-ir-fix-asan:
 	@mkdir -p $(IR_DUMP_DIR)
 	$(MANNAC_CC) -std=c11 -Wall -Wextra -g -fsanitize=address,undefined -o $(IR_DUMP_DIR)/ir_dump-asan $(IR_DUMP_SRCS)
@@ -478,6 +488,10 @@ fuzz-ir:
 
 fuzz-ir-ungated:
 	./tools/fuzz/run_fuzzers.sh ir-ungated
+
+# Step 20e: the exit status of the fuzz runner (a clean run 0; a crash artifact 1). Needs a clang with libFuzzer (LLVM_CLANG); it fails without one.
+test-fuzz-script:
+	@./tools/fuzz/run_fuzzers_test.sh
 
 clean:
 	rm -rf $(BUILD) $(IMAGE) serial.log qemu.log

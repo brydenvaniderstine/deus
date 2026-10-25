@@ -72,7 +72,7 @@ Each entry's **Trigger-id** is one of the ids below, in the order they fall due.
 - **Status:** OPEN
 - **Reason:** The CI job is a compile check; boots are manual.
 - **Promise:** `CLAUDE.md:7` "Every milestone must boot in QEMU."
-- **Where it stands:** `.github/workflows/ci.yml:60` "# Kernel compile check only (make all -> build/kernel.elf). Does not"
+- **Where it stands:** `.github/workflows/ci.yml:61` "# Kernel compile check only (make all -> build/kernel.elf). Does not"
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** Step 20 (a QEMU boot smoke test asserting the M1 serial-log lines)
 - **Trigger-id:** `step-20`
@@ -223,8 +223,8 @@ Each entry's **Trigger-id** is one of the ids below, in the order they fall due.
 
 ### C6 - The audit repros are not run by CI
 
-- **Status:** OPEN
-- **Reason:** `tools/run_audit_repros.sh` exists but no make target or CI step runs it.
+- **Status:** PARTLY CLOSED (step 20d: written; closes at the first green CI run)
+- **Reason:** `tools/run_audit_repros.sh` exists but no make target or CI step runs it. `make test-audit-repros` now builds the plain and ASan dumpers and runs `tools/run_audit_repros.sh` on both; both CI jobs run it.
 - **Promise:** `CLAUDE.md:174` "**Verify CI actually runs the tests you think it does, every time you add one.**"
 - **Where it stands:** `tests/audit_repros/README.md:11` "These files are not part of `make test-*`"
 - **Owner:** Claude Code (work); Bryden (approval)
@@ -236,7 +236,7 @@ Each entry's **Trigger-id** is one of the ids below, in the order they fall due.
 - **Status:** CLOSED (2026-10-24, step 19 batch 3 and step 20a)
 - **Reason:** `make test-e0261-exhaustive` and `make test-rename-property` printed their counts and asserted only 'no violation', so a generator that silently shrank passed. Done in 19g/19h (both compare their whole report with `tests/e0261_exhaustive.expected` and `tests/rename_property.expected`) and in 20a (`make test-ratchet` ratchets the numbers in those files, the golden, fix-case and repro counts and the memory-stress case count).
 - **Promise:** `CLAUDE.md:160` "Rule: no behavior change without a test."
-- **Where it stands:** `Makefile:319` "@diff -u tests/e0261_exhaustive.expected"
+- **Where it stands:** `Makefile:320` "@diff -u tests/e0261_exhaustive.expected"
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** Step 20 (every generated-test count is asserted in the Makefile/CI); done
 - **Trigger-id:** `step-20`
@@ -265,8 +265,8 @@ Each entry's **Trigger-id** is one of the ids below, in the order they fall due.
 
 ### V1 - Fuzzing is not continuous
 
-- **Status:** OPEN
-- **Reason:** The TCB rule says fuzz continuously; fuzzing is 10 minutes by hand per round and 'deliberately not in CI'.
+- **Status:** PARTLY CLOSED (step 20e: written; closes at the first green push run and the first nightly)
+- **Reason:** The TCB rule says fuzz continuously; fuzzing is 10 minutes by hand per round and 'deliberately not in CI'. The Linux job fuzzes the lexer, parser and typed IR (gated and ungated) for 60 s each on every push, and `.github/workflows/fuzz.yml` fuzzes each target 30 min every night; `tools/fuzz/run_fuzzers.sh` now exits 1 on any artifact (crash, timeout, out-of-memory, sanitizer report), so a finding turns the run red and uploads the artifact.
 - **Promise:** `CLAUDE.md:134` "Fuzz them continuously."
 - **Where it stands:** `docs/M2_PLAN.md:786` "Deliberately not in CI - a fixed wall-clock budget, not a pass/fail check."
 - **Owner:** Claude Code (work); Bryden (approval)
@@ -275,8 +275,8 @@ Each entry's **Trigger-id** is one of the ids below, in the order they fall due.
 
 ### V2 - No CI job runs LSan
 
-- **Status:** OPEN
-- **Reason:** Leak-clean is enforced only by the reviewer's Linux LSan run.
+- **Status:** PARTLY CLOSED (step 20d: written; closes at the first green Linux run)
+- **Reason:** Leak-clean is enforced only by the reviewer's Linux LSan run. The Linux job runs every host-side suite with gcc, ASan + UBSan and LSan (`detect_leaks=1`, `halt_on_error=1`).
 - **Promise:** `docs/REFINEMENT.md:80` "Test harnesses and measurement probes must be leak-clean like product code"
 - **Where it stands:** `docs/REFINEMENT.md:81` "(no CI job runs LSan)"
 - **Owner:** Claude Code (work); Bryden (approval)
@@ -285,8 +285,8 @@ Each entry's **Trigger-id** is one of the ids below, in the order they fall due.
 
 ### V3 - CI is macOS clang only
 
-- **Status:** OPEN
-- **Reason:** The C is meant to build elsewhere (an open IDEAS question: portable C on any OS); the only Linux/gcc runs are the reviewer's manual ones.
+- **Status:** PARTLY CLOSED (step 20d: written; closes at the first green Linux run)
+- **Reason:** The C is meant to build elsewhere (an open IDEAS question: portable C on any OS); the only Linux/gcc runs are the reviewer's manual ones. The Linux job (Ubuntu, gcc, plus clang with llvm-cov for the poison audit) runs the whole host-side list on every push.
 - **Promise:** `docs/IDEAS.md:19` "Mac-only vs portable C on any OS"
 - **Where it stands:** `.github/workflows/ci.yml:22` "runs-on: macos-14"
 - **Owner:** Claude Code (work); Bryden (approval)
@@ -325,8 +325,8 @@ Each entry's **Trigger-id** is one of the ids below, in the order they fall due.
 
 ### V7 - CI is one job 'to save minutes'
 
-- **Status:** OPEN
-- **Reason:** A cost decision shapes what CI covers; it is stated only as a comment in ci.yml.
+- **Status:** PARTLY CLOSED (decision recorded 2026-10-25; closes with the first green Linux run)
+- **Reason:** A cost decision shapes what CI covers; it is stated only as a comment in ci.yml. DECISION (Bryden, 2026-10-25): two jobs. The macOS job is unchanged (host suites plain and ASan, the ratchet and register checks, the kernel compile check). The Linux job runs on every push (gcc, ASan + UBSan + LSan, the audit repros, the clang/llvm-cov poison audit, a 60 s fuzz run per target); an Ubuntu minute costs a tenth of a macOS minute. A nightly fuzz workflow runs 4 x 30 min on Ubuntu. Left out on purpose: no Windows; the kernel is built but not booted until step 20h; no coverage job until the m2-ir-v0 tag (V6).
 - **Promise:** `.github/workflows/ci.yml:17` "# plus the kernel compile check, in one job - a separate job per the"
 - **Where it stands:** `.github/workflows/ci.yml:19` "more than the few extra seconds of sharing a runner."
 - **Owner:** Bryden (decision); Claude Code (work)
