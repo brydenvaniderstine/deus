@@ -124,7 +124,8 @@ char *ir_fix_selfcheck(const char *src, size_t len, const IrState *orig) {
     bool stopped = !orig->bodies_reached || has_code(od, "E0203") || has_code(od, "E0201");
 
     /* the fixed source, rebuilt with a fresh state */
-    char *fixed = ir_apply_fixes(src, len, od);
+    size_t fixed_len = 0;
+    char *fixed = ir_apply_fixes_n(src, len, od, &fixed_len);
     char *why = NULL;
     static ParserState ps;   /* large: kept off the stack */
     NodeList items;
@@ -132,7 +133,7 @@ char *ir_fix_selfcheck(const char *src, size_t len, const IrState *orig) {
     parser_state_init(&ps, 16 * 1024 * 1024);
     if (setjmp(ps.fatal_target) == 0) {
         Lexer lx;
-        lexer_init(&lx, fixed, strlen(fixed));
+        lexer_init(&lx, fixed, fixed_len);
         (void)parser_parse_file(&ps, &lx, &items);
     }
     IrState st;

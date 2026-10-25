@@ -21,8 +21,8 @@
  * `ir_dump --fixed <file.mn>` prints the source with EVERY fix the diagnostics carry applied (typed-IR step 14;
  * tests/ir_fix): the file unchanged if it has none, and for a file the parser or the IR could not accept at all.
  * The runner re-checks the printed source.
- * KNOWN LIMIT (audit cosmetic item, STATUS "Known issues"): the fixed text comes back from ir_apply_fixes as a NUL-terminated string and
- * is printed with strlen, so a source containing a NUL byte is truncated at it in the --fixed output. A harness, not the compiler. */
+ * The fixed text is written with its true length, so a source with NUL bytes (a comment can hold any byte) is not truncated (register C3, fixed in
+ * step 20f when the fuzz self-check found it). */
 
 static char *read_file(const char *path, size_t *out_len) {
     FILE *f = fopen(path, "rb");
@@ -92,8 +92,9 @@ int main(int argc, char **argv) {
         }
     }
     if (fixed) {
-        char *out = status == IR_ERRORS ? ir_apply_fixes(src, len, &st.diags) : NULL;
-        fwrite(out ? out : src, 1, out ? strlen(out) : len, stdout);
+        size_t out_len = 0;
+        char *out = status == IR_ERRORS ? ir_apply_fixes_n(src, len, &st.diags, &out_len) : NULL;
+        fwrite(out ? out : src, 1, out ? out_len : len, stdout);
         free(out);
         ir_state_destroy(&st);
         parser_state_destroy(&ps);

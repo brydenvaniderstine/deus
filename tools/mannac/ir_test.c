@@ -2370,6 +2370,30 @@ static void test_fix_selfcheck(void) {
         parse_done();
     }
     ir_state_destroy(&st);
+    /* a source with NUL bytes (a comment can hold any byte): the fixed text keeps everything after the NUL (register C3; the fuzz self-check found
+     * it: the applier's result was cut at the first NUL, so the "fixed" source was a different program). */
+    {
+        static const char nul_src[] = "// a\0b\nmanna v0;\nstruct iThng { }\nfn Thing() { }\n";
+        size_t n = sizeof nul_src - 1, out_len = 0;
+        IrModule *m = NULL;
+        ir_state_init(&st, 4 << 20);
+        parser_state_init(&g_ps, 16 * 1024 * 1024);
+        node_list_init(&g_items);
+        if (setjmp(g_ps.fatal_target) == 0) {
+            Lexer lx;
+            lexer_init(&lx, nul_src, n);
+            (void)parser_parse_file(&g_ps, &lx, &g_items);
+        }
+        assert(g_ps.diags.len == 0 && ir_build(&st, &g_ps.diags, &g_items, &m) == IR_ERRORS && st.diags.len == 2);
+        char *fx = ir_apply_fixes_n(nul_src, n, &st.diags, &out_len);
+        assert(out_len == n && memcmp(fx, "// a\0b\nmanna v0;\n", 17) == 0);   /* iThng -> IThng and Thing -> thing keep the length */
+        assert(strstr(fx + 7, "struct IThng { }") && strstr(fx + 7, "fn thing() { }"));
+        free(fx);
+        why = ir_fix_selfcheck(nul_src, n, &st);
+        assert(why == NULL);
+        parse_done();
+        ir_state_destroy(&st);
+    }
     printf("PASS: fix-it self-check: real fixes hold (wrap, rename, the E0220 stale spelling), a wrong wrap / a missed use / a fix that removes nothing / a fixed source that does not parse are reported, and a stopped build (E0215 before the bodies) is the only exception\n");
 }
 

@@ -291,9 +291,13 @@ IrStatus ir_build(IrState *st, const DiagList *parse_diags, const NodeList *item
  * (the edits of one fix, and of different fixes, never overlap). Returns a malloc'd NUL-terminated copy
  * (typed-IR step 14, ir_rename.c). */
 char *ir_apply_fixes(const char *src, size_t len, const DiagList *diags);
+/* The same, and the length of the result: the text may contain NUL bytes (a comment can hold any byte), so a caller that treats the result as bytes
+ * must use this one; strlen of the plain variant truncates at the first NUL (the "--fixed NUL truncation" of register C3, found by the fuzz self-check). */
+char *ir_apply_fixes_n(const char *src, size_t len, const DiagList *diags, size_t *out_len);
 
 /* The self-check (step 20f; docs/error_codes.md "Fix-it rules"). A fix-it the compiler offers must make the program better and change nothing else.
- * `orig` is a state whose ir_build just returned IR_ERRORS for `src`. Applies every fix, rebuilds the fixed source with a fresh state and compares:
+ * `orig` is a state whose ir_build just returned IR_ERRORS for `src`, a source the parser accepted (the gate: a file with parse diagnostics
+ * never reaches the IR stage, and its fixes are the parser's). Applies every fix, rebuilds the fixed source with a fresh state and compares:
  *   (a) every diagnostic that offered a fix is gone;
  *   (b) every other diagnostic is unchanged (same line, code and message; a name quoted in a message may differ only if an applied rename fix
  *       renamed it: the rename titles are the only source of the mapping);

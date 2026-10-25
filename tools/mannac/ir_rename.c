@@ -285,7 +285,7 @@ void ir_edit_padding(const char *src, size_t len, size_t start, size_t end, cons
     *space_after = tl && end < len && ident_byte(text[tl - 1]) && ident_byte(src[end]);
 }
 
-char *ir_apply_fixes(const char *src, size_t len, const DiagList *diags) {
+char *ir_apply_fixes_n(const char *src, size_t len, const DiagList *diags, size_t *out_len) {
     size_t n = 0;
     for (size_t i = 0; i < diags->len; i++) if (diags->items[i].fix) n += (size_t)diags->items[i].fix->n_edits;
     Edit *edits = malloc((n ? n : 1) * sizeof(Edit));
@@ -327,5 +327,10 @@ char *ir_apply_fixes(const char *src, size_t len, const DiagList *diags) {
     out[o] = '\0';
     free(edits);
     free(line_start);
+    if (out_len) *out_len = o;
     return out;
+}
+
+char *ir_apply_fixes(const char *src, size_t len, const DiagList *diags) {
+    return ir_apply_fixes_n(src, len, diags, NULL);
 }

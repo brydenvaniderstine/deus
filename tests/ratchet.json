@@ -852,6 +852,30 @@
    1,
    "164786a8de2b41f3"
   ],
+  "tests/ir/e0261_comparison_as_an_argument_that_rejects_bool.ir": [
+   2,
+   "428ac9356c4a75f7"
+  ],
+  "tests/ir/e0261_comparison_in_a_condition_is_alone.ir": [
+   1,
+   "2cceb9c402c20f3c"
+  ],
+  "tests/ir/e0261_comparison_in_a_return_that_rejects_bool.ir": [
+   2,
+   "c40c705b5260fdda"
+  ],
+  "tests/ir/e0261_comparison_in_a_return_that_takes_bool_is_alone.ir": [
+   1,
+   "4bcceb5f61d5585c"
+  ],
+  "tests/ir/e0261_comparison_in_an_annotated_let_that_rejects_bool.ir": [
+   2,
+   "19b1f8f2e734e14d"
+  ],
+  "tests/ir/e0261_comparison_under_arithmetic.ir": [
+   2,
+   "3b39c8395ab14257"
+  ],
   "tests/ir/e0261_on_a_510_operation_chain.ir": [
    1,
    "3a3f7ad02d2b2697"
@@ -2115,6 +2139,14 @@
   "tests/ir_fix/fix_e0261_chain_of_511_operations_has_no_fix_the_wrap_would_pass_the_height_bound.remaining": [
    1,
    "3a3f7ad02d2b2697"
+  ],
+  "tests/ir_fix/fix_e0261_comparison_fix_leaves_the_contexts_own_error.remaining": [
+   1,
+   "0040fbffae877003"
+  ],
+  "tests/ir_fix/fix_e0261_comparison_under_arithmetic_leaves_the_operator_error.remaining": [
+   1,
+   "9ece0bcf941e9fe1"
   ],
   "tests/ir_fix/fix_e0261_comparison_with_no_lossless_widening_has_no_fix.remaining": [
    1,
@@ -3964,8 +3996,8 @@
   "e0261_exhaustive.programs": 995456,
   "error_codes_documented": 55,
   "error_codes_with_fix": 8,
-  "ir_fix_cases": 125,
-  "ir_goldens": 429,
+  "ir_fix_cases": 127,
+  "ir_goldens": 435,
   "lexer_goldens": 15,
   "memory_stress_cases": 8,
   "parser_goldens": 376,

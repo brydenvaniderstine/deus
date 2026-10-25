@@ -50,6 +50,14 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
         char *copy = malloc(size + 1); /* the lexer is handed exactly `size` bytes above; this copy is NUL-terminated for the fixer */
         memcpy(copy, data, size);
         copy[size] = '\0';
+        /* step 20f: a fix that does not re-check is a crash, never a skipped input. The check is defined for a source the parser accepted (what the
+         * gate lets through: ir_dump and the product); the ungated mode also builds trees the parser recovered from parse errors, a robustness probe
+         * of the builder only, where a fix has no meaning, so there it checks the inputs that parse clean. */
+        char *why = ps.diags.len == 0 ? ir_fix_selfcheck(copy, size, &st) : NULL;
+        if (why) {
+            fprintf(stderr, "fuzz_ir: internal error: a fix-it did not re-check: %s\n", why);
+            abort();
+        }
         char *fixed = ir_apply_fixes(copy, size, &st.diags);
         free(fixed);
         free(copy);
