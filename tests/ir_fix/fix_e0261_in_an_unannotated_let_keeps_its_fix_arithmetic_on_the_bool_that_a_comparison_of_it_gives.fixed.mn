@@ -1,6 +1,6 @@
 manna v0;
 fn f(a: u8, b: u32) {
-    let r = a + b;
+    let r = u32(a) + b;
     let ok = r < 5;
     let q = ok + ok;
 }

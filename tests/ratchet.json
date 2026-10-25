@@ -201,12 +201,12 @@
    "21d99add9319fb7a"
   ],
   "tests/audit_repros/R2_g1_oversized_let.fixed.out": [
-   4,
-   "297304cf1913ac35"
+   5,
+   "48949792245cdcbf"
   ],
   "tests/audit_repros/R2_g1_oversized_let.out": [
-   4,
-   "297304cf1913ac35"
+   5,
+   "48949792245cdcbf"
   ],
   "tests/audit_repros/R3_cap0_e0261_fix_withdrawn_by_its_parent_below_the_cap.fixed.out": [
    2,
@@ -1713,8 +1713,8 @@
    "ddc98d0738a897b3"
   ],
   "tests/ir/oversized_let_annotation_used_in_every_position_stays_silent.ir": [
-   4,
-   "1f8f13e3889fd327"
+   5,
+   "5a029d34265d1120"
   ],
   "tests/ir/param_array_of_slices_over_limit_by_one.ir": [
    1,
@@ -1763,6 +1763,138 @@
   "tests/ir/params_types.ir": [
    0,
    "79ca2e968453daa1"
+  ],
+  "tests/ir/poison_arithmetic_stays_silent_in_a_return_that_rejects_its_type.ir": [
+   1,
+   "bbe0a3868d411f1f"
+  ],
+  "tests/ir/poison_comparison_as_an_argument_that_rejects_bool.ir": [
+   2,
+   "1b34266f35ddc697"
+  ],
+  "tests/ir/poison_comparison_as_an_index.ir": [
+   2,
+   "eb7e2584f4816381"
+  ],
+  "tests/ir/poison_comparison_eq_left_operand_in_a_return_that_rejects_bool.ir": [
+   2,
+   "66ed268843864dea"
+  ],
+  "tests/ir/poison_comparison_eq_right_operand_in_a_return_that_rejects_bool.ir": [
+   2,
+   "dd7fb7bc46340244"
+  ],
+  "tests/ir/poison_comparison_ge_left_operand_in_a_return_that_rejects_bool.ir": [
+   2,
+   "66ed268843864dea"
+  ],
+  "tests/ir/poison_comparison_ge_right_operand_in_a_return_that_rejects_bool.ir": [
+   2,
+   "dd7fb7bc46340244"
+  ],
+  "tests/ir/poison_comparison_gt_left_operand_in_a_return_that_rejects_bool.ir": [
+   2,
+   "66ed268843864dea"
+  ],
+  "tests/ir/poison_comparison_gt_right_operand_in_a_return_that_rejects_bool.ir": [
+   2,
+   "dd1f5b669f20640c"
+  ],
+  "tests/ir/poison_comparison_in_a_condition_is_alone.ir": [
+   1,
+   "ab13f1d6ce48e5d9"
+  ],
+  "tests/ir/poison_comparison_in_a_return_that_takes_bool_is_alone.ir": [
+   1,
+   "bbe0a3868d411f1f"
+  ],
+  "tests/ir/poison_comparison_in_an_annotated_let_that_rejects_bool.ir": [
+   2,
+   "308aa5889057c05f"
+  ],
+  "tests/ir/poison_comparison_kept_in_an_unannotated_let_is_bool_later.ir": [
+   2,
+   "8e3aac1db196fb2d"
+  ],
+  "tests/ir/poison_comparison_le_left_operand_in_a_return_that_rejects_bool.ir": [
+   2,
+   "66ed268843864dea"
+  ],
+  "tests/ir/poison_comparison_le_right_operand_in_a_return_that_rejects_bool.ir": [
+   2,
+   "dd7fb7bc46340244"
+  ],
+  "tests/ir/poison_comparison_lt_left_operand_in_a_return_that_rejects_bool.ir": [
+   2,
+   "66ed268843864dea"
+  ],
+  "tests/ir/poison_comparison_lt_right_operand_in_a_return_that_rejects_bool.ir": [
+   2,
+   "dd1f5b669f20640c"
+  ],
+  "tests/ir/poison_comparison_ne_left_operand_in_a_return_that_rejects_bool.ir": [
+   2,
+   "66ed268843864dea"
+  ],
+  "tests/ir/poison_comparison_ne_right_operand_in_a_return_that_rejects_bool.ir": [
+   2,
+   "dd7fb7bc46340244"
+  ],
+  "tests/ir/poison_comparison_of_two_unknown_names_is_two_mistakes.ir": [
+   2,
+   "d7c779a95c6a60b7"
+  ],
+  "tests/ir/poison_comparison_other_operand_type_is_still_checked.ir": [
+   2,
+   "6f7c5514ade58ee9"
+  ],
+  "tests/ir/poison_comparison_under_arithmetic.ir": [
+   2,
+   "ded164d2a9916e3e"
+  ],
+  "tests/ir/poison_comparison_with_a_literal_is_alone.ir": [
+   1,
+   "ab13f1d6ce48e5d9"
+  ],
+  "tests/ir/poison_complement_stays_silent.ir": [
+   1,
+   "ef637b22fd5648b7"
+  ],
+  "tests/ir/poison_equality_of_a_bool_is_defined_and_alone.ir": [
+   1,
+   "ab13f1d6ce48e5d9"
+  ],
+  "tests/ir/poison_logical_in_a_return_that_rejects_bool.ir": [
+   2,
+   "dd7fb7bc46340244"
+  ],
+  "tests/ir/poison_logical_of_two_unknown_names_is_two_mistakes.ir": [
+   2,
+   "0e7450a8166d8fa0"
+  ],
+  "tests/ir/poison_logical_other_operand_literal_is_a_mistake.ir": [
+   2,
+   "5f523ca8cfc68a1b"
+  ],
+  "tests/ir/poison_logical_other_operand_not_bool_is_a_mistake.ir": [
+   2,
+   "76e8d7f9146ffee0"
+  ],
+  "tests/ir/poison_logical_with_a_bool_in_a_bool_return_is_alone.ir": [
+   1,
+   "ab13f1d6ce48e5d9"
+  ],
+  "tests/ir/poison_negation_stays_silent.ir": [
+   1,
+   "ef637b22fd5648b7"
+  ],
+  "tests/ir/poison_not_in_a_condition_is_alone.ir": [
+   1,
+   "95835ac1f9c4f9bf"
+  ],
+  "tests/ir/poison_not_in_a_return_that_rejects_bool.ir": [
+   2,
+   "7dcf09a1a1b731d1"
   ],
   "tests/ir/recursion_a_diamond_is_not_recursion.ir": [
    0,
@@ -2161,8 +2293,8 @@
    "3d1e7f18fb20610b"
   ],
   "tests/ir_fix/fix_e0261_in_an_unannotated_let_has_no_fix_a_comparison_of_it_is_returned_as_another_type.remaining": [
-   1,
-   "85dcac770bbfa818"
+   2,
+   "3b281120e98f80d4"
   ],
   "tests/ir_fix/fix_e0261_in_an_unannotated_let_has_no_fix_a_copy_of_it_is_returned_as_another_type.remaining": [
    1,
@@ -2214,7 +2346,7 @@
   ],
   "tests/ir_fix/fix_e0261_in_an_unannotated_let_keeps_its_fix_arithmetic_on_the_bool_that_a_comparison_of_it_gives.remaining": [
    1,
-   "85dcac770bbfa818"
+   "3cf986a39f94e978"
   ],
   "tests/ir_fix/fix_e0261_in_the_right_operand_withdrawn_when_the_left_has_another_type.remaining": [
    1,
@@ -2269,8 +2401,8 @@
    "85dcac770bbfa818"
   ],
   "tests/ir_fix/fix_e0261_none_when_the_local_reaches_an_index_through_a_comparison.remaining": [
-   1,
-   "85dcac770bbfa818"
+   2,
+   "b717c3a1aea6eaf8"
   ],
   "tests/ir_fix/fix_e0261_shift_count_is_never_narrowed.remaining": [
    1,
@@ -2299,6 +2431,10 @@
   "tests/ir_fix/fix_e0261_under_unary_minus_no_fix_when_the_type_would_be_unsigned.remaining": [
    2,
    "d70bead3df6cd35d"
+  ],
+  "tests/ir_fix/fix_e0261_waiting_local_beside_an_unknown_name_keeps_its_fix.remaining": [
+   1,
+   "3345bb6ac9f75ed5"
   ],
   "tests/ir_fix/fix_e0261_withdrawn_when_a_group_of_literals_beside_it_does_not_fit.remaining": [
    1,
@@ -4000,8 +4136,8 @@
   "e0261_exhaustive.programs": 995456,
   "error_codes_documented": 55,
   "error_codes_with_fix": 8,
-  "ir_fix_cases": 128,
-  "ir_goldens": 435,
+  "ir_fix_cases": 131,
+  "ir_goldens": 468,
   "lexer_goldens": 15,
   "memory_stress_cases": 8,
   "parser_goldens": 376,

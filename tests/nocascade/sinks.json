@@ -842,6 +842,46 @@
    "atoms": [
     {
      "replace": "0",
+     "text": "has_error(l)"
+    },
+    {
+     "replace": "0",
+     "text": "has_error(r)"
+    }
+   ],
+   "file": "ir_expr.c",
+   "function": "finish_logical",
+   "id": "ir_expr.c::finish_logical::b5ba0012::0",
+   "text": "has_error(l) != has_error(r)"
+  },
+  {
+   "atoms": [
+    {
+     "replace": "0",
+     "text": "has_error(l)"
+    }
+   ],
+   "file": "ir_expr.c",
+   "function": "finish_logical",
+   "id": "ir_expr.c::finish_logical::ed84387e::0",
+   "text": "has_error(l)"
+  },
+  {
+   "atoms": [
+    {
+     "replace": "0",
+     "text": "has_error(l)"
+    }
+   ],
+   "file": "ir_expr.c",
+   "function": "finish_logical",
+   "id": "ir_expr.c::finish_logical::ed84387e::1",
+   "text": "has_error(l)"
+  },
+  {
+   "atoms": [
+    {
+     "replace": "0",
      "text": "!elem"
     }
    ],
@@ -1217,6 +1257,34 @@
    "function": "typed_binary",
    "id": "ir_expr.c::typed_binary::1df5627f::0",
    "text": "has_error(l) || has_error(r)"
+  },
+  {
+   "atoms": [
+    {
+     "replace": "0",
+     "text": "has_error(l)"
+    }
+   ],
+   "file": "ir_expr.c",
+   "function": "typed_binary",
+   "id": "ir_expr.c::typed_binary::ed84387e::0",
+   "text": "has_error(l)"
+  },
+  {
+   "atoms": [
+    {
+     "replace": "0",
+     "text": "has_error(l)"
+    },
+    {
+     "replace": "0",
+     "text": "has_error(r)"
+    }
+   ],
+   "file": "ir_expr.c",
+   "function": "typed_binary",
+   "id": "ir_expr.c::typed_binary::b8ded544::0",
+   "text": "has_error(l) != has_error(r) && !o.group && !operand_ok(op, o.node->type)"
   },
   {
    "atoms": [

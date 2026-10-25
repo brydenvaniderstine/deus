@@ -1,0 +1,4 @@
+manna v0;
+fn f(a: u8) -> u32 {
+    return a == nope;
+}

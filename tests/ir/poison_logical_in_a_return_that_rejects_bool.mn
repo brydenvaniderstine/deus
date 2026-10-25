@@ -1,0 +1,4 @@
+manna v0;
+fn f(b: bool) -> u32 {
+    return b || nope;
+}

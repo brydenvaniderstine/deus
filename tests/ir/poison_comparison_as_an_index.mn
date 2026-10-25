@@ -1,0 +1,4 @@
+manna v0;
+fn f(xs: [4]u8) {
+    xs[nope < 1];
+}

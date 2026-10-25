@@ -197,7 +197,7 @@ static void release(Result *r) {
     parser_state_destroy(&r->ps);
 }
 
-static long n_cases, n_single, n_beside, n_fixed, n_cmp_fixed, n_arith_fixed, n_shift_fixed;
+static long n_beside_arith, n_cases, n_single, n_beside, n_fixed, n_cmp_fixed, n_arith_fixed, n_shift_fixed;
 static long cat_cases[N_CAT], cat_single[N_CAT], cat_beside[N_CAT], cat_fixed[N_CAT];
 static long n_glued_single, n_glued_fixed, n_padded; /* the no-space programs whose source really has the keyword touching the operand */
 
@@ -225,7 +225,16 @@ static void run_case(const Case *c, const char *ta, const char *tb) {
     /* ours: exactly one E0261 and nothing else, or (comparisons only, step 20f) the E0261 BESIDE the diagnostic of a context that rejects the
      * comparison's bool, which the E0261 used to hide; any other diagnostic decides the program */
     bool beside = o.n != 1;
-    if (o.status != IR_ERRORS || e261 != 1 || (beside && c->op < 10)) {
+    if (o.status != IR_ERRORS || e261 != 1) {
+        release(&o);
+        return;
+    }
+    if (beside && c->op < 10) {
+        /* Step 21d (D1): an arithmetic, bitwise or shift mistake under `!` is beside the diagnostic of a context that rejects the bool `!` gives
+         * (`let x: u8 = !(a + b);`). These programs used to be skipped without a word; now they are counted, and no fix may be offered for them (the
+         * fix would have to make `!` accept an integer). */
+        if (o.st.diags.items[at].fix) fail("a fix was offered for an arithmetic mistake beside a context diagnostic", src, NULL, NULL);
+        n_beside_arith++;
         release(&o);
         return;
     }
@@ -422,8 +431,8 @@ int main(void) {
             }
         }
     }
-    printf("e0261 exhaustive: %ld programs, %ld with exactly one diagnostic (E0261), %ld with the E0261 beside its context's own diagnostic, %ld offered a fix (%ld arithmetic/bitwise, %ld shift, %ld comparison); every one lossless, one wrap, self-checked, and clean or baseline-equal\n",
-           n_cases, n_single, n_beside, n_fixed, n_arith_fixed, n_shift_fixed, n_cmp_fixed);
+    printf("e0261 exhaustive: %ld programs, %ld with exactly one diagnostic (E0261), %ld with the E0261 beside its context's own diagnostic, %ld offered a fix (%ld arithmetic/bitwise, %ld shift, %ld comparison); every one lossless, one wrap, self-checked, and clean or baseline-equal; %ld more (arithmetic/bitwise/shift) beside a context diagnostic, none with a fix\n",
+           n_cases, n_single, n_beside, n_fixed, n_arith_fixed, n_shift_fixed, n_cmp_fixed, n_beside_arith);
     for (int k = 0; k < N_CAT; k++) {
         printf("  %-26s %ld programs, %ld with exactly one E0261 (+%ld beside a context diagnostic), %ld offered a fix\n", CAT_NAME[k], cat_cases[k], cat_single[k], cat_beside[k], cat_fixed[k]);
         assert(cat_fixed[k] > 0); /* a category that offers no fix at all proves nothing */

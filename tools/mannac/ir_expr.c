@@ -258,6 +258,14 @@ static Synth is_group(void)        { Synth s = {true, 0, NULL, NULL}; return s; 
 static Synth is_node(IrExpr *n)    { Synth s = {false, 0, NULL, n}; return s; }
 static Synth is_error(IrState *st, Span at) { return is_node(error_node(st, at)); }
 
+/* D1 (step 21d, Bryden 2026-10-25): an expression whose type does not depend on its operands keeps that type when an operand is poisoned; a fix that waits in
+ * an operand goes on waiting (settle_pending). A comparison, `&&`, `||`
+ * and `!` are bool whatever their operands are (the result is a bool stand-in node: the build has failed, nothing reads its value), so the context reports its own mistake (`return a < nope;` in a `-> u32` is E0223 next to the unknown name)
+ * instead of showing it only after the first mistake is fixed. Arithmetic, bitwise, shift and unary `-` / `~` take the operand's type and stay ERROR. */
+static Synth bool_stand_in(IrState *st, Span at) {
+    return is_node(ir_expr_bool(st, at, false));
+}
+
 static bool has_error(Synth s) { return !s.group && s.node->type->kind == IR_T_ERROR; }
 static bool is_unit(Synth s)   { return !s.group && s.node->type->kind == IR_T_UNIT; }
 
@@ -294,7 +302,7 @@ static IR_NOINLINE Synth finish_unary(BodyCtx *bc, const Expr *e, Synth o) {
         return is_error(st, e->span);
     }
     if (has_error(o)) { /* a unary operator on a silent operand: a fix that waits inside it goes on waiting if the operator accepts its new type */
-        Synth s = is_error(st, e->span);
+        Synth s = op == UNOP_NOT ? bool_stand_in(st, e->span) : is_error(st, e->span);
         if (o.pending) {
             const IrType *pt = o.ptype;
             bool ok = op == UNOP_NOT ? pt->kind == IR_T_BOOL : op == UNOP_NEG ? is_int(pt) && pt->as.integer.is_signed : is_int(pt);
@@ -432,7 +440,7 @@ static IR_COLD bool group_fits(BodyCtx *bc, const Expr *g, const IrType *t) {
     return st->muted_hits == hits;
 }
 
-/* A binary operator with an ERROR operand is silent, but a fix that waits inside it (see Synth) was offered on the strength of this operator
+/* A binary operator with an ERROR operand reports nothing about that operand, but a fix that waits inside it (see Synth) was offered on the strength of this operator
  * accepting the new type, and the fixed source must stay clean HERE too. With the pending operand of type P = `ptype`:
  *   - the other operand must have type P (a typed one), fit P (an untyped literal group, dry-checked), or be silent already (ERROR);
  *     otherwise the fixed source fails at this operator and the fix is withdrawn;
@@ -440,8 +448,8 @@ static IR_COLD bool group_fits(BodyCtx *bc, const Expr *g, const IrType *t) {
  *   - the operator's own result is what the parent sees: P for arithmetic, bitwise and shift (a shift's result is its LEFT operand's
  *     type, which is P either way once they agree), bool for a comparison. The fix goes on waiting with that type.
  * Both operands carrying the same fix (`r + r` of one local) agree with each other; two different fixes are two mistakes: both are withdrawn. */
-static IR_COLD Synth settle_pending(BodyCtx *bc, const Expr *e, Synth l, Synth r) {
-    Synth out = is_error(bc->st, e->span);
+static IR_COLD Synth settle_pending(BodyCtx *bc, const Expr *e, Synth l, Synth r, bool bool_result) {
+    Synth out = bool_result ? bool_stand_in(bc->st, e->span) : is_error(bc->st, e->span); /* D1: a comparison, && and || are bool whatever the operands are */
     if (!l.pending && !r.pending) return out;
     if (l.pending && r.pending && (l.pending != r.pending || l.ptype != r.ptype)) {
         withdraw_fix(bc, l.pending);
@@ -466,14 +474,22 @@ static IR_COLD Synth settle_pending(BodyCtx *bc, const Expr *e, Synth l, Synth r
 }
 
 /* A binary operator with at least one TYPED operand (the other may be a group). In order: an
- * ERROR operand silences everything; two groups under a comparison have no type (E0225, once,
+ * ERROR operand silences arithmetic (a comparison is bool anyway, D1, and still checks the other operand); two groups under a comparison have no type (E0225, once,
  * at the left); an operand type the operator is not defined for is E0260, once, naming the
  * left one first; then a group takes its typed sibling's type; then the types must agree. */
 static IR_NOINLINE Synth typed_binary(BodyCtx *bc, const Expr *e, Synth l, Synth r) {
     IrState *st = bc->st;
     BinOp op = e->as.binary.op;
     const Expr *le = e->as.binary.lhs, *re = e->as.binary.rhs;
-    if (has_error(l) || has_error(r)) return settle_pending(bc, e, l, r);
+    /* A comparison is bool. The other operand's own mistake does not depend on the poisoned one: an operator not defined for its type is E0260 even here
+     * (`nope < true`). A literal group has no type to check, and a second poisoned operand has nothing to say. */
+    if (has_error(l) || has_error(r)) {
+        Synth out = settle_pending(bc, e, l, r, !is_arith_class(op));
+        if (is_arith_class(op)) return out;
+        const Synth o = has_error(l) ? r : l;
+        if (has_error(l) != has_error(r) && !o.group && !operand_ok(op, o.node->type)) report_operator(st, e->span, ir_binop_text(op), o.node->type);
+        return out;
+    }
     if (l.group && r.group) { /* only a comparison reaches here with two groups */
         report_cannot_infer(st, le->span);
         return is_error(st, e->span);
@@ -487,14 +503,16 @@ static IR_NOINLINE Synth typed_binary(BodyCtx *bc, const Expr *e, Synth l, Synth
     }
     IrExpr *ln = l.group ? group_against(st, le, rt) : l.node;
     IrExpr *rn = r.group ? group_against(st, re, lt) : r.node;
-    if (ln->type->kind == IR_T_ERROR || rn->type->kind == IR_T_ERROR) return is_error(st, e->span); /* already reported */
+    if (ln->type->kind == IR_T_ERROR || rn->type->kind == IR_T_ERROR) { /* already reported */
+        return is_arith_class(op) ? is_error(st, e->span) : bool_stand_in(st, e->span);
+    }
     if (ln->type != rn->type) {
         Synth s = is_error(st, e->span);
         s.pending = report_types_differ(bc, e, ln->type, rn->type, &s.ptype);
         if (!is_arith_class(op)) {
             /* A comparison's result is bool whatever its operands are (step 20f, Bryden 2026-10-25): the E0261 mismatch is reported, and the
              * comparison is NOT poisoned. A context that rejects bool (`return a < b;` in a `-> u32`) reports its own diagnostic next to the E0261, so
-             * the fix of the E0261 cannot make a hidden error appear. Only this case; comparisons over unknown operands stay silent (step 21). */
+             * the fix of the E0261 cannot make a hidden error appear. The same holds over a poisoned operand since step 21d (D1). */
             s = is_node(ir_expr_bool(st, e->span, false)); /* a stand-in of the right type: the build has failed, nothing reads its value */
         }
         return s;
@@ -508,7 +526,18 @@ static IR_NOINLINE Synth typed_binary(BodyCtx *bc, const Expr *e, Synth l, Synth
 static IR_NOINLINE Synth finish_logical(BodyCtx *bc, const Expr *e, Synth l, Synth r) {
     IrState *st = bc->st;
     BinOp op = e->as.binary.op;
-    if (has_error(l) || has_error(r)) return settle_pending(bc, e, l, r);
+    /* `&&` and `||` are bool whatever their operands are. The operand that is NOT poisoned is still checked for its own mistake (`nope && 1` reports the
+     * `1`: it is a literal, a mismatch against bool; a typed non-bool is E0260), and the result keeps its type. Two poisoned operands: nothing to check. */
+    if (has_error(l) || has_error(r)) {
+        Synth out = settle_pending(bc, e, l, r, true);
+        if (has_error(l) != has_error(r)) {
+            const Synth o = has_error(l) ? r : l;
+            const Expr *oe = has_error(l) ? e->as.binary.rhs : e->as.binary.lhs;
+            if (o.group) report_bool_expected(st, oe->span);
+            else if (o.node->type->kind != IR_T_BOOL) report_operator(st, e->span, ir_binop_text(op), o.node->type);
+        }
+        return out;
+    }
     const Expr *ops[2] = {e->as.binary.lhs, e->as.binary.rhs};
     Synth sy[2] = {l, r};
     for (int i = 0; i < 2; i++) {

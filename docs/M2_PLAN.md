@@ -637,6 +637,10 @@ IrType   interned & canonical per module (pointer equality == type equality):
          INT{bits 8|16|32|64, signed} | BOOL | UNIT | ARRAY{len:u64, elem} | SLICE{elem} | STRUCT{decl} | ERROR
          UNIT exists internally (a function with no '-> type' returns it) though it is unwritable.
          ERROR is the poison type; it never appears in a successfully built module.
+         Poison rule (D1, step 21d, Bryden 2026-10-25): an expression whose type does not depend on its operands keeps that type when an operand is poisoned.
+         A comparison, `&&`, `||` and `!` are bool, a conversion has its target type, a call has the callee's return type, `len` is u64: the context then reports
+         ITS OWN mistake next to the first one (`return a < nope;` in a `-> u32` is E0230 and E0223), and the operand that is not poisoned is still checked for its
+         own mistake (`nope && 1`, `nope < b` with a bool `b`). Arithmetic, bitwise, shift and unary `-` / `~` take their operand's type and stay ERROR.
 IrStruct { name, fields[{name, type, span}], size, align }
 IrFunc   { name, id "fn:name" (§7 item 5), kernel_hook:bool, params[IrLocal], ret:IrType, locals[IrLocal], body }
 IrLocal  { slot (declaration order), name, type, span, is_param }

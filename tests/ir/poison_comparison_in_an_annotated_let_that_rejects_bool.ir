@@ -1,0 +1,3 @@
+ERRORS:
+3:18 E0230 unknown name 'nope'
+3:18 E0223 type mismatch: expected u32, found bool

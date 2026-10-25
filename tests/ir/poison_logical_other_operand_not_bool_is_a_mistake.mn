@@ -1,0 +1,4 @@
+manna v0;
+fn f(x: u8) -> bool {
+    return nope || x;
+}

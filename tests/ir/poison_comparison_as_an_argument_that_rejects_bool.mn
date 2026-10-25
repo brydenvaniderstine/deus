@@ -1,0 +1,6 @@
+manna v0;
+fn take(x: i64) {
+}
+fn f() {
+    take(nope == 1);
+}

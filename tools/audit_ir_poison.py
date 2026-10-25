@@ -7,6 +7,9 @@ where an ERROR operand is consumed silently (the places a cascade would start): 
 For each such line this finds the goldens (tests/ir/*.mn) that execute it, using one instrumented ir_dump run
 per golden, and reports the ones whose expected output holds EXACTLY ONE diagnostic: a test in which that path
 runs and nothing else is reported. A line with no such golden is listed as NOT RUN BY A ONE-DIAGNOSTIC GOLDEN (exit 1 with --check).
+MISTAKES (step 21d, decision D5): "exactly one diagnostic" is "as many diagnostics as the input has independent mistakes". An input may declare its count in a sidecar
+`NAME.mistakes` (one integer, written by the generator that wrote the input, never read back from the builder); without one it is 1. A line that can only run when a
+second, independent mistake is present (an operator that is wrong for the typed side of `nope < b`) is then run by an input whose output is exactly its two mistakes.
 THIS IS NOT A PROOF that the path cannot cascade: it shows that a test exists in which the path ran and the output was one
 diagnostic, and says nothing about other inputs. The unit tests (ir_test.c) cannot be split per test, so a line only they reach
 must be argued by hand in the report.
@@ -20,8 +23,8 @@ SRC = "tools/mannac/"
 FILES = ["ir_decls.c", "ir_expr.c", "ir_body.c", "ir_calls.c", "ir_build.c", "ir_rename.c"]
 BIN_SRCS = ["arena", "ast", "diag", "parser_state", "parser", "lexer", "ir", "ir_dump", "ir_build", "ir_decls",
             "ir_expr", "ir_body", "ir_calls", "ir_names", "ir_rename", "ir_selfcheck", "ir_main"]
-PAT = re.compile(r"\b(ir_error|is_error|error_node|ir_type_error|has_error|settle_pending)\(|\bpoisoned\b|IR_T_ERROR|\.pending")
-DEF = re.compile(r"^\s*(static\s+)?[\w\s\*]+\b(is_error|error_node|ir_type_error|settle_pending)\([^;]*\)\s*\{?\s*$|^\s*(static\s+)?[\w\s\*]+\b(is_error|error_node)\([^;]*\)\s*\{.*\}\s*$")
+PAT = re.compile(r"\b(ir_error|is_error|error_node|ir_type_error|has_error|settle_pending|bool_stand_in)\(|\bpoisoned\b|IR_T_ERROR|\.pending")
+DEF = re.compile(r"^\s*(static\s+)?[\w\s\*]+\b(is_error|error_node|ir_type_error|settle_pending|bool_stand_in)\([^;]*\)\s*\{?\s*$|^\s*(static\s+)?[\w\s\*]+\b(is_error|error_node)\([^;]*\)\s*\{.*\}\s*$")
 
 def llvm_tool(name):
     """llvm-cov / llvm-profdata: `xcrun` on macOS, else the plain tool or a versioned one on PATH (Linux). A missing tool is a hard failure, never a skip."""
@@ -79,6 +82,8 @@ def lines_hit(mn):
     env = dict(os.environ, LLVM_PROFILE_FILE=raw)
     run = subprocess.run([OUT + "/ir_dump", mn], env=env, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
     ndiag = sum(1 for l in run.stdout.split("\n") if re.match(r"\d+:\d+ E\d{4} ", l))
+    side = mn[:-3] + ".mistakes"
+    declared = int(open(side).read().strip()) if os.path.exists(side) else 1
     subprocess.run(llvm_tool("llvm-profdata") + ["merge", "-sparse", raw, "-o", prof], check=True)
     j = json.loads(subprocess.run(llvm_tool("llvm-cov") + ["export", OUT + "/ir_dump", "-instr-profile=" + prof],
                                   capture_output=True, text=True, check=True).stdout)
@@ -87,7 +92,7 @@ def lines_hit(mn):
         b = os.path.basename(fl["filename"])
         if b in FILES: segs[b] = [(s[0], s[1], s[2] if (s[3] and not s[5]) else None) for s in fl["segments"]]
     os.remove(raw); os.remove(prof)
-    return name, segs, ndiag
+    return name, segs, ndiag, declared
 
 def ran(segs, f, line, col):
     """the count of the region that covers (line, col) is nonzero"""
@@ -117,8 +122,8 @@ if __name__ == "__main__":
     cands = candidates()
     build()
     with ThreadPoolExecutor(8) as ex: results = list(ex.map(lines_hit, corpus()))
-    one = {name: hit for name, hit, nd in results if nd == 1}
-    anyhit = {name: hit for name, hit, nd in results if nd >= 1}
+    one = {name: hit for name, hit, nd, dc in results if nd == dc}
+    anyhit = {name: hit for name, hit, nd, dc in results if nd >= 1}
     reasons = load_reasons()
     not_run, used = [], set()
     print("%-14s %-6s %-58s %s" % ("file:line", "ones", "source", "one-diagnostic inputs that run it (first 2)"))

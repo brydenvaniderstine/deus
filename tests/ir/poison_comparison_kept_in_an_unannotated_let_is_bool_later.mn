@@ -1,0 +1,5 @@
+manna v0;
+fn f() {
+    let ok = nope < 1;
+    let q = ok + ok;
+}

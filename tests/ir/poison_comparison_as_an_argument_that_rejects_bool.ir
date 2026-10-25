@@ -1,0 +1,3 @@
+ERRORS:
+5:10 E0230 unknown name 'nope'
+5:10 E0223 type mismatch: expected i64, found bool

@@ -1,0 +1,4 @@
+manna v0;
+fn f(b: bool) -> bool {
+    return nope && b;
+}

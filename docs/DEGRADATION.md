@@ -124,7 +124,7 @@ Each entry's **Trigger-id** is one of the ids below, in the order they fall due.
 - **Status:** OPEN
 - **Reason:** Deferred in the plan with no trigger; the parser was tagged long ago and there is still no JSON output and no `manna` binary.
 - **Promise:** `docs/MANNA_PRINCIPLES.md:45` "`manna check --json` returns structured errors and fix-it edits in milliseconds."
-- **Where it stands:** `docs/M2_PLAN.md:816` "(implemented after the parser exists — not yet)"
+- **Where it stands:** `docs/M2_PLAN.md:820` "(implemented after the parser exists — not yet)"
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** After the tag m2-ir-v0 and before the next compiler stage (loop-counter injection) starts
 - **Trigger-id:** `loop-counter-injection`
@@ -166,7 +166,7 @@ Each entry's **Trigger-id** is one of the ids below, in the order they fall due.
 - **Status:** OPEN
 - **Reason:** The plan promised a no-cascade golden per poisoning path; what shipped is a script that checks each poisoning line is RUN by a one-diagnostic golden, and step 18e deleted the promise from TYPED_IR.md. The script also under-counts (re-audit 3, finding 9: 25 silent-consumption lines are not counted).
 - **Promise:** `docs/history/TYPED_IR.md @6b3f537:140` "plus a no-cascade golden for each poisoning path."
-- **Where it stands:** `tools/audit_ir_poison.py:133` "(this is not a no-cascade proof)"
+- **Where it stands:** `tools/audit_ir_poison.py:138` "(this is not a no-cascade proof)"
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** Step 21 (the no-cascade proof)
 - **Trigger-id:** `step-21`
@@ -206,7 +206,7 @@ Each entry's **Trigger-id** is one of the ids below, in the order they fall due.
 - **Status:** CLOSED (2026-10-24, step 19 batch 2)
 - **Reason:** 19c-1 removed working fixes in un-annotated `let`; 19d withheld renames instead of completing the use list; choice 6 documented a quadratic scan. Revised 2026-10-23 and done: 19c-1 became 'the fix waits for the local's uses' (157534d), choice 6 became an index (90f048c), 19d renames the stale spellings (c460bff), and the 511-chain known issue was fixed (de84d89). The withheld first version of 19d sits on the local branch wip-19de, unmerged and not to be merged.
 - **Promise:** `docs/M2_PLAN.md@f981a51:753` "the declaration and every resolved use"
-- **Where it stands:** `docs/M2_PLAN.md:753` "renamed along rather than left stale"
+- **Where it stands:** `docs/M2_PLAN.md:757` "renamed along rather than left stale"
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** Step 19 batch 2 (done); kept for the record until the m2-ir-v0 tag
 - **Trigger-id:** `step-19`
@@ -245,8 +245,8 @@ Each entry's **Trigger-id** is one of the ids below, in the order they fall due.
 
 - **Status:** OPEN
 - **Reason:** Steps 11 and 12 recorded their policy points as 'pending review'; whether the review happened is not recorded.
-- **Promise:** `docs/M2_PLAN.md:693` "the points the rules above leave open, pending review"
-- **Where it stands:** `docs/M2_PLAN.md:720` "the points the rules above leave open, pending review"
+- **Promise:** `docs/M2_PLAN.md:697` "the points the rules above leave open, pending review"
+- **Where it stands:** `docs/M2_PLAN.md:724` "the points the rules above leave open, pending review"
 - **Owner:** Bryden (decision); Claude Code (work)
 - **Trigger:** The m2-ir-v0 tag (the refinement loop's review step) (PROPOSED by Claude Code, approved by Bryden 2026-10-24)
 - **Trigger-id:** `m2-ir-v0`
@@ -268,7 +268,7 @@ Each entry's **Trigger-id** is one of the ids below, in the order they fall due.
 - **Status:** CLOSED (2026-10-25, ci.yml run 40166779034 on 3258f9d and fuzz.yml run 40167344686)
 - **Reason:** The TCB rule says fuzz continuously; fuzzing is 10 minutes by hand per round and 'deliberately not in CI'. The Linux job fuzzes the lexer, parser and typed IR (gated and ungated) for 60 s each on every push, and `.github/workflows/fuzz.yml` fuzzes each target 30 min every night; `tools/fuzz/run_fuzzers.sh` now exits 1 on any artifact (crash, timeout, out-of-memory, sanitizer report), so a finding turns the run red and uploads the artifact. CLOSED: the Linux job's per-push fuzz ran 61 s per target in ci.yml run 40166779034 on 3258f9d (lexer 1,527,009, parser 47,871, IR gated 24,113, IR ungated 24,193 runs, 0 artifacts); `fuzz.yml` dispatched once, run 40167344686: 30 min per target (lexer 54,571,001, parser 1,272,554, IR 798,007, IR ungated 924,734 runs), 0 artifacts, all four corpus caches saved. The first scheduled (cron) run is still to be seen; STATUS says how to re-enable the workflow if GitHub switches it off.
 - **Promise:** `CLAUDE.md:134` "Fuzz them continuously."
-- **Where it stands:** (before step 20) `docs/M2_PLAN.md:786` "Deliberately not in CI - a fixed wall-clock budget, not a pass/fail check."
+- **Where it stands:** (before step 20) `docs/M2_PLAN.md:790` "Deliberately not in CI - a fixed wall-clock budget, not a pass/fail check."
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** Step 20 (a short fuzz run on every push and a long scheduled one)
 - **Trigger-id:** `step-20`

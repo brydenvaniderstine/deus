@@ -1,0 +1,3 @@
+ERRORS:
+3:8 E0230 unknown name 'nope'
+3:8 E0253 index/bound must be an integer, found bool
