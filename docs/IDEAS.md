@@ -337,6 +337,44 @@ Status:                 candidate
 4. How is a policy change undone? (Connected to "Undoable agent actions", 2026-10-15.)
 5. The Spectre angle: timing telemetry exposed to the agent must not become a side channel (CLAUDE.md "Open risks").
 
+## 2026-10-25: Single-service mode for cloud guests
+
+```
+Title:                  Single-service mode: Deus boots as a cloud VM running one service, keeping its language-based isolation inside the VM
+Date:                   2026-10-25
+Source:                 Bryden
+Problem it solves:      In the cloud, a general-purpose OS per VM wastes memory, boot time and attack surface on one service; unikernels fix that but drop all isolation inside the VM.
+Helps humans how / helps AI how:
+                        Humans: one OS and one app format for laptop, edge and cloud; a service deploys as a small, fast-booting VM without being rebuilt for it.
+                        AI: one target to learn and reason about; the same telemetry, policy and fix-it interfaces in every mode.
+Alternatives rejected:  A separate cloud-only build of Deus (a second OS to maintain; the point is one OS, both modes).
+                        A pure unikernel (one fully trusted app, rebuilt per app): drops LBS inside the VM, the reason Deus exists.
+                        Running Deus apps on Linux micro-VMs instead: keeps Linux in the stack, which Deus replaces.
+Earliest milestone boundary:
+                        Decide at M3 (cloud work: virtio drivers, the Wasm runtime); build after the M3 runtime and virtio exist.
+Admission Test status:  not applicable (not a language change)
+Status:                 candidate
+```
+
+**Prior art (from the reviewer's knowledge, to be checked at review):** MirageOS (OCaml, about 2013), IncludeOS (C++), OSv, Unikraft, Hermit (Rust), Nanos; Microsoft Hyperlight runs Wasm functions in micro-VMs. Single-service VMs are not new. Their known weaknesses: hard to debug and monitor, existing apps often need changes, and no isolation inside the VM (one bug owns it).
+
+**What Deus would add (the reasons to do it):**
+1. **One OS, both modes.** The same Wasm app runs unchanged among many apps on a laptop or edge box, or alone as a cloud VM. The mode is a boot configuration, not a different kernel.
+2. **Isolation inside the VM.** LBS and the Wasm sandboxes stay on in single-service mode, so a bug in one library or plugin of the service cannot take over the VM.
+3. **Observable by design.** The telemetry rings (and, if adopted, the model-chosen resource policy, IDEAS 2026-10-25) cover the debugging and monitoring weakness of unikernels.
+
+**Constraints (hard lines, from CLAUDE.md):**
+- Same hard constraints in both modes: x86_64, paging on, one CR3, LAPIC preemption, the calibration cascade.
+- Nothing is removed for single-service mode (no "fast mode" without the verifier or sandboxes): CLAUDE.md "No degradation".
+- Under a hypervisor, nested paging adds two-dimensional page walks (CLAUDE.md Scope, cloud note); this needs measuring, not assuming.
+
+**Open questions for review:**
+1. What "single-service" means exactly: one Wasm app plus the kernel, or a small fixed set (a service and its sidecars)?
+2. The device set for the first cloud target: virtio-net, virtio-blk, a serial console. Which hypervisors first (QEMU/KVM, Firecracker)?
+3. Image and boot: Limine on UEFI as today, or a direct-boot path some micro-VM monitors need?
+4. How a service is configured and updated without a shell (connects to "Provenance on every module" and "Live component replacement", IDEAS 2026-10-19).
+5. Benchmarks that would show it is better, not just smaller: boot time, memory, request latency, against a Linux micro-VM running the same Wasm app.
+
 ## 2026-10-09: Considered and rejected ("Omni/AetherOS" brainstorm)
 
 One line of why each, so they aren't re-proposed:

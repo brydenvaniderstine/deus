@@ -277,8 +277,8 @@ Each entry's **Trigger-id** is one of the ids below, in the order they fall due.
 
 - **Status:** PARTLY CLOSED (step 20d: written; closes at the first green Linux run)
 - **Reason:** Leak-clean is enforced only by the reviewer's Linux LSan run. The Linux job runs every host-side suite with gcc, ASan + UBSan and LSan (`detect_leaks=1`, `halt_on_error=1`).
-- **Promise:** `docs/REFINEMENT.md:81` "Test harnesses and measurement probes must be leak-clean like product code"
-- **Where it stands:** `docs/REFINEMENT.md:82` "(no CI job runs LSan)"
+- **Promise:** `docs/REFINEMENT.md:82` "Test harnesses and measurement probes must be leak-clean like product code"
+- **Where it stands:** `docs/REFINEMENT.md:83` "(no CI job runs LSan)"
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** Step 20 (an Ubuntu gcc ASan+UBSan+LSan job)
 - **Trigger-id:** `step-20`
@@ -298,7 +298,7 @@ Each entry's **Trigger-id** is one of the ids below, in the order they fall due.
 - **Status:** CLOSED (2026-10-24, step 20a)
 - **Reason:** CI compared output to the golden and could not see that the golden was edited to match. Now `make test-ratchet` replays the history of `tests/ratchet.json` and compares the diagnostic count of every expected output under `tests/`, and every test count, across every consecutive pair of committed versions; a decrease fails unless a `RATCHET-WAIVER` line names an open register entry.
 - **Promise:** `CLAUDE.md:176` "A golden that loses diagnostics or AST nodes in a commit is STOP-tier"
-- **Where it stands:** `docs/REFINEMENT.md:76` "**Enforced since step 20a by `make test-ratchet` (`tools/ratchet.py`):**"
+- **Where it stands:** `docs/REFINEMENT.md:77` "**Enforced since step 20a by `make test-ratchet` (`tools/ratchet.py`):**"
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** Step 20 (the CI ratchet: counts that never decrease, diagnostics per golden); done in 20a
 - **Trigger-id:** `step-20`
@@ -307,8 +307,8 @@ Each entry's **Trigger-id** is one of the ids below, in the order they fall due.
 
 - **Status:** OPEN
 - **Reason:** Stated in REFINEMENT, applied in `measure_ir_stack.sh` only.
-- **Promise:** `docs/REFINEMENT.md:81` "a measurement script counts only a signal exit (rc > 128) as a crash"
-- **Where it stands:** `docs/REFINEMENT.md:82` "`tools/measure_expr_height.sh` is not yet changed to follow it."
+- **Promise:** `docs/REFINEMENT.md:82` "a measurement script counts only a signal exit (rc > 128) as a crash"
+- **Where it stands:** `docs/REFINEMENT.md:83` "`tools/measure_expr_height.sh` is not yet changed to follow it."
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** Step 20
 - **Trigger-id:** `step-20`

@@ -51,6 +51,7 @@ The first entries recorded under this loop. The entries themselves live in `docs
 | 2026-10-19 | Live component replacement | outside AI | post-M3 | not applicable | candidate |
 | 2026-10-19 | Provenance on every module | outside AI | M3 (Wasm loader) | not applicable | candidate |
 | 2026-10-25 | Model-chosen resource policy (AI policy agent) | Bryden | decision at M3 start (resolves register R4); build after M3, with the agent service | not applicable | candidate |
+| 2026-10-25 | Single-service mode for cloud guests | Bryden | decide at M3; build after the M3 runtime and virtio exist | not applicable | candidate |
 
 **Review 2026-10-13 (`m2-parser-v0.1`):** the six 2026-10-11 candidates are **Parked** (reason: none belongs in the IR skeleton); none promoted, none rejected. §2 says "pick at most 3 candidates"; reviewing all six is a deliberate deviation: the cap exists to limit promotions and Admission Test runs, and neither happened (no Admission Test was run, nothing entered the next stage's plan). Recorded in each entry's status line in `docs/IDEAS.md`.
 
