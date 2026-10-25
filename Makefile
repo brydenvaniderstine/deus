@@ -60,7 +60,7 @@ QEMU_FLAGS   := $(QEMU_MACHINE) \
                 -serial file:serial.log -monitor stdio -no-reboot \
                 -d int,cpu_reset -D qemu.log
 
-.PHONY: all image run debug clean limine stage-esp test-wx test-lexer test-lexer-asan test-arena test-arena-asan test-ast test-ast-asan test-parser-state test-parser-state-asan test-parser-fixes test-parser-fixes-asan test-parser test-parser-asan test-determinism test-ir test-ir-asan test-ir-unit test-ir-unit-asan test-ir-ndebug test-ir-fix test-ir-fix-asan test-ir-error-codes audit-ir-poison test-e0261-exhaustive test-rename-property test-ir-memory-stress test-ratchet test-ratchet-script ratchet-update check-register register-fix-lines test-register-script check-ci-targets test-ci-targets-script test-audit-repros test-fuzz-script test-boot test-boot-check-script check-kernel-loc test-kernel-loc-script test-measure-height-script coverage-check test-coverage-check-script check-batch-cap test-batch-cap-script check-retro-rules test-retro-rules-script coverage fuzz fuzz-lexer fuzz-parser fuzz-ir fuzz-ir-ungated measure-height measure-ir-stack measure-ir-build-stack
+.PHONY: all image run debug clean limine stage-esp test-wx test-lexer test-lexer-asan test-arena test-arena-asan test-ast test-ast-asan test-parser-state test-parser-state-asan test-parser-fixes test-parser-fixes-asan test-parser test-parser-asan test-determinism test-ir test-ir-asan test-ir-unit test-ir-unit-asan test-ir-ndebug test-ir-fix test-ir-fix-asan test-ir-error-codes audit-ir-poison test-poison-paths-script test-e0261-exhaustive test-rename-property test-ir-memory-stress test-ratchet test-ratchet-script ratchet-update check-register register-fix-lines test-register-script check-ci-targets test-ci-targets-script test-audit-repros test-fuzz-script test-boot test-boot-check-script check-kernel-loc test-kernel-loc-script test-measure-height-script coverage-check test-coverage-check-script check-batch-cap test-batch-cap-script check-retro-rules test-retro-rules-script coverage fuzz fuzz-lexer fuzz-parser fuzz-ir fuzz-ir-ungated measure-height measure-ir-stack measure-ir-build-stack
 
 all: $(KERNEL_ELF)
 
@@ -526,6 +526,10 @@ check-retro-rules:
 
 test-retro-rules-script:
 	@python3 tools/check_retro_rules_test.py
+
+# Step 21a: the static enumeration of the poisoning paths (tools/poison_paths.py; needs clang) and its tests.
+test-poison-paths-script:
+	@python3 tools/poison_paths_test.py
 
 # Step 20e: the exit status of the fuzz runner (a clean run 0; a crash artifact 1). Needs a clang with libFuzzer (LLVM_CLANG); it fails without one.
 test-fuzz-script:

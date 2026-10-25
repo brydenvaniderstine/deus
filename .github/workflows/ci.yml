@@ -52,6 +52,7 @@ jobs:
       - run: make test-rename-property
       - run: make test-ir-memory-stress
       - run: make audit-ir-poison
+      - run: make test-poison-paths-script
       - run: make test-ir-unit
       - run: make test-ir-unit-asan
       - run: make test-ir-ndebug
@@ -74,6 +75,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
       - run: make test-retro-rules-script
       - run: make check-retro-rules
+      - run: make test-poison-paths-script
       - run: make test-ratchet
       - run: make test-audit-repros
 
