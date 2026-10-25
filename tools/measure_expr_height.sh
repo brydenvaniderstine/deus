@@ -33,7 +33,11 @@ if [ -z "${SKIP_BUILD:-}" ]; then
     "$CC" -std=c11 -O2 -g -DMANNA_MAX_EXPR_HEIGHT=65000 -o "$PROBE_PLAIN" $SRCS || exit 2
     "$CC" -std=c11 -g -fsanitize=address,undefined -DMANNA_MAX_EXPR_HEIGHT=65000 -o "$PROBE_ASAN" $SRCS || exit 2
 fi
-ulimit -s 8192 || { echo "cannot set an 8 MB stack"; exit 2; }
+# abort_on_error=1 as in measure_ir_stack.sh: on Linux an ASan stack overflow otherwise ends with exit status 1 (not a signal), which the crash rule above would
+# call a harness failure at the first real crash (Linux review of batch C, finding 3); with it the probe dies by SIGABRT (rc 134), as the macOS build does by default.
+export ASAN_OPTIONS="${ASAN_OPTIONS:+$ASAN_OPTIONS:}abort_on_error=1"
+STACK_KB="${STACK_KB:-8192}"   # 8 MB for the measurement; the test of the crash rule uses a small stack so that a real ASan probe crashes within a short run
+ulimit -s "$STACK_KB" || { echo "cannot set a ${STACK_KB} KB stack"; exit 2; }
 echo "compiler: $CC ($("$CC" --version 2>&1 | head -1))   stack limit: $(ulimit -s) KB   HI=$HI"
 
 # gen SHAPE L  -> writes $BUILD/in.mn
