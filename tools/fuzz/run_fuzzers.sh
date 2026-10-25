@@ -56,13 +56,31 @@ fi
 
 mkdir -p "$ARTIFACTS" "$CORPUS_LEXER" "$CORPUS_PARSER" "$CORPUS_IR"
 
+FAILURES=()
+# Runs one fuzzer binary ($1 = a name for the log, the rest = the command). A run counts as CLEAN only if the fuzzer exited 0 AND printed libFuzzer's
+# "Done N runs" line; a binary that fails to start, a bad flag, a kill by the runner all fail with the reason (Linux review of batch B, finding 3).
+# $FUZZ_WRAP (tests only) is a command put in front of the fuzzer.
+run_fuzzer() {
+    local name="$1"; shift
+    local log="$BUILD_DIR/$name.log" rc
+    set +e
+    ${FUZZ_WRAP:-} "$@" 2>&1 | tee "$log"
+    rc=${PIPESTATUS[0]}
+    set -e
+    if [ "$rc" -ne 0 ]; then
+        FAILURES+=("$name: the fuzzer exited with status $rc")
+    elif ! grep -Eq '^Done [0-9]+ runs' "$log"; then
+        FAILURES+=("$name: the fuzzer exited 0 but printed no 'Done N runs' line (it did not run)")
+    fi
+}
+
 run_lexer() {
     echo "==> Building fuzz_lexer ($LLVM_CLANG)"
     "$LLVM_CLANG" -std=c11 -g -O1 -fsanitize=fuzzer,address,undefined \
         -o "$BUILD_DIR/fuzz_lexer" tools/mannac/lexer.c tools/mannac/fuzz_lexer.c
     echo "==> Fuzzing lexer for ${DURATION_LEXER}s"
-    "$BUILD_DIR/fuzz_lexer" -max_total_time="$DURATION_LEXER" \
-        -artifact_prefix="$ARTIFACTS/lexer_" "$CORPUS_LEXER" tests/lexer || true
+    run_fuzzer lexer "$BUILD_DIR/fuzz_lexer" -max_total_time="$DURATION_LEXER" \
+        -artifact_prefix="$ARTIFACTS/lexer_" "$CORPUS_LEXER" tests/lexer
 }
 
 run_parser() {
@@ -74,8 +92,8 @@ run_parser() {
         tools/mannac/parser_state.c tools/mannac/parser.c tools/mannac/lexer.c \
         tools/mannac/fuzz_parser.c
     echo "==> Fuzzing parser for ${DURATION_PARSER}s"
-    "$BUILD_DIR/fuzz_parser" -max_total_time="$DURATION_PARSER" \
-        -artifact_prefix="$ARTIFACTS/parser_" "$CORPUS_PARSER" tests/parser || true
+    run_fuzzer parser "$BUILD_DIR/fuzz_parser" -max_total_time="$DURATION_PARSER" \
+        -artifact_prefix="$ARTIFACTS/parser_" "$CORPUS_PARSER" tests/parser
 }
 
 run_ir() { # $1 = gated | ungated
@@ -90,8 +108,8 @@ run_ir() { # $1 = gated | ungated
         tools/mannac/ir_expr.c tools/mannac/ir_body.c tools/mannac/ir_calls.c tools/mannac/ir_names.c \
         tools/mannac/ir_rename.c tools/mannac/ir_selfcheck.c tools/mannac/fuzz_ir.c
     echo "==> Fuzzing the IR ($1) for ${DURATION_IR}s"
-    "$BUILD_DIR/fuzz_ir_$1" -max_total_time="$DURATION_IR" \
-        -artifact_prefix="$ARTIFACTS/ir_$1_" "$CORPUS_IR" tests/parser tests/ir 2>&1 | tee "$BUILD_DIR/fuzz_ir_$1.log" || true
+    run_fuzzer "fuzz_ir_$1" "$BUILD_DIR/fuzz_ir_$1" -max_total_time="$DURATION_IR" \
+        -artifact_prefix="$ARTIFACTS/ir_$1_" "$CORPUS_IR" tests/parser tests/ir
 }
 
 case "$TARGET" in
@@ -104,10 +122,16 @@ case "$TARGET" in
 esac
 
 echo "==> Done."
+status=0
+if [ ${#FAILURES[@]} -ne 0 ]; then
+    echo "FAILED: a fuzz run did not complete cleanly:"
+    printf '  %s\n' "${FAILURES[@]}"
+    status=1
+fi
 if ls "$ARTIFACTS"/* >/dev/null 2>&1; then
     echo "FAILED: crash/timeout/sanitizer artifacts found under $ARTIFACTS:"
     ls -la "$ARTIFACTS"
-    exit 1
-else
-    echo "No crash/timeout artifacts."
+    status=1
 fi
+[ $status -eq 0 ] && echo "No crash/timeout artifacts."
+exit $status

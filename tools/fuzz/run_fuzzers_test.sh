@@ -20,6 +20,32 @@ DURATION_LEXER=3 tools/fuzz/run_fuzzers.sh lexer > build/fuzz_test.out 2>&1
 rc=$?
 if [ $rc -eq 1 ] && grep -q "FAILED: crash/timeout/sanitizer artifacts" build/fuzz_test.out && grep -q "crash-planted" build/fuzz_test.out; then echo "PASS: a crash artifact makes the run exit 1 and names the artifact"; else echo "FAIL: a planted artifact gave rc=$rc"; tail -5 build/fuzz_test.out; fail=1; fi
 rm -f "$ART/crash-planted"
+# a run is clean only if the fuzzer exited 0 AND printed "Done N runs" (Linux review of batch B, finding 3)
+cat > build/fuzz_fake_silent.sh <<'FAKE'
+#!/bin/sh
+exit 0
+FAKE
+cat > build/fuzz_fake_dies.sh <<'FAKE'
+#!/bin/sh
+echo "binary could not start"
+exit 5
+FAKE
+cat > build/fuzz_fake_done.sh <<'FAKE'
+#!/bin/sh
+echo "Done 42 runs in 3 second(s)"
+exit 0
+FAKE
+chmod +x build/fuzz_fake_*.sh
+FUZZ_WRAP=build/fuzz_fake_silent.sh DURATION_LEXER=3 tools/fuzz/run_fuzzers.sh lexer > build/fuzz_test.out 2>&1
+rc=$?
+if [ $rc -eq 1 ] && grep -q "printed no 'Done N runs' line" build/fuzz_test.out; then echo "PASS: a fuzzer that exits 0 without 'Done N runs' fails the run"; else echo "FAIL: a silent fuzzer gave rc=$rc"; tail -5 build/fuzz_test.out; fail=1; fi
+FUZZ_WRAP=build/fuzz_fake_dies.sh DURATION_LEXER=3 tools/fuzz/run_fuzzers.sh lexer > build/fuzz_test.out 2>&1
+rc=$?
+if [ $rc -eq 1 ] && grep -q "the fuzzer exited with status 5" build/fuzz_test.out; then echo "PASS: a fuzzer that dies without an artifact fails the run, with its status"; else echo "FAIL: a dying fuzzer gave rc=$rc"; tail -5 build/fuzz_test.out; fail=1; fi
+FUZZ_WRAP=build/fuzz_fake_done.sh DURATION_LEXER=3 tools/fuzz/run_fuzzers.sh lexer > build/fuzz_test.out 2>&1
+rc=$?
+if [ $rc -eq 0 ]; then echo "PASS: exit 0 plus 'Done N runs' is clean"; else echo "FAIL: a clean fake gave rc=$rc"; tail -5 build/fuzz_test.out; fail=1; fi
+rm -f build/fuzz_fake_*.sh
 mv "$saved"/* "$ART"/ 2>/dev/null
 rmdir "$saved" 2>/dev/null
 exit $fail
