@@ -175,6 +175,24 @@ jobs:
   # Step 20h (register K4, K5): the kernel boots under QEMU and its serial log is CHECKED (make test-boot), and the three W^X violations fault as promised
   # (make test-wx). The machine is the Milestone 1 one: 8 GiB, never shrunk to make a run pass. Own job so that a runner problem (firmware path, TCG speed,
   # 8 GiB on the runner) is seen as exactly that and does not hide the other jobs.
+  # Step 21b: the single-fault injection sweep, its own job (decision D4, Bryden 2026-10-25: never sampled, never folded into a job it would slow).
+  nocascade:
+    name: No-cascade injection sweep (ASan + UBSan, every point)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      MANNAC_WERROR: -Werror
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc make python3 clang
+          clang --version | head -1
+      - run: make check-inject-hook-absent
+      - run: make test-nocascade-inject-script
+      - run: make test-nocascade-inject
+
   boot:
     name: Kernel boot smoke (QEMU, 8 GiB) + W^X tests
     runs-on: ubuntu-latest

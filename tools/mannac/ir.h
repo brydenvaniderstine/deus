@@ -112,6 +112,23 @@ void ir_state_reset_for_build(IrState *st);
  * longjmps to st->fatal_target (never returns then). */
 void ir_error(IrState *st, Diagnostic d);
 
+#ifdef MANNA_POISON_INJECT
+/* Single-fault injection (typed-IR step 21b; docs: the step 21 plan, section 3b). Compiled out of every normal build, like MANNA_FUZZ_IR_UNGATED:
+ * without the macro none of the symbols below exists (`nm` on a normal ir_dump shows no `inject`; make test-nocascade-nm). The builder creates a typed value
+ * at exactly three places - IrExpr (new_expr), IrLocal (ir_local_new) and a declared type (ir_resolve_type) - and each passes its type through
+ * IR_INJECT_TYPE. When the harness (ir_inject.c) selects the k-th non-ERROR value, that value becomes ERROR with NOTHING reported, simulating "an earlier
+ * mistake already reported this". A correct builder then reports no diagnostic at all. */
+enum { IR_INJ_EXPR = 1, IR_INJ_LOCAL = 2, IR_INJ_DECL_TYPE = 3 };
+extern long ir_inject_target;   /* the value to poison, counting from 0; -1: none (a count-only run) */
+extern long ir_inject_seen;     /* how many non-ERROR values have been created so far in this build */
+extern int  ir_inject_site;     /* of the poisoned one: IR_INJ_* */
+extern int  ir_inject_what;     /* of the poisoned one: IrExprKind, is_param, or TypeKind */
+const IrType *ir_inject_type(IrState *st, const IrType *t, int site, int what);
+#define IR_INJECT_TYPE(st, t, site, what) ir_inject_type((st), (t), (site), (what))
+#else
+#define IR_INJECT_TYPE(st, t, site, what) (t)
+#endif
+
 /* ---- Type constructors / queries ---- */
 
 const IrType *ir_type_int(IrState *st, int bits, bool is_signed); /* bits: 8/16/32/64 */

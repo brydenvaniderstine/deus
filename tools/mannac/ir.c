@@ -84,6 +84,21 @@ void ir_error(IrState *st, Diagnostic d) {
     }
 }
 
+#ifdef MANNA_POISON_INJECT
+long ir_inject_target = -1;
+long ir_inject_seen = 0;
+int ir_inject_site = 0;
+int ir_inject_what = 0;
+
+const IrType *ir_inject_type(IrState *st, const IrType *t, int site, int what) {
+    if (!t || t->kind == IR_T_ERROR) return t; /* already poison: nothing to inject */
+    if (ir_inject_seen++ != ir_inject_target) return t;
+    ir_inject_site = site;
+    ir_inject_what = what;
+    return ir_type_error(st);
+}
+#endif
+
 /* ---- interning ---- */
 
 const IrType *ir_type_int(IrState *st, int bits, bool is_signed) {
@@ -238,7 +253,7 @@ IrLocal *ir_local_new(IrState *st, uint32_t slot, const char *name, const IrType
     IrLocal *l = node_alloc(st, sizeof(IrLocal), alignof(IrLocal));
     l->slot = slot;
     l->name = name;
-    l->type = type;
+    l->type = IR_INJECT_TYPE(st, type, IR_INJ_LOCAL, is_param);
     l->span = span;
     l->is_param = is_param;
     l->scope_end = UINT32_MAX;
@@ -251,7 +266,7 @@ static IrExpr *new_expr(IrState *st, IrExprKind kind, Span span, const IrType *t
     IrExpr *e = node_alloc(st, sizeof(IrExpr), alignof(IrExpr));
     e->kind = kind;
     e->span = span;
-    e->type = type;
+    e->type = IR_INJECT_TYPE(st, type, IR_INJ_EXPR, (int)kind);
     return e;
 }
 

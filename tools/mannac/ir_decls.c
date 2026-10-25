@@ -37,7 +37,16 @@ const IrType *ir_prim_type(IrState *st, const char *name) {
 /* AST type -> IR type. A failure records ONE error and yields ERROR, which
  * every enclosing array or slice silently propagates (one mistake, one error).
  * Recursion is once per nested array/slice level: the parser bounds that to 254. */
+#ifdef MANNA_POISON_INJECT
+/* The third injection point (ir.h): every resolved type, the recursive ones too, passes through the wrapper. Normal builds have no wrapper. */
+static const IrType *resolve_type_impl(Ctx *cx, const Type *t, TypeCtx ctx);
 const IrType *ir_resolve_type(Ctx *cx, const Type *t, TypeCtx ctx) {
+    return IR_INJECT_TYPE(cx->st, resolve_type_impl(cx, t, ctx), IR_INJ_DECL_TYPE, (int)t->kind);
+}
+static const IrType *resolve_type_impl(Ctx *cx, const Type *t, TypeCtx ctx) {
+#else
+const IrType *ir_resolve_type(Ctx *cx, const Type *t, TypeCtx ctx) {
+#endif
     IrState *st = cx->st;
     switch (t->kind) {
         case TYPE_IDENT: {
