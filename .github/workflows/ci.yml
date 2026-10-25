@@ -7,6 +7,10 @@ on:
       - 'docs/**'
       - '**/*.md'
 
+permissions:
+  contents: read
+  actions: read   # check-batch-cap asks gh for the last successful run
+
 # Cancel a run still in flight when a newer push to the same branch lands.
 concurrency:
   group: ci-${{ github.ref }}
@@ -62,9 +66,12 @@ jobs:
       - run: make test-measure-height-script
       - run: make test-boot-check-script
       - run: make test-batch-cap-script
+      # The base is the head of the last SUCCESSFUL ci.yml run on main, not github.event.before (a run cancelled by the next push would hide its commits);
+      # no base found fails (Linux review of batch C, finding 2).
       - run: make check-batch-cap
         env:
-          BATCH_BASE: ${{ github.event.before }}
+          BATCH_BASE: last-green
+          GH_TOKEN: ${{ github.token }}
       - run: make test-retro-rules-script
       - run: make check-retro-rules
       - run: make test-ratchet
