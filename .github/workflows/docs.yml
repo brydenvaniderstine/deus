@@ -23,9 +23,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0   # historical citations (file@rev) and the ratchet's `before` commit
+          fetch-depth: 0   # historical citations (file@rev) and the ratchet's replay of tests/ratchet.json
       - run: python3 tools/check_register_test.py
       - run: python3 tools/check_register.py
       - run: python3 tools/ratchet.py check
-        env:
-          RATCHET_BASE: ${{ github.event.before }}

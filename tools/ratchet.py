@@ -2,25 +2,30 @@
 """The CI ratchet (step 20a): counts of tests only go up.
 
 CLAUDE.md "No degradation": a test, golden, fix case, repro or diagnostic count never decreases unless the register lists why. This script
-computes the counts and compares them with the baseline.
+computes the counts and compares them with the history of the baseline file.
 
-  tools/ratchet.py check [--base REF]   compute the counts; fail on a decrease against the baseline, or if tests/ratchet.json is not
-                                         exactly the computed counts (a raise must be committed with `update`)
-  tools/ratchet.py update               write tests/ratchet.json from the computed counts (refuses to lower anything; a waived
-                                         decrease is lowered only when its RATCHET-WAIVER line is in docs/DEGRADATION.md)
+  tools/ratchet.py check    replay the history of tests/ratchet.json: every consecutive pair of committed versions (the first commit that
+                            has the file up to HEAD, then the working-tree file, then the counts computed from the tree) must not go down,
+                            waivers aside; and the file must be exactly the computed counts (a raise is committed with `update`)
+  tools/ratchet.py update   write tests/ratchet.json from the computed counts (refuses to lower anything; a waived decrease is lowered
+                            only when its RATCHET-WAIVER line is in docs/DEGRADATION.md)
 
-The baseline is tests/ratchet.json as committed at REF (CI passes the push's `before` commit in $RATCHET_BASE; locally the default is
-origin/main), so lowering the committed file in the same push does not help. With no usable REF (a new branch, an all-zero `before`, a
-commit without the file) it falls back to the committed file at HEAD and SAYS SO.
+Why a replay and not "the previous push" (Linux review of batch A, findings 2 and 3): both workflows cancel a run when a newer push lands, and a
+red run does not stop the next push, so a push compared only with its predecessor can hide a decrease the predecessor made. Replaying every
+consecutive pair means every lowering ever committed fails until it is waived, whichever run was cancelled or red. There is no fallback:
+the first committed version has nothing before it, and a missing, unreadable or shallow history FAILS.
 
-Counted (all "never decrease"): the golden / case / repro inputs per directory; the test functions of each unit-test file; the documented
-error codes and those with a fix-it; the cases of the memory stress test; the numbers in the two expected-count files (programs, fixes offered, fixes changed); and, per file, the
-number of diagnostics in every expected output under tests/ (the da9f01c rule: a golden that loses a diagnostic is a regression, not a
+Counted (all "never decrease"): the golden / case / repro inputs per directory; the unit-test functions of each unit-test file that are
+actually CALLED (a defined test that nothing calls is a failure); the documented error codes and those with a fix-it; the cases of the memory
+stress test; the numbers in the two expected-count files (programs, fixes offered, fixes changed); the checks of the script tests; and, per file,
+the number of diagnostics in every expected output under tests/ (the da9f01c rule: a golden that loses a diagnostic is a regression, not a
 re-baseline). One metric goes the other way: the written reasons in tools/audit_ir_poison_reasons.txt may not grow ("max" metrics).
 
 A decrease is allowed only with a line in docs/DEGRADATION.md of the form
     RATCHET-WAIVER <metric or path> <from> -> <to> <register entry id>
-where the entry exists in the register. A test file that moved is not a decrease: its content hash must still be present under another path.
+where the entry exists in the register and is OPEN or PARTLY CLOSED (a closed entry permits nothing). A removed test file counts as MOVED only
+if its content is at a path that is NOT in the baseline, and each new path accounts for at most one removed path (identical expected outputs
+are common: 229 files share content in 80 groups, so "the hash is somewhere" would excuse any deletion).
 """
 import glob, hashlib, json, os, re, subprocess, sys
 
@@ -60,8 +65,13 @@ def compute():
     cases = [f for f in files("tests/ir_fix/*.mn") if not re.search(r"\.fixed2?\.mn$", f)]
     metrics["ir_fix_cases"] = len(cases)
     metrics["audit_repro_inputs"] = len([f for f in files("tests/audit_repros/*.mn") if not f.endswith(".fixed.mn")])
+    uncalled = []
     for f in files("tools/mannac/*_test.c"):
-        metrics["unit_test_functions." + os.path.basename(f)] = len(re.findall(r"^static void test_\w+\(", read(f), re.M))
+        text = read(f)
+        defined = re.findall(r"^static void (test_\w+)\(", text, re.M)
+        called = [d for d in defined if re.search(r"(?<!void )\b%s\(" % d, text)]
+        uncalled += ["%s: %s is defined and never called" % (f, d) for d in defined if d not in called]
+        metrics["unit_test_functions." + os.path.basename(f)] = len(called)
     total = with_fix = 0
     for line in read("docs/error_codes.md").split("\n"):
         m = re.match(r"\| `(E\d{4})` \|(.*)\|\s*$", line)
@@ -86,16 +96,20 @@ def compute():
         for f in files(pat):
             text = read(f)
             diags[f] = [count_diags(text), hashlib.sha256(text.encode("utf-8", "replace")).hexdigest()[:16]]
-    return {"metrics": metrics, "diags": diags}
+    return {"metrics": metrics, "diags": diags, "uncalled": uncalled}
 
 
 def waivers():
-    """{(name, from, to): entry id} from the register, only for entries that exist"""
+    """{(name, from, to): entry id} from the register, only for entries that exist and are OPEN or PARTLY CLOSED"""
     text = read(REGISTER)
-    ids = set(re.findall(r"^### (\S+) -", text, re.M)) | {"7a", "7b"}
+    open_ids = set()
+    for m in re.finditer(r"^### (\S+) - .*?^- \*\*Status:\*\* ([^\n]*)", text, re.M | re.S):   # the first Status line after the heading is the entry's own
+        if m.group(2).startswith(("OPEN", "PARTLY CLOSED")):
+            open_ids.add(m.group(1))
+    open_ids |= {"7a", "7b"}   # sections 7a/7b are permanent / open as a block
     out = {}
     for m in re.finditer(r"^RATCHET-WAIVER (\S+) (\d+) -> (\d+) (\S+)\s*$", text, re.M):
-        if m.group(4) in ids:
+        if m.group(4) in open_ids:
             out[(m.group(1), int(m.group(2)), int(m.group(3)))] = m.group(4)
     return out
 
@@ -110,11 +124,16 @@ def compare(base, cur, waived):
         worse = c > b if name in MAX_METRICS else c < b
         if worse and (name, b, c) not in waived:
             problems.append("metric %s went %s: %d -> %d" % (name, "up (it may only go down)" if name in MAX_METRICS else "down", b, c))
-    cur_hashes = {v[1] for v in cur["diags"].values()}
+    # a removed path is MOVED only if its content is at a path that is new (not in the baseline), one removed path per new path
+    new_by_hash = {}
+    for path, (n, h) in sorted(cur["diags"].items()):
+        if path not in base["diags"]:
+            new_by_hash.setdefault(h, []).append(path)
     for path, (n, h) in sorted(base["diags"].items()):
         now = cur["diags"].get(path)
         if now is None:
-            if h in cur_hashes:   # the file moved
+            if new_by_hash.get(h):
+                new_by_hash[h].pop()
                 continue
             if (path, n, 0) not in waived:
                 problems.append("%s was removed (it held %d diagnostics)" % (path, n))
@@ -127,26 +146,41 @@ def git(*args):
     return subprocess.run(["git", "-C", ROOT] + list(args), capture_output=True, text=True)
 
 
-def load_base(ref):
-    """(baseline dict, description of where it came from)"""
-    if ref and not re.fullmatch(r"0+", ref):
-        r = git("show", "%s:%s" % (ref, BASELINE))
-        if r.returncode == 0:
-            return json.loads(r.stdout), "%s at %s" % (BASELINE, ref[:12])
-    why = "no base ref" if not ref else ("an all-zero base ref (a new branch)" if re.fullmatch(r"0+", ref) else "%s has no %s" % (ref[:12], BASELINE))
-    return json.loads(read(BASELINE)), "FALLBACK: the committed %s at HEAD (%s); a decrease relative to the previous push is NOT checked" % (BASELINE, why)
+def history():
+    """(list of (commit, snapshot or None), problems): every committed version of tests/ratchet.json, oldest first"""
+    problems = []
+    if git("rev-parse", "--is-shallow-repository").stdout.strip() == "true":
+        return [], ["the clone is shallow: the ratchet replays the whole history of %s (check out with fetch-depth: 0)" % BASELINE]
+    log = git("log", "--format=%H", "--reverse", "--", BASELINE)
+    if log.returncode != 0:
+        return [], ["git log failed: %s" % log.stderr.strip()[:200]]
+    versions = []
+    for sha in log.stdout.split():
+        r = git("show", "%s:%s" % (sha, BASELINE))
+        if r.returncode != 0:
+            problems.append("%s: %s is missing at this commit (deleted or renamed)" % (sha[:12], BASELINE))
+            continue
+        try:
+            snap = json.loads(r.stdout)
+            snap["metrics"], snap["diags"]
+        except (ValueError, KeyError, TypeError):
+            problems.append("%s: %s is unreadable at this commit" % (sha[:12], BASELINE))
+            continue
+        versions.append((sha[:12], snap))
+    return versions, problems
 
 
 def main(argv):
     cmd = argv[1] if len(argv) > 1 else "check"
     cur = compute()
+    uncalled = cur.pop("uncalled")
+    waived = waivers()
     if cmd == "update":
-        waived = waivers()
         try:
             old = json.loads(read(BASELINE))
-        except OSError:
+        except (OSError, ValueError):
             old = {"metrics": {}, "diags": {}}
-        problems = compare(old, cur, waived)
+        problems = compare(old, cur, waived) + uncalled
         if problems:
             print("ratchet update refused: these would lower the baseline without a RATCHET-WAIVER line in %s:" % REGISTER)
             for p in problems:
@@ -157,20 +191,32 @@ def main(argv):
             f.write("\n")
         print("ratchet: wrote %s (%d metrics, %d expected-output files)" % (BASELINE, len(cur["metrics"]), len(cur["diags"])))
         return 0
-    ref = os.environ.get("RATCHET_BASE") or (argv[argv.index("--base") + 1] if "--base" in argv else "origin/main")
-    base, where = load_base(ref)
-    print("ratchet: baseline = " + where)
-    waived = waivers()
-    problems = compare(base, cur, waived)
-    committed = json.loads(read(BASELINE))
-    if committed != cur and not problems:
-        problems.append("%s is not the computed counts (a test was added or changed): run `make ratchet-update` and commit it" % BASELINE)
+    versions, problems = history()
+    problems = list(problems) + uncalled
+    for (a, sa), (b, sb) in zip(versions, versions[1:]):
+        for p in compare(sa, sb, waived):
+            problems.append("%s -> %s: %s" % (a, b, p))
+    try:
+        committed = json.loads(read(BASELINE))
+        committed["metrics"], committed["diags"]
+    except (OSError, ValueError, KeyError, TypeError):
+        committed = None
+        problems.append("%s is missing or unreadable in the working tree" % BASELINE)
+    if committed is not None:
+        if versions and versions[-1][1] != committed:
+            for p in compare(versions[-1][1], committed, waived):
+                problems.append("%s -> working tree: %s" % (versions[-1][0], p))
+        for p in compare(committed, cur, waived):
+            problems.append("%s -> the computed counts: %s" % (BASELINE, p))
+        if committed != cur and not any(p.startswith(BASELINE) for p in problems):
+            problems.append("%s is not the computed counts (a test was added or changed): run `make ratchet-update` and commit it" % BASELINE)
+    print("ratchet: replayed %d committed version(s) of %s" % (len(versions), BASELINE))
     if problems:
         print("ratchet: FAILED")
         for p in problems:
             print("  " + p)
         return 1
-    print("ratchet: ok (%d metrics, %d expected-output files; none went down)" % (len(cur["metrics"]), len(cur["diags"])))
+    print("ratchet: ok (%d metrics, %d expected-output files; no version went down)" % (len(cur["metrics"]), len(cur["diags"])))
     return 0
 
 

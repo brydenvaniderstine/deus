@@ -23,7 +23,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0   # the ratchet reads tests/ratchet.json from the push's `before` commit
+          fetch-depth: 0   # the ratchet replays the whole history of tests/ratchet.json
 
       - run: make test-lexer
       - run: make test-lexer-asan
@@ -56,8 +56,6 @@ jobs:
       - run: make test-ci-targets-script
       - run: make check-ci-targets
       - run: make test-ratchet
-        env:
-          RATCHET_BASE: ${{ github.event.before }}
 
       # Kernel compile check only (make all -> build/kernel.elf). Does not
       # boot it - no Limine/QEMU/OVMF needed for that, just clang + ld.lld.

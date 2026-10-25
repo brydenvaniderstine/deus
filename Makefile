@@ -328,9 +328,10 @@ test-rename-property:
 	@cat $(IR_DUMP_DIR)/rename_property.out
 	@diff -u tests/rename_property.expected $(IR_DUMP_DIR)/rename_property.out || { echo "test-rename-property: the counts differ from tests/rename_property.expected (a generator that shrinks, or grows, must say so in that file)"; exit 1; }
 
-# Step 20a, the CI ratchet (tools/ratchet.py): test counts, per-file diagnostic counts and the expected-count numbers only go up, against
-# tests/ratchet.json as committed at $RATCHET_BASE (CI: the push's `before` commit; local default origin/main). `make ratchet-update` raises
-# the baseline after a deliberate addition; a decrease needs a RATCHET-WAIVER line in docs/DEGRADATION.md.
+# Step 20a, the CI ratchet (tools/ratchet.py): test counts, per-file diagnostic counts and the expected-count numbers only go up. The check replays
+# the whole git history of tests/ratchet.json (every consecutive pair of committed versions, then the working tree, then the computed counts), so a
+# lowering fails whichever CI run was cancelled or red; it needs a full clone (fetch-depth: 0). `make ratchet-update` raises the baseline after a
+# deliberate addition; a decrease needs a RATCHET-WAIVER line in docs/DEGRADATION.md naming an OPEN or PARTLY CLOSED entry.
 test-ratchet:
 	@python3 tools/ratchet.py check
 

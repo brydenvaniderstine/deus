@@ -72,7 +72,7 @@ Each entry's **Trigger-id** is one of the ids below, in the order they fall due.
 - **Status:** OPEN
 - **Reason:** The CI job is a compile check; boots are manual.
 - **Promise:** `CLAUDE.md:7` "Every milestone must boot in QEMU."
-- **Where it stands:** `.github/workflows/ci.yml:62` "# Kernel compile check only (make all -> build/kernel.elf). Does not"
+- **Where it stands:** `.github/workflows/ci.yml:60` "# Kernel compile check only (make all -> build/kernel.elf). Does not"
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** Step 20 (a QEMU boot smoke test asserting the M1 serial-log lines)
 - **Trigger-id:** `step-20`
@@ -296,7 +296,7 @@ Each entry's **Trigger-id** is one of the ids below, in the order they fall due.
 ### V4 - The da9f01c rule (no golden may lose diagnostics) is a review rule
 
 - **Status:** CLOSED (2026-10-24, step 20a)
-- **Reason:** CI compared output to the golden and could not see that the golden was edited to match. Now `make test-ratchet` compares the diagnostic count of every expected output under `tests/` with the baseline at the push's `before` commit, and every test count with its baseline; a decrease fails unless a `RATCHET-WAIVER` line names a register entry.
+- **Reason:** CI compared output to the golden and could not see that the golden was edited to match. Now `make test-ratchet` replays the history of `tests/ratchet.json` and compares the diagnostic count of every expected output under `tests/`, and every test count, across every consecutive pair of committed versions; a decrease fails unless a `RATCHET-WAIVER` line names an open register entry.
 - **Promise:** `CLAUDE.md:176` "A golden that loses diagnostics or AST nodes in a commit is STOP-tier"
 - **Where it stands:** `docs/REFINEMENT.md:75` "**Enforced since step 20a by `make test-ratchet` (`tools/ratchet.py`):**"
 - **Owner:** Claude Code (work); Bryden (approval)
