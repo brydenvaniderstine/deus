@@ -100,6 +100,36 @@ try:
 finally:
     shutil.rmtree(root, ignore_errors=True)
 
+# a sink inside a header's inline function (reviewer finding 1: the Mac silently dropped functions of ir_internal.h while Ubuntu clang analysed them)
+root = tempfile.mkdtemp(prefix="pp_test_")
+try:
+    os.makedirs(os.path.join(root, "tools", "mannac"))
+    open(os.path.join(root, "tools/mannac/ir_fx.h"), "w").write(HEADER + "static inline int hdr_sink(Type *t) { if (t->kind == IR_T_ERROR) return 0; return 1; }\n")
+    open(os.path.join(root, "tools/mannac/ir_fx.c"), "w").write('#include "ir_fx.h"\nstatic void prims(State *st) { st->prim[P_ERROR].kind = IR_T_ERROR; }\n')
+    man = pp.load(root).manifest()
+    hs = [x for x in man["sinks"] if x["function"] == "hdr_sink"]
+    check("a sink inside a header's inline function is found, attributed to the header (repo-relative)", len(hs) == 1 and hs[0]["file"] == "ir_fx.h" and "tools/mannac/ir_fx.h" in man["files"])
+    check("the builder headers are listed in the manifest's files", pp.builder_headers(root) == ["ir_fx.h"])
+    # printing differences: the same file as an absolute path, a relative path and through a symlink all normalise to one name
+    link = root + "_link"
+    os.symlink(root, link)
+    forms = [os.path.join(root, "tools/mannac/ir_fx.h"), "tools/mannac/ir_fx.h", os.path.join(link, "tools/mannac/ir_fx.h"), "./tools/mannac/../mannac/ir_fx.h"]
+    check("paths as Apple clang and Ubuntu clang print them normalise to one repo-relative name", {pp.norm(f, root) for f in forms} == {"tools/mannac/ir_fx.h"})
+    check("a file outside the repo keeps an absolute path and is not a builder file", pp.norm("/usr/include/stdio.h", root) == os.path.realpath("/usr/include/stdio.h") and not pp.is_builder(pp.norm("/usr/include/stdio.h", root)))
+    # a path the normaliser does not recognise must be a hard failure, not a skip
+    real_norm = pp.norm
+    pp.norm = lambda path, r: ("/elsewhere/" + os.path.basename(path)) if path and path.endswith(".h") and "ir_fx" in path else real_norm(path, r)
+    try:
+        pp.load(root)
+        check("a builder function whose path does not normalise is a hard failure naming it", False)
+    except pp.Fail as e:
+        check("a builder function whose path does not normalise is a hard failure naming it", "NOT analysed" in str(e) and "hdr_sink" in str(e))
+    finally:
+        pp.norm = real_norm
+    os.unlink(link)
+finally:
+    shutil.rmtree(root, ignore_errors=True)
+
 # hard failures, never a skip
 root = scratch(body=BODY.replace("static void prims(State *st) { st->prim[P_ERROR].kind = IR_T_ERROR; }", ""))
 try:
@@ -134,6 +164,8 @@ check("real tree: has_error is derived as a predicate", "has_error" in man["pred
 check("real tree: the sinks include ones the audit's regex list does not name",
       any(not audit.PAT.search(s["text"]) for s in man["sinks"]))
 check("real tree: the test and harness files are not analysed", not any(f in man["files"] for f in ("tools/mannac/ir_test.c", "tools/mannac/ir_main.c")))
+check("real tree: the builder header ir_internal.h is analysed (its inline functions are in the manifest)", "tools/mannac/ir_internal.h" in man["files"] and "symtab_lookup" in prog.funcs)
+check("real tree: every file in the manifest is repo-relative", all(not os.path.isabs(f) for f in man["files"]))
 
 print("\n%d failure(s)" % len(fails) if fails else "\nall passed")
 sys.exit(1 if fails else 0)

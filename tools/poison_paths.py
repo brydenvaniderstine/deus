@@ -39,6 +39,25 @@ class Fail(Exception):
     pass
 
 
+BUILDER = re.compile(r"ir(_[a-z0-9_]+)?\.[ch]")
+
+
+def norm(path, root):
+    """a path as clang printed it -> repo-relative, whatever the toolchain printed (absolute, relative to the cwd, through a symlink such as macOS /var -> /private/var).
+    A file outside the repo keeps its absolute real path."""
+    if path is None:
+        return None
+    real = os.path.realpath(path if os.path.isabs(path) else os.path.join(root, path))
+    rel = os.path.relpath(real, os.path.realpath(root))
+    return real if rel.startswith("..") else rel.replace(os.sep, "/")
+
+
+def is_builder(rel):
+    """a file of the builder: tools/mannac/ir*.c or ir*.h, except the test, dump and harness programs"""
+    d, b = os.path.split(rel)
+    return d == SRCDIR and BUILDER.fullmatch(b) is not None and b not in EXCLUDE
+
+
 def builder_files(root=None):
     d = os.path.join(root or ROOT, SRCDIR)
     return sorted(f for f in os.listdir(d) if re.fullmatch(r"ir(_[a-z0-9_]+)?\.c", f) and f not in EXCLUDE)
@@ -64,7 +83,7 @@ def walk(n):
         yield from walk(c)
 
 
-def annotate(tu):
+def annotate(tu, root):
     """Give every node the file and byte range of its begin..end (the expansion site for a macro), tracking clang's habit of printing `file` only when it changes."""
     st = {"file": None}
 
@@ -76,7 +95,7 @@ def annotate(tu):
                 loc(l["spellingLoc"])
             return loc(l["expansionLoc"])
         if "file" in l:
-            st["file"] = l["file"]
+            st["file"] = norm(l["file"], root)
         if "offset" in l:
             return (st["file"], l["offset"], l.get("tokLen", 0))
         return None
@@ -146,18 +165,24 @@ def callee(n):
 
 
 class Program:
-    def __init__(self, asts, sources):
-        self.sources = sources  # path -> bytes
+    def __init__(self, asts, sources, root):
+        self.sources = sources  # repo-relative path -> bytes
         self.funcs = {}  # name -> (file, node)   (static functions of the same name in two files: last wins; the build has none today)
+        unanalysed = []
         for tu in asts:
-            annotate(tu)
+            annotate(tu, root)
             for top in kids(tu):
                 if top.get("kind") == "FunctionDecl" and any(c.get("kind") == "CompoundStmt" for c in kids(top)):
                     f = top.get("_a") and top["_a"][0]
-                    if f and f.startswith(SRCDIR) and not os.path.isabs(f):
+                    if f and is_builder(f):
                         if top["name"] in self.funcs and self.funcs[top["name"]][0] != f:
                             raise Fail("function %s is defined in %s and %s: the tool keys functions by name" % (top["name"], self.funcs[top["name"]][0], f))
                         self.funcs[top["name"]] = (f, top)
+                    elif f and BUILDER.fullmatch(os.path.basename(f)) and os.path.basename(f) not in EXCLUDE:
+                        unanalysed.append((top["name"], f))  # a builder-named file the path check did not recognise: found by NAME, so a printing difference cannot hide it
+        if unanalysed:
+            raise Fail("functions with a body in a builder file or header were NOT analysed (the path %s does not normalise to %s/...): %s" %
+                       (unanalysed[0][1], SRCDIR, ", ".join("%s (%s)" % u for u in unanalysed[:5])))
         if not self.funcs:
             raise Fail("no functions found: the AST file tracking failed")
         self.enumvals = {}
@@ -557,6 +582,11 @@ def stable(man):
     return out
 
 
+def builder_headers(root=None):
+    d = os.path.join(root or ROOT, SRCDIR)
+    return sorted(f for f in os.listdir(d) if f.endswith(".h") and is_builder(SRCDIR + "/" + f))
+
+
 def load(root=None):
     root = root or ROOT
     files = [os.path.join(SRCDIR, f) for f in builder_files(root)]
@@ -571,7 +601,14 @@ def load(root=None):
         for nm in names:
             if nm.endswith((".c", ".h")):
                 sources[os.path.join(SRCDIR, nm)] = open(os.path.join(dirpath, nm), "rb").read()
-    return Program(asts, sources)
+    prog = Program(asts, sources, root)
+    # the builder headers are analysed on purpose: every function with a body that a header defines is in `funcs`, and the headers are listed in the manifest
+    # when they define one. A header function whose body the AST of EVERY translation unit lacks cannot exist (clang parsed the header), so the by-name check
+    # in Program covers it; here we only make sure the headers were seen at all.
+    for h in builder_headers(root):
+        if SRCDIR + "/" + h not in sources:
+            raise Fail("builder header %s was not read" % h)
+    return prog
 
 
 def audit_diff(man):

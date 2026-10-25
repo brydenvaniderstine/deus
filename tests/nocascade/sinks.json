@@ -263,6 +263,7 @@
   "tools/mannac/ir_calls.c",
   "tools/mannac/ir_decls.c",
   "tools/mannac/ir_expr.c",
+  "tools/mannac/ir_internal.h",
   "tools/mannac/ir_names.c",
   "tools/mannac/ir_rename.c"
  ],
