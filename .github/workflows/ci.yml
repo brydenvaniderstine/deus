@@ -53,6 +53,8 @@ jobs:
       - run: make test-ratchet-script
       - run: make test-register-script
       - run: make check-register
+      - run: make test-ci-targets-script
+      - run: make check-ci-targets
       - run: make test-ratchet
         env:
           RATCHET_BASE: ${{ github.event.before }}

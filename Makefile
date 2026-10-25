@@ -52,7 +52,7 @@ QEMU_FLAGS   := -machine q35 -m 8G -cpu qemu64,+apic,+pdpe1gb \
                 -serial file:serial.log -monitor stdio -no-reboot \
                 -d int,cpu_reset -D qemu.log
 
-.PHONY: all image run debug clean limine stage-esp test-wx test-lexer test-lexer-asan test-arena test-arena-asan test-ast test-ast-asan test-parser-state test-parser-state-asan test-parser-fixes test-parser-fixes-asan test-parser test-parser-asan test-determinism test-ir test-ir-asan test-ir-unit test-ir-unit-asan test-ir-ndebug test-ir-fix test-ir-fix-asan test-ir-error-codes audit-ir-poison test-e0261-exhaustive test-rename-property test-ir-memory-stress test-ratchet test-ratchet-script ratchet-update check-register register-fix-lines test-register-script coverage fuzz fuzz-lexer fuzz-parser fuzz-ir fuzz-ir-ungated measure-height measure-ir-stack measure-ir-build-stack
+.PHONY: all image run debug clean limine stage-esp test-wx test-lexer test-lexer-asan test-arena test-arena-asan test-ast test-ast-asan test-parser-state test-parser-state-asan test-parser-fixes test-parser-fixes-asan test-parser test-parser-asan test-determinism test-ir test-ir-asan test-ir-unit test-ir-unit-asan test-ir-ndebug test-ir-fix test-ir-fix-asan test-ir-error-codes audit-ir-poison test-e0261-exhaustive test-rename-property test-ir-memory-stress test-ratchet test-ratchet-script ratchet-update check-register register-fix-lines test-register-script check-ci-targets test-ci-targets-script coverage fuzz fuzz-lexer fuzz-parser fuzz-ir fuzz-ir-ungated measure-height measure-ir-stack measure-ir-build-stack
 
 all: $(KERNEL_ELF)
 
@@ -351,6 +351,14 @@ register-fix-lines:
 
 test-register-script:
 	@python3 tools/check_register_test.py
+
+# Step 20c, tools/check_ci_targets.py: every test-*/audit-*/check-* target of this Makefile is run by a workflow (or is skipped under an open
+# register entry), and no workflow runs a target the Makefile lacks.
+check-ci-targets:
+	@python3 tools/check_ci_targets.py
+
+test-ci-targets-script:
+	@python3 tools/check_ci_targets_test.py
 
 # Typed-IR step 19: the rename bookkeeping's memory is linear in the input (re-audit 3, finding 1): eight generated programs, up to 3 MB, with
 # many value uses of names that are not locals next to misnamed declarations; exact diagnostics, no E0201, a time bound (tools/ir_memory_stress.py).

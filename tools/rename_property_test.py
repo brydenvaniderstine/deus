@@ -432,7 +432,7 @@ def resolve2(src):
         if m:
             out[T(0)] = ("local", local[m.group(1)])
             st = var_struct.get(m.group(1))
-            out[T(1)] = ("fld", top[st], fields[st].get(mf.group(2) if False else m.group(2))) if st else ("fld-nostruct",)
+            out[T(1)] = ("fld", top[st], fields[st].get(m.group(2))) if st else ("fld-nostruct",)
             continue
         m = re.match(r"    (\w+)\(\);$", l)
         if m:
@@ -440,16 +440,6 @@ def resolve2(src):
             continue
     assert all(o is not None for o in out), [(i, per_line) for i, o in enumerate(out) if o is None][:1]
     return out
-
-
-def run(args):
-    r = subprocess.run([BIN] + args, capture_output=True, text=True)
-    assert r.returncode == 0 and not r.stderr, (args, r.returncode, r.stderr[:500])
-    return r.stdout
-
-
-def codes_of(out):
-    return [m.group(1) for m in re.finditer(r"^\d+:\d+ (E\d{4}) ", out, re.M)]
 
 
 def check_part(label, n, seed0, gen_fn, resolve_fn, watch=()):
