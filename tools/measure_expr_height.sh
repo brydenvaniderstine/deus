@@ -15,7 +15,10 @@
 #   3. N = the largest power of two <= (smallest ASan height) / 8, floor 512.
 #      If that is < 512 this script prints STOP and N is NOT chosen.
 # Output of every run goes to /dev/null (the dump is quadratic in height).
-# Not part of CI: it runs for minutes. `make measure-height`.
+# Crash rule (REFINEMENT retro 2026-10-13, register V5, step 20g): only a SIGNAL exit (rc > 128) is a crash, i.e. a measurement. Any other nonzero exit
+# (an assert, a usage error, an LSan leak report) is a harness failure: the script stops with status 2 and says so; it is never counted as a crash (which would
+# move the measured limit) and never as a pass.
+# Not part of CI: it runs for minutes. `make measure-height` (the rule has its own test, make test-measure-height-script).
 set -u
 HI="${HI:-30000}"
 CC="${CC:-clang}"   # CC=gcc on Linux; the flags below are common to both
@@ -23,8 +26,13 @@ BUILD="${BUILD:-build/measure}"
 SRC="tools/mannac"
 SRCS="$SRC/arena.c $SRC/ast.c $SRC/diag.c $SRC/parser_state.c $SRC/parser.c $SRC/lexer.c $SRC/height_probe.c"
 mkdir -p "$BUILD"
-"$CC" -std=c11 -O2 -g -DMANNA_MAX_EXPR_HEIGHT=65000 -o "$BUILD/probe" $SRCS || exit 2
-"$CC" -std=c11 -g -fsanitize=address,undefined -DMANNA_MAX_EXPR_HEIGHT=65000 -o "$BUILD/probe-asan" $SRCS || exit 2
+# SKIP_BUILD=1 with PROBE_PLAIN / PROBE_ASAN: use these probes instead of building them (the test of the crash rule feeds fake ones)
+PROBE_PLAIN="${PROBE_PLAIN:-$BUILD/probe}"
+PROBE_ASAN="${PROBE_ASAN:-$BUILD/probe-asan}"
+if [ -z "${SKIP_BUILD:-}" ]; then
+    "$CC" -std=c11 -O2 -g -DMANNA_MAX_EXPR_HEIGHT=65000 -o "$PROBE_PLAIN" $SRCS || exit 2
+    "$CC" -std=c11 -g -fsanitize=address,undefined -DMANNA_MAX_EXPR_HEIGHT=65000 -o "$PROBE_ASAN" $SRCS || exit 2
+fi
 ulimit -s 8192 || { echo "cannot set an 8 MB stack"; exit 2; }
 echo "compiler: $CC ($("$CC" --version 2>&1 | head -1))   stack limit: $(ulimit -s) KB   HI=$HI"
 
@@ -53,9 +61,12 @@ run() {
     MAXH=$(printf '%s\n' "$out" | sed -n 's/.*maxh=\([0-9]*\).*/\1/p' | head -1)
     FIRST=$(printf '%s\n' "$out" | sed -n 's/.*first=\([A-Z0-9-]*\).*/\1/p' | head -1)
     if [ "$FIRST" = E0111 ]; then echo "ERROR: E0111 fired during measurement - the measurement bound is too low for HI=$HI"; exit 2; fi
-    if [ $rc -ne 0 ]; then RESULT=crash
+    if [ $rc -gt 128 ]; then RESULT=crash                       # a signal: the printer did not survive this stack
+    elif [ $rc -ne 0 ]; then
+        echo "ERROR: the probe exited with status $rc, which is not a signal (rc > 128): a harness failure, not a measurement ($1 on $BUILD/in.mn)"; exit 2
     elif printf '%s\n' "$out" | grep -q 'diags=0' && printf '%s\n' "$out" | grep -q '^printed'; then RESULT=ok
-    elif printf '%s\n' "$out" | grep -q 'diags=0'; then RESULT=crash   # parsed, never finished printing
+    elif printf '%s\n' "$out" | grep -q 'diags=0'; then
+        echo "ERROR: the probe exited 0 and parsed cleanly but never printed: a harness failure, not a measurement ($1)"; exit 2
     else RESULT=diag; fi
 }
 
@@ -77,8 +88,8 @@ printf '%-12s | %-26s | %-26s\n' shape "plain -O2: L_max (height)" "ASan+UBSan: 
 printf -- '-------------+----------------------------+---------------------------\n'
 min_h=999999
 for shape in binary mixed_prec field index postfix_mix in_calls in_ifs; do
-    measure "$BUILD/probe" "$shape";      pl="$LMAX ($HMAX)"
-    measure "$BUILD/probe-asan" "$shape"; as="$LMAX ($HMAX)"
+    measure "$PROBE_PLAIN" "$shape";     pl="$LMAX ($HMAX)"
+    measure "$PROBE_ASAN" "$shape";      as="$LMAX ($HMAX)"
     printf '%-12s | %-26s | %-26s\n' "$shape" "$pl" "$as"
     case "$LMAX" in *">="*|*diag*) ;; *) [ "$HMAX" -lt "$min_h" ] && min_h=$HMAX ;; esac
 done
