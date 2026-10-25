@@ -42,15 +42,23 @@ check("no reasons file entries: every uncovered line is reported", rc == 1 and o
 rc, out = run([], [("a.c", 5, "int y = x + 1;")], [])
 check("the zero-count line after an assert needs no reason and is counted", rc == 0 and "1 further lines" in out)
 
-# the clang fact: the statement after an assert reads 0 although the function ran
-t = tempfile.mkdtemp()
-src = os.path.join(t, "a.c")
-open(src, "w").write('#include <assert.h>\n#include <stdio.h>\nint f(int x) {\n    assert(x > 0);\n    int y = x + 1;\n    return y;\n}\nint main(void) { printf("%d\\n", f(2)); return 0; }\n')
-exe = os.path.join(t, "a")
-cc_bin = os.environ.get("CLANG", "clang")
-r = subprocess.run([cc_bin, "-std=c11", "-g", "-fprofile-instr-generate", "-fcoverage-mapping", "-o", exe, src], capture_output=True, text=True)
-check("the coverage experiment compiles", r.returncode == 0)
-if r.returncode == 0:
+# the clang fact, by experiment: compile a 3-line function with coverage and read the real counts. Twice: with this machine's assert.h (Apple: the statement after
+# the assert reads 0; Ubuntu clang 18 + glibc: it reads 1) and with a shim assert.h whose failing side never opens a zero-count region (reads 1 on every toolchain),
+# so that the no-quirk branch is exercised on the Mac as well and the quirk branch is exercised wherever the system header shows it.
+def experiment(shim):
+    t = tempfile.mkdtemp()
+    src = os.path.join(t, "a.c")
+    open(src, "w").write('#include <assert.h>\n#include <stdio.h>\nint f(int x) {\n    assert(x > 0);\n    int y = x + 1;\n    return y;\n}\nint main(void) { printf("%d\\n", f(2)); return 0; }\n')
+    inc = []
+    if shim:
+        os.mkdir(os.path.join(t, "shim"))
+        open(os.path.join(t, "shim", "assert.h"), "w").write("#define assert(x) ((void)(x))\n")
+        inc = ["-I" + os.path.join(t, "shim")]
+    exe = os.path.join(t, "a")
+    r = subprocess.run([os.environ.get("CLANG", "clang"), "-std=c11", "-g", "-fprofile-instr-generate", "-fcoverage-mapping"] + inc + ["-o", exe, src], capture_output=True, text=True)
+    check("the coverage experiment compiles (%s assert.h)" % ("shim" if shim else "system"), r.returncode == 0)
+    if r.returncode != 0:
+        return
     env = dict(os.environ, LLVM_PROFILE_FILE=os.path.join(t, "a.profraw"))
     subprocess.run([exe], env=env, capture_output=True)
     tool = cc.llvm_cov()
@@ -58,7 +66,31 @@ if r.returncode == 0:
     subprocess.run(prof + ["merge", "-sparse", os.path.join(t, "a.profraw"), "-o", os.path.join(t, "a.profdata")], check=True)
     lcov = subprocess.run(tool + ["export", "-format=lcov", exe, "-instr-profile=" + os.path.join(t, "a.profdata")], capture_output=True, text=True, check=True).stdout
     da = {int(l[3:].split(",")[0]): int(l[3:].split(",")[1]) for l in lcov.split("\n") if l.startswith("DA:")}
-    check("clang: the assert line ran (count > 0) and the next statement reads 0 although it ran", da.get(4, 0) > 0 and da.get(5) == 0 and da.get(6, 0) > 0)
+    real, art = cc.classify(open(src).read().split("\n"), da)
+    check("the function ran: line 4 (the assert) and line 6 count > 0", da.get(4, 0) > 0 and da.get(6, 0) > 0)
+    if da.get(5) == 0:
+        print("note: this toolchain shows the assert quirk (line 5 reads 0)")
+        check("quirk: the checker exempts exactly line 5 as an artefact and reports nothing as uncovered", art == [(5, "int y = x + 1;")] and real == [])
+    else:
+        print("note: this toolchain counts the statement after the assert correctly (line 5 = %s)" % da.get(5))
+        check("no quirk: line 5 counts > 0 and the checker exempts nothing", da.get(5, 0) > 0 and art == [] and real == [])
+    if shim:
+        check("the shim assert never shows the quirk, on any toolchain", da.get(5, 0) > 0)
+
+
+experiment(False)
+experiment(True)
+
+# both toolchain shapes through the same classifier, whatever this machine's clang does (counts as lcov DA rows: line -> count)
+L = ["", "int f(int x) {", "    assert(x > 0);", "    int y = x + 1;", "    return y;", "}"]
+real, art = cc.classify(L, {2: 1, 3: 1, 4: 0, 5: 1})
+check("quirk shape (Apple): the zero after a ran assert is exempted, exactly that line", art == [(4, "int y = x + 1;")] and real == [])
+real, art = cc.classify(L, {2: 1, 3: 1, 4: 1, 5: 1})
+check("no-quirk shape (Ubuntu clang 18): nothing is zero, nothing is exempted", art == [] and real == [])
+real, art = cc.classify(L, {2: 0, 3: 0, 4: 0, 5: 0})
+check("an assert that did not run exempts nothing: all four lines are uncovered", art == [] and [r[0] for r in real] == [2, 3, 4, 5])
+real, art = cc.classify(L, {2: 1, 3: 1, 4: 1, 5: 0})
+check("a zero line that does not follow an assert is uncovered even on a quirk toolchain", art == [] and real == [(5, "return y;")])
 
 print("coverage-check tests: %d failed" % len(fails) if fails else "coverage-check tests: all passed")
 sys.exit(1 if fails else 0)

@@ -27,6 +27,25 @@ def llvm_cov():
     sys.exit("coverage_check: llvm-cov not found (xcrun or PATH): this check is not skipped")
 
 
+def classify(lines, counts):
+    """(uncovered, artefacts) as lists of (line number, stripped text). clang opens a zero-count region right after a call that cannot return, and assert() is one
+    on its failing side: with Apple's toolchain the statement after an assert reads 0 although it runs whenever the assert line runs (experiment:
+    tools/coverage_check_test.py compiles a 3-line function and shows it; Ubuntu clang 18 with glibc does not show it). Such a line is not uncovered code: it is
+    reported separately and needs no reason. Only when the assert line itself ran (count > 0); on a toolchain without the quirk nothing is exempted."""
+    real, art = [], []
+    for ln, c in sorted(counts.items()):
+        if c != 0:
+            continue
+        k = ln - 1
+        while k >= 1 and (not lines[k - 1].strip() or lines[k - 1].strip().startswith(("//", "/*", "*"))):
+            k -= 1
+        if k >= 1 and lines[k - 1].strip().startswith("assert(") and counts.get(k, 0) > 0:
+            art.append((ln, lines[ln - 1].strip()))
+        else:
+            real.append((ln, lines[ln - 1].strip()))
+    return real, art
+
+
 def uncovered():
     prof = os.path.join(COV, "merged.profdata")
     if not os.path.exists(prof):
@@ -37,21 +56,11 @@ def uncovered():
     out, artefacts, cur, lines, counts = [], [], None, None, {}
 
     def flush():
-        # clang opens a zero-count region right after a call that cannot return, and assert() is one on its failing side: the statement after an assert reads 0
-        # although it runs whenever the assert line runs (experiment: tools/coverage_check_test.py compiles a 3-line function and shows it). Such a line is not
-        # uncovered code: it is reported separately and needs no reason. Only when the assert line itself ran (count > 0).
         if lines is None:
             return
-        for ln, c in sorted(counts.items()):
-            if c != 0:
-                continue
-            k = ln - 1
-            while k >= 1 and (not lines[k - 1].strip() or lines[k - 1].strip().startswith(("//", "/*", "*"))):
-                k -= 1
-            if k >= 1 and lines[k - 1].strip().startswith("assert(") and counts.get(k, 0) > 0:
-                artefacts.append((cur, ln, lines[ln - 1].strip()))
-            else:
-                out.append((cur, ln, lines[ln - 1].strip()))
+        real, art = classify(lines, counts)
+        out.extend((cur, ln, t) for ln, t in real)
+        artefacts.extend((cur, ln, t) for ln, t in art)
 
     for row in lcov.split("\n"):
         if row.startswith("SF:"):
