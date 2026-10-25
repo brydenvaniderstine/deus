@@ -72,7 +72,7 @@ Each entry's **Trigger-id** is one of the ids below, in the order they fall due.
 - **Status:** OPEN
 - **Reason:** The CI job is a compile check; boots are manual.
 - **Promise:** `CLAUDE.md:7` "Every milestone must boot in QEMU."
-- **Where it stands:** `.github/workflows/ci.yml:73` "# Kernel compile check only (make all -> build/kernel.elf). Does not"
+- **Where it stands:** `.github/workflows/ci.yml:80` "# Kernel compile check only (make all -> build/kernel.elf). Does not"
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** Step 20 (a QEMU boot smoke test asserting the M1 serial-log lines)
 - **Trigger-id:** `step-20`
@@ -288,7 +288,7 @@ Each entry's **Trigger-id** is one of the ids below, in the order they fall due.
 - **Status:** CLOSED (2026-10-25, ci.yml run 40166779034 on 3258f9d)
 - **Reason:** The C is meant to build elsewhere (an open IDEAS question: portable C on any OS); the only Linux/gcc runs are the reviewer's manual ones. The Linux job (Ubuntu, gcc, plus clang with llvm-cov for the poison audit) runs the whole host-side list on every push. CLOSED: the Linux job (Ubuntu, gcc 13, plus clang with llvm-cov for the poison audit) ran the whole host-side list green in ci.yml run 40166779034 on 3258f9d, 0 compiler warnings under -Werror.
 - **Promise:** `docs/IDEAS.md:19` "Mac-only vs portable C on any OS"
-- **Where it stands:** (before step 20) `.github/workflows/ci.yml:22` "runs-on: macos-14"
+- **Where it stands:** (before step 20) `.github/workflows/ci.yml:26` "runs-on: macos-14"
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** Step 20 (an Ubuntu gcc job)
 - **Trigger-id:** `step-20`
@@ -327,8 +327,8 @@ Each entry's **Trigger-id** is one of the ids below, in the order they fall due.
 
 - **Status:** CLOSED (2026-10-25, ci.yml run 40166779034 on 3258f9d)
 - **Reason:** A cost decision shapes what CI covers; it is stated only as a comment in ci.yml. DECISION (Bryden, 2026-10-25): two jobs. The macOS job is unchanged (host suites plain and ASan, the ratchet and register checks, the kernel compile check). The Linux job runs on every push (gcc, ASan + UBSan + LSan, the audit repros, the clang/llvm-cov poison audit, a 60 s fuzz run per target); an Ubuntu minute costs a tenth of a macOS minute. A nightly fuzz workflow runs 4 x 30 min on Ubuntu. Left out on purpose: no Windows; the kernel is built but not booted until step 20h; no coverage job until the m2-ir-v0 tag (V6). CLOSED: both jobs ran green in ci.yml run 40166779034 on 3258f9d (macOS 5m16s, Linux 8m52s); docs.yml run 40166779024 (register + ratchet) green. The cost decision above stands.
-- **Promise:** `.github/workflows/ci.yml:17` "# plus the kernel compile check, in one job - a separate job per the"
-- **Where it stands:** (before step 20) `.github/workflows/ci.yml:19` "more than the few extra seconds of sharing a runner."
+- **Promise:** `.github/workflows/ci.yml:21` "# plus the kernel compile check, in one job - a separate job per the"
+- **Where it stands:** (before step 20) `.github/workflows/ci.yml:23` "more than the few extra seconds of sharing a runner."
 - **Owner:** Bryden (decision); Claude Code (work)
 - **Trigger:** Step 20 (write the decision, and what it leaves out, into docs/STATUS.md while the CI parity jobs are added) (PROPOSED by Claude Code, approved by Bryden 2026-10-24)
 - **Trigger-id:** `step-20`
@@ -390,11 +390,11 @@ Each entry's **Trigger-id** is one of the ids below, in the order they fall due.
 ### R6 - Review-time rules have no automated check
 
 - **Status:** OPEN
-- **Reason:** The retro-rule inventory (`docs/REFINEMENT.md`, step 20i) found rules that no tool can check: re-verifying a grammar guarantee before reusing it, the brew advice, quote-checking prose docs beyond the register, the quoted-heredoc commit message, the approval tiers (ROUTINE / STOP), the plain-English step report, commit size, and the judgement "this behaviour change has no test". Each stays a rule, enforced by the reviewer reading the reports; the inventory marks them as unenforced and `make check-retro-rules` fails if one loses its row.
+- **Reason:** The retro-rule inventory (`docs/REFINEMENT.md`, step 20i) found rules that no tool can check: re-verifying a grammar guarantee before reusing it, the brew advice, quote-checking prose docs beyond the register, the quoted-heredoc commit message, the approval tiers (ROUTINE / STOP), the plain-English step report, commit size, and the judgement "this behaviour change has no test". Each stays a rule, enforced by the reviewer reading the reports; the inventory marks them as unenforced and `make check-retro-rules` fails if one loses its row. A rule whose row names a check AND this entry is PARTLY enforced (the check covers only part of it: the batch cap for the approval tiers, W^X for "ask before changing a hard constraint", the ratchet for "no behavior change without a test"); the checker prints enforced, partly and unenforced apart (Linux review of batch C, finding 4), so a partial check never counts as full enforcement.
 - **Promise:** `CLAUDE.md:34` "Every retro rule lives in a check, or sits in the register as"
 - **Where it stands:** `docs/REFINEMENT.md:121` "## Retro-rule inventory (step 20i)"
 - **Owner:** Bryden (decision); Claude Code (work)
-- **Trigger:** Re-read at every tag: a rule that can become a check is turned into one (PROPOSED by Claude Code, awaiting Bryden's approval 2026-10-25)
+- **Trigger:** Re-read at every tag: a rule that can become a check is turned into one; each tag's `Checked at` line names which inventory rows were re-read and whether any became a check (PROPOSED by Claude Code, approved by Bryden 2026-10-25 as written, each-tag)
 - **Trigger-id:** `each-tag`
 - **Checked at:** 
 

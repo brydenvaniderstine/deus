@@ -120,7 +120,7 @@ The token-benchmark ratio stays blank until the benchmark in `docs/IDEAS.md` ("T
 
 ## Retro-rule inventory (step 20i)
 
-`CLAUDE.md` ("No degradation"): *every retro rule lives in a check, or sits in the register as "unenforced" with a trigger.* This table is that rule's check. `make check-retro-rules` (`tools/check_retro_rules.py`) enumerates the rules itself (every bullet of `CLAUDE.md` "Lessons", "No degradation" and "Working conventions", and every retro line of this file that is marked in bold as the rule) and fails if one has no row, if an anchor is on no rule, if a `make` target named here does not exist or no workflow runs it, or if a register entry named here does not exist or is CLOSED. A row whose only item is a register entry is an UNENFORCED rule; the review-time ones sit in register entry R6, re-read at every tag.
+`CLAUDE.md` ("No degradation"): *every retro rule lives in a check, or sits in the register as "unenforced" with a trigger.* This table is that rule's check. `make check-retro-rules` (`tools/check_retro_rules.py`) enumerates the rules itself (every bullet of `CLAUDE.md` "Lessons", "No degradation" and "Working conventions", and every retro line of this file that is marked in bold as the rule) and fails if one has no row, if an anchor is on no rule, if a `make` target named here does not exist or no workflow runs it, or if a register entry named here does not exist or is CLOSED. A row whose only item is a register entry is an UNENFORCED rule; a row that names a `make` target AND a register entry is PARTLY enforced (the check covers only part of the rule, such as the batch cap for the approval tiers or W^X for "ask before changing a hard constraint"; the register entry holds the rest). The checker prints the three counts apart: enforced, partly, unenforced. The review-time rules sit in register entry R6, re-read at every tag.
 
 | Source | Anchor (a quote of the rule) | Enforced by |
 |---|---|---|
@@ -147,7 +147,7 @@ The token-benchmark ratio stays blank until the benchmark in `docs/IDEAS.md` ("T
 | CLAUDE.md | Ask before changing any hard constraint above. | make test-wx; register R6 |
 | CLAUDE.md | Write commit messages via a quoted heredoc | register R6 |
 | CLAUDE.md | **Approval tiers**, for incremental multi-step work | register R6 |
-| CLAUDE.md | **ROUTINE** - tests pass, no design choice made, no spec deviation | make check-batch-cap |
+| CLAUDE.md | **ROUTINE** - tests pass, no design choice made, no spec deviation | make check-batch-cap; register R6 |
 | CLAUDE.md | **STOP** - a design choice, a spec deviation, a failing test | register R6 |
 | CLAUDE.md | Every step report includes a plain-English summary | register R6 |
 | CLAUDE.md | **Rule: no behavior change without a test.** | make test-ratchet; register R6 |

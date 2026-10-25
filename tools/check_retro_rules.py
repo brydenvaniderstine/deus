@@ -9,7 +9,7 @@ The inventory is the table under "## Retro-rule inventory" in docs/REFINEMENT.md
   - CLAUDE.md "## Working conventions": every bullet and sub-bullet;
 and fails when a rule has no row (a row's Anchor is a quote of at least 25 characters found on that rule's line), when an Anchor is on no rule, when an "Enforced by" item names
 a make target that does not exist or that no workflow runs, or a register entry that does not exist or is CLOSED (a CLOSED entry enforces nothing). Items are separated by ';':
-`make <target>` or `register <ID>`. A row with only register items is an UNENFORCED rule: it is counted and printed.
+`make <target>` or `register <ID>`. A row with only register items is an UNENFORCED rule; a row with a make item AND a register item is PARTLY enforced (the check covers part of the rule, the register entry the rest; Linux review of batch C, finding 4). Three counts are printed: enforced (make only), partly, unenforced.
 """
 import os, re, sys
 
@@ -73,14 +73,14 @@ def check(root):
     rs = rules(root)
     rows = inventory(root)
     if not rows:
-        return ["docs/REFINEMENT.md has no '## Retro-rule inventory' table"], 0, 0
+        return ["docs/REFINEMENT.md has no '## Retro-rule inventory' table"], 0, 0, 0
     import check_ci_targets as ct
     ct_problems, checks, run = ct.check(root)
     mk = read(root, "Makefile")
     defined = set(re.findall(r"^([A-Za-z0-9_.-]+):(?!=)", mk, re.M))
     reg = register_status(root)
     covered = set()
-    unenforced = 0
+    unenforced = partly = 0
     for src, anchor, enforced in rows:
         if len(anchor) < 25:
             problems.append("anchor %r is shorter than 25 characters" % anchor)
@@ -92,6 +92,7 @@ def check(root):
         if not items:
             problems.append("no 'Enforced by' for %r" % anchor[:50])
         only_register = bool(items)
+        has_register = False
         for it in items:
             m = re.fullmatch(r"make ([A-Za-z0-9_.-]+)", it)
             r = re.fullmatch(r"register (\S+)", it)
@@ -103,6 +104,7 @@ def check(root):
                 elif t not in run:
                     problems.append("%r: `make %s` is run by no workflow" % (anchor[:40], t))
             elif r:
+                has_register = True
                 st = reg.get(r.group(1))
                 if st is None:
                     problems.append("%r: register entry %s does not exist" % (anchor[:40], r.group(1)))
@@ -111,21 +113,23 @@ def check(root):
             else:
                 problems.append("%r: cannot read the item %r (use `make <target>` or `register <ID>`)" % (anchor[:40], it))
         unenforced += only_register
+        partly += (not only_register) and has_register
     for i, (s, l) in enumerate(rs):
         if i not in covered:
             problems.append("a rule has no row in the inventory (%s): %s" % (s, l.strip()[:90]))
-    return problems, len(rs), unenforced
+    return problems, len(rs), unenforced, partly
 
 
 def main(argv):
     root = argv[1] if len(argv) > 1 else ROOT
-    problems, n, unenforced = check(root)
+    problems, n, unenforced, partly = check(root)
     if problems:
         print("check_retro_rules: FAILED (%d)" % len(problems))
         for p in problems:
             print("  " + p)
         return 1
-    print("check_retro_rules: ok (%d rules, each with a check or a register entry; %d of them unenforced and in the register)" % (n, unenforced))
+    print("check_retro_rules: ok (%d rules: %d enforced by a check, %d PARTLY enforced (a check and a register entry), %d unenforced (register entry only))" %
+          (n, n - partly - unenforced, partly, unenforced))
     return 0
 
 
