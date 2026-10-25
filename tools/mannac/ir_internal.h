@@ -282,14 +282,12 @@ void ir_check_recursion(IrState *st, Ctx *decls);
  * the result is typed ERROR where the type could not be determined. */
 IrExpr *ir_check_expr(BodyCtx *bc, const Expr *e, const IrType *expected);
 /* The type of `e` with no expectation: bool literals and names; an integer literal expression
- * has no type of its own (E0225). */
-IrExpr *ir_infer_expr(BodyCtx *bc, const Expr *e);
-/* As ir_infer_expr, but the fix that waits in `e` (E0261, step 19) is handed to the caller: *pending is 1 + its diagnostic index (0: none) and
+ * has no type of its own (E0225). The fix that waits in `e` (E0261, step 19) is handed to the caller: *pending is 1 + its diagnostic index (0: none) and
  * *ptype the type it would give `e`. `mode`: FIX_LOCAL for the initializer of a new local, FIX_NONE for an assignment target. */
 IrExpr *ir_infer_pending(BodyCtx *bc, const Expr *e, int mode, uint32_t *pending, const IrType **ptype);
 /* `target = value` where the target is a local that waits: withdraws the fix if `value` would not check against the type it gives the local. */
 void ir_assign_to_pending(BodyCtx *bc, const Expr *value, uint32_t pending, const IrType *ptype);
-/* As ir_infer_expr, but a `unit` value is fine: an expression STATEMENT may be a call to a function
+/* As ir_infer_pending without the waiting fix, but a `unit` value is fine: an expression STATEMENT may be a call to a function
  * that returns nothing. */
 IrExpr *ir_infer_discard(BodyCtx *bc, const Expr *e);
 /* Checks `e` for its OWN mistakes only (names, operators, nested calls) and says nothing about its type

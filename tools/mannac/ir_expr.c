@@ -1221,14 +1221,6 @@ IrExpr *ir_infer_pending(BodyCtx *bc, const Expr *e, int mode, uint32_t *pending
     return s.node;
 }
 
-IrExpr *ir_infer_expr(BodyCtx *bc, const Expr *e) {
-    uint32_t pending;
-    const IrType *ptype;
-    IrExpr *n = ir_infer_pending(bc, e, FIX_NONE, &pending, &ptype);
-    if (pending) withdraw_fix(bc, pending); /* the caller keeps no local for the fix to wait on */
-    return n;
-}
-
 /* `target = value` where `target` is a local that waits (pending): the value must have the type the fix would give the local. The real
  * check (against the local's present ERROR type) said nothing about the value's type; this one asks the checker for the same value against
  * the new type with its diagnostics muted and counted, and withdraws the fix if it would have reported any. */

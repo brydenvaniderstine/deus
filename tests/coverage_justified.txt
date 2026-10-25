@@ -1,0 +1,36 @@
+# Lines of lexer.c, parser.c and ir*.c that `make coverage` shows uncovered, each with the reason (step 20i; tools/coverage_check.py). Tab separated: file, the line's
+# stripped text, reason. A line whose text repeats is listed once per occurrence. Every reason is one of: unreachable by a parser/lexer invariant (assert or defensive default),
+# executed only by make test-ir-ndebug (a binary outside the coverage objects), or a closing brace / label that carries no code. A reason whose line is covered now fails as stale.
+ir.c	default: assert(!"ir_type_int: bits must be 8, 16, 32 or 64"); idx = 0; break;	Internal contract: every caller passes 8, 16, 32 or 64 (the primitive type table); the default is the assert that states it. Untestable without a caller that breaks the contract.
+ir.c	default:          return false;	type_matches is called with kind ARRAY, SLICE or STRUCT only (the interned composite kinds); the default can only be reached by a new composite kind added without a case.
+ir.c	}	The closing brace of the IR_T_INT block in prim_text, after its return: the brace line carries a zero-count region, the return above it runs on every integer type (unit-tested).
+ir.c	case IR_T_ARRAY:	prim_text is the text of NON-composite types (ir_type_text handles arrays and slices before calling it); these labels fall into the break and the '<error>' fallback and are unreachable.
+ir.c	case IR_T_SLICE:	Same as the IR_T_ARRAY label above: composites never reach prim_text.
+ir_body.c	case STMT_BLOCK:    break;	The parser never builds a bare block statement (parser.c:1755, 1765: E0105); the case exists to make the switch exhaustive. The NDEBUG build runs the fallback: make test-ir-ndebug (tools/mannac/ir_ndebug_test.c), a binary outside the coverage objects.
+ir_body.c	assert(!"a bare block statement");	Unreachable (see the STMT_BLOCK case); with asserts off the next line runs, and make test-ir-ndebug executes it.
+ir_body.c	ir_unimplemented(bc->st, "a bare block statement");	Executed by make test-ir-ndebug (asserts compiled out), a binary outside the coverage objects; unreachable with asserts on.
+ir_body.c	}	The closing brace of build_stmt after the noreturn assert / ir_unimplemented: no code runs there.
+ir_decls.c	default:          *size = 0; return true;	type_size_in_limit sizes an array/slice/struct/int/bool built from an expression; ERROR and unit types never reach it (a failed type is never laid out, unit is unwritable): defensive default.
+ir_dump.c	}	The closing brace of the IR_E_FIELD case block, after its break: no code on that line (the field dump runs in the field goldens).
+ir_expr.c	case EXPR_NAMED_ARG:	unimplemented_kind: the parser only builds a named argument inside a call's argument list (parser.c:632), which the call and construction paths consume; reaching the switch with one is a state the parser never produces (the NDEBUG test builds it by hand).
+ir_expr.c	assert(!"a named argument outside a call's arguments");	Same: unreachable with asserts on; make test-ir-ndebug runs the fallback below it.
+ir_expr.c	break;	The break after the named-argument case, or after the list of handled expression kinds: the handled kinds are dispatched before unimplemented_kind is reached, so these labels never execute.
+ir_expr.c	case EXPR_NUMBER:	A label of the list of kinds that synth handles before unimplemented_kind is called; the list exists to keep the switch exhaustive. Never executed by construction.
+ir_expr.c	case EXPR_BOOL:	Same list of handled kinds.
+ir_expr.c	case EXPR_IDENT:	Same list of handled kinds.
+ir_expr.c	case EXPR_UNARY:	Same list of handled kinds.
+ir_expr.c	case EXPR_BINARY:	Same list of handled kinds.
+ir_expr.c	case EXPR_CALL:	Same list of handled kinds.
+ir_expr.c	case EXPR_FIELD_ACCESS:	Same list of handled kinds.
+ir_expr.c	case EXPR_CONVERT:	Same list of handled kinds.
+ir_expr.c	case EXPR_INDEX:	Same list of handled kinds.
+ir_expr.c	case EXPR_SLICE:	Same list of handled kinds.
+ir_expr.c	case EXPR_ARRAY:	Same list of handled kinds.
+ir_expr.c	case EXPR_ARRAY_REPEAT:	Same list of handled kinds.
+ir_expr.c	default: return false;	pure_literal_tree is called only on a literal group (group_fits asserts it), which holds only numbers, unary -/~ and arithmetic/bitwise/shift binaries: the default is for any other expression and cannot be reached.
+ir_expr.c	}	The closing brace of synth_leaf's switch after the noreturn unimplemented_kind call in the default case: no code runs there.
+ir_selfcheck.c	why = dup("the fixed source reached IR_UNIMPLEMENTED");	A fixed source that parses clean never reaches IR_UNIMPLEMENTED (only a state the parser never produces does, see the STMT_BLOCK and named-argument cases); the branch is a loud failure for a case that cannot occur today.
+lexer.c	return "UNKNOWN";	token_kind_name's catch-all for an enum value outside TokenKind: not producible by any token the lexer emits; kept so a new TokenKind without a case fails softly (comment at lexer.c:338).
+parser.c	advance(&p);	The last-resort single-token skip of parse_file's top-level loop: the recovery chain makes it unreachable (the comment above it gives the reasoning); under MANNA_FUZZ_TRACE_LAST_RESORT it traps so the fuzzer would report an input that reaches it. Known and documented (STATUS parser-side uncovered list).
+parser.c	}	The closing brace of the last-resort backstop block above.
+ir_expr.c	break;	The break after the list of handled expression kinds (see the labels): never executed by construction.
