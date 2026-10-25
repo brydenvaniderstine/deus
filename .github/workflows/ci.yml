@@ -51,6 +51,8 @@ jobs:
       - run: make test-ir-ndebug
       - run: make test-determinism
       - run: make test-ratchet-script
+      - run: make test-register-script
+      - run: make check-register
       - run: make test-ratchet
         env:
           RATCHET_BASE: ${{ github.event.before }}

@@ -6,6 +6,25 @@ How to read an entry: **Promise** is what the project said (a `file:line` quote)
 
 Step numbers: step 19 is the third audit round's fixes (batch 2, 19d-19f, is done locally; batch 3, 19g-19h, is pending), step 20 is the guardrails step (CI ratchet, CI parity, an automated check of this register's quotes), step 21 is the no-cascade proof.
 
+## Trigger ids
+
+Each entry's **Trigger-id** is one of the ids below, in the order they fall due. **Current point:** `step-20`. `make check-register` fails if an OPEN or PARTLY CLOSED entry's id comes BEFORE the current point (its trigger has passed); `make check-register AT=<id>` (run when a tag or milestone closes) also fails for an id equal to or before `<id>`. The person closing a step or tag advances the current point in the same commit. `each-tag` is due at every tag: it counts as due at the next tag (`m2-ir-v0`) and again at each later one.
+
+- `step-19` - the third audit round's fixes
+- `step-20` - this guardrails step
+- `step-21` - the no-cascade proof
+- `m2-ir-v0` - the tag `m2-ir-v0`
+- `each-tag` - every tag (checked as due at `m2-ir-v0`)
+- `post-m2-ir-v0` - the fix-it / recovery pass after the tag
+- `tag-after-m2-ir-v0` - the first tag after `m2-ir-v0`
+- `loop-counter-injection` - before loop-counter injection starts
+- `verifier-design` - before the verifier is designed
+- `wasm-backend` - before the Wasm backend starts
+- `m3-start` - M3 start
+- `untrusted-code` - before any untrusted code runs
+- `m3-drivers` - before M3 drivers start
+- `v1` - v1
+
 ## 1. Kernel (M1, tag `m1-boot`)
 
 ### K1 - TSC-deadline timer mode is not implemented
@@ -16,6 +35,7 @@ Step numbers: step 19 is the third audit round's fixes (batch 2, 19d-19f, is don
 - **Where it stands:** `CLAUDE.md:141` "TSC-deadline timer mode isn't implemented."
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** M3 start (M3 cannot start until this is closed)
+- **Trigger-id:** `m3-start`
 
 ### K2 - Calibration cascade is 1 source of 3, and M1 was recorded as fully verified
 
@@ -25,6 +45,7 @@ Step numbers: step 19 is the third audit round's fixes (batch 2, 19d-19f, is don
 - **Where it stands:** `CLAUDE.md:139` "CPUID 0x15/0x16 calibration is a stub."; `CLAUDE.md:140` "HPET calibration is a stub."; `docs/STATUS.md @2794f66:24` "All Milestone 1 acceptance criteria verified"
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** M3 start (M3 cannot start until this is closed). STATUS.md now reads 'complete except register items K1, K2'.
+- **Trigger-id:** `m3-start`
 
 ### K3 - W^X is enforced on the kernel-image alias only
 
@@ -34,6 +55,7 @@ Step numbers: step 19 is the third audit round's fixes (batch 2, 19d-19f, is don
 - **Where it stands:** `CLAUDE.md:142` "Kernel `.text` is writable via identity/HHDM aliases (1 GiB RW pages)."; `CLAUDE.md:142` "Revisit before untrusted code runs."
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** Before any untrusted code runs
+- **Trigger-id:** `untrusted-code`
 
 ### K4 - `make test-wx` is not run by CI
 
@@ -43,23 +65,27 @@ Step numbers: step 19 is the third audit round's fixes (batch 2, 19d-19f, is don
 - **Where it stands:** `VISION.md:97` "`make test-wx` is run by hand; CI builds the kernel (`make all`) but does not run it."
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** Step 20 (guardrails: a QEMU boot smoke test plus `make test-wx` in CI)
+- **Trigger-id:** `step-20`
 
 ### K5 - No automated boot test
 
 - **Status:** OPEN
 - **Reason:** The CI job is a compile check; boots are manual.
 - **Promise:** `CLAUDE.md:7` "Every milestone must boot in QEMU."
-- **Where it stands:** `.github/workflows/ci.yml:52` "# Kernel compile check only (make all -> build/kernel.elf). Does not"
+- **Where it stands:** `.github/workflows/ci.yml:60` "# Kernel compile check only (make all -> build/kernel.elf). Does not"
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** Step 20 (a QEMU boot smoke test asserting the M1 serial-log lines)
+- **Trigger-id:** `step-20`
 
 ### K6 - MMIO caching choice: not verified
 
 - **Status:** OPEN
 - **Reason:** The audit could read the docs only; whether the choice (firmware MTRRs, or PCD/PWT on MMIO pages) was made and written down is unknown.
 - **Promise:** `CLAUDE.md:21` "Rely on firmware MTRRs for UC, or set PCD/PWT on MMIO pages. Document the choice."
+- **Where it stands:** Unknown: the kernel source was not part of the audit packs; the code-level kernel review the audit says is still owed will read it.
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** Before M3 start, as part of the code-level kernel review the audit says is still owed (PROPOSED by Claude Code, approved by Bryden 2026-10-24)
+- **Trigger-id:** `m3-start`
 
 ### K7 - The kernel LOC budget is not checked
 
@@ -69,6 +95,7 @@ Step numbers: step 19 is the third audit round's fixes (batch 2, 19d-19f, is don
 - **Where it stands:** `CLAUDE.md:79` "aspirational, not enforced by any build check today."
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** Step 20 (a kernel LOC count in CI against the 120k budget)
+- **Trigger-id:** `step-20`
 
 ### K8 - 64-bit PCI BAR window is unmapped
 
@@ -78,6 +105,7 @@ Step numbers: step 19 is the third audit round's fixes (batch 2, 19d-19f, is don
 - **Where it stands:** `CLAUDE.md:138` "required before real PCI/virtio driver work."
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** M3 start (M3 drivers cannot start until this is closed)
+- **Trigger-id:** `m3-drivers`
 
 ## 2. Manna principles vs what was built
 
@@ -89,6 +117,7 @@ Step numbers: step 19 is the third audit round's fixes (batch 2, 19d-19f, is don
 - **Where it stands:** `docs/error_codes.md:78` "a reorder needs source text the fix mechanism does not carry"; `docs/error_codes.md:87` "a rename fix-it would need every use"
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** Post-m2-ir-v0 fix-it pass (after the tag)
+- **Trigger-id:** `post-m2-ir-v0`
 
 ### P2 - `manna check --json` does not exist
 
@@ -98,6 +127,7 @@ Step numbers: step 19 is the third audit round's fixes (batch 2, 19d-19f, is don
 - **Where it stands:** `docs/M2_PLAN.md:816` "(implemented after the parser exists — not yet)"
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** After the tag m2-ir-v0 and before the next compiler stage (loop-counter injection) starts
+- **Trigger-id:** `loop-counter-injection`
 
 ### P3 - Principle 11: no canonical AST interchange
 
@@ -107,14 +137,17 @@ Step numbers: step 19 is the third audit round's fixes (batch 2, 19d-19f, is don
 - **Where it stands:** `docs/M2_PLAN.md:440` "**status: planned, not built.**"
 - **Owner:** Bryden (decision); Claude Code (work)
 - **Trigger:** Before the Wasm backend starts: the backend is the first consumer that needs a stable form (an ingestion path must go through the parser's validation and the typed IR, per TYPED_IR.md) (PROPOSED by Claude Code, approved by Bryden 2026-10-24)
+- **Trigger-id:** `wasm-backend`
 
 ### P4 - Principle 20: no official example corpus
 
 - **Status:** OPEN
 - **Reason:** Never started; `git ls-files` lists no examples directory.
 - **Promise:** `docs/MANNA_PRINCIPLES.md:53` "A few hundred small, correct, idiomatic programs, maintained alongside the spec."
+- **Where it stands:** No examples directory exists (`git ls-files`).
 - **Owner:** Bryden (decision); Claude Code (work)
 - **Trigger:** The tag after m2-ir-v0 (the first tag at which `manna check` can be run on an example) (PROPOSED by Claude Code, approved by Bryden 2026-10-24)
+- **Trigger-id:** `tag-after-m2-ir-v0`
 
 ### P5 - Principle 17: inner-node IDs deferred to v1
 
@@ -124,6 +157,7 @@ Step numbers: step 19 is the third audit round's fixes (batch 2, 19d-19f, is don
 - **Where it stands:** `docs/MANNA_PRINCIPLES.md:149` "Inner-node IDs are deferred to v1."
 - **Owner:** Bryden (decision); Claude Code (work)
 - **Trigger:** v1 (the decision's own boundary) (PROPOSED by Claude Code, approved by Bryden 2026-10-24)
+- **Trigger-id:** `v1`
 
 ## 3. Compiler (M2): parser, lexer, typed IR
 
@@ -132,9 +166,10 @@ Step numbers: step 19 is the third audit round's fixes (batch 2, 19d-19f, is don
 - **Status:** OPEN
 - **Reason:** The plan promised a no-cascade golden per poisoning path; what shipped is a script that checks each poisoning line is RUN by a one-diagnostic golden, and step 18e deleted the promise from TYPED_IR.md. The script also under-counts (re-audit 3, finding 9: 25 silent-consumption lines are not counted).
 - **Promise:** `docs/history/TYPED_IR.md @6b3f537:140` "plus a no-cascade golden for each poisoning path."
-- **Where it stands:** `tools/audit_ir_poison.py:108` "(this is not a no-cascade proof)"
+- **Where it stands:** `tools/audit_ir_poison.py:133` "(this is not a no-cascade proof)"
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** Step 21 (the no-cascade proof)
+- **Trigger-id:** `step-21`
 
 ### C2 - Parser 'Known limitations': recovery discards or cascades, none with a trigger
 
@@ -144,6 +179,7 @@ Step numbers: step 19 is the third audit round's fixes (batch 2, 19d-19f, is don
 - **Where it stands:** `docs/M2_PLAN.md:500` "A `for`-header's error recovery discards, rather than preserves or re-reports, anything between a header failure and the next resume point"; `docs/M2_PLAN.md:501` "A block cut off by EOF still drops its function"
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** Post-m2-ir-v0 recovery pass, together with the fix-it pass (the parser is a tagged component: audit after changing) (PROPOSED by Claude Code, approved by Bryden 2026-10-24)
+- **Trigger-id:** `post-m2-ir-v0`
 
 ### C3 - IR known issues: `--fixed` NUL truncation and the linear field lookup (the E0261 511-chain issue is fixed)
 
@@ -153,6 +189,7 @@ Step numbers: step 19 is the third audit round's fixes (batch 2, 19d-19f, is don
 - **Where it stands:** `docs/STATUS.md:21` "`--fixed` is a test harness, not the compiler."; `docs/STATUS.md:22` "Field lookup in an access is a linear scan:"
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** The m2-ir-v0 tag (STATUS already says so for the lookup; the NUL truncation is added to it) (PROPOSED by Claude Code, approved by Bryden 2026-10-24)
+- **Trigger-id:** `m2-ir-v0`
 
 ### C4 - E0261: missing fixes presented as conservatism
 
@@ -162,6 +199,7 @@ Step numbers: step 19 is the third audit round's fixes (batch 2, 19d-19f, is don
 - **Where it stands:** `docs/error_codes.md:89` "If neither direction is lossless (`u8` and `i8`) there is **no fix**"
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** Post-m2-ir-v0 fix-it pass
+- **Trigger-id:** `post-m2-ir-v0`
 
 ### C5 - Step 19 as first approved: three degradations
 
@@ -171,6 +209,7 @@ Step numbers: step 19 is the third audit round's fixes (batch 2, 19d-19f, is don
 - **Where it stands:** `docs/M2_PLAN.md:753` "renamed along rather than left stale"
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** Step 19 batch 2 (done); kept for the record until the m2-ir-v0 tag
+- **Trigger-id:** `step-19`
 
 ### C10 - Renames are withheld while a declaration error or the E0203 cap stops the build
 
@@ -180,6 +219,7 @@ Step numbers: step 19 is the third audit round's fixes (batch 2, 19d-19f, is don
 - **Where it stands:** `docs/error_codes.md:14` "While an earlier declaration error or the E0203 cap stopped the build the uses are unknown"
 - **Owner:** Claude Code (work); Bryden (approval, 2026-10-24)
 - **Trigger:** The post-m2-ir-v0 fix-it pass (collect the uses of declarations in a pass that does not stop at a declaration error)
+- **Trigger-id:** `post-m2-ir-v0`
 
 ### C6 - The audit repros are not run by CI
 
@@ -189,6 +229,7 @@ Step numbers: step 19 is the third audit round's fixes (batch 2, 19d-19f, is don
 - **Where it stands:** `tests/audit_repros/README.md:11` "These files are not part of `make test-*`"
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** Step 20 (`make test-audit-repros` in CI)
+- **Trigger-id:** `step-20`
 
 ### C7 - Generated-test counts are not asserted
 
@@ -198,6 +239,7 @@ Step numbers: step 19 is the third audit round's fixes (batch 2, 19d-19f, is don
 - **Where it stands:** `Makefile:319` "@diff -u tests/e0261_exhaustive.expected"
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** Step 20 (every generated-test count is asserted in the Makefile/CI); done
+- **Trigger-id:** `step-20`
 
 ### C8 - M2_PLAN: two error-policy sections still say 'pending review'
 
@@ -207,6 +249,7 @@ Step numbers: step 19 is the third audit round's fixes (batch 2, 19d-19f, is don
 - **Where it stands:** `docs/M2_PLAN.md:720` "the points the rules above leave open, pending review"
 - **Owner:** Bryden (decision); Claude Code (work)
 - **Trigger:** The m2-ir-v0 tag (the refinement loop's review step) (PROPOSED by Claude Code, approved by Bryden 2026-10-24)
+- **Trigger-id:** `m2-ir-v0`
 
 ### C9 - E0261: two un-annotated lets whose fixes meet in one operator get no fix
 
@@ -216,6 +259,7 @@ Step numbers: step 19 is the third audit round's fixes (batch 2, 19d-19f, is don
 - **Where it stands:** `tests/ir_fix/fix_e0261_two_lets_met_in_one_operator_have_no_fix_yet.mn:5` "    return r + s;"
 - **Owner:** Claude Code (work); Bryden (approval, 2026-10-24)
 - **Trigger:** The post-m2-ir-v0 fix-it pass (a fix list may offer both fixes together, or one choice per mistake)
+- **Trigger-id:** `post-m2-ir-v0`
 
 ## 4. Verification and CI
 
@@ -227,6 +271,7 @@ Step numbers: step 19 is the third audit round's fixes (batch 2, 19d-19f, is don
 - **Where it stands:** `docs/M2_PLAN.md:786` "Deliberately not in CI - a fixed wall-clock budget, not a pass/fail check."
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** Step 20 (a short fuzz run on every push and a long scheduled one)
+- **Trigger-id:** `step-20`
 
 ### V2 - No CI job runs LSan
 
@@ -236,6 +281,7 @@ Step numbers: step 19 is the third audit round's fixes (batch 2, 19d-19f, is don
 - **Where it stands:** `docs/REFINEMENT.md:81` "(no CI job runs LSan)"
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** Step 20 (an Ubuntu gcc ASan+UBSan+LSan job)
+- **Trigger-id:** `step-20`
 
 ### V3 - CI is macOS clang only
 
@@ -245,6 +291,7 @@ Step numbers: step 19 is the third audit round's fixes (batch 2, 19d-19f, is don
 - **Where it stands:** `.github/workflows/ci.yml:22` "runs-on: macos-14"
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** Step 20 (an Ubuntu gcc job)
+- **Trigger-id:** `step-20`
 
 ### V4 - The da9f01c rule (no golden may lose diagnostics) is a review rule
 
@@ -254,6 +301,7 @@ Step numbers: step 19 is the third audit round's fixes (batch 2, 19d-19f, is don
 - **Where it stands:** `docs/REFINEMENT.md:75` "**Enforced since step 20a by `make test-ratchet` (`tools/ratchet.py`):**"
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** Step 20 (the CI ratchet: counts that never decrease, diagnostics per golden); done in 20a
+- **Trigger-id:** `step-20`
 
 ### V5 - The rc > 128 crash rule is not applied in `measure_expr_height.sh`
 
@@ -263,14 +311,17 @@ Step numbers: step 19 is the third audit round's fixes (batch 2, 19d-19f, is don
 - **Where it stands:** `docs/REFINEMENT.md:81` "`tools/measure_expr_height.sh` is not yet changed to follow it."
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** Step 20
+- **Trigger-id:** `step-20`
 
 ### V6 - Coverage justification at every tag is manual
 
 - **Status:** OPEN
 - **Reason:** `make coverage` is not in CI; the uncovered-line list is written by hand at each tag.
 - **Promise:** `CLAUDE.md:161` "- **At every tag**, list uncovered lines in `lexer.c`, `parser.c` and the typed-IR files `ir*.c`"
+- **Where it stands:** `make coverage` is a Makefile target that `.github/workflows/ci.yml` does not run.
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** The m2-ir-v0 tag: a coverage job in CI that fails on any uncovered line not on a committed justified list (PROPOSED by Claude Code, approved by Bryden 2026-10-24)
+- **Trigger-id:** `m2-ir-v0`
 
 ### V7 - CI is one job 'to save minutes'
 
@@ -280,6 +331,7 @@ Step numbers: step 19 is the third audit round's fixes (batch 2, 19d-19f, is don
 - **Where it stands:** `.github/workflows/ci.yml:19` "more than the few extra seconds of sharing a runner."
 - **Owner:** Bryden (decision); Claude Code (work)
 - **Trigger:** Step 20 (write the decision, and what it leaves out, into docs/STATUS.md while the CI parity jobs are added) (PROPOSED by Claude Code, approved by Bryden 2026-10-24)
+- **Trigger-id:** `step-20`
 
 ## 5. Process
 
@@ -288,16 +340,20 @@ Step numbers: step 19 is the third audit round's fixes (batch 2, 19d-19f, is don
 - **Status:** OPEN
 - **Reason:** The cap says three steps, then stop; steps were bundled.
 - **Promise:** `CLAUDE.md:157` "**A batch is at most 3 steps**"
+- **Where it stands:** Enforced by review only until step 20i adds a check on the number of distinct step ids in the unpushed commits.
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** Enforced from 2026-10-23 (CLAUDE.md 'No degradation'); verified at each tag (PROPOSED by Claude Code, approved by Bryden 2026-10-24)
+- **Trigger-id:** `each-tag`
 
 ### R2 - The refinement loop is due at m2-ir-v0
 
 - **Status:** OPEN
 - **Reason:** It ran at m2-parser-v0.1 and has not run for the typed IR stage.
 - **Promise:** `CLAUDE.md:162` "At every tag, run the refinement loop in docs/REFINEMENT.md before starting the next stage."
+- **Where it stands:** The last refinement-loop record is for the tag `m2-parser-v0.1` (`docs/REFINEMENT.md`).
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** The m2-ir-v0 tag (from the audit: 'due at m2-ir-v0')
+- **Trigger-id:** `m2-ir-v0`
 
 ### R3 - Docs lag the repository
 
@@ -307,6 +363,7 @@ Step numbers: step 19 is the third audit round's fixes (batch 2, 19d-19f, is don
 - **Where it stands:** `VISION.md:95` "Last re-verified 2026-10-08"
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** The m2-ir-v0 tag (consistency check re-reads VISION.md and the project-file snapshot) (PROPOSED by Claude Code, approved by Bryden 2026-10-24)
+- **Trigger-id:** `m2-ir-v0`
 
 ### R4 - Two docs contradict each other about models in Deus
 
@@ -316,13 +373,17 @@ Step numbers: step 19 is the third audit round's fixes (batch 2, 19d-19f, is don
 - **Where it stands:** `VISION.md:56` "The model never runs in the kernel; it is reached off-box (API) or, later, run as a local model."
 - **Owner:** Bryden (decision); Claude Code (work)
 - **Trigger:** Before M3 start (PROPOSED by Claude Code, approved by Bryden 2026-10-24)
+- **Trigger-id:** `m3-start`
 
 ### R5 - Reviewer conduct: degradations approved or proposed
 
 - **Status:** OPEN
 - **Reason:** Three degradations approved in step 19 and two more proposed on 2026-10-23, all withdrawn; the rule below forbids offering them.
+- **Promise:** `CLAUDE.md:37` "Neither Claude Code nor the reviewer offers"
+- **Where it stands:** The rule is written (`CLAUDE.md` "No degradation"); nothing checks conduct, so each tag re-reads the step reports for an offered 'turn off', 'withhold' or 'accept'.
 - **Owner:** Bryden (decision); Claude Code (work)
 - **Trigger:** Closed by the CLAUDE.md rule of 2026-10-23; re-checked at each tag (PROPOSED by Claude Code, approved by Bryden 2026-10-24)
+- **Trigger-id:** `each-tag`
 
 ## 6. Planned work: degradation risks ahead
 
@@ -334,6 +395,7 @@ Step numbers: step 19 is the third audit round's fixes (batch 2, 19d-19f, is don
 - **Where it stands:** `docs/M2_PLAN.md:103` "handles these - not scoped here."
 - **Owner:** Bryden (decision); Claude Code (work)
 - **Trigger:** Before verifier design: the native backend gets a milestone
+- **Trigger-id:** `verifier-design`
 
 ### A2 - The 'small trusted checker, untrusted compiler' decision is open
 
@@ -343,6 +405,7 @@ Step numbers: step 19 is the third audit round's fixes (batch 2, 19d-19f, is don
 - **Where it stands:** `CLAUDE.md:134` "- **TCB:** the compiler, verifier, and Wasm runtime all run in ring 0."
 - **Owner:** Bryden (decision); Claude Code (work)
 - **Trigger:** Before verifier design
+- **Trigger-id:** `verifier-design`
 
 ### A3 - WAMR is third-party C in ring 0 with no fuzzing or validation plan
 
@@ -352,6 +415,7 @@ Step numbers: step 19 is the third audit round's fixes (batch 2, 19d-19f, is don
 - **Where it stands:** `CLAUDE.md:134` "One bug compromises everything. Fuzz them continuously."
 - **Owner:** Bryden (decision); Claude Code (work)
 - **Trigger:** M3 start: a fuzzing and validation plan for the runtime is written before WAMR is adopted (PROPOSED by Claude Code, approved by Bryden 2026-10-24)
+- **Trigger-id:** `m3-start`
 
 ### A4 - The verifier's bounds-check elimination has no measurement plan
 
@@ -361,6 +425,7 @@ Step numbers: step 19 is the third audit round's fixes (batch 2, 19d-19f, is don
 - **Where it stands:** `CLAUDE.md:44` "Budget a 5–20% bounds-check overhead without guard pages."
 - **Owner:** Bryden (decision); Claude Code (work)
 - **Trigger:** Verifier design: the measurement plan (which programs, which counts, what threshold) is part of the design document (PROPOSED by Claude Code, approved by Bryden 2026-10-24)
+- **Trigger-id:** `verifier-design`
 
 ### A5 - Spectre mitigation has no plan and a soft trigger
 
@@ -370,12 +435,15 @@ Step numbers: step 19 is the third audit round's fixes (batch 2, 19d-19f, is don
 - **Where it stands:** `CLAUDE.md:133` "Neither is implemented or proven sufficient; both need real measurement before being trusted."
 - **Owner:** Bryden (decision); Claude Code (work)
 - **Trigger:** M3 start: the plan is written and the networking milestone is blocked on it (PROPOSED by Claude Code, approved by Bryden 2026-10-24)
+- **Trigger-id:** `m3-start`
 
 ## 7. Fix-it exceptions (principle 6 / policy C)
 
 Policy C (`CLAUDE.md` "No degradation", top of `docs/error_codes.md`): every diagnostic gets a machine-applicable fix or a short list of choices; it never guesses; every offered fix re-checks clean. Entry **P1** is the umbrella. The table lists every code whose fix-it column still reads "None"; each stays as written for now.
 
 ### 7a. Approved exceptions: the six safety limits
+
+**Trigger-id:** `permanent`
 
 Bryden's policy C names these six as the only exceptions: each limit exists to stop work, so a fix would have nothing to apply. They are not degradations; they are listed so the exception list is closed. **Trigger:** none (permanent), unless Bryden amends policy C.
 
@@ -389,6 +457,8 @@ Bryden's policy C names these six as the only exceptions: each limit exists to s
 | E0222 | `docs/error_codes.md:61` | "None - documented exception: the type has to be smaller, which is not an edit" |
 
 ### 7b. Fix-it exceptions to close (41 codes)
+
+**Trigger-id:** `post-m2-ir-v0`
 
 Each is a register entry (reason: the exception's own text; promise: `docs/MANNA_PRINCIPLES.md` principle 6) with **Owner:** Claude Code (work), Bryden (approval) and **Trigger:** the post-m2-ir-v0 fix-it pass (after the tag). Approval of the exceptions as they stand: pending.
 

@@ -3973,6 +3973,8 @@
   "rename_property.part1.programs": 2500,
   "rename_property.part2.fixes_changed": 1355,
   "rename_property.part2.programs": 2500,
+  "script_checks.check_register_test.py": 20,
+  "script_checks.ratchet_test.py": 21,
   "unit_test_functions.arena_test.c": 7,
   "unit_test_functions.ast_test.c": 6,
   "unit_test_functions.ir_ndebug_test.c": 0,

@@ -47,7 +47,7 @@ try:
     os.makedirs(os.path.join(root, "docs"))
     repo = os.path.dirname(HERE)
     shutil.copytree(os.path.join(repo, "tests"), os.path.join(root, "tests"))
-    for f in ("docs/DEGRADATION.md", "docs/error_codes.md", "tools/audit_ir_poison_reasons.txt", "tools/ir_memory_stress.py", "tools/ratchet.py"):
+    for f in ("docs/DEGRADATION.md", "docs/error_codes.md", "tools/audit_ir_poison_reasons.txt", "tools/ir_memory_stress.py", "tools/ratchet_test.py", "tools/check_register_test.py", "tools/ratchet.py"):
         shutil.copy(os.path.join(repo, f), os.path.join(root, f))
     for f in os.listdir(os.path.join(repo, "tools", "mannac")):
         if f.endswith("_test.c"):

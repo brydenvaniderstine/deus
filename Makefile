@@ -52,7 +52,7 @@ QEMU_FLAGS   := -machine q35 -m 8G -cpu qemu64,+apic,+pdpe1gb \
                 -serial file:serial.log -monitor stdio -no-reboot \
                 -d int,cpu_reset -D qemu.log
 
-.PHONY: all image run debug clean limine stage-esp test-wx test-lexer test-lexer-asan test-arena test-arena-asan test-ast test-ast-asan test-parser-state test-parser-state-asan test-parser-fixes test-parser-fixes-asan test-parser test-parser-asan test-determinism test-ir test-ir-asan test-ir-unit test-ir-unit-asan test-ir-ndebug test-ir-fix test-ir-fix-asan test-ir-error-codes audit-ir-poison test-e0261-exhaustive test-rename-property test-ir-memory-stress test-ratchet test-ratchet-script ratchet-update coverage fuzz fuzz-lexer fuzz-parser fuzz-ir fuzz-ir-ungated measure-height measure-ir-stack measure-ir-build-stack
+.PHONY: all image run debug clean limine stage-esp test-wx test-lexer test-lexer-asan test-arena test-arena-asan test-ast test-ast-asan test-parser-state test-parser-state-asan test-parser-fixes test-parser-fixes-asan test-parser test-parser-asan test-determinism test-ir test-ir-asan test-ir-unit test-ir-unit-asan test-ir-ndebug test-ir-fix test-ir-fix-asan test-ir-error-codes audit-ir-poison test-e0261-exhaustive test-rename-property test-ir-memory-stress test-ratchet test-ratchet-script ratchet-update check-register register-fix-lines test-register-script coverage fuzz fuzz-lexer fuzz-parser fuzz-ir fuzz-ir-ungated measure-height measure-ir-stack measure-ir-build-stack
 
 all: $(KERNEL_ELF)
 
@@ -339,6 +339,18 @@ test-ratchet-script:
 
 ratchet-update:
 	@python3 tools/ratchet.py update
+
+# Step 20b, the register check (tools/check_register.py): every citation in docs/DEGRADATION.md is on its line, every entry has its fields and a
+# trigger id, and no OPEN entry's trigger has passed. `make check-register AT=m2-ir-v0` is the check run when a tag closes (it fails while any
+# entry due at or before that tag is still open). `make register-fix-lines` repairs drifted line numbers whose quote is unique in the file.
+check-register:
+	@python3 tools/check_register.py $(if $(AT),--at $(AT))
+
+register-fix-lines:
+	@python3 tools/check_register.py --fix-lines
+
+test-register-script:
+	@python3 tools/check_register_test.py
 
 # Typed-IR step 19: the rename bookkeeping's memory is linear in the input (re-audit 3, finding 1): eight generated programs, up to 3 MB, with
 # many value uses of names that are not locals next to misnamed declarations; exact diagnostics, no E0201, a time bound (tools/ir_memory_stress.py).

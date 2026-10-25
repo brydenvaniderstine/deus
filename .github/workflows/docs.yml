@@ -1,0 +1,31 @@
+name: Docs checks
+
+# ci.yml ignores docs/** and **/*.md (a docs-only push needs no compiler run), which also meant a register edit was never checked. This
+# workflow is the check for those pushes: the register's citations, its fields and triggers (tools/check_register.py) and the ratchet (a
+# RATCHET-WAIVER line lives in the register). Python only, no build.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - '**/*.md'
+      - 'tools/check_register.py'
+      - 'tools/ratchet.py'
+
+concurrency:
+  group: docs-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  docs:
+    name: register + ratchet
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # historical citations (file@rev) and the ratchet's `before` commit
+      - run: python3 tools/check_register_test.py
+      - run: python3 tools/check_register.py
+      - run: python3 tools/ratchet.py check
+        env:
+          RATCHET_BASE: ${{ github.event.before }}
