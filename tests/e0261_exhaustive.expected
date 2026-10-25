@@ -1,10 +1,10 @@
-e0261 exhaustive: 995456 programs, 992320 with exactly one diagnostic (E0261), 286968 offered a fix (42440 arithmetic/bitwise, 5308 shift, 239220 comparison); every one lossless, one wrap, and clean or baseline-equal
-  base                       473984 programs, 473984 with exactly one E0261, 137088 offered a fix
-  new contexts               58240 programs, 58240 with exactly one E0261, 15228 offered a fix
-  logical not                52864 programs, 52864 with exactly one E0261, 12744 offered a fix
-  no space after a keyword   37632 programs, 34496 with exactly one E0261, 8940 offered a fix
-  literal sibling            150528 programs, 150528 with exactly one E0261, 44496 offered a fix
-  && operand                 7168 programs, 7168 with exactly one E0261, 1728 offered a fix
-  two levels                 86016 programs, 86016 with exactly one E0261, 21960 offered a fix
-  later use of the local     129024 programs, 129024 with exactly one E0261, 44784 offered a fix
+e0261 exhaustive: 995456 programs, 664552 with exactly one diagnostic (E0261), 327768 with the E0261 beside its context's own diagnostic, 286968 offered a fix (42440 arithmetic/bitwise, 5308 shift, 239220 comparison); every one lossless, one wrap, self-checked, and clean or baseline-equal
+  base                       473984 programs, 319088 with exactly one E0261 (+154896 beside a context diagnostic), 137088 offered a fix
+  new contexts               58240 programs, 39424 with exactly one E0261 (+18816 beside a context diagnostic), 15228 offered a fix
+  logical not                52864 programs, 36064 with exactly one E0261 (+16800 beside a context diagnostic), 12744 offered a fix
+  no space after a keyword   37632 programs, 26264 with exactly one E0261 (+8232 beside a context diagnostic), 8940 offered a fix
+  literal sibling            150528 programs, 94080 with exactly one E0261 (+56448 beside a context diagnostic), 44496 offered a fix
+  && operand                 7168 programs, 7168 with exactly one E0261 (+0 beside a context diagnostic), 1728 offered a fix
+  two levels                 86016 programs, 53760 with exactly one E0261 (+32256 beside a context diagnostic), 21960 offered a fix
+  later use of the local     129024 programs, 88704 with exactly one E0261 (+40320 beside a context diagnostic), 44784 offered a fix
   keyword directly before the operand: 34496 programs with one E0261, 8940 offered a fix, 1096 of them needed the applier's space

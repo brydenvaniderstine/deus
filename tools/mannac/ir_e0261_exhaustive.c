@@ -197,8 +197,8 @@ static void release(Result *r) {
     parser_state_destroy(&r->ps);
 }
 
-static long n_cases, n_single, n_fixed, n_cmp_fixed, n_arith_fixed, n_shift_fixed;
-static long cat_cases[N_CAT], cat_single[N_CAT], cat_fixed[N_CAT];
+static long n_cases, n_single, n_beside, n_fixed, n_cmp_fixed, n_arith_fixed, n_shift_fixed;
+static long cat_cases[N_CAT], cat_single[N_CAT], cat_beside[N_CAT], cat_fixed[N_CAT];
 static long n_glued_single, n_glued_fixed, n_padded; /* the no-space programs whose source really has the keyword touching the operand */
 
 static bool keyword_glued(const char *src) {
@@ -220,20 +220,31 @@ static void run_case(const Case *c, const char *ta, const char *tb) {
     bool glued = c->nosp && keyword_glued(src);
     Result o;
     build(&o, src);
-    if (o.status != IR_ERRORS || o.n != 1 || strcmp(o.codes[0], "E0261") != 0) { /* another diagnostic decides this program: not ours */
+    size_t e261 = 0, at = 0;
+    for (size_t i = 0; i < o.n; i++) if (strcmp(o.codes[i], "E0261") == 0) { e261++; at = i; }
+    /* ours: exactly one E0261 and nothing else, or (comparisons only, step 20f) the E0261 BESIDE the diagnostic of a context that rejects the
+     * comparison's bool, which the E0261 used to hide; any other diagnostic decides the program */
+    bool beside = o.n != 1;
+    if (o.status != IR_ERRORS || e261 != 1 || (beside && c->op < 10)) {
         release(&o);
         return;
     }
-    n_single++;
-    cat_single[c->cat]++;
+    if (beside) n_beside++;
+    else n_single++;
+    cat_single[c->cat] += !beside;
+    cat_beside[c->cat] += beside;
     n_glued_single += glued;
-    const DiagFix *fx = o.st.diags.items[0].fix;
+    const DiagFix *fx = o.st.diags.items[at].fix;
     if (!fx) {
         release(&o);
         return;
     }
     n_fixed++;
     cat_fixed[c->cat]++;
+    {   /* the self-check (step 20f): the fix removes the E0261 and changes nothing else; any failure stops the test */
+        char *why = ir_fix_selfcheck(src, strlen(src), &o.st);
+        if (why) fail(why, src, NULL, NULL);
+    }
     n_glued_fixed += glued;
     char *fixed = ir_apply_fixes(src, strlen(src), &o.st.diags);
     /* 1: one operand, in the other's type, lossless */
@@ -411,14 +422,14 @@ int main(void) {
             }
         }
     }
-    printf("e0261 exhaustive: %ld programs, %ld with exactly one diagnostic (E0261), %ld offered a fix (%ld arithmetic/bitwise, %ld shift, %ld comparison); every one lossless, one wrap, and clean or baseline-equal\n",
-           n_cases, n_single, n_fixed, n_arith_fixed, n_shift_fixed, n_cmp_fixed);
+    printf("e0261 exhaustive: %ld programs, %ld with exactly one diagnostic (E0261), %ld with the E0261 beside its context's own diagnostic, %ld offered a fix (%ld arithmetic/bitwise, %ld shift, %ld comparison); every one lossless, one wrap, self-checked, and clean or baseline-equal\n",
+           n_cases, n_single, n_beside, n_fixed, n_arith_fixed, n_shift_fixed, n_cmp_fixed);
     for (int k = 0; k < N_CAT; k++) {
-        printf("  %-26s %ld programs, %ld with exactly one E0261, %ld offered a fix\n", CAT_NAME[k], cat_cases[k], cat_single[k], cat_fixed[k]);
+        printf("  %-26s %ld programs, %ld with exactly one E0261 (+%ld beside a context diagnostic), %ld offered a fix\n", CAT_NAME[k], cat_cases[k], cat_single[k], cat_beside[k], cat_fixed[k]);
         assert(cat_fixed[k] > 0); /* a category that offers no fix at all proves nothing */
     }
     printf("  keyword directly before the operand: %ld programs with one E0261, %ld offered a fix, %ld of them needed the applier's space\n", n_glued_single, n_glued_fixed, n_padded);
-    assert(n_padded > 0 && n_glued_fixed > 0 && n_glued_single <= cat_single[CAT_NOSPACE]);
+    assert(n_padded > 0 && n_glued_fixed > 0 && n_glued_single <= cat_single[CAT_NOSPACE] + cat_beside[CAT_NOSPACE]);
     assert(n_arith_fixed > 0 && n_shift_fixed > 0 && n_cmp_fixed > 0);
     return 0;
 }
