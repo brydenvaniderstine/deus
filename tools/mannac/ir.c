@@ -2,6 +2,9 @@
 #include <assert.h>
 #include <stdalign.h>
 #include <string.h>
+#ifdef MANNA_POISON_INJECT
+#include <stdlib.h>
+#endif
 
 /* ---- primitives ---- */
 
@@ -96,6 +99,19 @@ const IrType *ir_inject_type(IrState *st, const IrType *t, int site, int what) {
     ir_inject_site = site;
     ir_inject_what = what;
     return ir_type_error(st);
+}
+
+IrInjectLog *ir_inject_log = NULL;
+size_t ir_inject_nlog = 0;
+static size_t log_cap = 0;
+
+void ir_inject_log_node(IrExpr *e, const IrType *orig) {
+    if (ir_inject_nlog == log_cap) {
+        log_cap = log_cap ? log_cap * 2 : 1024;
+        ir_inject_log = realloc(ir_inject_log, log_cap * sizeof(*ir_inject_log));
+        if (!ir_inject_log) abort();
+    }
+    ir_inject_log[ir_inject_nlog++] = (IrInjectLog){e, orig->kind == IR_T_ERROR, e->type != orig};
 }
 #endif
 
@@ -267,6 +283,7 @@ static IrExpr *new_expr(IrState *st, IrExprKind kind, Span span, const IrType *t
     e->kind = kind;
     e->span = span;
     e->type = IR_INJECT_TYPE(st, type, IR_INJ_EXPR, (int)kind);
+    IR_INJECT_LOG(e, type);
     return e;
 }
 

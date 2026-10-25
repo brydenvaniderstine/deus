@@ -95,10 +95,13 @@ def main(argv):
         results = list(ex.map(run_one, jobs_list))
     t_run = time.time() - t1
     programs = len(counts); points = findings = 0
+    collapses = {}
     biggest = max(((n, p) for p, n in counts.items()), default=(0, ""))
     slow = sorted(((r[6], r[0]) for r in results), reverse=True)[:3]
     for path, rc, out, err, crashed, last, dt in results:
         for line in out.split("\n"):
+            mc = re.match(r"COLLAPSE (\d+) (.*)", line)
+            if mc: collapses[mc.group(2)] = collapses.get(mc.group(2), 0) + int(mc.group(1))
             m = re.match(r"RESULT \S+ points=(\d+) findings=(\d+)", line)
             if m:
                 points += int(m.group(1)); findings += int(m.group(2))
@@ -109,6 +112,29 @@ def main(argv):
             print("CRASH %s (exit %d) at k=%s\n%s" % (path, rc, last, err[:1500]))
     print("\nnocascade sweep: %d files; %d skipped (%d do not parse clean, %d do not build clean); %d programs swept, %d injection points, "
           "largest %d points (%s)" % (len(files), sum(skipped.values()), skipped["parse"], skipped["not-clean"], programs, points, biggest[0], biggest[1]))
+    if collapses:
+        # group by parent kind + operator + where the poison sat; the baseline type is summarised as a class (bool / int / array or slice / struct)
+        groups = {}
+        for key, n in collapses.items():
+            m = re.match(r"(\S+) (\S+) -> (.*?)  \(poison in (\S+): (\S+)\)", key)
+            if not m: continue
+            kind, op, ty, site, slot = m.groups()
+            cls = "bool" if ty == "bool" else "int" if re.fullmatch(r"[ui](8|16|32|64)", ty) else "array/slice" if ty.startswith("[") else "struct"
+            g = groups.setdefault((site, kind, op, slot), {})
+            g[cls] = g.get(cls, 0) + n
+        print("\nWhere an injected poison made a PARENT give up although the baseline run knew its type (the list decision D1 is made from).")
+        print("The poison is silent, so these are not cascades: they are diagnostics a user would be shown only after fixing the first mistake.")
+        print("  %-9s %-11s %-3s %-8s %8s  baseline type of the parent" % ("poison in", "parent", "op", "slot", "times"))
+        for (site, kind, op, slot), g in sorted(groups.items(), key=lambda kv: (kv[0][0] != "expr", kv[0])):
+            if site != "expr":
+                continue
+            print("  %-9s %-11s %-3s %-8s %8d  %s" % (site, kind, op, slot, sum(g.values()), ", ".join("%s x%d" % kv for kv in sorted(g.items()))))
+        others = {}
+        for (site, kind, op, slot), g in groups.items():
+            if site != "expr":
+                others[site] = others.get(site, 0) + sum(g.values())
+        for site, n in sorted(others.items()):
+            print("  (%d parent collapses when the poison was a %s, listed in the raw rows)" % (n, site))
     print("slowest programs (s): " + ", ".join("%.1f %s" % (t, os.path.basename(p)) for t, p in slow))
     print("nocascade sweep: %d finding(s), %d crash(es); build %.1f s, sweep %.1f s on %d workers (ASan+UBSan, every point, no sampling)" %
           (findings, crashes, t_build, t_run, jobs))

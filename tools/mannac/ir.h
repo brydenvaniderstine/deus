@@ -114,7 +114,7 @@ void ir_error(IrState *st, Diagnostic d);
 
 #ifdef MANNA_POISON_INJECT
 /* Single-fault injection (typed-IR step 21b; docs: the step 21 plan, section 3b). Compiled out of every normal build, like MANNA_FUZZ_IR_UNGATED:
- * without the macro none of the symbols below exists (`nm` on a normal ir_dump shows no `inject`; make test-nocascade-nm). The builder creates a typed value
+ * without the macro none of the symbols below exists (`nm` on a normal ir_dump shows no `inject`; make check-inject-hook-absent). The builder creates a typed value
  * at exactly three places - IrExpr (new_expr), IrLocal (ir_local_new) and a declared type (ir_resolve_type) - and each passes its type through
  * IR_INJECT_TYPE. When the harness (ir_inject.c) selects the k-th non-ERROR value, that value becomes ERROR with NOTHING reported, simulating "an earlier
  * mistake already reported this". A correct builder then reports no diagnostic at all. */
@@ -127,6 +127,7 @@ const IrType *ir_inject_type(IrState *st, const IrType *t, int site, int what);
 #define IR_INJECT_TYPE(st, t, site, what) ir_inject_type((st), (t), (site), (what))
 #else
 #define IR_INJECT_TYPE(st, t, site, what) (t)
+#define IR_INJECT_LOG(e, orig) ((void)0)
 #endif
 
 /* ---- Type constructors / queries ---- */
@@ -196,6 +197,17 @@ struct IrExpr {
         struct { IrExpr *operand; } len;                         /* len(x), type u64; the operand is kept so it is evaluated exactly once */
     } as;
 };
+
+#ifdef MANNA_POISON_INJECT
+/* Every IrExpr created is logged, so the harness can report where an injected poison COLLAPSED a parent whose type it knew in the baseline run
+ * (the list that decision D1 is made from). `orig` is the type the builder asked for, `e->type` what the node got. */
+typedef struct { IrExpr *e; bool orig_error; bool injected; } IrInjectLog;
+extern IrInjectLog *ir_inject_log;
+extern size_t ir_inject_nlog;
+void ir_inject_log_node(IrExpr *e, const IrType *orig);
+#undef IR_INJECT_LOG
+#define IR_INJECT_LOG(e, orig) ir_inject_log_node((e), (orig))
+#endif
 
 typedef enum {
     IR_S_LET, IR_S_ASSIGN, IR_S_IF, IR_S_WHILE, IR_S_FOR,
