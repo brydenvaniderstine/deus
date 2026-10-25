@@ -130,7 +130,7 @@ def check(root):
     for t in sorted((run | set(unreliable)) - defined - {"all"}):
         if t not in phony and t not in defined:
             problems.append("a workflow runs `make %s`, which the Makefile does not define" % t)
-    # -Werror (step 20g-2): every host-side compile recipe takes $(MANNAC_WERROR), and each CI job sets MANNAC_WERROR: -Werror, so no warning returns
+    # -Werror (step 20f-5): every host-side compile recipe takes $(MANNAC_WERROR), and each CI job sets MANNAC_WERROR: -Werror, so no warning returns
     for n, line in enumerate(mk.split("\n"), 1):
         if line.startswith("\t$(MANNAC_CC) -std=c11") and "$(MANNAC_WERROR)" not in line:
             problems.append("Makefile:%d: a host-side compile without $(MANNAC_WERROR)" % n)

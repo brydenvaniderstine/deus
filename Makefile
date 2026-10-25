@@ -8,7 +8,7 @@ LIMINE_DIR   := limine
 CC           := clang
 # The host-side Manna tools (lexer, parser, IR, tests) build with MANNAC_CC; the Linux CI job sets it to gcc (ASan + UBSan + LSan).
 MANNAC_CC    ?= clang
-# Both CI jobs build the host-side tools with MANNAC_WERROR=-Werror: no warning may return (step 20g-2).
+# Both CI jobs build the host-side tools with MANNAC_WERROR=-Werror: no warning may return (step 20f-5).
 MANNAC_WERROR ?=
 AS           := clang
 LD           := ld.lld
