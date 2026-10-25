@@ -6,6 +6,8 @@ Updated at every tag (`docs/README.md`'s consistency check runs at the same time
 
 Note (Bryden, 2026-10-25): commit `e2a0c55` (step 20a, pushed) also contains 2,193 fuzz corpus files of `tools/fuzz/corpus/ir`, added by accident (`git add -A tools`). They are valid inputs and stay; the corpus is re-minimized at tags. Every diff sent for review from now on lists the paths it excludes (or says it excludes none).
 
+**Scheduled workflows can switch off.** GitHub disables a scheduled workflow (`.github/workflows/fuzz.yml`, the nightly fuzz) after 60 days without repository activity (from the reviewer's knowledge of GitHub, not checked against the docs today). The nightly run then stops silently. To re-enable: GitHub, repository, Actions, "Nightly fuzz", "Enable workflow" (or push any commit and run it once by hand with "Run workflow"); check that a run from the last day exists whenever a tag is cut.
+
 (The register's position in the order of trigger ids, `docs/DEGRADATION.md` "Trigger ids". It must equal the register's own `Current point`; `make check-register` fails otherwise. Advance both in the commit that finishes a step or makes a tag.)
 
 ## Current milestone
