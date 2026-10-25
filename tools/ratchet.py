@@ -88,7 +88,7 @@ def compute():
     for i, line in enumerate([l for l in read("tests/rename_property.expected").split("\n") if l.startswith("rename property test")]):
         metrics["rename_property.part%d.programs" % (i + 1)] = int(re.search(r"(\d+) random programs", line).group(1))
         metrics["rename_property.part%d.fixes_changed" % (i + 1)] = int(re.search(r"fixes changed (\d+)", line).group(1))
-    for f in ("ratchet_test.py", "check_register_test.py", "check_ci_targets_test.py"):
+    for f in ("ratchet_test.py", "check_register_test.py", "check_ci_targets_test.py", "boot_check_test.py", "check_batch_cap_test.py", "check_retro_rules_test.py", "coverage_check_test.py"):
         metrics["script_checks." + f] = len(re.findall(r"^\s*check\(", read("tools/" + f), re.M))
     metrics["memory_stress_cases"] = len(re.findall(r"^case\(", read("tools/ir_memory_stress.py"), re.M))
     reasons = [l for l in read("tools/audit_ir_poison_reasons.txt").split("\n") if l.strip() and not l.startswith("#")]

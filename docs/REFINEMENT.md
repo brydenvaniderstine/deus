@@ -117,3 +117,39 @@ The token-benchmark ratio stays blank until the benchmark in `docs/IDEAS.md` ("T
 - **`VISION.md` and `docs/IDEAS.md` are never commitments.** A candidate is not planned work until it is promoted at a tag, and not built work until its stage's tests pass.
 - **The loop never changes the current stage's scope.** Review happens between stages, and nothing is promoted mid-stage.
 - **The loop does not weaken the Feature Admission Test.** Promotion means "enters the next stage's plan"; the test's five criteria still have to hold, with goldens, before a language change is admitted.
+
+## Retro-rule inventory (step 20i)
+
+`CLAUDE.md` ("No degradation"): *every retro rule lives in a check, or sits in the register as "unenforced" with a trigger.* This table is that rule's check. `make check-retro-rules` (`tools/check_retro_rules.py`) enumerates the rules itself (every bullet of `CLAUDE.md` "Lessons", "No degradation" and "Working conventions", and every retro line of this file that is marked in bold as the rule) and fails if one has no row, if an anchor is on no rule, if a `make` target named here does not exist or no workflow runs it, or if a register entry named here does not exist or is CLOSED. A row whose only item is a register entry is an UNENFORCED rule; the review-time ones sit in register entry R6, re-read at every tag.
+
+| Source | Anchor (a quote of the rule) | Enforced by |
+|---|---|---|
+| CLAUDE.md | Proof over reasoning, always - run the actual limit under ASan | make test-ir-unit; make test-parser-fixes |
+| CLAUDE.md | Grammar guarantees underpin recovery - re-verify them before reusing them. | register R6 |
+| CLAUDE.md | Any new recursive parse function needs the depth invariant checked, not assumed. | make test-parser-fixes; make test-parser |
+| CLAUDE.md | Quote-check doc changes against the actual repo, not memory. | make check-register; register R6 |
+| CLAUDE.md | Verify CI actually runs the tests you think it does, every time you add one. | make check-ci-targets |
+| CLAUDE.md | Prefer a prebuilt binary over building a toolchain from source via brew | register R6 |
+| CLAUDE.md | A golden that loses diagnostics or AST nodes in a commit is STOP-tier | make test-ratchet |
+| docs/REFINEMENT.md | A golden that loses diagnostics or AST nodes is STOP-tier | make test-ratchet |
+| docs/REFINEMENT.md | Test harnesses and measurement probes must be leak-clean like product code | make test-measure-height-script; make test-ir-unit-asan |
+| docs/REFINEMENT.md | The reviewer's Linux LSan run is the leak evidence of record | make test-ir-unit-asan |
+| CLAUDE.md | Nothing is stubbed, removed, withheld, weakened, or labelled | make check-register; register R5 |
+| CLAUDE.md | No tag or milestone closes while any register entry's trigger has passed. | make check-register |
+| CLAUDE.md | A milestone closes only on its full spec. | make check-register; register K2 |
+| CLAUDE.md | A test, golden, fix case, repro or diagnostic count never decreases | make test-ratchet |
+| CLAUDE.md | Every retro rule lives in a check, or sits in the register as | make check-retro-rules |
+| CLAUDE.md | Silent fallbacks are banned: a self-check failure is a hard failure | make test-ir; make test-e0261-exhaustive |
+| CLAUDE.md | The batch cap (at most 3 steps, then STOP; see | make check-batch-cap |
+| CLAUDE.md | Neither Claude Code nor the reviewer offers | register R5 |
+| CLAUDE.md | Small commits, one subsystem each. Run `make run` before claiming success. | make test-boot; register R6 |
+| CLAUDE.md | Read `serial.log` and `qemu.log` to verify. Don't assume. | make test-boot |
+| CLAUDE.md | Ask before changing any hard constraint above. | make test-wx; register R6 |
+| CLAUDE.md | Write commit messages via a quoted heredoc | register R6 |
+| CLAUDE.md | **Approval tiers**, for incremental multi-step work | register R6 |
+| CLAUDE.md | **ROUTINE** - tests pass, no design choice made, no spec deviation | make check-batch-cap |
+| CLAUDE.md | **STOP** - a design choice, a spec deviation, a failing test | register R6 |
+| CLAUDE.md | Every step report includes a plain-English summary | register R6 |
+| CLAUDE.md | **Rule: no behavior change without a test.** | make test-ratchet; register R6 |
+| CLAUDE.md | **At every tag**, list uncovered lines in `lexer.c` | make coverage-check |
+| CLAUDE.md | At every tag, run the refinement loop in docs/REFINEMENT.md | register R2 |

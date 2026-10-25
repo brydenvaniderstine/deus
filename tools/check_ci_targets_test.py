@@ -7,6 +7,7 @@ sys.path.insert(0, HERE)
 import check_ci_targets as ct
 
 fails = []
+ct.SKIPPED = {"test-wx": "K4"}   # the real table is empty since step 20h; the synthetic trees below still exercise the skip rules
 
 
 def check(name, cond):
@@ -58,7 +59,8 @@ check("finding 4: continue-on-error: false is fine", problems(tree(ci=CI.replace
 check("-Werror: a host compile without MANNAC_WERROR fails", any("without $(MANNAC_WERROR)" in p for p in problems(tree(mk=MK + "x:\n\t$(MANNAC_CC) -std=c11 -Wall -o a b.c\n"))))
 check("-Werror: a host compile with MANNAC_WERROR passes", problems(tree(mk=MK + "x:\n\t$(MANNAC_CC) -std=c11 -Wall $(MANNAC_WERROR) -o a b.c\n")) == [])
 check("-Werror: a job that does not set MANNAC_WERROR: -Werror fails", any("job 'one' does not set" in p for p in problems(tree(ci=CI.replace("      MANNAC_WERROR: -Werror\n", "")))))
-check("the real tree passes", ct.check(os.path.dirname(HERE))[0] == [])
+ct.SKIPPED = {}
+check("the real tree passes (nothing is skipped any more)", ct.check(os.path.dirname(HERE))[0] == [])
 
 print("ci-target tests: %d failed" % len(fails) if fails else "ci-target tests: all passed")
 sys.exit(1 if fails else 0)

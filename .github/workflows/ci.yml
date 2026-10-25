@@ -57,6 +57,16 @@ jobs:
       - run: make check-register
       - run: make test-ci-targets-script
       - run: make check-ci-targets
+      - run: make check-kernel-loc
+      - run: make test-kernel-loc-script
+      - run: make test-measure-height-script
+      - run: make test-boot-check-script
+      - run: make test-batch-cap-script
+      - run: make check-batch-cap
+        env:
+          BATCH_BASE: ${{ github.event.before }}
+      - run: make test-retro-rules-script
+      - run: make check-retro-rules
       - run: make test-ratchet
       - run: make test-audit-repros
 
@@ -130,6 +140,13 @@ jobs:
       - run: make test-determinism
       - run: make test-audit-repros
       - run: make test-fuzz-script
+      - run: make check-kernel-loc
+      - run: make test-kernel-loc-script
+      - run: make test-measure-height-script
+      - run: make test-boot-check-script
+      - run: make test-coverage-check-script
+      # Every uncovered line of lexer.c, parser.c and ir*.c has a reason in tests/coverage_justified.txt (register V6); runs the instrumented suites with clang.
+      - run: make coverage-check
       # The short fuzz run: lexer, parser, typed IR gated and ungated, 60 s each, from the committed corpora. Any crash, timeout, out-of-memory
       # or sanitizer report leaves an artifact and fails the step (tools/fuzz/run_fuzzers.sh exits 1).
       - name: Short fuzz run (60 s per target)
@@ -145,3 +162,30 @@ jobs:
           name: fuzz-artifacts
           path: build/fuzz/artifacts
           if-no-files-found: ignore
+
+  # Step 20h (register K4, K5): the kernel boots under QEMU and its serial log is CHECKED (make test-boot), and the three W^X violations fault as promised
+  # (make test-wx). The machine is the Milestone 1 one: 8 GiB, never shrunk to make a run pass. Own job so that a runner problem (firmware path, TCG speed,
+  # 8 GiB on the runner) is seen as exactly that and does not hide the other jobs.
+  boot:
+    name: Kernel boot smoke (QEMU, 8 GiB) + W^X tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      MANNAC_WERROR: -Werror
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain (clang, lld, QEMU, OVMF)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y make python3 clang lld qemu-system-x86 ovmf
+          qemu-system-x86_64 --version | head -1
+          tools/find_ovmf.sh code; tools/find_ovmf.sh vars
+          free -m | head -2
+      # make all fetches limine at the pinned tag/hash (tools/fetch-limine.sh)
+      - run: make all
+      - run: make test-boot
+      - run: make test-wx
+      - name: Serial logs
+        if: always()
+        run: |
+          for f in build/boot_smoke/serial.log build/test_wx/boot_*/serial.log; do echo "=== $f"; sed 's/\x1b\[[0-9;?=]*[A-Za-z]//g' "$f" 2>/dev/null | tail -40; done

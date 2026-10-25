@@ -387,6 +387,17 @@ Each entry's **Trigger-id** is one of the ids below, in the order they fall due.
 - **Trigger-id:** `each-tag`
 - **Checked at:** 
 
+### R6 - Review-time rules have no automated check
+
+- **Status:** OPEN
+- **Reason:** The retro-rule inventory (`docs/REFINEMENT.md`, step 20i) found rules that no tool can check: re-verifying a grammar guarantee before reusing it, the brew advice, quote-checking prose docs beyond the register, the quoted-heredoc commit message, the approval tiers (ROUTINE / STOP), the plain-English step report, commit size, and the judgement "this behaviour change has no test". Each stays a rule, enforced by the reviewer reading the reports; the inventory marks them as unenforced and `make check-retro-rules` fails if one loses its row.
+- **Promise:** `CLAUDE.md:34` "Every retro rule lives in a check, or sits in the register as"
+- **Where it stands:** `docs/REFINEMENT.md:121` "## Retro-rule inventory (step 20i)"
+- **Owner:** Bryden (decision); Claude Code (work)
+- **Trigger:** Re-read at every tag: a rule that can become a check is turned into one (PROPOSED by Claude Code, awaiting Bryden's approval 2026-10-25)
+- **Trigger-id:** `each-tag`
+- **Checked at:** 
+
 ## 6. Planned work: degradation risks ahead
 
 ### A1 - The native backend (the kernel's real compile target) has no milestone

@@ -9,7 +9,7 @@ Run from the repo root: python3 tools/check_ci_targets.py [root]  (make check-ci
 import os, re, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SKIPPED = {"test-wx": "K4"}   # the QEMU W^X test: wired by step 20h
+SKIPPED = {}   # target -> open register entry that explains why no workflow runs it (empty since step 20h wired test-wx, register K4)
 PREFIXES = ("test-", "audit-", "check-")
 WORKFLOWS = (".github/workflows/ci.yml", ".github/workflows/docs.yml", ".github/workflows/fuzz.yml")
 

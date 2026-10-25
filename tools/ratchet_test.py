@@ -59,8 +59,10 @@ try:
         shutil.copytree(os.path.join(repo, "tests"), os.path.join(root, "tests"))
         os.remove(os.path.join(root, "tests", "ratchet.json"))   # the scratch repository's first version is made by its own `update`
         for f in ("docs/DEGRADATION.md", "docs/error_codes.md", "tools/audit_ir_poison_reasons.txt", "tools/ir_memory_stress.py", "tools/ratchet_test.py",
-                  "tools/check_register_test.py", "tools/check_ci_targets_test.py", "tools/ratchet.py"):
+                  "tools/check_register_test.py", "tools/check_ci_targets_test.py", "tools/boot_check_test.py", "tools/check_batch_cap_test.py", "tools/check_retro_rules_test.py", "tools/coverage_check_test.py", "tools/ratchet.py"):
             shutil.copy(os.path.join(repo, f), os.path.join(root, f))
+        with open(os.path.join(root, "docs", "DEGRADATION.md"), "a") as f:   # an entry of the test's own, so the waivers do not depend on the real register
+            f.write("\n### ZT - an entry for the ratchet tests\n\n- **Status:** OPEN\n")
         for f in os.listdir(os.path.join(repo, "tools", "mannac")):
             if f.endswith("_test.c"):
                 shutil.copy(os.path.join(repo, "tools", "mannac", f), os.path.join(root, "tools", "mannac", f))
@@ -143,9 +145,9 @@ try:
         lines = ""
         if waive:
             ncase = len([f for f in os.listdir(os.path.join(root, "tests", "ir_fix")) if f.endswith(".mn") and ".fixed" not in f])
-            lines = "\nRATCHET-WAIVER ir_fix_cases %d -> %d V7\n" % (ncase, ncase - 1)
+            lines = "\nRATCHET-WAIVER ir_fix_cases %d -> %d ZT\n" % (ncase, ncase - 1)
             if os.path.exists(rem):
-                lines += "RATCHET-WAIVER tests/ir_fix/%s.remaining %d -> 0 V7\n" % (cases[0][:-3], ratchet.count_diags(open(rem).read()))
+                lines += "RATCHET-WAIVER tests/ir_fix/%s.remaining %d -> 0 ZT\n" % (cases[0][:-3], ratchet.count_diags(open(rem).read()))
         for ext in (".mn", ".fixed.mn", ".remaining"):
             p = os.path.join(root, "tests", "ir_fix", cases[0][:-3] + ext)
             if os.path.exists(p):
@@ -179,7 +181,7 @@ try:
     force_write(root)
     commit(root, "a lowered version")
     with open(os.path.join(root, "docs", "DEGRADATION.md"), "a") as f:
-        f.write("\nRATCHET-WAIVER ir_fix_cases %d -> %d V7\n" % (n, n - 1))
+        f.write("\nRATCHET-WAIVER ir_fix_cases %d -> %d ZT\n" % (n, n - 1))
     commit(root, "a waiver added afterwards")
     r = run(root, "check")
     check("finding 7: a waiver added in a LATER commit does not excuse an earlier lowering", r.returncode == 1 and "ir_fix_cases" in r.stdout)
@@ -219,20 +221,20 @@ try:
     for ext in (".mn", ".ir"):
         os.remove(os.path.join(ir_dir(root), zero_golden + ext))
     with open(os.path.join(root, "docs", "DEGRADATION.md"), "a") as f:
-        f.write("\nRATCHET-WAIVER ir_goldens %d -> %d V7\nRATCHET-WAIVER tests/ir/%s.ir 0 -> 0 V7\n" % (nz, nz - 1, zero_golden))
+        f.write("\nRATCHET-WAIVER ir_goldens %d -> %d ZT\nRATCHET-WAIVER tests/ir/%s.ir 0 -> 0 ZT\n" % (nz, nz - 1, zero_golden))
     force_write(root)
-    commit(root, "delete a golden under a waiver naming the open entry V7")
+    commit(root, "delete a golden under a waiver naming the open entry ZT")
     r = run(root, "check")
     check("finding 7: a waived lowering under an OPEN entry passes", r.returncode == 0)
     for ext in (".mn", ".ir"):
         shutil.copy(os.path.join(repo, "tests", "ir", zero_golden + ext), os.path.join(ir_dir(root), zero_golden + ext))
     reg = os.path.join(root, "docs", "DEGRADATION.md")
     txt = open(reg).read()
-    i = txt.index("### V7 - ")
+    i = txt.index("### ZT - ")
     j = txt.index("- **Status:** OPEN", i)
     open(reg, "w").write(txt[:j] + "- **Status:** CLOSED (2026-10-25, test)" + txt[j + len("- **Status:** OPEN"):])
     force_write(root)
-    commit(root, "restore the golden and close V7")
+    commit(root, "restore the golden and close ZT")
     r = run(root, "check")
     check("finding 7: the lowering stays waived after the entry is CLOSED in a later commit", r.returncode == 0 and "FAILED" not in r.stdout)
 

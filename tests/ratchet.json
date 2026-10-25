@@ -2456,6 +2456,10 @@
    3,
    "42fb2d5bd5834a81"
   ],
+  "tests/ir_fix/fix_struct_rename_is_offered_next_to_twelve_distinct_unknown_names.remaining": [
+   12,
+   "4a5e6137a85ec65c"
+  ],
   "tests/ir_fix/fix_struct_rename_onto_an_unknown_type.remaining": [
    2,
    "3c7d100cd837ed29"
@@ -3996,7 +4000,7 @@
   "e0261_exhaustive.programs": 995456,
   "error_codes_documented": 55,
   "error_codes_with_fix": 8,
-  "ir_fix_cases": 127,
+  "ir_fix_cases": 128,
   "ir_goldens": 435,
   "lexer_goldens": 15,
   "memory_stress_cases": 8,
@@ -4005,8 +4009,12 @@
   "rename_property.part1.programs": 2500,
   "rename_property.part2.fixes_changed": 1355,
   "rename_property.part2.programs": 2500,
+  "script_checks.boot_check_test.py": 25,
+  "script_checks.check_batch_cap_test.py": 8,
   "script_checks.check_ci_targets_test.py": 21,
   "script_checks.check_register_test.py": 35,
+  "script_checks.check_retro_rules_test.py": 12,
+  "script_checks.coverage_check_test.py": 7,
   "script_checks.ratchet_test.py": 32,
   "unit_test_functions.arena_test.c": 7,
   "unit_test_functions.ast_test.c": 6,

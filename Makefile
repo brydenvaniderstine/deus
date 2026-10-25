@@ -41,22 +41,26 @@ QEMU         := qemu-system-x86_64
 # some other way (e.g. a manual ./configure --prefix build) and the
 # formula was never `brew link`ed, so the guessed path doesn't exist.
 QEMU_PREFIX  := $(shell dirname $(shell dirname $(shell command -v $(QEMU))))
-OVMF_CODE    := $(QEMU_PREFIX)/share/qemu/edk2-x86_64-code.fd
-OVMF_VARS    := $(QEMU_PREFIX)/share/qemu/edk2-i386-vars.fd
+OVMF_CODE    ?= $(shell tools/find_ovmf.sh code $(QEMU_PREFIX))
+OVMF_VARS    ?= $(shell tools/find_ovmf.sh vars $(QEMU_PREFIX))
 
 ESP          := $(BUILD)/esp
+export QEMU QEMU_MACHINE OVMF_CODE OVMF_VARS ESP
 
 # Dev boot: QEMU's vvfat driver serves $(ESP) directly as a FAT filesystem,
 # no GPT/mtools image needed. `make image` (GPT+FAT32, via mtools/sgdisk)
 # is kept as a separate release-only target.
-QEMU_FLAGS   := -machine q35 -m 8G -cpu qemu64,+apic,+pdpe1gb \
+# ONE definition of the machine (Milestone 1: 8 GiB, qemu64 + APIC + 1 GiB pages): `make run`, test-boot and test-wx all use it, and tests/boot_expected.txt pins the
+# 8 GiB through the identity map's top, so it cannot shrink silently.
+QEMU_MACHINE := -machine q35 -m 8G -cpu qemu64,+apic,+pdpe1gb
+QEMU_FLAGS   := $(QEMU_MACHINE) \
                 -drive if=pflash,format=raw,readonly=on,file=$(OVMF_CODE) \
                 -drive if=pflash,format=raw,file=$(BUILD)/ovmf_vars.fd \
                 -drive format=raw,file=fat:rw:$(ESP) \
                 -serial file:serial.log -monitor stdio -no-reboot \
                 -d int,cpu_reset -D qemu.log
 
-.PHONY: all image run debug clean limine stage-esp test-wx test-lexer test-lexer-asan test-arena test-arena-asan test-ast test-ast-asan test-parser-state test-parser-state-asan test-parser-fixes test-parser-fixes-asan test-parser test-parser-asan test-determinism test-ir test-ir-asan test-ir-unit test-ir-unit-asan test-ir-ndebug test-ir-fix test-ir-fix-asan test-ir-error-codes audit-ir-poison test-e0261-exhaustive test-rename-property test-ir-memory-stress test-ratchet test-ratchet-script ratchet-update check-register register-fix-lines test-register-script check-ci-targets test-ci-targets-script test-audit-repros test-fuzz-script coverage fuzz fuzz-lexer fuzz-parser fuzz-ir fuzz-ir-ungated measure-height measure-ir-stack measure-ir-build-stack
+.PHONY: all image run debug clean limine stage-esp test-wx test-lexer test-lexer-asan test-arena test-arena-asan test-ast test-ast-asan test-parser-state test-parser-state-asan test-parser-fixes test-parser-fixes-asan test-parser test-parser-asan test-determinism test-ir test-ir-asan test-ir-unit test-ir-unit-asan test-ir-ndebug test-ir-fix test-ir-fix-asan test-ir-error-codes audit-ir-poison test-e0261-exhaustive test-rename-property test-ir-memory-stress test-ratchet test-ratchet-script ratchet-update check-register register-fix-lines test-register-script check-ci-targets test-ci-targets-script test-audit-repros test-fuzz-script test-boot test-boot-check-script check-kernel-loc test-kernel-loc-script test-measure-height-script coverage-check test-coverage-check-script check-batch-cap test-batch-cap-script check-retro-rules test-retro-rules-script coverage fuzz fuzz-lexer fuzz-parser fuzz-ir fuzz-ir-ungated measure-height measure-ir-stack measure-ir-build-stack
 
 all: $(KERNEL_ELF)
 
@@ -114,29 +118,28 @@ SHARED_TEST_OBJS := $(filter-out $(BUILD)/kernel/boot/entry.o,$(OBJS))
 
 test-wx: $(SHARED_TEST_OBJS) limine.conf limine
 	@mkdir -p $(TEST_WX_DIR)
-	@cp $(OVMF_VARS) $(TEST_WX_DIR)/ovmf_vars_src.fd
-	@for n in 1 2 3; do \
+	@set -e; for n in 1 2 3; do \
 		echo "=== WX_TEST=$$n ==="; \
 		$(CC) $(CFLAGS) -DWX_TEST=$$n -o $(TEST_WX_DIR)/test_wx_$$n.o $(TEST_WX_SRC); \
 		$(LD) $(LDFLAGS) -o $(TEST_WX_DIR)/test_wx_$$n.elf $(TEST_WX_DIR)/test_wx_$$n.o $(SHARED_TEST_OBJS); \
-		mkdir -p $(TEST_WX_DIR)/esp_$$n/EFI/BOOT $(TEST_WX_DIR)/esp_$$n/boot; \
+		rm -rf $(TEST_WX_DIR)/esp_$$n; mkdir -p $(TEST_WX_DIR)/esp_$$n/EFI/BOOT $(TEST_WX_DIR)/esp_$$n/boot; \
 		cp $(LIMINE_DIR)/BOOTX64.EFI $(TEST_WX_DIR)/esp_$$n/EFI/BOOT/BOOTX64.EFI; \
 		cp limine.conf $(TEST_WX_DIR)/esp_$$n/limine.conf; \
 		cp $(TEST_WX_DIR)/test_wx_$$n.elf $(TEST_WX_DIR)/esp_$$n/boot/kernel.elf; \
-		cp $(TEST_WX_DIR)/ovmf_vars_src.fd $(TEST_WX_DIR)/ovmf_vars_$$n.fd; \
-		( $(QEMU) -machine q35 -m 8G -cpu qemu64,+apic,+pdpe1gb \
-			-drive if=pflash,format=raw,readonly=on,file=$(OVMF_CODE) \
-			-drive if=pflash,format=raw,file=$(TEST_WX_DIR)/ovmf_vars_$$n.fd \
-			-drive format=raw,file=fat:rw:$(TEST_WX_DIR)/esp_$$n \
-			-serial file:$(TEST_WX_DIR)/serial_$$n.log -monitor none -no-reboot \
-			-d int,cpu_reset -D $(TEST_WX_DIR)/qemu_$$n.log & ); \
-		sleep 5; \
-		pkill -f "qemu-system-x86_64.*esp_$$n" 2>/dev/null || true; \
-		sleep 1; \
-		echo "--- serial_$$n.log ---"; \
-		cat $(TEST_WX_DIR)/serial_$$n.log; \
-		echo; \
+		ESP=$(TEST_WX_DIR)/esp_$$n ./tools/qemu_boot.sh $(TEST_WX_DIR)/boot_$$n '\[exception\] halting|FAIL: no fault' 180; \
+		python3 tools/boot_check.py wx $$n $(TEST_WX_DIR)/boot_$$n/serial.log $(TEST_WX_DIR)/boot_$$n/qemu.log; \
 	done
+
+# Step 20h (register K5): boots the Milestone 1 kernel under QEMU (the 8 GiB machine, never shrunk) until the A/B preemption proof runs, then checks the serial
+# log against tests/boot_expected.txt (tools/boot_check.py smoke): memmap, GDT/IDT, the three mappings and the CR3 load, calibration source and rate, interleaved A/B.
+test-boot: stage-esp
+	@./tools/qemu_boot.sh $(BUILD)/boot_smoke 'starting A/B preemption proof' 240
+	@sleep 8
+	@python3 tools/boot_check.py smoke $(BUILD)/boot_smoke/serial.log $(BUILD)/boot_smoke/qemu.log
+
+# The checkers' own tests need no QEMU: they run on the real serial logs recorded in tests/boot/ and on damaged copies.
+test-boot-check-script:
+	@python3 tools/boot_check_test.py
 
 # Host-side mannac lexer (docs/M2_PLAN.md stage 1) and its golden tests.
 # Plain macOS clang, no freestanding/kernel flags - this runs on the host,
@@ -434,6 +437,8 @@ test-ir-unit-asan:
 # coverage isn't the question `make coverage` is answering.
 COVERAGE_DIR   := $(BUILD)/coverage
 COVERAGE_FLAGS := -fprofile-instr-generate -fcoverage-mapping
+LLVM_COV       ?= $(shell tools/llvm_tool.sh llvm-cov)
+LLVM_PROFDATA  ?= $(shell tools/llvm_tool.sh llvm-profdata)
 
 coverage:
 	@mkdir -p $(COVERAGE_DIR)
@@ -457,8 +462,8 @@ coverage:
 	clang -std=c11 -Wall -Wextra -g $(COVERAGE_FLAGS) -o $(COVERAGE_DIR)/ir_dump $(IR_DUMP_SRCS)
 	LLVM_PROFILE_FILE=$(COVERAGE_DIR)/ir-%p.profraw ./tools/run_ir_tests.sh $(COVERAGE_DIR)/ir_dump
 	LLVM_PROFILE_FILE=$(COVERAGE_DIR)/ir_fix-%p.profraw ./tools/run_ir_fix_tests.sh $(COVERAGE_DIR)/ir_dump
-	xcrun llvm-profdata merge -sparse $(COVERAGE_DIR)/*.profraw -o $(COVERAGE_DIR)/merged.profdata
-	xcrun llvm-cov report \
+	$(LLVM_PROFDATA) merge -sparse $(COVERAGE_DIR)/*.profraw -o $(COVERAGE_DIR)/merged.profdata
+	$(LLVM_COV) report \
 		$(COVERAGE_DIR)/mannac \
 		-object $(COVERAGE_DIR)/arena_test \
 		-object $(COVERAGE_DIR)/ast_test \
@@ -469,6 +474,14 @@ coverage:
 		-object $(COVERAGE_DIR)/ir_dump \
 		-instr-profile=$(COVERAGE_DIR)/merged.profdata \
 		-ignore-filename-regex='(_test\.c|main\.c)$$'
+
+# Step 20i (register V6): after `make coverage`, every uncovered line of lexer.c, parser.c and ir*.c must have a reason in tests/coverage_justified.txt, and a reason for a
+# line that is covered now fails as stale (tools/coverage_check.py). The clang zero-count region after an assert is reported apart, not as a missed line.
+coverage-check: coverage
+	@python3 tools/coverage_check.py
+
+test-coverage-check-script:
+	@python3 tools/coverage_check_test.py
 
 # Step 12: libFuzzer harnesses (tools/mannac/fuzz_lexer.c, fuzz_parser.c).
 # Deliberately NOT part of `test-*`/CI - needs brew's keg-only llvm (Apple's
@@ -490,6 +503,30 @@ fuzz-ir:
 
 fuzz-ir-ungated:
 	./tools/fuzz/run_fuzzers.sh ir-ungated
+
+# Step 20g: the kernel's size budget (register K7) and the crash rule of the height measurement (register V5).
+check-kernel-loc:
+	@./tools/check_kernel_loc.sh
+
+test-kernel-loc-script:
+	@./tools/check_kernel_loc_test.sh
+
+test-measure-height-script:
+	@./tools/measure_expr_height_test.sh
+
+# Step 20i: the batch cap (a push carries at most 3 steps; tools/check_batch_cap.py, register R1), and the retro-rule inventory (every rule has a check or a register
+# entry; tools/check_retro_rules.py, docs/REFINEMENT.md).
+check-batch-cap:
+	@python3 tools/check_batch_cap.py
+
+test-batch-cap-script:
+	@python3 tools/check_batch_cap_test.py
+
+check-retro-rules:
+	@python3 tools/check_retro_rules.py
+
+test-retro-rules-script:
+	@python3 tools/check_retro_rules_test.py
 
 # Step 20e: the exit status of the fuzz runner (a clean run 0; a crash artifact 1). Needs a clang with libFuzzer (LLVM_CLANG); it fails without one.
 test-fuzz-script:
