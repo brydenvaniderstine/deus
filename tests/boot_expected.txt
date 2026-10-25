@@ -1,0 +1,26 @@
+# The M1 boot smoke test (step 20h; register K5): ordered regexes the serial log of `make test-boot` must contain, in this order, after ANSI escapes and CRs are
+# stripped (tools/boot_check.py smoke). Derived from the real serial log of the Milestone 1 kernel (tests/boot/smoke_serial.serial, recorded 2026-10-25 under QEMU 11.1.2,
+# edk2, `-machine q35 -m 8G -cpu qemu64,+apic,+pdpe1gb`). Numbers that depend on the firmware (the memmap, addresses) are matched loosely; what the milestone
+# promises is matched exactly. The memory size is pinned by the identity map's top: 0x280000000 = the 8 GiB machine (never shrink it to make a run pass).
+\[boot\] Deus Milestone 1
+\[boot\] memmap: [0-9]+ entries
+\[boot\] hhdm offset=0x[0-9a-f]+
+\[boot\] kernel physical_base=0x[0-9a-f]+ virtual_base=0xffffffff80000000
+\[gdt\] loaded: null/kcode\(0x08\)/kdata\(0x10\)/tss\(0x18\), IST1=#DF stack
+\[idt\] 256 entries loaded; vector 0x20=timer 0xff=spurious
+\[paging\] identity-mapping 0\.\.0x280000000 with [0-9]+ x 1GiB pages \(NX\)
+\[paging\] hhdm alias: pml4\[256\]
+\[paging\] higher-half alias: 0xffffffff80000000 -> phys 0x[0-9a-f]+, [0-9]+ bytes
+\[paging\] EFER\.NXE enabled
+\[paging\] CR3 loaded at phys 0x[0-9a-f]+ \(virt 0xffffffff[0-9a-f]+\); kernel survived the switch
+\[paging\] CR0\.WP enabled
+\[paging\] identity access at 0x[0-9a-f]+ \(near top of RAM\) verified OK
+\[lapic\] base confirmed at 0xfee00000 via MSR 0x1B
+# K2 (register): CPUID 0x15/0x16 and HPET are stubs that log and skip; only the PIT calibrates. When K2 is closed these two lines change with it.
+\[clock\] cpuid 0x15: not enumerated
+\[clock\] hpet: not implemented
+\[pit\] calibrated over 10ms: lapic ticks elapsed=[0-9]+ -> [0-9]+ ticks/ms \(div16\)
+\[clock\] calibration source: pit
+# K1 (register): LAPIC periodic mode only; TSC-deadline is not implemented. When K1 is closed this line changes with it.
+\[boot\] LAPIC periodic timer armed at [0-9]+ ticks/ms
+\[boot\] enabling interrupts, starting A/B preemption proof

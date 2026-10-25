@@ -1,0 +1,66 @@
+[2J[01;01H[=3h[2J[01;01H[2J[01;01H[=3h[2J[01;01H[2J[01;01H[=3h[2J[01;01HBdsDxe: loading Boot0001 "UEFI QEMU HARDDISK QM00001 " from PciRoot(0x0)/Pci(0x1F,0x2)/Sata(0x0,0xFFFF,0x0)
+BdsDxe: starting Boot0001 "UEFI QEMU HARDDISK QM00001 " from PciRoot(0x0)/Pci(0x1F,0x2)/Sata(0x0,0xFFFF,0x0)
+[2J[01;01H[01;01H[2J[01;01H[01;01H
+[boot] Deus Milestone 1
+[boot] memmap: 42 entries
+  [ 0] base=0x1000 length=0x9f000 type=usable
+  [ 1] base=0x100000 length=0x700000 type=usable
+  [ 2] base=0x800000 length=0x8000 type=acpi_nvs
+  [ 3] base=0x808000 length=0x3000 type=usable
+  [ 4] base=0x80b000 length=0x1000 type=acpi_nvs
+  [ 5] base=0x80c000 length=0x5000 type=usable
+  [ 6] base=0x811000 length=0xef000 type=acpi_nvs
+  [ 7] base=0x900000 length=0x79750000 type=usable
+  [ 8] base=0x7a050000 length=0xf000 type=kernel_and_modules
+  [ 9] base=0x7a05f000 length=0xd000 type=bootloader_reclaimable
+  [10] base=0x7a06c000 length=0x1f68000 type=usable
+  [11] base=0x7bfd4000 length=0x6000 type=bootloader_reclaimable
+  [12] base=0x7bfda000 length=0x20e9000 type=usable
+  [13] base=0x7e0c3000 length=0x5000 type=reserved
+  [14] base=0x7e0c8000 length=0x12000 type=usable
+  [15] base=0x7e0da000 length=0x3d000 type=bootloader_reclaimable
+  [16] base=0x7e117000 length=0x2000 type=usable
+  [17] base=0x7e119000 length=0xa000 type=bootloader_reclaimable
+  [18] base=0x7e123000 length=0x1000 type=usable
+  [19] base=0x7e124000 length=0x26000 type=bootloader_reclaimable
+  [20] base=0x7e14a000 length=0xb000 type=reserved
+  [21] base=0x7e155000 length=0xcec000 type=usable
+  [22] base=0x7ee41000 length=0xc1000 type=reserved
+  [23] base=0x7ef02000 length=0x9eb000 type=usable
+  [24] base=0x7f8ed000 length=0x100000 type=reserved
+  [25] base=0x7f9ed000 length=0x100000 type=reserved
+  [26] base=0x7faed000 length=0x80000 type=reserved
+  [27] base=0x7fb6d000 length=0x12000 type=acpi_reclaimable
+  [28] base=0x7fb7f000 length=0x80000 type=acpi_nvs
+  [29] base=0x7fbff000 length=0x201000 type=usable
+  [30] base=0x7fe00000 length=0x46000 type=bootloader_reclaimable
+  [31] base=0x7fe46000 length=0x6a000 type=usable
+  [32] base=0x7feb0000 length=0x4000 type=reserved
+  [33] base=0x7feb4000 length=0x2000 type=acpi_nvs
+  [34] base=0x7feb6000 length=0x3e000 type=usable
+  [35] base=0x7fef4000 length=0x84000 type=reserved
+  [36] base=0x7ff78000 length=0x88000 type=acpi_nvs
+  [37] base=0x80000000 length=0x3e8000 type=framebuffer
+  [38] base=0xe0000000 length=0x10000000 type=reserved
+  [39] base=0xffc00000 length=0x400000 type=reserved
+  [40] base=0x100000000 length=0x180000000 type=usable
+  [41] base=0xfd00000000 length=0x300000000 type=reserved
+[boot] hhdm offset=0xffff800000000000
+[boot] kernel physical_base=0x7a050000 virtual_base=0xffffffff80000000
+[gdt] loaded: null/kcode(0x08)/kdata(0x10)/tss(0x18), IST1=#DF stack
+[idt] 256 entries loaded; vector 0x20=timer 0xff=spurious
+[paging] identity-mapping 0..0x280000000 with 10 x 1GiB pages (NX)
+[paging] hhdm alias: pml4[256] -> pdpt_low (offset=0xffff800000000000, 512GiB-aligned)
+[paging] higher-half alias: 0xffffffff80000000 -> phys 0x7a050000, 57530 bytes (15 x 4KiB pages)
+[paging] EFER.NXE enabled
+[paging] CR3 loaded at phys 0x7a056000 (virt 0xffffffff80006000); kernel survived the switch
+[paging] CR0.WP enabled
+[paging] identity access at 0x27ffffff8 (near top of RAM) verified OK
+[lapic] base confirmed at 0xfee00000 via MSR 0x1B
+[clock] cpuid 0x15: not enumerated (eax=0 ebx=0 ecx=0), skipping
+[clock] hpet: not implemented (no ACPI table walk yet), skipping
+[pit] calibrated over 10ms: lapic ticks elapsed=629187 -> 62918 ticks/ms (div16)
+[clock] calibration source: pit
+[boot] LAPIC periodic timer armed at 62918 ticks/ms
+[boot] enabling interrupts, starting A/B preemption proof
+ABBABABABABABAABABABABABABBABAABBAABABABBABABABAABABABABABBABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABAABABABABABABABBAABABABABABABABABABBAABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABBABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABAABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABBABABABABABABAABABABABABBABABABABABABABABABABABABABABABABABABABAABABABABABABABABABABABABABABAABABABABABABABBABABAABBAABABABABABABABABABABABABABABABABABABBABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABAABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABAABBABAABBABAABBAABABBABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABBAABBAABABABBAABABBABABABABABABABABABABABABABABABAABABABABABABABABABABABABABABABAABBAABABBABABABABABABABABABABABABABABABABABABAABABABABABABABABABABABABABABABAABABABABABABABABABBABABABABABABABABABABABAABABABABBABABABABABAABABABABABABABABABABABBABABABABAABABABABABABABABABABABABABABABABABABABABABAABABABABABABBABABABABABABABABABABAABABABBABABAABABBAABABABABABABABABABABABABABABBABABAABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABBABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABBABABABABABABABAABABABBAABABABBAABABABABABABABBAABAB

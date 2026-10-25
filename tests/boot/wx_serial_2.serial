@@ -1,0 +1,17 @@
+[2J[01;01H[=3h[2J[01;01H[2J[01;01H[=3h[2J[01;01H[2J[01;01H[=3h[2J[01;01HBdsDxe: loading Boot0001 "UEFI QEMU HARDDISK QM00001 " from PciRoot(0x0)/Pci(0x1F,0x2)/Sata(0x0,0xFFFF,0x0)
+BdsDxe: starting Boot0001 "UEFI QEMU HARDDISK QM00001 " from PciRoot(0x0)/Pci(0x1F,0x2)/Sata(0x0,0xFFFF,0x0)
+[2J[01;01H[01;01H[2J[01;01H[01;01H
+[test-wx] WX_TEST=2
+[idt] 256 entries loaded; vector 0x20=timer 0xff=spurious
+[paging] identity-mapping 0..0x280000000 with 10 x 1GiB pages (NX)
+[paging] hhdm alias: pml4[256] -> pdpt_low (offset=0xffff800000000000, 512GiB-aligned)
+[paging] higher-half alias: 0xffffffff80000000 -> phys 0x7a051000, 53434 bytes (14 x 4KiB pages)
+[paging] EFER.NXE enabled
+[paging] CR3 loaded at phys 0x7a056000 (virt 0xffffffff80005000); kernel survived the switch
+[paging] CR0.WP enabled
+[paging] identity access at 0x27ffffff8 (near top of RAM) verified OK
+[test-wx] protections live; attempting the deliberate violation
+[test-wx] executing .data at 0xffffffff800030b0
+
+[exception] vector=14 error_code=0x11 rip=0xffffffff800030b0 cs=0x8 rflags=0x10082 rsp=0xffff80007e13efc8 ss=0x10 cr2=0xffffffff800030b0
+[exception] halting
