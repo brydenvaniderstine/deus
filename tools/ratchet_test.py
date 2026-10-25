@@ -81,7 +81,7 @@ try:
     def force_write(root):
         """write tests/ratchet.json from the computed counts WITHOUT the update command's refusal (what a careless or hostile commit does)"""
         subprocess.run([sys.executable, "-c", "import sys,json; sys.path.insert(0,'tools'); import ratchet; "
-                        "open('tests/ratchet.json','w').write(json.dumps(ratchet.compute(), indent=1, sort_keys=True)+'\\n')"], cwd=root, check=True)
+                        "c=ratchet.compute(); c.pop('uncalled'); open('tests/ratchet.json','w').write(json.dumps(c, indent=1, sort_keys=True)+'\\n')"], cwd=root, check=True)
 
     def baseline(name):
         root = scratch(name)
@@ -137,23 +137,52 @@ try:
     check("finding 1: the history replay catches the committed deletion", r.returncode == 1 and gone in r.stdout)
 
     # findings 2 and 3: a lowered version followed by a normal commit
+    def lower_a_case(root, waive=False):
+        """remove one fix case; with waive, the waiver lines (metric and the case's expected output) go into the SAME commit's register"""
+        rem = os.path.join(root, "tests", "ir_fix", cases[0][:-3] + ".remaining")
+        lines = ""
+        if waive:
+            ncase = len([f for f in os.listdir(os.path.join(root, "tests", "ir_fix")) if f.endswith(".mn") and ".fixed" not in f])
+            lines = "\nRATCHET-WAIVER ir_fix_cases %d -> %d V7\n" % (ncase, ncase - 1)
+            if os.path.exists(rem):
+                lines += "RATCHET-WAIVER tests/ir_fix/%s.remaining %d -> 0 V7\n" % (cases[0][:-3], ratchet.count_diags(open(rem).read()))
+        for ext in (".mn", ".fixed.mn", ".remaining"):
+            p = os.path.join(root, "tests", "ir_fix", cases[0][:-3] + ext)
+            if os.path.exists(p):
+                os.remove(p)
+        if lines:
+            with open(os.path.join(root, "docs", "DEGRADATION.md"), "a") as f:
+                f.write(lines)
+
+    def a_normal_commit_on_top(root):
+        shutil.copy(os.path.join(ir_dir(root), zero_golden + ".mn"), os.path.join(root, "tests", "ir_fix", "fix_a_new_case.mn"))
+        shutil.copy(os.path.join(ir_dir(root), zero_golden + ".mn"), os.path.join(root, "tests", "ir_fix", "fix_a_new_case.fixed.mn"))
+        force_write(root)
+        commit(root, "a normal commit on top")
+
     root = baseline("replay")
-    for ext in (".mn", ".fixed.mn", ".remaining"):
-        p = os.path.join(root, "tests", "ir_fix", cases[0][:-3] + ext)
-        if os.path.exists(p):
-            os.remove(p)
+    lower_a_case(root)
     force_write(root)
     commit(root, "a lowered version (its CI run was cancelled or red)")
-    shutil.copy(os.path.join(ir_dir(root), zero_golden + ".mn"), os.path.join(root, "tests", "ir_fix", "fix_a_new_case.mn"))
-    shutil.copy(os.path.join(ir_dir(root), zero_golden + ".mn"), os.path.join(root, "tests", "ir_fix", "fix_a_new_case.fixed.mn"))
-    force_write(root)
-    commit(root, "a normal commit on top")
+    a_normal_commit_on_top(root)
     r = run(root, "check")
     check("findings 2+3: a lowered version is still caught after a normal commit", r.returncode == 1 and "ir_fix_cases" in r.stdout)
+    root = baseline("replay_waived")
+    lower_a_case(root, waive=True)
+    force_write(root)
+    commit(root, "a lowered version with its waiver in the same commit")
+    a_normal_commit_on_top(root)
+    r = run(root, "check")
+    check("findings 2+3: the same lowering passes when its commit carries the waiver", r.returncode == 0)
+    root = baseline("replay_late_waiver")
+    lower_a_case(root)
+    force_write(root)
+    commit(root, "a lowered version")
     with open(os.path.join(root, "docs", "DEGRADATION.md"), "a") as f:
         f.write("\nRATCHET-WAIVER ir_fix_cases %d -> %d V7\n" % (n, n - 1))
+    commit(root, "a waiver added afterwards")
     r = run(root, "check")
-    check("findings 2+3: the metric passes once waived (its files need their own waivers)", "metric ir_fix_cases" not in r.stdout)
+    check("finding 7: a waiver added in a LATER commit does not excuse an earlier lowering", r.returncode == 1 and "ir_fix_cases" in r.stdout)
 
     # an unreadable version, a shallow clone, a single version
     root = baseline("garbage")
@@ -182,6 +211,30 @@ try:
         f.write("\nRATCHET-WAIVER ir_fix_cases %d -> %d V4\n" % (n, n - 1))   # V4 is CLOSED in the register
     r = run(root, "check")
     check("finding 6: a waiver naming a CLOSED entry does not apply", r.returncode == 1 and "metric ir_fix_cases" in r.stdout)
+
+    # finding 7 (Linux review of batch A2): a waived lowering stays waived after its entry closes; the waivers and statuses of a pair are those of
+    # the register AT THE LATER COMMIT of the pair
+    root = baseline("closedlater")
+    nz = len([f for f in os.listdir(ir_dir(root)) if f.endswith(".mn")])
+    for ext in (".mn", ".ir"):
+        os.remove(os.path.join(ir_dir(root), zero_golden + ext))
+    with open(os.path.join(root, "docs", "DEGRADATION.md"), "a") as f:
+        f.write("\nRATCHET-WAIVER ir_goldens %d -> %d V7\nRATCHET-WAIVER tests/ir/%s.ir 0 -> 0 V7\n" % (nz, nz - 1, zero_golden))
+    force_write(root)
+    commit(root, "delete a golden under a waiver naming the open entry V7")
+    r = run(root, "check")
+    check("finding 7: a waived lowering under an OPEN entry passes", r.returncode == 0)
+    for ext in (".mn", ".ir"):
+        shutil.copy(os.path.join(repo, "tests", "ir", zero_golden + ext), os.path.join(ir_dir(root), zero_golden + ext))
+    reg = os.path.join(root, "docs", "DEGRADATION.md")
+    txt = open(reg).read()
+    i = txt.index("### V7 - ")
+    j = txt.index("- **Status:** OPEN", i)
+    open(reg, "w").write(txt[:j] + "- **Status:** CLOSED (2026-10-25, test)" + txt[j + len("- **Status:** OPEN"):])
+    force_write(root)
+    commit(root, "restore the golden and close V7")
+    r = run(root, "check")
+    check("finding 7: the lowering stays waived after the entry is CLOSED in a later commit", r.returncode == 0 and "FAILED" not in r.stdout)
 
     # finding 6: a removed test call is a lowered unit-test count
     root = baseline("uncalled")

@@ -2,7 +2,8 @@
 """The CI ratchet (step 20a): counts of tests only go up.
 
 CLAUDE.md "No degradation": a test, golden, fix case, repro or diagnostic count never decreases unless the register lists why. This script
-computes the counts and compares them with the history of the baseline file.
+computes the counts and compares them with the history of the baseline file. Waivers for a pair of committed versions are read from the register as
+committed at the later commit of the pair; waivers for the working tree are read from the working tree's register.
 
   tools/ratchet.py check    replay the history of tests/ratchet.json: every consecutive pair of committed versions (the first commit that
                             has the file up to HEAD, then the working-tree file, then the counts computed from the tree) must not go down,
@@ -99,9 +100,10 @@ def compute():
     return {"metrics": metrics, "diags": diags, "uncalled": uncalled}
 
 
-def waivers():
-    """{(name, from, to): entry id} from the register, only for entries that exist and are OPEN or PARTLY CLOSED"""
-    text = read(REGISTER)
+def waivers(text=None):
+    """{(name, from, to): entry id} from the register text (default: the working tree's), only for entries that exist and are OPEN or PARTLY CLOSED"""
+    if text is None:
+        text = read(REGISTER)
     open_ids = set()
     for m in re.finditer(r"^### (\S+) - .*?^- \*\*Status:\*\* ([^\n]*)", text, re.M | re.S):   # the first Status line after the heading is the entry's own
         if m.group(2).startswith(("OPEN", "PARTLY CLOSED")):
@@ -147,7 +149,7 @@ def git(*args):
 
 
 def history():
-    """(list of (commit, snapshot or None), problems): every committed version of tests/ratchet.json, oldest first"""
+    """(list of (short commit, snapshot, full commit), problems): every committed version of tests/ratchet.json, oldest first"""
     problems = []
     if git("rev-parse", "--is-shallow-repository").stdout.strip() == "true":
         return [], ["the clone is shallow: the ratchet replays the whole history of %s (check out with fetch-depth: 0)" % BASELINE]
@@ -166,7 +168,7 @@ def history():
         except (ValueError, KeyError, TypeError):
             problems.append("%s: %s is unreadable at this commit" % (sha[:12], BASELINE))
             continue
-        versions.append((sha[:12], snap))
+        versions.append((sha[:12], snap, sha))
     return versions, problems
 
 
@@ -193,8 +195,11 @@ def main(argv):
         return 0
     versions, problems = history()
     problems = list(problems) + uncalled
-    for (a, sa), (b, sb) in zip(versions, versions[1:]):
-        for p in compare(sa, sb, waived):
+    for (a, sa, _), (b, sb, later) in zip(versions, versions[1:]):
+        # the waivers and the entry statuses are those of the register AS COMMITTED at the later commit of the pair (the commit that made the
+        # decrease): closing an entry afterwards must not turn an old, waived lowering into a permanent failure (Linux review of batch A2, finding 7)
+        r = git("show", "%s:%s" % (later, REGISTER))
+        for p in compare(sa, sb, waivers(r.stdout if r.returncode == 0 else "")):
             problems.append("%s -> %s: %s" % (a, b, p))
     try:
         committed = json.loads(read(BASELINE))
