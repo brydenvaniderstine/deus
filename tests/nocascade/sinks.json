@@ -272,7 +272,6 @@
   "indexable_element",
   "ir_build",
   "literal_array_type",
-  "neg_of_literal",
   "report_types_differ",
   "type_layout"
  ],
@@ -929,18 +928,6 @@
   {
    "atoms": [
     {
-     "replace": "1",
-     "text": "folded"
-    }
-   ],
-   "file": "ir_expr.c",
-   "function": "group_neg",
-   "id": "ir_expr.c::group_neg::682b052d::0",
-   "text": "folded"
-  },
-  {
-   "atoms": [
-    {
      "replace": "0",
      "text": "has_error(b)"
     }
@@ -1001,7 +988,7 @@
   {
    "atoms": [
     {
-     "replace": "0",
+     "replace": "1",
      "text": "cx.structs[i].size_error"
     }
    ],
@@ -1198,18 +1185,6 @@
    "atoms": [
     {
      "replace": "0",
-     "text": "has_error(o)"
-    }
-   ],
-   "file": "ir_expr.c",
-   "function": "settle_pending",
-   "id": "ir_expr.c::settle_pending::038e7864::0",
-   "text": "bool agrees = same || (!has_error(o) && (o.group ? group_fits(bc, oe, pt) : o.node->type == pt));"
-  },
-  {
-   "atoms": [
-    {
-     "replace": "0",
      "text": "r != LAY_OK"
     }
    ],
@@ -1233,7 +1208,7 @@
   {
    "atoms": [
     {
-     "replace": "0",
+     "replace": "1",
      "text": "dep->sized"
     }
    ],

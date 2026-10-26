@@ -200,6 +200,7 @@ class Program:
         self.predicates, self.producers, self.nullpoison, self.reporters = set(), set(), set(), set()
         self.poison_params = {}  # function -> {parameter name}: a parameter that a caller fills with a null-poison value
         self.carriers = set()
+        self.omission_carriers = set()   # flags that are TRUE for a healthy value and left false for a poisoned one: "not poison" is the constant 1, not 0
         self.derive()
 
     # ---- text ----
@@ -309,6 +310,16 @@ class Program:
                 return True
         return False
 
+    def reports_always(self, x):
+        """the statement reports on EVERY path through it: a conditional or a loop that reports on one branch (and returns there) does not make the code after it a
+        path that reported (`if (v > half) { report_range(...); return ...; } return NULL;` returns NULL because there was nothing to fold, not because of a mistake)"""
+        k = x.get("kind")
+        if k in ("IfStmt", "WhileStmt", "ForStmt", "DoStmt", "SwitchStmt"):
+            return False
+        if k == "CompoundStmt":
+            return any(self.reports_always(c) for c in kids(x))
+        return any(callee(y) == "ir_error" or callee(y) in self.reporters or callee(y) in self.producers for y in walk(x) if y.get("kind") == "CallExpr")
+
     def is_poison_return(self, v):
         """a returned value that means "I could not": NULL, or an enumerator other than the one whose value is 0 (LAY_OK is 0, LAY_UNSIZED is not)"""
         if is_null_value(v):
@@ -330,7 +341,7 @@ class Program:
                 for x in kids(n):
                     if go(x, guarded, rep):
                         return True
-                    if any(callee(y) == "ir_error" or callee(y) in self.reporters or callee(y) in self.producers for y in walk(x) if y.get("kind") == "CallExpr"):
+                    if self.reports_always(x):
                         rep = True
                 return False
             return any(go(x, guarded, reported) for x in kids(n)) if k in ("SwitchStmt", "CaseStmt", "DefaultStmt", "WhileStmt", "ForStmt", "DoStmt") else False
@@ -376,6 +387,7 @@ class Program:
                                         (r.get("kind") == "CXXBoolLiteralExpr" or (r.get("kind") == "IntegerLiteral" and r.get("value") == "1")
                                          or (r.get("kind") == "DeclRefExpr" and ref_name(r)[0] == "true")):
                                     self.carriers.add(l.get("name"))
+                                    self.omission_carriers.add(l.get("name"))
                     if x.get("kind") == "IfStmt" and self.atoms_in(kids(x)[0], set()) and any(y.get("kind") == "ReturnStmt" for y in walk(kids(x)[1])):
                         after = True
             for c in kids(n):
@@ -401,7 +413,7 @@ class Program:
         if k == "CallExpr" and callee(n) in self.predicates:
             return "0"
         if k == "MemberExpr" and n.get("name") in self.carriers:
-            return "0"
+            return "1" if n.get("name") in self.omission_carriers else "0"
         if k == "UnaryOperator" and n.get("opcode") == "!":
             x = strip(kids(n)[0])
             if (x.get("kind") == "DeclRefExpr" and ref_name(x)[0] in nullvars) or (x.get("kind") == "CallExpr" and callee(x) in self.nullpoison):

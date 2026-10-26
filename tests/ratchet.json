@@ -2624,6 +2624,1718 @@
    1,
    "e10b6a3b64691e41"
   ],
+  "tests/nocascade/Decl_function_decl_return_type__call_arith__unknown_type.ir": [
+   1,
+   "f926525e09d134bf"
+  ],
+  "tests/nocascade/Decl_function_decl_return_type__call_assign__unknown_type.ir": [
+   1,
+   "f926525e09d134bf"
+  ],
+  "tests/nocascade/Decl_function_decl_return_type__call_call_arg__unknown_type.ir": [
+   1,
+   "f926525e09d134bf"
+  ],
+  "tests/nocascade/Decl_function_decl_return_type__call_compare__unknown_type.ir": [
+   1,
+   "f926525e09d134bf"
+  ],
+  "tests/nocascade/Decl_function_decl_return_type__call_condition__unknown_type.ir": [
+   1,
+   "f926525e09d134bf"
+  ],
+  "tests/nocascade/Decl_function_decl_return_type__call_convert__unknown_type.ir": [
+   1,
+   "f926525e09d134bf"
+  ],
+  "tests/nocascade/Decl_function_decl_return_type__call_equal__unknown_type.ir": [
+   1,
+   "f926525e09d134bf"
+  ],
+  "tests/nocascade/Decl_function_decl_return_type__call_field__unknown_type.ir": [
+   1,
+   "f926525e09d134bf"
+  ],
+  "tests/nocascade/Decl_function_decl_return_type__call_index__unknown_type.ir": [
+   1,
+   "f926525e09d134bf"
+  ],
+  "tests/nocascade/Decl_function_decl_return_type__call_length__unknown_type.ir": [
+   1,
+   "f926525e09d134bf"
+  ],
+  "tests/nocascade/Decl_function_decl_return_type__call_logic__unknown_type.ir": [
+   1,
+   "f926525e09d134bf"
+  ],
+  "tests/nocascade/Decl_function_decl_return_type__call_negate__unknown_type.ir": [
+   1,
+   "f926525e09d134bf"
+  ],
+  "tests/nocascade/Decl_function_decl_return_type__call_not__unknown_type.ir": [
+   1,
+   "f926525e09d134bf"
+  ],
+  "tests/nocascade/Decl_function_decl_return_type__call_return__unknown_type.ir": [
+   1,
+   "f926525e09d134bf"
+  ],
+  "tests/nocascade/Expr_array_elems_list__first__bad_operator.ir": [
+   1,
+   "6090a3a0327b7abf"
+  ],
+  "tests/nocascade/Expr_array_elems_list__first__no_fields.ir": [
+   1,
+   "7d2f1d1ec3aa92cd"
+  ],
+  "tests/nocascade/Expr_array_elems_list__first__not_indexable.ir": [
+   1,
+   "b01405355fc7cf03"
+  ],
+  "tests/nocascade/Expr_array_elems_list__first__unit_call.ir": [
+   1,
+   "91908fa93a86167e"
+  ],
+  "tests/nocascade/Expr_array_elems_list__first__unknown_field.ir": [
+   1,
+   "5e7f76dd0dff2cb2"
+  ],
+  "tests/nocascade/Expr_array_elems_list__first__unknown_function.ir": [
+   1,
+   "712917548f6bca3d"
+  ],
+  "tests/nocascade/Expr_array_elems_list__first__unknown_name.ir": [
+   1,
+   "46627194acbcc8a4"
+  ],
+  "tests/nocascade/Expr_array_elems_list__inferred_first__bad_operator.ir": [
+   1,
+   "3c0e198327bb9fd3"
+  ],
+  "tests/nocascade/Expr_array_elems_list__inferred_first__no_fields.ir": [
+   1,
+   "89812950d3394a77"
+  ],
+  "tests/nocascade/Expr_array_elems_list__inferred_first__not_indexable.ir": [
+   1,
+   "b08d611fdf22b450"
+  ],
+  "tests/nocascade/Expr_array_elems_list__inferred_first__unit_call.ir": [
+   1,
+   "a71b5e6363658dbf"
+  ],
+  "tests/nocascade/Expr_array_elems_list__inferred_first__unknown_field.ir": [
+   1,
+   "93507e0a5d2176cf"
+  ],
+  "tests/nocascade/Expr_array_elems_list__inferred_first__unknown_function.ir": [
+   1,
+   "61b6655783c7cd41"
+  ],
+  "tests/nocascade/Expr_array_elems_list__inferred_first__unknown_name.ir": [
+   1,
+   "f9d693be976887ac"
+  ],
+  "tests/nocascade/Expr_array_elems_list__inferred_first_then_arith__bad_operator.ir": [
+   1,
+   "3c0e198327bb9fd3"
+  ],
+  "tests/nocascade/Expr_array_elems_list__inferred_first_then_arith__no_fields.ir": [
+   1,
+   "89812950d3394a77"
+  ],
+  "tests/nocascade/Expr_array_elems_list__inferred_first_then_arith__not_indexable.ir": [
+   1,
+   "b08d611fdf22b450"
+  ],
+  "tests/nocascade/Expr_array_elems_list__inferred_first_then_arith__unit_call.ir": [
+   1,
+   "a71b5e6363658dbf"
+  ],
+  "tests/nocascade/Expr_array_elems_list__inferred_first_then_arith__unknown_field.ir": [
+   1,
+   "93507e0a5d2176cf"
+  ],
+  "tests/nocascade/Expr_array_elems_list__inferred_first_then_arith__unknown_function.ir": [
+   1,
+   "61b6655783c7cd41"
+  ],
+  "tests/nocascade/Expr_array_elems_list__inferred_first_then_arith__unknown_name.ir": [
+   1,
+   "f9d693be976887ac"
+  ],
+  "tests/nocascade/Expr_array_elems_list__inferred_first_then_call_arg__bad_operator.ir": [
+   1,
+   "3c0e198327bb9fd3"
+  ],
+  "tests/nocascade/Expr_array_elems_list__inferred_first_then_call_arg__no_fields.ir": [
+   1,
+   "89812950d3394a77"
+  ],
+  "tests/nocascade/Expr_array_elems_list__inferred_first_then_call_arg__not_indexable.ir": [
+   1,
+   "b08d611fdf22b450"
+  ],
+  "tests/nocascade/Expr_array_elems_list__inferred_first_then_call_arg__unit_call.ir": [
+   1,
+   "a71b5e6363658dbf"
+  ],
+  "tests/nocascade/Expr_array_elems_list__inferred_first_then_call_arg__unknown_field.ir": [
+   1,
+   "93507e0a5d2176cf"
+  ],
+  "tests/nocascade/Expr_array_elems_list__inferred_first_then_call_arg__unknown_function.ir": [
+   1,
+   "61b6655783c7cd41"
+  ],
+  "tests/nocascade/Expr_array_elems_list__inferred_first_then_call_arg__unknown_name.ir": [
+   1,
+   "f9d693be976887ac"
+  ],
+  "tests/nocascade/Expr_array_elems_list__inferred_first_then_compare__bad_operator.ir": [
+   1,
+   "3c0e198327bb9fd3"
+  ],
+  "tests/nocascade/Expr_array_elems_list__inferred_first_then_compare__no_fields.ir": [
+   1,
+   "89812950d3394a77"
+  ],
+  "tests/nocascade/Expr_array_elems_list__inferred_first_then_compare__not_indexable.ir": [
+   1,
+   "b08d611fdf22b450"
+  ],
+  "tests/nocascade/Expr_array_elems_list__inferred_first_then_compare__unit_call.ir": [
+   1,
+   "a71b5e6363658dbf"
+  ],
+  "tests/nocascade/Expr_array_elems_list__inferred_first_then_compare__unknown_field.ir": [
+   1,
+   "93507e0a5d2176cf"
+  ],
+  "tests/nocascade/Expr_array_elems_list__inferred_first_then_compare__unknown_function.ir": [
+   1,
+   "61b6655783c7cd41"
+  ],
+  "tests/nocascade/Expr_array_elems_list__inferred_first_then_compare__unknown_name.ir": [
+   1,
+   "f9d693be976887ac"
+  ],
+  "tests/nocascade/Expr_array_elems_list__inferred_first_then_index__bad_operator.ir": [
+   1,
+   "3c0e198327bb9fd3"
+  ],
+  "tests/nocascade/Expr_array_elems_list__inferred_first_then_index__no_fields.ir": [
+   1,
+   "89812950d3394a77"
+  ],
+  "tests/nocascade/Expr_array_elems_list__inferred_first_then_index__not_indexable.ir": [
+   1,
+   "b08d611fdf22b450"
+  ],
+  "tests/nocascade/Expr_array_elems_list__inferred_first_then_index__unit_call.ir": [
+   1,
+   "a71b5e6363658dbf"
+  ],
+  "tests/nocascade/Expr_array_elems_list__inferred_first_then_index__unknown_field.ir": [
+   1,
+   "93507e0a5d2176cf"
+  ],
+  "tests/nocascade/Expr_array_elems_list__inferred_first_then_index__unknown_function.ir": [
+   1,
+   "61b6655783c7cd41"
+  ],
+  "tests/nocascade/Expr_array_elems_list__inferred_first_then_index__unknown_name.ir": [
+   1,
+   "f9d693be976887ac"
+  ],
+  "tests/nocascade/Expr_array_elems_list__second__bad_operator.ir": [
+   1,
+   "3ff03356fd26e6cc"
+  ],
+  "tests/nocascade/Expr_array_elems_list__second__no_fields.ir": [
+   1,
+   "04fbb904370b0556"
+  ],
+  "tests/nocascade/Expr_array_elems_list__second__not_indexable.ir": [
+   1,
+   "adcad5b566898d2e"
+  ],
+  "tests/nocascade/Expr_array_elems_list__second__unit_call.ir": [
+   1,
+   "bbeaf6273e759f54"
+  ],
+  "tests/nocascade/Expr_array_elems_list__second__unknown_field.ir": [
+   1,
+   "37bdf8cc8e5a2111"
+  ],
+  "tests/nocascade/Expr_array_elems_list__second__unknown_function.ir": [
+   1,
+   "cb88fb498e58e70e"
+  ],
+  "tests/nocascade/Expr_array_elems_list__second__unknown_name.ir": [
+   1,
+   "11ad1a66444d81e6"
+  ],
+  "tests/nocascade/Expr_array_repeat_value__inferred__bad_operator.ir": [
+   1,
+   "3c0e198327bb9fd3"
+  ],
+  "tests/nocascade/Expr_array_repeat_value__inferred__no_fields.ir": [
+   1,
+   "89812950d3394a77"
+  ],
+  "tests/nocascade/Expr_array_repeat_value__inferred__not_indexable.ir": [
+   1,
+   "b08d611fdf22b450"
+  ],
+  "tests/nocascade/Expr_array_repeat_value__inferred__unit_call.ir": [
+   1,
+   "a71b5e6363658dbf"
+  ],
+  "tests/nocascade/Expr_array_repeat_value__inferred__unknown_field.ir": [
+   1,
+   "93507e0a5d2176cf"
+  ],
+  "tests/nocascade/Expr_array_repeat_value__inferred__unknown_function.ir": [
+   1,
+   "61b6655783c7cd41"
+  ],
+  "tests/nocascade/Expr_array_repeat_value__inferred__unknown_name.ir": [
+   1,
+   "f9d693be976887ac"
+  ],
+  "tests/nocascade/Expr_array_repeat_value__inferred_then_arith__bad_operator.ir": [
+   1,
+   "3c0e198327bb9fd3"
+  ],
+  "tests/nocascade/Expr_array_repeat_value__inferred_then_arith__no_fields.ir": [
+   1,
+   "89812950d3394a77"
+  ],
+  "tests/nocascade/Expr_array_repeat_value__inferred_then_arith__not_indexable.ir": [
+   1,
+   "b08d611fdf22b450"
+  ],
+  "tests/nocascade/Expr_array_repeat_value__inferred_then_arith__unit_call.ir": [
+   1,
+   "a71b5e6363658dbf"
+  ],
+  "tests/nocascade/Expr_array_repeat_value__inferred_then_arith__unknown_field.ir": [
+   1,
+   "93507e0a5d2176cf"
+  ],
+  "tests/nocascade/Expr_array_repeat_value__inferred_then_arith__unknown_function.ir": [
+   1,
+   "61b6655783c7cd41"
+  ],
+  "tests/nocascade/Expr_array_repeat_value__inferred_then_arith__unknown_name.ir": [
+   1,
+   "f9d693be976887ac"
+  ],
+  "tests/nocascade/Expr_array_repeat_value__inferred_then_call_arg__bad_operator.ir": [
+   1,
+   "3c0e198327bb9fd3"
+  ],
+  "tests/nocascade/Expr_array_repeat_value__inferred_then_call_arg__no_fields.ir": [
+   1,
+   "89812950d3394a77"
+  ],
+  "tests/nocascade/Expr_array_repeat_value__inferred_then_call_arg__not_indexable.ir": [
+   1,
+   "b08d611fdf22b450"
+  ],
+  "tests/nocascade/Expr_array_repeat_value__inferred_then_call_arg__unit_call.ir": [
+   1,
+   "a71b5e6363658dbf"
+  ],
+  "tests/nocascade/Expr_array_repeat_value__inferred_then_call_arg__unknown_field.ir": [
+   1,
+   "93507e0a5d2176cf"
+  ],
+  "tests/nocascade/Expr_array_repeat_value__inferred_then_call_arg__unknown_function.ir": [
+   1,
+   "61b6655783c7cd41"
+  ],
+  "tests/nocascade/Expr_array_repeat_value__inferred_then_call_arg__unknown_name.ir": [
+   1,
+   "f9d693be976887ac"
+  ],
+  "tests/nocascade/Expr_array_repeat_value__inferred_then_compare__bad_operator.ir": [
+   1,
+   "3c0e198327bb9fd3"
+  ],
+  "tests/nocascade/Expr_array_repeat_value__inferred_then_compare__no_fields.ir": [
+   1,
+   "89812950d3394a77"
+  ],
+  "tests/nocascade/Expr_array_repeat_value__inferred_then_compare__not_indexable.ir": [
+   1,
+   "b08d611fdf22b450"
+  ],
+  "tests/nocascade/Expr_array_repeat_value__inferred_then_compare__unit_call.ir": [
+   1,
+   "a71b5e6363658dbf"
+  ],
+  "tests/nocascade/Expr_array_repeat_value__inferred_then_compare__unknown_field.ir": [
+   1,
+   "93507e0a5d2176cf"
+  ],
+  "tests/nocascade/Expr_array_repeat_value__inferred_then_compare__unknown_function.ir": [
+   1,
+   "61b6655783c7cd41"
+  ],
+  "tests/nocascade/Expr_array_repeat_value__inferred_then_compare__unknown_name.ir": [
+   1,
+   "f9d693be976887ac"
+  ],
+  "tests/nocascade/Expr_array_repeat_value__inferred_then_index__bad_operator.ir": [
+   1,
+   "3c0e198327bb9fd3"
+  ],
+  "tests/nocascade/Expr_array_repeat_value__inferred_then_index__no_fields.ir": [
+   1,
+   "89812950d3394a77"
+  ],
+  "tests/nocascade/Expr_array_repeat_value__inferred_then_index__not_indexable.ir": [
+   1,
+   "b08d611fdf22b450"
+  ],
+  "tests/nocascade/Expr_array_repeat_value__inferred_then_index__unit_call.ir": [
+   1,
+   "a71b5e6363658dbf"
+  ],
+  "tests/nocascade/Expr_array_repeat_value__inferred_then_index__unknown_field.ir": [
+   1,
+   "93507e0a5d2176cf"
+  ],
+  "tests/nocascade/Expr_array_repeat_value__inferred_then_index__unknown_function.ir": [
+   1,
+   "61b6655783c7cd41"
+  ],
+  "tests/nocascade/Expr_array_repeat_value__inferred_then_index__unknown_name.ir": [
+   1,
+   "f9d693be976887ac"
+  ],
+  "tests/nocascade/Expr_array_repeat_value__repeat__bad_operator.ir": [
+   1,
+   "6090a3a0327b7abf"
+  ],
+  "tests/nocascade/Expr_array_repeat_value__repeat__no_fields.ir": [
+   1,
+   "7d2f1d1ec3aa92cd"
+  ],
+  "tests/nocascade/Expr_array_repeat_value__repeat__not_indexable.ir": [
+   1,
+   "b01405355fc7cf03"
+  ],
+  "tests/nocascade/Expr_array_repeat_value__repeat__unit_call.ir": [
+   1,
+   "91908fa93a86167e"
+  ],
+  "tests/nocascade/Expr_array_repeat_value__repeat__unknown_field.ir": [
+   1,
+   "5e7f76dd0dff2cb2"
+  ],
+  "tests/nocascade/Expr_array_repeat_value__repeat__unknown_function.ir": [
+   1,
+   "712917548f6bca3d"
+  ],
+  "tests/nocascade/Expr_array_repeat_value__repeat__unknown_name.ir": [
+   1,
+   "46627194acbcc8a4"
+  ],
+  "tests/nocascade/Expr_binary_lhs__add__bad_operator.ir": [
+   1,
+   "d4b58e5b8abed690"
+  ],
+  "tests/nocascade/Expr_binary_lhs__add__no_fields.ir": [
+   1,
+   "86f746b02ece7b9c"
+  ],
+  "tests/nocascade/Expr_binary_lhs__add__not_indexable.ir": [
+   1,
+   "e3fed4d1d5c2dd17"
+  ],
+  "tests/nocascade/Expr_binary_lhs__add__unit_call.ir": [
+   1,
+   "4373e86f5066f51f"
+  ],
+  "tests/nocascade/Expr_binary_lhs__add__unknown_field.ir": [
+   1,
+   "1cdeb9c49d58499d"
+  ],
+  "tests/nocascade/Expr_binary_lhs__add__unknown_function.ir": [
+   1,
+   "a0940ec818a642f6"
+  ],
+  "tests/nocascade/Expr_binary_lhs__add__unknown_name.ir": [
+   1,
+   "f77a1b676dfdb53a"
+  ],
+  "tests/nocascade/Expr_binary_lhs__and__bad_operator.ir": [
+   1,
+   "d4b58e5b8abed690"
+  ],
+  "tests/nocascade/Expr_binary_lhs__and__no_fields.ir": [
+   1,
+   "86f746b02ece7b9c"
+  ],
+  "tests/nocascade/Expr_binary_lhs__and__not_indexable.ir": [
+   1,
+   "e3fed4d1d5c2dd17"
+  ],
+  "tests/nocascade/Expr_binary_lhs__and__unit_call.ir": [
+   1,
+   "4373e86f5066f51f"
+  ],
+  "tests/nocascade/Expr_binary_lhs__and__unknown_field.ir": [
+   1,
+   "1cdeb9c49d58499d"
+  ],
+  "tests/nocascade/Expr_binary_lhs__and__unknown_function.ir": [
+   1,
+   "a0940ec818a642f6"
+  ],
+  "tests/nocascade/Expr_binary_lhs__and__unknown_name.ir": [
+   1,
+   "f77a1b676dfdb53a"
+  ],
+  "tests/nocascade/Expr_binary_lhs__bitand__bad_operator.ir": [
+   1,
+   "d4b58e5b8abed690"
+  ],
+  "tests/nocascade/Expr_binary_lhs__bitand__no_fields.ir": [
+   1,
+   "86f746b02ece7b9c"
+  ],
+  "tests/nocascade/Expr_binary_lhs__bitand__not_indexable.ir": [
+   1,
+   "e3fed4d1d5c2dd17"
+  ],
+  "tests/nocascade/Expr_binary_lhs__bitand__unit_call.ir": [
+   1,
+   "4373e86f5066f51f"
+  ],
+  "tests/nocascade/Expr_binary_lhs__bitand__unknown_field.ir": [
+   1,
+   "1cdeb9c49d58499d"
+  ],
+  "tests/nocascade/Expr_binary_lhs__bitand__unknown_function.ir": [
+   1,
+   "a0940ec818a642f6"
+  ],
+  "tests/nocascade/Expr_binary_lhs__bitand__unknown_name.ir": [
+   1,
+   "f77a1b676dfdb53a"
+  ],
+  "tests/nocascade/Expr_binary_lhs__eq__bad_operator.ir": [
+   1,
+   "d4b58e5b8abed690"
+  ],
+  "tests/nocascade/Expr_binary_lhs__eq__no_fields.ir": [
+   1,
+   "86f746b02ece7b9c"
+  ],
+  "tests/nocascade/Expr_binary_lhs__eq__not_indexable.ir": [
+   1,
+   "e3fed4d1d5c2dd17"
+  ],
+  "tests/nocascade/Expr_binary_lhs__eq__unit_call.ir": [
+   1,
+   "4373e86f5066f51f"
+  ],
+  "tests/nocascade/Expr_binary_lhs__eq__unknown_field.ir": [
+   1,
+   "1cdeb9c49d58499d"
+  ],
+  "tests/nocascade/Expr_binary_lhs__eq__unknown_function.ir": [
+   1,
+   "a0940ec818a642f6"
+  ],
+  "tests/nocascade/Expr_binary_lhs__eq__unknown_name.ir": [
+   1,
+   "f77a1b676dfdb53a"
+  ],
+  "tests/nocascade/Expr_binary_lhs__lt__bad_operator.ir": [
+   1,
+   "d4b58e5b8abed690"
+  ],
+  "tests/nocascade/Expr_binary_lhs__lt__no_fields.ir": [
+   1,
+   "86f746b02ece7b9c"
+  ],
+  "tests/nocascade/Expr_binary_lhs__lt__not_indexable.ir": [
+   1,
+   "e3fed4d1d5c2dd17"
+  ],
+  "tests/nocascade/Expr_binary_lhs__lt__unit_call.ir": [
+   1,
+   "4373e86f5066f51f"
+  ],
+  "tests/nocascade/Expr_binary_lhs__lt__unknown_field.ir": [
+   1,
+   "1cdeb9c49d58499d"
+  ],
+  "tests/nocascade/Expr_binary_lhs__lt__unknown_function.ir": [
+   1,
+   "a0940ec818a642f6"
+  ],
+  "tests/nocascade/Expr_binary_lhs__lt__unknown_name.ir": [
+   1,
+   "f77a1b676dfdb53a"
+  ],
+  "tests/nocascade/Expr_binary_lhs__shl__bad_operator.ir": [
+   1,
+   "d4b58e5b8abed690"
+  ],
+  "tests/nocascade/Expr_binary_lhs__shl__no_fields.ir": [
+   1,
+   "86f746b02ece7b9c"
+  ],
+  "tests/nocascade/Expr_binary_lhs__shl__not_indexable.ir": [
+   1,
+   "e3fed4d1d5c2dd17"
+  ],
+  "tests/nocascade/Expr_binary_lhs__shl__unit_call.ir": [
+   1,
+   "4373e86f5066f51f"
+  ],
+  "tests/nocascade/Expr_binary_lhs__shl__unknown_field.ir": [
+   1,
+   "1cdeb9c49d58499d"
+  ],
+  "tests/nocascade/Expr_binary_lhs__shl__unknown_function.ir": [
+   1,
+   "a0940ec818a642f6"
+  ],
+  "tests/nocascade/Expr_binary_lhs__shl__unknown_name.ir": [
+   1,
+   "f77a1b676dfdb53a"
+  ],
+  "tests/nocascade/Expr_binary_rhs__add__bad_operator.ir": [
+   1,
+   "4a2521a03e41ac5a"
+  ],
+  "tests/nocascade/Expr_binary_rhs__add__no_fields.ir": [
+   1,
+   "75d0e56f2df5b2d8"
+  ],
+  "tests/nocascade/Expr_binary_rhs__add__not_indexable.ir": [
+   1,
+   "5a594e769c85eda2"
+  ],
+  "tests/nocascade/Expr_binary_rhs__add__unit_call.ir": [
+   1,
+   "1d5e72808f2e50f5"
+  ],
+  "tests/nocascade/Expr_binary_rhs__add__unknown_field.ir": [
+   1,
+   "9297be9daa8664b6"
+  ],
+  "tests/nocascade/Expr_binary_rhs__add__unknown_function.ir": [
+   1,
+   "207241260de7c3cc"
+  ],
+  "tests/nocascade/Expr_binary_rhs__add__unknown_name.ir": [
+   1,
+   "bfed61652e069569"
+  ],
+  "tests/nocascade/Expr_binary_rhs__and__bad_operator.ir": [
+   1,
+   "fedd4ccf4df36756"
+  ],
+  "tests/nocascade/Expr_binary_rhs__and__no_fields.ir": [
+   1,
+   "d6e6ef6f45322f18"
+  ],
+  "tests/nocascade/Expr_binary_rhs__and__not_indexable.ir": [
+   1,
+   "a46b6f3c00c30413"
+  ],
+  "tests/nocascade/Expr_binary_rhs__and__unit_call.ir": [
+   1,
+   "4bc0dc49e2f0add1"
+  ],
+  "tests/nocascade/Expr_binary_rhs__and__unknown_field.ir": [
+   1,
+   "9f89559b9c2aa468"
+  ],
+  "tests/nocascade/Expr_binary_rhs__and__unknown_function.ir": [
+   1,
+   "7d934db21140726d"
+  ],
+  "tests/nocascade/Expr_binary_rhs__and__unknown_name.ir": [
+   1,
+   "b2fad3697d6da4e5"
+  ],
+  "tests/nocascade/Expr_binary_rhs__bitand__bad_operator.ir": [
+   1,
+   "4a2521a03e41ac5a"
+  ],
+  "tests/nocascade/Expr_binary_rhs__bitand__no_fields.ir": [
+   1,
+   "75d0e56f2df5b2d8"
+  ],
+  "tests/nocascade/Expr_binary_rhs__bitand__not_indexable.ir": [
+   1,
+   "5a594e769c85eda2"
+  ],
+  "tests/nocascade/Expr_binary_rhs__bitand__unit_call.ir": [
+   1,
+   "1d5e72808f2e50f5"
+  ],
+  "tests/nocascade/Expr_binary_rhs__bitand__unknown_field.ir": [
+   1,
+   "9297be9daa8664b6"
+  ],
+  "tests/nocascade/Expr_binary_rhs__bitand__unknown_function.ir": [
+   1,
+   "207241260de7c3cc"
+  ],
+  "tests/nocascade/Expr_binary_rhs__bitand__unknown_name.ir": [
+   1,
+   "bfed61652e069569"
+  ],
+  "tests/nocascade/Expr_binary_rhs__eq__bad_operator.ir": [
+   1,
+   "fedd4ccf4df36756"
+  ],
+  "tests/nocascade/Expr_binary_rhs__eq__no_fields.ir": [
+   1,
+   "d6e6ef6f45322f18"
+  ],
+  "tests/nocascade/Expr_binary_rhs__eq__not_indexable.ir": [
+   1,
+   "a46b6f3c00c30413"
+  ],
+  "tests/nocascade/Expr_binary_rhs__eq__unit_call.ir": [
+   1,
+   "4bc0dc49e2f0add1"
+  ],
+  "tests/nocascade/Expr_binary_rhs__eq__unknown_field.ir": [
+   1,
+   "9f89559b9c2aa468"
+  ],
+  "tests/nocascade/Expr_binary_rhs__eq__unknown_function.ir": [
+   1,
+   "7d934db21140726d"
+  ],
+  "tests/nocascade/Expr_binary_rhs__eq__unknown_name.ir": [
+   1,
+   "b2fad3697d6da4e5"
+  ],
+  "tests/nocascade/Expr_binary_rhs__lt__bad_operator.ir": [
+   1,
+   "4a2521a03e41ac5a"
+  ],
+  "tests/nocascade/Expr_binary_rhs__lt__no_fields.ir": [
+   1,
+   "75d0e56f2df5b2d8"
+  ],
+  "tests/nocascade/Expr_binary_rhs__lt__not_indexable.ir": [
+   1,
+   "5a594e769c85eda2"
+  ],
+  "tests/nocascade/Expr_binary_rhs__lt__unit_call.ir": [
+   1,
+   "1d5e72808f2e50f5"
+  ],
+  "tests/nocascade/Expr_binary_rhs__lt__unknown_field.ir": [
+   1,
+   "9297be9daa8664b6"
+  ],
+  "tests/nocascade/Expr_binary_rhs__lt__unknown_function.ir": [
+   1,
+   "207241260de7c3cc"
+  ],
+  "tests/nocascade/Expr_binary_rhs__lt__unknown_name.ir": [
+   1,
+   "bfed61652e069569"
+  ],
+  "tests/nocascade/Expr_binary_rhs__shl__bad_operator.ir": [
+   1,
+   "fedd4ccf4df36756"
+  ],
+  "tests/nocascade/Expr_binary_rhs__shl__no_fields.ir": [
+   1,
+   "d6e6ef6f45322f18"
+  ],
+  "tests/nocascade/Expr_binary_rhs__shl__not_indexable.ir": [
+   1,
+   "a46b6f3c00c30413"
+  ],
+  "tests/nocascade/Expr_binary_rhs__shl__unit_call.ir": [
+   1,
+   "4bc0dc49e2f0add1"
+  ],
+  "tests/nocascade/Expr_binary_rhs__shl__unknown_field.ir": [
+   1,
+   "9f89559b9c2aa468"
+  ],
+  "tests/nocascade/Expr_binary_rhs__shl__unknown_function.ir": [
+   1,
+   "7d934db21140726d"
+  ],
+  "tests/nocascade/Expr_binary_rhs__shl__unknown_name.ir": [
+   1,
+   "b2fad3697d6da4e5"
+  ],
+  "tests/nocascade/Expr_call_args_list__first_of_two__bad_operator.ir": [
+   1,
+   "4a2521a03e41ac5a"
+  ],
+  "tests/nocascade/Expr_call_args_list__first_of_two__no_fields.ir": [
+   1,
+   "75d0e56f2df5b2d8"
+  ],
+  "tests/nocascade/Expr_call_args_list__first_of_two__not_indexable.ir": [
+   1,
+   "5a594e769c85eda2"
+  ],
+  "tests/nocascade/Expr_call_args_list__first_of_two__unit_call.ir": [
+   1,
+   "1d5e72808f2e50f5"
+  ],
+  "tests/nocascade/Expr_call_args_list__first_of_two__unknown_field.ir": [
+   1,
+   "9297be9daa8664b6"
+  ],
+  "tests/nocascade/Expr_call_args_list__first_of_two__unknown_function.ir": [
+   1,
+   "207241260de7c3cc"
+  ],
+  "tests/nocascade/Expr_call_args_list__first_of_two__unknown_name.ir": [
+   1,
+   "bfed61652e069569"
+  ],
+  "tests/nocascade/Expr_call_args_list__one__bad_operator.ir": [
+   1,
+   "fedd4ccf4df36756"
+  ],
+  "tests/nocascade/Expr_call_args_list__one__no_fields.ir": [
+   1,
+   "d6e6ef6f45322f18"
+  ],
+  "tests/nocascade/Expr_call_args_list__one__not_indexable.ir": [
+   1,
+   "a46b6f3c00c30413"
+  ],
+  "tests/nocascade/Expr_call_args_list__one__unit_call.ir": [
+   1,
+   "4bc0dc49e2f0add1"
+  ],
+  "tests/nocascade/Expr_call_args_list__one__unknown_field.ir": [
+   1,
+   "9f89559b9c2aa468"
+  ],
+  "tests/nocascade/Expr_call_args_list__one__unknown_function.ir": [
+   1,
+   "7d934db21140726d"
+  ],
+  "tests/nocascade/Expr_call_args_list__one__unknown_name.ir": [
+   1,
+   "b2fad3697d6da4e5"
+  ],
+  "tests/nocascade/Expr_call_args_list__second_of_two__bad_operator.ir": [
+   1,
+   "e2553bb153e29ccd"
+  ],
+  "tests/nocascade/Expr_call_args_list__second_of_two__no_fields.ir": [
+   1,
+   "89e849044b216034"
+  ],
+  "tests/nocascade/Expr_call_args_list__second_of_two__not_indexable.ir": [
+   1,
+   "63f2f54de6845f66"
+  ],
+  "tests/nocascade/Expr_call_args_list__second_of_two__unit_call.ir": [
+   1,
+   "b4a792fd18768016"
+  ],
+  "tests/nocascade/Expr_call_args_list__second_of_two__unknown_field.ir": [
+   1,
+   "886c134123cd6228"
+  ],
+  "tests/nocascade/Expr_call_args_list__second_of_two__unknown_function.ir": [
+   1,
+   "47e7dcd703107139"
+  ],
+  "tests/nocascade/Expr_call_args_list__second_of_two__unknown_name.ir": [
+   1,
+   "f76c8559b91ad72b"
+  ],
+  "tests/nocascade/Expr_convert_operand__u8__bad_operator.ir": [
+   1,
+   "210613fdf63382c8"
+  ],
+  "tests/nocascade/Expr_convert_operand__u8__no_fields.ir": [
+   1,
+   "6e7c72acbdd567b4"
+  ],
+  "tests/nocascade/Expr_convert_operand__u8__not_indexable.ir": [
+   1,
+   "583d504c30ae88bc"
+  ],
+  "tests/nocascade/Expr_convert_operand__u8__unit_call.ir": [
+   1,
+   "02f7c16fa7750909"
+  ],
+  "tests/nocascade/Expr_convert_operand__u8__unknown_field.ir": [
+   1,
+   "4522496fc307bb50"
+  ],
+  "tests/nocascade/Expr_convert_operand__u8__unknown_function.ir": [
+   1,
+   "0b22791f19a50c4d"
+  ],
+  "tests/nocascade/Expr_convert_operand__u8__unknown_name.ir": [
+   1,
+   "6dc2eecb5f3c283b"
+  ],
+  "tests/nocascade/Expr_field_access_base__read__no_fields.ir": [
+   1,
+   "86f746b02ece7b9c"
+  ],
+  "tests/nocascade/Expr_field_access_base__read__not_indexable.ir": [
+   1,
+   "e3fed4d1d5c2dd17"
+  ],
+  "tests/nocascade/Expr_field_access_base__read__unit_call.ir": [
+   1,
+   "4373e86f5066f51f"
+  ],
+  "tests/nocascade/Expr_field_access_base__read__unknown_field.ir": [
+   1,
+   "1cdeb9c49d58499d"
+  ],
+  "tests/nocascade/Expr_field_access_base__read__unknown_function.ir": [
+   1,
+   "a0940ec818a642f6"
+  ],
+  "tests/nocascade/Expr_field_access_base__read__unknown_name.ir": [
+   1,
+   "f77a1b676dfdb53a"
+  ],
+  "tests/nocascade/Expr_index_base__read__no_fields.ir": [
+   1,
+   "86f746b02ece7b9c"
+  ],
+  "tests/nocascade/Expr_index_base__read__not_indexable.ir": [
+   1,
+   "e3fed4d1d5c2dd17"
+  ],
+  "tests/nocascade/Expr_index_base__read__unit_call.ir": [
+   1,
+   "4373e86f5066f51f"
+  ],
+  "tests/nocascade/Expr_index_base__read__unknown_field.ir": [
+   1,
+   "1cdeb9c49d58499d"
+  ],
+  "tests/nocascade/Expr_index_base__read__unknown_function.ir": [
+   1,
+   "a0940ec818a642f6"
+  ],
+  "tests/nocascade/Expr_index_base__read__unknown_name.ir": [
+   1,
+   "f77a1b676dfdb53a"
+  ],
+  "tests/nocascade/Expr_index_index__read__bad_operator.ir": [
+   1,
+   "210613fdf63382c8"
+  ],
+  "tests/nocascade/Expr_index_index__read__no_fields.ir": [
+   1,
+   "6e7c72acbdd567b4"
+  ],
+  "tests/nocascade/Expr_index_index__read__not_indexable.ir": [
+   1,
+   "583d504c30ae88bc"
+  ],
+  "tests/nocascade/Expr_index_index__read__unit_call.ir": [
+   1,
+   "02f7c16fa7750909"
+  ],
+  "tests/nocascade/Expr_index_index__read__unknown_field.ir": [
+   1,
+   "4522496fc307bb50"
+  ],
+  "tests/nocascade/Expr_index_index__read__unknown_function.ir": [
+   1,
+   "0b22791f19a50c4d"
+  ],
+  "tests/nocascade/Expr_index_index__read__unknown_name.ir": [
+   1,
+   "6dc2eecb5f3c283b"
+  ],
+  "tests/nocascade/Expr_named_arg_value__construct__bad_operator.ir": [
+   1,
+   "6090a3a0327b7abf"
+  ],
+  "tests/nocascade/Expr_named_arg_value__construct__no_fields.ir": [
+   1,
+   "7d2f1d1ec3aa92cd"
+  ],
+  "tests/nocascade/Expr_named_arg_value__construct__not_indexable.ir": [
+   1,
+   "b01405355fc7cf03"
+  ],
+  "tests/nocascade/Expr_named_arg_value__construct__unit_call.ir": [
+   1,
+   "91908fa93a86167e"
+  ],
+  "tests/nocascade/Expr_named_arg_value__construct__unknown_field.ir": [
+   1,
+   "5e7f76dd0dff2cb2"
+  ],
+  "tests/nocascade/Expr_named_arg_value__construct__unknown_function.ir": [
+   1,
+   "712917548f6bca3d"
+  ],
+  "tests/nocascade/Expr_named_arg_value__construct__unknown_name.ir": [
+   1,
+   "46627194acbcc8a4"
+  ],
+  "tests/nocascade/Expr_slice_base__both__no_fields.ir": [
+   1,
+   "f25f41611f49dd1e"
+  ],
+  "tests/nocascade/Expr_slice_base__both__not_indexable.ir": [
+   1,
+   "e32db5ed3200c214"
+  ],
+  "tests/nocascade/Expr_slice_base__both__unit_call.ir": [
+   1,
+   "69321e3f32f2fcae"
+  ],
+  "tests/nocascade/Expr_slice_base__both__unknown_field.ir": [
+   1,
+   "71d8ba27618833a5"
+  ],
+  "tests/nocascade/Expr_slice_base__both__unknown_function.ir": [
+   1,
+   "efe2c1e425aaa43f"
+  ],
+  "tests/nocascade/Expr_slice_base__both__unknown_name.ir": [
+   1,
+   "150a398c14ba3898"
+  ],
+  "tests/nocascade/Expr_slice_hi__hi__bad_operator.ir": [
+   1,
+   "e2553bb153e29ccd"
+  ],
+  "tests/nocascade/Expr_slice_hi__hi__no_fields.ir": [
+   1,
+   "89e849044b216034"
+  ],
+  "tests/nocascade/Expr_slice_hi__hi__not_indexable.ir": [
+   1,
+   "63f2f54de6845f66"
+  ],
+  "tests/nocascade/Expr_slice_hi__hi__unit_call.ir": [
+   1,
+   "b4a792fd18768016"
+  ],
+  "tests/nocascade/Expr_slice_hi__hi__unknown_field.ir": [
+   1,
+   "886c134123cd6228"
+  ],
+  "tests/nocascade/Expr_slice_hi__hi__unknown_function.ir": [
+   1,
+   "47e7dcd703107139"
+  ],
+  "tests/nocascade/Expr_slice_hi__hi__unknown_name.ir": [
+   1,
+   "f76c8559b91ad72b"
+  ],
+  "tests/nocascade/Expr_slice_lo__lo__bad_operator.ir": [
+   1,
+   "4a2521a03e41ac5a"
+  ],
+  "tests/nocascade/Expr_slice_lo__lo__no_fields.ir": [
+   1,
+   "75d0e56f2df5b2d8"
+  ],
+  "tests/nocascade/Expr_slice_lo__lo__not_indexable.ir": [
+   1,
+   "5a594e769c85eda2"
+  ],
+  "tests/nocascade/Expr_slice_lo__lo__unit_call.ir": [
+   1,
+   "1d5e72808f2e50f5"
+  ],
+  "tests/nocascade/Expr_slice_lo__lo__unknown_field.ir": [
+   1,
+   "9297be9daa8664b6"
+  ],
+  "tests/nocascade/Expr_slice_lo__lo__unknown_function.ir": [
+   1,
+   "207241260de7c3cc"
+  ],
+  "tests/nocascade/Expr_slice_lo__lo__unknown_name.ir": [
+   1,
+   "bfed61652e069569"
+  ],
+  "tests/nocascade/Expr_unary_operand__bitnot__bad_operator.ir": [
+   1,
+   "ab147cf6e57f845e"
+  ],
+  "tests/nocascade/Expr_unary_operand__bitnot__no_fields.ir": [
+   1,
+   "f25f41611f49dd1e"
+  ],
+  "tests/nocascade/Expr_unary_operand__bitnot__not_indexable.ir": [
+   1,
+   "e32db5ed3200c214"
+  ],
+  "tests/nocascade/Expr_unary_operand__bitnot__unit_call.ir": [
+   1,
+   "69321e3f32f2fcae"
+  ],
+  "tests/nocascade/Expr_unary_operand__bitnot__unknown_field.ir": [
+   1,
+   "71d8ba27618833a5"
+  ],
+  "tests/nocascade/Expr_unary_operand__bitnot__unknown_function.ir": [
+   1,
+   "efe2c1e425aaa43f"
+  ],
+  "tests/nocascade/Expr_unary_operand__bitnot__unknown_name.ir": [
+   1,
+   "150a398c14ba3898"
+  ],
+  "tests/nocascade/Expr_unary_operand__neg__bad_operator.ir": [
+   1,
+   "ab147cf6e57f845e"
+  ],
+  "tests/nocascade/Expr_unary_operand__neg__no_fields.ir": [
+   1,
+   "f25f41611f49dd1e"
+  ],
+  "tests/nocascade/Expr_unary_operand__neg__not_indexable.ir": [
+   1,
+   "e32db5ed3200c214"
+  ],
+  "tests/nocascade/Expr_unary_operand__neg__unit_call.ir": [
+   1,
+   "69321e3f32f2fcae"
+  ],
+  "tests/nocascade/Expr_unary_operand__neg__unknown_field.ir": [
+   1,
+   "71d8ba27618833a5"
+  ],
+  "tests/nocascade/Expr_unary_operand__neg__unknown_function.ir": [
+   1,
+   "efe2c1e425aaa43f"
+  ],
+  "tests/nocascade/Expr_unary_operand__neg__unknown_name.ir": [
+   1,
+   "150a398c14ba3898"
+  ],
+  "tests/nocascade/Expr_unary_operand__not__bad_operator.ir": [
+   1,
+   "ab147cf6e57f845e"
+  ],
+  "tests/nocascade/Expr_unary_operand__not__no_fields.ir": [
+   1,
+   "f25f41611f49dd1e"
+  ],
+  "tests/nocascade/Expr_unary_operand__not__not_indexable.ir": [
+   1,
+   "e32db5ed3200c214"
+  ],
+  "tests/nocascade/Expr_unary_operand__not__unit_call.ir": [
+   1,
+   "69321e3f32f2fcae"
+  ],
+  "tests/nocascade/Expr_unary_operand__not__unknown_field.ir": [
+   1,
+   "71d8ba27618833a5"
+  ],
+  "tests/nocascade/Expr_unary_operand__not__unknown_function.ir": [
+   1,
+   "efe2c1e425aaa43f"
+  ],
+  "tests/nocascade/Expr_unary_operand__not__unknown_name.ir": [
+   1,
+   "150a398c14ba3898"
+  ],
+  "tests/nocascade/Field_type__param_arith__unknown_type.ir": [
+   1,
+   "647204fddcf61f1b"
+  ],
+  "tests/nocascade/Field_type__param_assign__unknown_type.ir": [
+   1,
+   "647204fddcf61f1b"
+  ],
+  "tests/nocascade/Field_type__param_call_arg__unknown_type.ir": [
+   1,
+   "647204fddcf61f1b"
+  ],
+  "tests/nocascade/Field_type__param_compare__unknown_type.ir": [
+   1,
+   "647204fddcf61f1b"
+  ],
+  "tests/nocascade/Field_type__param_condition__unknown_type.ir": [
+   1,
+   "647204fddcf61f1b"
+  ],
+  "tests/nocascade/Field_type__param_convert__unknown_type.ir": [
+   1,
+   "647204fddcf61f1b"
+  ],
+  "tests/nocascade/Field_type__param_equal__unknown_type.ir": [
+   1,
+   "647204fddcf61f1b"
+  ],
+  "tests/nocascade/Field_type__param_field__unknown_type.ir": [
+   1,
+   "647204fddcf61f1b"
+  ],
+  "tests/nocascade/Field_type__param_index__unknown_type.ir": [
+   1,
+   "647204fddcf61f1b"
+  ],
+  "tests/nocascade/Field_type__param_length__unknown_type.ir": [
+   1,
+   "647204fddcf61f1b"
+  ],
+  "tests/nocascade/Field_type__param_logic__unknown_type.ir": [
+   1,
+   "647204fddcf61f1b"
+  ],
+  "tests/nocascade/Field_type__param_negate__unknown_type.ir": [
+   1,
+   "647204fddcf61f1b"
+  ],
+  "tests/nocascade/Field_type__param_not__unknown_type.ir": [
+   1,
+   "647204fddcf61f1b"
+  ],
+  "tests/nocascade/Field_type__param_return__unknown_type.ir": [
+   1,
+   "647204fddcf61f1b"
+  ],
+  "tests/nocascade/Field_type__struct_field_construct__unknown_type.ir": [
+   1,
+   "dc32975496b929e4"
+  ],
+  "tests/nocascade/Field_type__struct_field_construct_and_read__unknown_type.ir": [
+   1,
+   "dc32975496b929e4"
+  ],
+  "tests/nocascade/Field_type__struct_field_pass_on__unknown_type.ir": [
+   1,
+   "dc32975496b929e4"
+  ],
+  "tests/nocascade/Field_type__struct_field_read_param__unknown_type.ir": [
+   1,
+   "dc32975496b929e4"
+  ],
+  "tests/nocascade/Stmt_assign_stmt_target__name__unknown_name.ir": [
+   1,
+   "6d9c3419c3e7f6ca"
+  ],
+  "tests/nocascade/Stmt_assign_stmt_value__for_step__bad_operator.ir": [
+   1,
+   "bba6befcb7346823"
+  ],
+  "tests/nocascade/Stmt_assign_stmt_value__for_step__no_fields.ir": [
+   1,
+   "6df9075abcadcabd"
+  ],
+  "tests/nocascade/Stmt_assign_stmt_value__for_step__not_indexable.ir": [
+   1,
+   "d3f8e3b4d7b29880"
+  ],
+  "tests/nocascade/Stmt_assign_stmt_value__for_step__unit_call.ir": [
+   1,
+   "6353ba0937fef116"
+  ],
+  "tests/nocascade/Stmt_assign_stmt_value__for_step__unknown_field.ir": [
+   1,
+   "745b2da35a8f1972"
+  ],
+  "tests/nocascade/Stmt_assign_stmt_value__for_step__unknown_function.ir": [
+   1,
+   "9d13b877fb8047fe"
+  ],
+  "tests/nocascade/Stmt_assign_stmt_value__for_step__unknown_name.ir": [
+   1,
+   "8806bb9f9dc4725e"
+  ],
+  "tests/nocascade/Stmt_assign_stmt_value__to_element__bad_operator.ir": [
+   1,
+   "ab147cf6e57f845e"
+  ],
+  "tests/nocascade/Stmt_assign_stmt_value__to_element__no_fields.ir": [
+   1,
+   "f25f41611f49dd1e"
+  ],
+  "tests/nocascade/Stmt_assign_stmt_value__to_element__not_indexable.ir": [
+   1,
+   "e32db5ed3200c214"
+  ],
+  "tests/nocascade/Stmt_assign_stmt_value__to_element__unit_call.ir": [
+   1,
+   "69321e3f32f2fcae"
+  ],
+  "tests/nocascade/Stmt_assign_stmt_value__to_element__unknown_field.ir": [
+   1,
+   "71d8ba27618833a5"
+  ],
+  "tests/nocascade/Stmt_assign_stmt_value__to_element__unknown_function.ir": [
+   1,
+   "efe2c1e425aaa43f"
+  ],
+  "tests/nocascade/Stmt_assign_stmt_value__to_element__unknown_name.ir": [
+   1,
+   "150a398c14ba3898"
+  ],
+  "tests/nocascade/Stmt_assign_stmt_value__to_local__bad_operator.ir": [
+   1,
+   "ed6ad6deaf93b0ea"
+  ],
+  "tests/nocascade/Stmt_assign_stmt_value__to_local__no_fields.ir": [
+   1,
+   "f64638d59f911d16"
+  ],
+  "tests/nocascade/Stmt_assign_stmt_value__to_local__not_indexable.ir": [
+   1,
+   "2ddf264292c80f56"
+  ],
+  "tests/nocascade/Stmt_assign_stmt_value__to_local__unit_call.ir": [
+   1,
+   "fd333687826bd926"
+  ],
+  "tests/nocascade/Stmt_assign_stmt_value__to_local__unknown_field.ir": [
+   1,
+   "1d9ae2015feac8c8"
+  ],
+  "tests/nocascade/Stmt_assign_stmt_value__to_local__unknown_function.ir": [
+   1,
+   "180049800ac9c82b"
+  ],
+  "tests/nocascade/Stmt_assign_stmt_value__to_local__unknown_name.ir": [
+   1,
+   "3884021e33d62bbf"
+  ],
+  "tests/nocascade/Stmt_expr_stmt_expr__statement__bad_operator.ir": [
+   1,
+   "9fa3a70d8b4173bc"
+  ],
+  "tests/nocascade/Stmt_expr_stmt_expr__statement__no_fields.ir": [
+   1,
+   "eca477cdae5b8dc4"
+  ],
+  "tests/nocascade/Stmt_expr_stmt_expr__statement__not_indexable.ir": [
+   1,
+   "bfed72c9e71e34ea"
+  ],
+  "tests/nocascade/Stmt_expr_stmt_expr__statement__unknown_field.ir": [
+   1,
+   "69306784f7c3a833"
+  ],
+  "tests/nocascade/Stmt_expr_stmt_expr__statement__unknown_function.ir": [
+   1,
+   "6b508930bb62dcd1"
+  ],
+  "tests/nocascade/Stmt_expr_stmt_expr__statement__unknown_name.ir": [
+   1,
+   "6d9c3419c3e7f6ca"
+  ],
+  "tests/nocascade/Stmt_for_stmt_cond__for__bad_operator.ir": [
+   1,
+   "3ff03356fd26e6cc"
+  ],
+  "tests/nocascade/Stmt_for_stmt_cond__for__no_fields.ir": [
+   1,
+   "04fbb904370b0556"
+  ],
+  "tests/nocascade/Stmt_for_stmt_cond__for__not_indexable.ir": [
+   1,
+   "adcad5b566898d2e"
+  ],
+  "tests/nocascade/Stmt_for_stmt_cond__for__unit_call.ir": [
+   1,
+   "bbeaf6273e759f54"
+  ],
+  "tests/nocascade/Stmt_for_stmt_cond__for__unknown_field.ir": [
+   1,
+   "37bdf8cc8e5a2111"
+  ],
+  "tests/nocascade/Stmt_for_stmt_cond__for__unknown_function.ir": [
+   1,
+   "cb88fb498e58e70e"
+  ],
+  "tests/nocascade/Stmt_for_stmt_cond__for__unknown_name.ir": [
+   1,
+   "11ad1a66444d81e6"
+  ],
+  "tests/nocascade/Stmt_if_stmt_cond__if__bad_operator.ir": [
+   1,
+   "b966d89e227d1c5e"
+  ],
+  "tests/nocascade/Stmt_if_stmt_cond__if__no_fields.ir": [
+   1,
+   "22126a2c5150d625"
+  ],
+  "tests/nocascade/Stmt_if_stmt_cond__if__not_indexable.ir": [
+   1,
+   "ac009644a56fbc58"
+  ],
+  "tests/nocascade/Stmt_if_stmt_cond__if__unit_call.ir": [
+   1,
+   "78a58a46dfdfc337"
+  ],
+  "tests/nocascade/Stmt_if_stmt_cond__if__unknown_field.ir": [
+   1,
+   "5dc486112c58faa1"
+  ],
+  "tests/nocascade/Stmt_if_stmt_cond__if__unknown_function.ir": [
+   1,
+   "f655a06cbb831002"
+  ],
+  "tests/nocascade/Stmt_if_stmt_cond__if__unknown_name.ir": [
+   1,
+   "3ef8be16bdf9222c"
+  ],
+  "tests/nocascade/Stmt_let_stmt_init__annotated__bad_operator.ir": [
+   1,
+   "e437cfb41f419945"
+  ],
+  "tests/nocascade/Stmt_let_stmt_init__annotated__no_fields.ir": [
+   1,
+   "7a7078ee2c09e114"
+  ],
+  "tests/nocascade/Stmt_let_stmt_init__annotated__not_indexable.ir": [
+   1,
+   "24ec4bd3aaa466b3"
+  ],
+  "tests/nocascade/Stmt_let_stmt_init__annotated__unit_call.ir": [
+   1,
+   "127f080c30de39ef"
+  ],
+  "tests/nocascade/Stmt_let_stmt_init__annotated__unknown_field.ir": [
+   1,
+   "a83b11c69f5ec31e"
+  ],
+  "tests/nocascade/Stmt_let_stmt_init__annotated__unknown_function.ir": [
+   1,
+   "08debda5bf6556ea"
+  ],
+  "tests/nocascade/Stmt_let_stmt_init__annotated__unknown_name.ir": [
+   1,
+   "077bef89ca6d40c5"
+  ],
+  "tests/nocascade/Stmt_let_stmt_init__for_init__bad_operator.ir": [
+   1,
+   "e084a58ca6ce37ba"
+  ],
+  "tests/nocascade/Stmt_let_stmt_init__for_init__no_fields.ir": [
+   1,
+   "3c1f62e38b502830"
+  ],
+  "tests/nocascade/Stmt_let_stmt_init__for_init__not_indexable.ir": [
+   1,
+   "c6f621b98c75b06a"
+  ],
+  "tests/nocascade/Stmt_let_stmt_init__for_init__unit_call.ir": [
+   1,
+   "4b0eabf956d2701b"
+  ],
+  "tests/nocascade/Stmt_let_stmt_init__for_init__unknown_field.ir": [
+   1,
+   "8827e4bf630ba766"
+  ],
+  "tests/nocascade/Stmt_let_stmt_init__for_init__unknown_function.ir": [
+   1,
+   "3c1dfd331a7078f3"
+  ],
+  "tests/nocascade/Stmt_let_stmt_init__for_init__unknown_name.ir": [
+   1,
+   "57c21c4fa68e5711"
+  ],
+  "tests/nocascade/Stmt_let_stmt_init__inferred__bad_operator.ir": [
+   1,
+   "ab147cf6e57f845e"
+  ],
+  "tests/nocascade/Stmt_let_stmt_init__inferred__no_fields.ir": [
+   1,
+   "f25f41611f49dd1e"
+  ],
+  "tests/nocascade/Stmt_let_stmt_init__inferred__not_indexable.ir": [
+   1,
+   "e32db5ed3200c214"
+  ],
+  "tests/nocascade/Stmt_let_stmt_init__inferred__unit_call.ir": [
+   1,
+   "69321e3f32f2fcae"
+  ],
+  "tests/nocascade/Stmt_let_stmt_init__inferred__unknown_field.ir": [
+   1,
+   "71d8ba27618833a5"
+  ],
+  "tests/nocascade/Stmt_let_stmt_init__inferred__unknown_function.ir": [
+   1,
+   "efe2c1e425aaa43f"
+  ],
+  "tests/nocascade/Stmt_let_stmt_init__inferred__unknown_name.ir": [
+   1,
+   "150a398c14ba3898"
+  ],
+  "tests/nocascade/Stmt_let_stmt_type__local_arith__unknown_type.ir": [
+   1,
+   "ff6b13747a96858a"
+  ],
+  "tests/nocascade/Stmt_let_stmt_type__local_assign__unknown_type.ir": [
+   1,
+   "ff6b13747a96858a"
+  ],
+  "tests/nocascade/Stmt_let_stmt_type__local_call_arg__unknown_type.ir": [
+   1,
+   "ff6b13747a96858a"
+  ],
+  "tests/nocascade/Stmt_let_stmt_type__local_compare__unknown_type.ir": [
+   1,
+   "ff6b13747a96858a"
+  ],
+  "tests/nocascade/Stmt_let_stmt_type__local_condition__unknown_type.ir": [
+   1,
+   "ff6b13747a96858a"
+  ],
+  "tests/nocascade/Stmt_let_stmt_type__local_convert__unknown_type.ir": [
+   1,
+   "ff6b13747a96858a"
+  ],
+  "tests/nocascade/Stmt_let_stmt_type__local_equal__unknown_type.ir": [
+   1,
+   "ff6b13747a96858a"
+  ],
+  "tests/nocascade/Stmt_let_stmt_type__local_field__unknown_type.ir": [
+   1,
+   "ff6b13747a96858a"
+  ],
+  "tests/nocascade/Stmt_let_stmt_type__local_index__unknown_type.ir": [
+   1,
+   "ff6b13747a96858a"
+  ],
+  "tests/nocascade/Stmt_let_stmt_type__local_length__unknown_type.ir": [
+   1,
+   "ff6b13747a96858a"
+  ],
+  "tests/nocascade/Stmt_let_stmt_type__local_logic__unknown_type.ir": [
+   1,
+   "ff6b13747a96858a"
+  ],
+  "tests/nocascade/Stmt_let_stmt_type__local_negate__unknown_type.ir": [
+   1,
+   "ff6b13747a96858a"
+  ],
+  "tests/nocascade/Stmt_let_stmt_type__local_not__unknown_type.ir": [
+   1,
+   "ff6b13747a96858a"
+  ],
+  "tests/nocascade/Stmt_let_stmt_type__local_return__unknown_type.ir": [
+   1,
+   "ff6b13747a96858a"
+  ],
+  "tests/nocascade/Stmt_return_stmt_value__bool__bad_operator.ir": [
+   1,
+   "d4b58e5b8abed690"
+  ],
+  "tests/nocascade/Stmt_return_stmt_value__bool__no_fields.ir": [
+   1,
+   "86f746b02ece7b9c"
+  ],
+  "tests/nocascade/Stmt_return_stmt_value__bool__not_indexable.ir": [
+   1,
+   "e3fed4d1d5c2dd17"
+  ],
+  "tests/nocascade/Stmt_return_stmt_value__bool__unit_call.ir": [
+   1,
+   "4373e86f5066f51f"
+  ],
+  "tests/nocascade/Stmt_return_stmt_value__bool__unknown_field.ir": [
+   1,
+   "1cdeb9c49d58499d"
+  ],
+  "tests/nocascade/Stmt_return_stmt_value__bool__unknown_function.ir": [
+   1,
+   "a0940ec818a642f6"
+  ],
+  "tests/nocascade/Stmt_return_stmt_value__bool__unknown_name.ir": [
+   1,
+   "f77a1b676dfdb53a"
+  ],
+  "tests/nocascade/Stmt_return_stmt_value__u32__bad_operator.ir": [
+   1,
+   "d4b58e5b8abed690"
+  ],
+  "tests/nocascade/Stmt_return_stmt_value__u32__no_fields.ir": [
+   1,
+   "86f746b02ece7b9c"
+  ],
+  "tests/nocascade/Stmt_return_stmt_value__u32__not_indexable.ir": [
+   1,
+   "e3fed4d1d5c2dd17"
+  ],
+  "tests/nocascade/Stmt_return_stmt_value__u32__unit_call.ir": [
+   1,
+   "4373e86f5066f51f"
+  ],
+  "tests/nocascade/Stmt_return_stmt_value__u32__unknown_field.ir": [
+   1,
+   "1cdeb9c49d58499d"
+  ],
+  "tests/nocascade/Stmt_return_stmt_value__u32__unknown_function.ir": [
+   1,
+   "a0940ec818a642f6"
+  ],
+  "tests/nocascade/Stmt_return_stmt_value__u32__unknown_name.ir": [
+   1,
+   "f77a1b676dfdb53a"
+  ],
+  "tests/nocascade/Stmt_while_stmt_cond__while__bad_operator.ir": [
+   1,
+   "274ac994bdedf9cb"
+  ],
+  "tests/nocascade/Stmt_while_stmt_cond__while__no_fields.ir": [
+   1,
+   "52338926998fc1b6"
+  ],
+  "tests/nocascade/Stmt_while_stmt_cond__while__not_indexable.ir": [
+   1,
+   "241dce3872d64a1d"
+  ],
+  "tests/nocascade/Stmt_while_stmt_cond__while__unit_call.ir": [
+   1,
+   "3b52ade020ccff1a"
+  ],
+  "tests/nocascade/Stmt_while_stmt_cond__while__unknown_field.ir": [
+   1,
+   "f15de0ad4ad907f6"
+  ],
+  "tests/nocascade/Stmt_while_stmt_cond__while__unknown_function.ir": [
+   1,
+   "f006f195f05befcb"
+  ],
+  "tests/nocascade/Stmt_while_stmt_cond__while__unknown_name.ir": [
+   1,
+   "63700d46012fc340"
+  ],
+  "tests/nocascade/Type_array_elem__local_arith__unknown_type.ir": [
+   1,
+   "dcf2ff6b4377b9c4"
+  ],
+  "tests/nocascade/Type_array_elem__local_assign__unknown_type.ir": [
+   1,
+   "dcf2ff6b4377b9c4"
+  ],
+  "tests/nocascade/Type_array_elem__local_call_arg__unknown_type.ir": [
+   1,
+   "dcf2ff6b4377b9c4"
+  ],
+  "tests/nocascade/Type_array_elem__local_compare__unknown_type.ir": [
+   1,
+   "dcf2ff6b4377b9c4"
+  ],
+  "tests/nocascade/Type_array_elem__local_condition__unknown_type.ir": [
+   1,
+   "dcf2ff6b4377b9c4"
+  ],
+  "tests/nocascade/Type_array_elem__local_convert__unknown_type.ir": [
+   1,
+   "dcf2ff6b4377b9c4"
+  ],
+  "tests/nocascade/Type_array_elem__local_equal__unknown_type.ir": [
+   1,
+   "dcf2ff6b4377b9c4"
+  ],
+  "tests/nocascade/Type_array_elem__local_field__unknown_type.ir": [
+   1,
+   "dcf2ff6b4377b9c4"
+  ],
+  "tests/nocascade/Type_array_elem__local_index__unknown_type.ir": [
+   1,
+   "dcf2ff6b4377b9c4"
+  ],
+  "tests/nocascade/Type_array_elem__local_length__unknown_type.ir": [
+   1,
+   "dcf2ff6b4377b9c4"
+  ],
+  "tests/nocascade/Type_array_elem__local_logic__unknown_type.ir": [
+   1,
+   "dcf2ff6b4377b9c4"
+  ],
+  "tests/nocascade/Type_array_elem__local_negate__unknown_type.ir": [
+   1,
+   "dcf2ff6b4377b9c4"
+  ],
+  "tests/nocascade/Type_array_elem__local_not__unknown_type.ir": [
+   1,
+   "dcf2ff6b4377b9c4"
+  ],
+  "tests/nocascade/Type_array_elem__local_return__unknown_type.ir": [
+   1,
+   "dcf2ff6b4377b9c4"
+  ],
+  "tests/nocascade/Type_slice_elem__param_arith__unknown_type.ir": [
+   1,
+   "f926525e09d134bf"
+  ],
+  "tests/nocascade/Type_slice_elem__param_assign__unknown_type.ir": [
+   1,
+   "f926525e09d134bf"
+  ],
+  "tests/nocascade/Type_slice_elem__param_call_arg__unknown_type.ir": [
+   1,
+   "f926525e09d134bf"
+  ],
+  "tests/nocascade/Type_slice_elem__param_compare__unknown_type.ir": [
+   1,
+   "f926525e09d134bf"
+  ],
+  "tests/nocascade/Type_slice_elem__param_condition__unknown_type.ir": [
+   1,
+   "f926525e09d134bf"
+  ],
+  "tests/nocascade/Type_slice_elem__param_convert__unknown_type.ir": [
+   1,
+   "f926525e09d134bf"
+  ],
+  "tests/nocascade/Type_slice_elem__param_equal__unknown_type.ir": [
+   1,
+   "f926525e09d134bf"
+  ],
+  "tests/nocascade/Type_slice_elem__param_field__unknown_type.ir": [
+   1,
+   "f926525e09d134bf"
+  ],
+  "tests/nocascade/Type_slice_elem__param_index__unknown_type.ir": [
+   1,
+   "f926525e09d134bf"
+  ],
+  "tests/nocascade/Type_slice_elem__param_length__unknown_type.ir": [
+   1,
+   "f926525e09d134bf"
+  ],
+  "tests/nocascade/Type_slice_elem__param_logic__unknown_type.ir": [
+   1,
+   "f926525e09d134bf"
+  ],
+  "tests/nocascade/Type_slice_elem__param_negate__unknown_type.ir": [
+   1,
+   "f926525e09d134bf"
+  ],
+  "tests/nocascade/Type_slice_elem__param_not__unknown_type.ir": [
+   1,
+   "f926525e09d134bf"
+  ],
+  "tests/nocascade/Type_slice_elem__param_return__unknown_type.ir": [
+   1,
+   "f926525e09d134bf"
+  ],
   "tests/parser/additive_add.ast": [
    0,
    "b33ccf9a981f433d"
@@ -4130,16 +5842,22 @@
   ]
  },
  "metrics": {
-  "audit_poison_reasons": 3,
+  "audit_poison_reasons": 0,
   "audit_repro_inputs": 47,
   "e0261_exhaustive.fixes_offered": 286968,
   "e0261_exhaustive.programs": 995456,
   "error_codes_documented": 55,
   "error_codes_with_fix": 8,
+  "generators": 25,
   "ir_fix_cases": 131,
   "ir_goldens": 468,
   "lexer_goldens": 15,
   "memory_stress_cases": 8,
+  "mistakes_sidecars": 30,
+  "nocascade_goldens": 428,
+  "nocascade_index_rows": 428,
+  "nocascade_sweep_points": 26871,
+  "nocascade_sweep_programs": 180,
   "parser_goldens": 376,
   "rename_property.part1.fixes_changed": 1618,
   "rename_property.part1.programs": 2500,
@@ -4148,9 +5866,15 @@
   "script_checks.boot_check_test.py": 25,
   "script_checks.check_batch_cap_test.py": 20,
   "script_checks.check_ci_targets_test.py": 21,
+  "script_checks.check_generated_test.py": 16,
   "script_checks.check_register_test.py": 35,
   "script_checks.check_retro_rules_test.py": 13,
   "script_checks.coverage_check_test.py": 14,
+  "script_checks.gen_ir_nocascade_test.py": 22,
+  "script_checks.nocascade_inject_test.py": 4,
+  "script_checks.nocascade_prove_test.py": 29,
+  "script_checks.nocascade_sinks_test.py": 19,
+  "script_checks.poison_paths_test.py": 39,
   "script_checks.ratchet_test.py": 32,
   "unit_test_functions.arena_test.c": 7,
   "unit_test_functions.ast_test.c": 6,

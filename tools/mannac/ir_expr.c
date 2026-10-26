@@ -462,7 +462,7 @@ static IR_COLD Synth settle_pending(BodyCtx *bc, const Expr *e, Synth l, Synth r
     const Expr *oe = p_left ? e->as.binary.rhs : e->as.binary.lhs;
     BinOp op = e->as.binary.op;
     const IrType *pt = p.ptype;
-    bool agrees = same || (!has_error(o) && (o.group ? group_fits(bc, oe, pt) : o.node->type == pt));
+    bool agrees = same || (o.group ? group_fits(bc, oe, pt) : o.node->type == pt); /* an ERROR `o` never has the type `pt` (a real type): no separate has_error test (step 21h, D3) */
     bool op_ok = is_logical(op) ? pt->kind == IR_T_BOOL : operand_ok(op, pt);
     if (!agrees || !op_ok) {
         withdraw_fix(bc, p.pending);

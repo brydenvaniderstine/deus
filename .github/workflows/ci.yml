@@ -57,6 +57,10 @@ jobs:
       - run: make test-nocascade-sinks-script
       - run: make check-nocascade-holes
       - run: make test-gen-nocascade-script
+      - run: make test-nocascade-prove-script
+      - run: make check-nocascade-index
+      - run: make check-generated
+      - run: make test-check-generated-script
       - run: make test-ir-unit
       - run: make test-ir-unit-asan
       - run: make test-ir-ndebug
@@ -151,6 +155,10 @@ jobs:
       - run: make test-nocascade-sinks-script
       - run: make check-nocascade-holes
       - run: make test-gen-nocascade-script
+      - run: make test-nocascade-prove-script
+      - run: make check-nocascade-index
+      - run: make check-generated
+      - run: make test-check-generated-script
       - run: make test-ir-unit
       - run: make test-ir-unit-asan
       - run: make test-ir-ndebug
@@ -200,6 +208,8 @@ jobs:
       - run: make check-inject-hook-absent
       - run: make test-nocascade-inject-script
       - run: make test-nocascade-inject
+      - run: make check-nocascade-prove
+      - run: make check-nocascade-sinks
 
   boot:
     name: Kernel boot smoke (QEMU, 8 GiB) + W^X tests

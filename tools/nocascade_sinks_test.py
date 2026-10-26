@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Tests of the pure parts of tools/nocascade_sinks.py (typed-IR step 21c): the profile diff and the attribution to sinks. make test-nocascade-sinks-script"""
-import os, sys
+import os, shutil, sys, tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -41,6 +41,24 @@ check("the innermost sink extent wins", [i[1] for i in conf["inner"]] == [10] an
 check("code outside every sink is grouped by its function", [i[1] for i in out[("f.c", "work")]] == [55])
 check("code outside every function is reported too, never dropped", [i[1] for i in out[("f.c", "?")]] == [99])
 check("a sink of another file never takes it", "other" not in conf)
+
+# ---- rule F3 ----
+MAN = {"producers": ["mk"], "predicates": ["has"], "reporters": ["rep"], "sinks": [], "functions": []}
+out_ = {("a.c", "mk"): [("a.c", 3, 1, "region")], ("a.c", "has"): [("a.c", 5, 1, "region")], ("ir.c", "?"): [("ir.c", 97, 1, "region")],
+        ("a.c", "walk"): [("a.c", 9, 1, "region")]}
+check("classify names a producer, a predicate, the hook, a reporter and anything else", [ns.classify(f, x, MAN) for x, f in (("a.c", "mk"), ("a.c", "has"), ("ir.c", "?"), ("a.c", "rep"), ("a.c", "walk"))] == ["producer", "predicate", "hook", "reporter", "other"])
+pr = ns.check_flow(out_, MAN, {})
+check("F3: poison-only code in an unlisted function fails and names it (producers, predicates and the hook are allowed)", len(pr) == 1 and "a.c walk" in pr[0])
+check("F3: a reviewed function passes", ns.check_flow(out_, MAN, {("a.c", "walk"): "why"}) == [])
+check("F3: a listed function that no longer shows up is stale", any("lists a.c gone" in p for p in ns.check_flow(out_, MAN, {("a.c", "walk"): "why", ("a.c", "gone"): "why"})))
+d = tempfile.mkdtemp()
+try:
+    open(os.path.join(d, "f"), "w").write("# c\na.c\twalk\tbecause it is a lookup\n")
+    check("read_flow reads `file<TAB>function<TAB>why` and skips comments", ns.read_flow(os.path.join(d, "f")) == {("a.c", "walk"): "because it is a lookup"})
+finally:
+    shutil.rmtree(d, ignore_errors=True)
+real = ns.read_flow(os.path.join(HERE, "..", "tests", "nocascade", "FLOW.expected"))
+check("the real FLOW.expected gives every function a reason", len(real) >= 3 and all(len(w) > 20 for w in real.values()))
 
 print("\n%d failure(s)" % len(fails) if fails else "\nall passed")
 sys.exit(1 if fails else 0)

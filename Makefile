@@ -60,7 +60,7 @@ QEMU_FLAGS   := $(QEMU_MACHINE) \
                 -serial file:serial.log -monitor stdio -no-reboot \
                 -d int,cpu_reset -D qemu.log
 
-.PHONY: all image run debug clean limine stage-esp test-wx test-lexer test-lexer-asan test-arena test-arena-asan test-ast test-ast-asan test-parser-state test-parser-state-asan test-parser-fixes test-parser-fixes-asan test-parser test-parser-asan test-determinism test-ir test-ir-asan test-ir-unit test-ir-unit-asan test-ir-ndebug test-ir-fix test-ir-fix-asan test-ir-error-codes audit-ir-poison test-poison-paths-script check-poison-paths check-nocascade-holes test-gen-nocascade-script test-nocascade-sinks-script nocascade-sink-report test-nocascade-inject test-nocascade-inject-script check-inject-hook-absent test-e0261-exhaustive test-rename-property test-ir-memory-stress test-ratchet test-ratchet-script ratchet-update check-register register-fix-lines test-register-script check-ci-targets test-ci-targets-script test-audit-repros test-fuzz-script test-boot test-boot-check-script check-kernel-loc test-kernel-loc-script test-measure-height-script coverage-check test-coverage-check-script check-batch-cap test-batch-cap-script check-retro-rules test-retro-rules-script coverage fuzz fuzz-lexer fuzz-parser fuzz-ir fuzz-ir-ungated measure-height measure-ir-stack measure-ir-build-stack
+.PHONY: all image run debug clean limine stage-esp test-wx test-lexer test-lexer-asan test-arena test-arena-asan test-ast test-ast-asan test-parser-state test-parser-state-asan test-parser-fixes test-parser-fixes-asan test-parser test-parser-asan test-determinism test-ir test-ir-asan test-ir-unit test-ir-unit-asan test-ir-ndebug test-ir-fix test-ir-fix-asan test-ir-error-codes audit-ir-poison test-poison-paths-script check-poison-paths check-nocascade-holes check-nocascade-index check-nocascade-prove check-nocascade-sinks test-nocascade-prove-script nocascade-all check-generated test-check-generated-script test-gen-nocascade-script test-nocascade-sinks-script nocascade-sink-report test-nocascade-inject test-nocascade-inject-script check-inject-hook-absent test-e0261-exhaustive test-rename-property test-ir-memory-stress test-ratchet test-ratchet-script ratchet-update check-register register-fix-lines test-register-script check-ci-targets test-ci-targets-script test-audit-repros test-fuzz-script test-boot test-boot-check-script check-kernel-loc test-kernel-loc-script test-measure-height-script coverage-check test-coverage-check-script check-batch-cap test-batch-cap-script check-retro-rules test-retro-rules-script coverage fuzz fuzz-lexer fuzz-parser fuzz-ir fuzz-ir-ungated measure-height measure-ir-stack measure-ir-build-stack
 
 all: $(KERNEL_ELF)
 
@@ -547,6 +547,33 @@ check-nocascade-holes:
 test-gen-nocascade-script:
 	@python3 tools/gen_ir_nocascade_test.py
 
+# Step 21g (F4, F5): tests/nocascade/INDEX.tsv, the goldens and the holes of ast.h agree. (`make test-ir` and `test-ir-asan` run every tests/nocascade/*.mn against its .ir.)
+check-nocascade-index:
+	@python3 tools/check_nocascade_index.py
+
+# Step 21g (the batch B review's finding): every generated golden and every .mistakes file is what its generator writes today; a .mistakes file no generator writes fails.
+check-generated:
+	@python3 tools/check_generated.py
+
+test-check-generated-script:
+	@python3 tools/check_generated_test.py
+
+# Step 21h (rules F1, F2, F7): the ablation proof. For every sink of tools/poison_paths.py a mutant of the builder that cannot see poison there is built and every single-mistake
+# golden is run on it; a golden whose output changes (or that hangs or crashes) PROVES the sink. tests/nocascade/PATHS.lock is the proof, UNPROVEN.txt the owned exceptions.
+# About 3 minutes on 4 workers (macOS): its own CI job. `python3 tools/nocascade_prove.py --write` rewrites the lock.
+check-nocascade-prove:
+	@python3 tools/nocascade_prove.py --check
+
+test-nocascade-prove-script:
+	@python3 tools/nocascade_prove_test.py
+
+# Step 21h (rule F3): the sweep with coverage, the static sinks against the dynamic ones; poison-only code outside a sink must be in a producer, a predicate, the hook or tests/nocascade/FLOW.expected.
+check-nocascade-sinks:
+	@python3 tools/nocascade_sinks.py --check
+
+# Everything of the no-cascade proof at once (the CI `nocascade` job runs the pieces as separate steps).
+nocascade-all: check-poison-paths check-nocascade-holes check-nocascade-index check-generated check-nocascade-prove check-nocascade-sinks test-nocascade-inject
+
 # Step 21c: REPORT, not a check (it becomes rules F3 and F7 of check-nocascade in step 21h): runs the whole sweep with coverage and lists the static sinks no
 # injection moved and the poison-only code outside every static sink. About 40 s.
 nocascade-sink-report:
@@ -556,7 +583,7 @@ nocascade-sink-report:
 # Every value the builder creates, in every program under tests/ that builds clean, is made ERROR silently, one at a time; the build must report nothing.
 # Needs clang; ASan + UBSan. Own CI job (register D4): about 3.5 minutes on 4 cores.
 test-nocascade-inject:
-	@python3 tools/nocascade_inject.py
+	@python3 tools/nocascade_inject.py --floor tests/nocascade/sweep.expected
 
 test-nocascade-inject-script:
 	@python3 tools/nocascade_inject_test.py

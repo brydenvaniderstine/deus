@@ -1,0 +1,182 @@
+{
+ "ir_decls.c::build_fields::3bc4fbf1::0": [
+  "Field_type__struct_field_construct__unknown_type",
+  "Field_type__struct_field_construct_and_read__unknown_type"
+ ],
+ "ir_decls.c::ir_check_type_size::3bc4fbf1::0": [
+  "Decl_function_decl_return_type__call_arith__unknown_type",
+  "Decl_function_decl_return_type__call_assign__unknown_type"
+ ],
+ "ir_decls.c::ir_declare_items::8e7a4070::0": [
+  "Decl_function_decl_return_type__call_arith__unknown_type",
+  "Decl_function_decl_return_type__call_assign__unknown_type"
+ ],
+ "ir_decls.c::ir_resolve_type::2172e690::0": [
+  "Type_array_elem__local_arith__unknown_type",
+  "Type_array_elem__local_assign__unknown_type"
+ ],
+ "ir_decls.c::ir_resolve_type::2172e690::1": [
+  "Type_slice_elem__param_arith__unknown_type",
+  "Type_slice_elem__param_assign__unknown_type"
+ ],
+ "ir_decls.c::layout_struct::525d9880::0": [
+  "Field_type__struct_field_construct__unknown_type",
+  "Field_type__struct_field_construct_and_read__unknown_type"
+ ],
+ "ir_decls.c::layout_struct::fb9f6d4f::0": [
+  "cycle_dependent_is_silent",
+  "cycle_entered_from_higher_index"
+ ],
+ "ir_decls.c::layout_struct::fc184521::0": [
+  "param_unsized_struct_is_silent",
+  "size_array_of_struct_over_limit"
+ ],
+ "ir_decls.c::type_layout::479d9259::0": [],
+ "ir_decls.c::type_layout::e11146f2::0": [
+  "param_unsized_struct_is_silent"
+ ],
+ "ir_decls.c::type_layout::e11146f2::1": [
+  "param_slice_of_too_large_array"
+ ],
+ "ir_expr.c::accept_int_pending::5038c940::0": [
+  "fix_e0261_none_when_the_local_reaches_an_index_through_a_comparison"
+ ],
+ "ir_expr.c::array_done::0a63c4a0::0": [
+  "one_error_array_of_arrays_over_the_size_limit"
+ ],
+ "ir_expr.c::array_infer::0a63c4a0::0": [
+  "Expr_array_elems_list__inferred_first__bad_operator",
+  "Expr_array_elems_list__inferred_first__no_fields"
+ ],
+ "ir_expr.c::check_array_literal::0a63c4a0::0": [
+  "one_error_repeat_too_large_for_the_expected_array"
+ ],
+ "ir_expr.c::check_array_literal::31a1479d::0": [
+  "one_error_mismatch_array_literal_for_u8"
+ ],
+ "ir_expr.c::check_array_literal::73f6fb7c::0": [
+  "Type_array_elem__local_arith__unknown_type",
+  "Type_array_elem__local_assign__unknown_type"
+ ],
+ "ir_expr.c::check_array_literal::929fb757::0": [
+  "Type_array_elem__local_arith__unknown_type",
+  "Type_array_elem__local_assign__unknown_type"
+ ],
+ "ir_expr.c::check_array_literal::a2dcdedb::0": [
+  "Type_array_elem__local_arith__unknown_type",
+  "Type_array_elem__local_assign__unknown_type"
+ ],
+ "ir_expr.c::check_index_operand::8b1a708a::0": [
+  "Expr_index_index__read__bad_operator",
+  "Expr_index_index__read__no_fields"
+ ],
+ "ir_expr.c::deciding_type::5dcbdf37::0": [
+  "one_error_array_of_integer_literals"
+ ],
+ "ir_expr.c::deciding_type::8b1a708a::0": [
+  "Expr_array_elems_list__inferred_first_then_arith__bad_operator",
+  "Expr_array_elems_list__inferred_first_then_arith__no_fields"
+ ],
+ "ir_expr.c::finish_convert::b22c1816::0": [
+  "Expr_convert_operand__u8__bad_operator",
+  "Expr_convert_operand__u8__no_fields"
+ ],
+ "ir_expr.c::finish_field::d51e23d1::0": [
+  "Expr_field_access_base__read__no_fields",
+  "Expr_field_access_base__read__not_indexable"
+ ],
+ "ir_expr.c::finish_index::935f7fa2::0": [
+  "Expr_array_elems_list__first__not_indexable",
+  "Expr_array_elems_list__inferred_first__not_indexable"
+ ],
+ "ir_expr.c::finish_len::dae3225d::0": [
+  "Stmt_let_stmt_type__local_length__unknown_type",
+  "Type_array_elem__local_length__unknown_type"
+ ],
+ "ir_expr.c::finish_logical::1df5627f::0": [
+  "Expr_binary_lhs__and__bad_operator",
+  "Expr_binary_lhs__and__no_fields"
+ ],
+ "ir_expr.c::finish_logical::b5ba0012::0": [
+  "poison_logical_other_operand_literal_is_a_mistake",
+  "poison_logical_other_operand_not_bool_is_a_mistake"
+ ],
+ "ir_expr.c::finish_logical::ed84387e::0": [
+  "Expr_binary_lhs__and__bad_operator",
+  "Expr_binary_lhs__and__no_fields"
+ ],
+ "ir_expr.c::finish_logical::ed84387e::1": [
+  "poison_logical_other_operand_literal_is_a_mistake"
+ ],
+ "ir_expr.c::finish_slice::935f7fa2::0": [
+  "Expr_slice_base__both__no_fields",
+  "Expr_slice_base__both__not_indexable"
+ ],
+ "ir_expr.c::finish_unary::7a8e6b1b::0": [
+  "fix_e0261_in_an_unannotated_let_has_no_fix_it_is_negated_and_unsigned"
+ ],
+ "ir_expr.c::finish_unary::cef7364d::0": [
+  "Expr_unary_operand__bitnot__bad_operator",
+  "Expr_unary_operand__bitnot__no_fields"
+ ],
+ "ir_expr.c::group_against::929fb757::0": [
+  "Stmt_assign_stmt_target__name__unknown_name",
+  "Stmt_let_stmt_type__local_arith__unknown_type"
+ ],
+ "ir_expr.c::indexable_element::d51e23d1::0": [
+  "Expr_array_elems_list__inferred_first_then_index__bad_operator",
+  "Expr_array_elems_list__inferred_first_then_index__no_fields"
+ ],
+ "ir_expr.c::ir_check_expr::189dc3fa::0": [
+  "Expr_array_elems_list__first__bad_operator",
+  "Expr_array_elems_list__first__no_fields"
+ ],
+ "ir_expr.c::ir_check_expr::f31f3f11::0": [
+  "fix_e0261_in_an_unannotated_let_has_no_fix_a_comparison_of_it_is_returned_as_another_type",
+  "fix_e0261_in_an_unannotated_let_has_no_fix_a_copy_of_it_is_returned_as_another_type"
+ ],
+ "ir_expr.c::reject_pending::ee7646b0::0": [
+  "fix_e0261_in_an_unannotated_let_has_no_fix_it_is_an_array_element_that_decides_a_type",
+  "fix_e0261_in_an_unannotated_let_has_no_fix_it_is_the_argument_of_len"
+ ],
+ "ir_expr.c::repeat_done::0a63c4a0::0": [
+  "array_literal_size_limit_bool_elements"
+ ],
+ "ir_expr.c::repeat_infer::0a63c4a0::0": [
+  "Expr_array_repeat_value__inferred_then_arith__bad_operator",
+  "Expr_array_repeat_value__inferred_then_arith__no_fields"
+ ],
+ "ir_expr.c::report_types_differ::ece0845c::0": [
+  "fix_e0261_at_the_bottom_of_a_510_operation_chain_keeps_its_fix",
+  "fix_e0261_chain_of_510_operations_keeps_its_fix"
+ ],
+ "ir_expr.c::settle_pending::406d93d4::0": [
+  "fix_e0261_at_the_bottom_of_a_510_operation_chain_keeps_its_fix",
+  "fix_e0261_in_an_unannotated_for_let_has_no_fix_the_condition_compares_another_type"
+ ],
+ "ir_expr.c::settle_pending::76a18583::0": [
+  "fix_e0261_two_lets_met_in_one_operator_have_no_fix_yet",
+  "fix_e0261_two_waiting_fixes_meeting_in_one_operator_are_both_withdrawn"
+ ],
+ "ir_expr.c::settle_pending::77988245::0": [
+  "fix_e0261_in_an_unannotated_let_keeps_its_fix_a_copy_an_assignment_with_a_literal_and_a_sum_accept_the_type"
+ ],
+ "ir_expr.c::settle_pending::8bac09b0::0": [
+  "fix_e0261_in_an_unannotated_for_let_has_no_fix_the_condition_compares_another_type",
+  "fix_e0261_in_an_unannotated_let_has_no_fix_a_comparison_of_it_is_returned_as_another_type"
+ ],
+ "ir_expr.c::typed_binary::1df5627f::0": [
+  "Expr_array_elems_list__inferred_first_then_arith__bad_operator",
+  "Expr_array_elems_list__inferred_first_then_arith__no_fields"
+ ],
+ "ir_expr.c::typed_binary::77640c58::0": [
+  "one_error_compare_literal_with_bool"
+ ],
+ "ir_expr.c::typed_binary::b8ded544::0": [
+  "poison_comparison_other_operand_type_is_still_checked"
+ ],
+ "ir_expr.c::typed_binary::ed84387e::0": [
+  "Expr_array_elems_list__inferred_first_then_compare__bad_operator",
+  "Expr_array_elems_list__inferred_first_then_compare__no_fields"
+ ]
+}

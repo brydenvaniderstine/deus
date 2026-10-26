@@ -1,0 +1,2 @@
+# A sink that no golden proves (tools/nocascade_prove.py --check, rules F1/F7): `sink id<TAB>register entry id`; the entry must be OPEN or PARTLY CLOSED in docs/DEGRADATION.md.
+# Empty on purpose: every sink the static pass finds is proven by a golden (tests/nocascade/PATHS.lock), or its guard was removed after the D3 procedure.

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Cross-check of the static sinks against the dynamic ones (typed-IR step 21c; the step 21 plan, section 3c). Run from the repo root:
-  python3 tools/nocascade_sinks.py [--reuse]            report (exit 0 unless the tool itself fails); --reuse keeps the profiles of the last sweep
+  python3 tools/nocascade_sinks.py [--reuse] [--check]   report (exit 0 unless the tool itself fails); --reuse keeps the profiles of the last sweep; --check applies rule F3 (21h)
 
 The dynamic side needs no names. Two coverage profiles of the same binary (tools/mannac/ir_inject.c, -fprofile-instr-generate):
   B  every program of the corpus that builds CLEAN, built once with no injection;
@@ -89,6 +89,44 @@ def attribute(items, man):
     return confirmed, outside
 
 
+FLOW = "tests/nocascade/FLOW.expected"
+
+
+def classify(fn, f, man):
+    """how the cross-check names the function a poison-only item sits in"""
+    return ("hook" if fn == "?" and f == "ir.c" else "producer" if fn in set(man["producers"]) else "predicate" if fn in set(man["predicates"])
+            else "reporter" if fn in set(man.get("reporters", [])) else "other")
+
+
+def read_flow(path):
+    """{(file, function): reason}: poison-only code that is NOT a decision on poison, reviewed once (`file<TAB>function<TAB>why`)"""
+    out = {}
+    if os.path.exists(path):
+        for ln in open(path).read().split("\n"):
+            if ln.strip() and not ln.startswith("#"):
+                f, fn, why = ln.split("\t", 2)
+                out[(f, fn)] = why
+    return out
+
+
+def check_flow(outside, man, flow):
+    """rule F3: poison-only code outside every static sink is allowed in a producer, a predicate or the injection hook (derived from the code), or in a function a reviewer listed
+    in FLOW.expected with a reason; any other function is a sink the static pass missed (or flow nobody has looked at). A listed function that no longer shows up is stale."""
+    problems = []
+    seen = set()
+    for (f, fn), items in sorted(outside.items()):
+        cls = classify(fn, f, man)
+        if cls in ("producer", "predicate", "hook"):
+            continue
+        seen.add((f, fn))
+        if (f, fn) not in flow:
+            problems.append("F3: poison-only code in %s %s (%s, lines %s) is outside every static sink and not in %s: a sink the static pass missed, or flow that needs a reviewer's reason" %
+                            (f, fn, cls, " ".join(str(l) for l in sorted({i[1] for i in items})[:6]), FLOW))
+    for key in sorted(set(flow) - seen):
+        problems.append("F3: %s lists %s %s, which has no poison-only code outside a sink any more: remove the line" % (FLOW, key[0], key[1]))
+    return problems
+
+
 def main(argv):
     sys.path.insert(0, os.path.join(ROOT, "tools"))
     import poison_paths
@@ -114,9 +152,17 @@ def main(argv):
     print("\nPOISON-ONLY CODE OUTSIDE EVERY STATIC SINK (%d items in %d functions):" % (n_out, len(outside)))
     produ, report, preds = set(man["producers"]), set(man.get("reporters", [])), set(man["predicates"])
     for (f, fn), its in sorted(outside.items()):
-        tag = "hook" if fn == "?" and f == "ir.c" else "producer" if fn in produ else "predicate" if fn in preds else "reporter" if fn in report else "other"
+        tag = classify(fn, f, man)
         lines = sorted({i[1] for i in its})
         print("  %-11s %-26s %-8s lines %s" % (f, fn, tag, " ".join(str(l) for l in lines[:12]) + (" ..." if len(lines) > 12 else "")))
+    if "--check" in argv:
+        problems = check_flow(outside, man, read_flow(os.path.join(ROOT, FLOW)))
+        for p in problems:
+            print(p)
+        if problems:
+            return 1
+        print("nocascade_sinks: ok (F3: %d static sinks, %d confirmed by an injection; every poison-only item outside a sink is in a producer, a predicate, the hook or a reviewed flow function)" %
+              (len(sinks), len(sinks) - len(unconfirmed)))
     os.makedirs(os.path.dirname(COV), exist_ok=True)
     json.dump({"unconfirmed": [s["id"] for s in unconfirmed], "outside": {"%s::%s" % k: sorted({i[1] for i in v}) for k, v in outside.items()},
                "confirmed": {k: len(v) for k, v in confirmed.items()}}, open(os.path.join("build/nocascade", "sinks_report.json"), "w"), indent=1, sort_keys=True)

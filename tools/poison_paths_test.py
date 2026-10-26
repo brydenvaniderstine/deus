@@ -28,7 +28,7 @@ enum { P_INT, P_ERROR };
 typedef struct { Kind kind; } Type;
 typedef struct { Type *node; bool group; unsigned pending; } Synth;
 typedef struct { Type prim[2]; int n; } State;
-typedef struct { bool poisoned; int size; } Info;
+typedef struct { bool poisoned; int size; bool ok; } Info;
 void ir_error(State *st, int d);
 int diag_ir_x(int v);
 """
@@ -44,6 +44,10 @@ int use_carrier(Info *i) { if (i->poisoned) return 0; return 1; }
 static Type *lookup(State *st, int k) { if (k < 0) { ir_error(st, diag_ir_x(k)); return NULL; } return &st->prim[0]; }
 int use_null(State *st) { Type *t = lookup(st, 1); if (!t) return 0; return 1; }
 int plain(Synth s) { unsigned p = s.pending; return (int)p; }
+static Type *fold(State *st, int v) { if (v > 5) { ir_error(st, diag_ir_x(v)); return &st->prim[0]; } return NULL; }
+int use_fold(State *st) { Type *f = fold(st, 1); if (f) return 1; return 0; }
+void set_ok(Info *i, Type *t) { if (t->kind == IR_T_ERROR) return; i->ok = true; }
+int use_ok(Info *i) { if (!i->ok) return 0; return 1; }
 Type *make(State *st) { ir_error(st, diag_ir_x(1)); return type_error(st); }
 """
 
@@ -65,7 +69,11 @@ try:
     check("the producers include the type constructor and its caller", "type_error" in man["producers"] and "make" in man["producers"])
     check("a field assigned under a poison test is a carrier (poisoned)", "poisoned" in man["carriers"])
     check("a function that returns NULL after a reported error is null-poison (lookup)", man["nullpoison"] == ["lookup"])
-    check("sinks are exactly the five decisions", fns == ["mark", "use_carrier", "use_direct", "use_null", "use_pred"])
+    check("a NULL that means 'nothing to fold', after a branch that reported and returned, is NOT poison (fold): a sink on it would be a false sink", "fold" not in man["nullpoison"] and "use_fold" not in {x["function"] for x in man["sinks"]})
+    check("sinks are exactly the decisions", fns == ["mark", "set_ok", "use_carrier", "use_direct", "use_null", "use_ok", "use_pred"])
+    ok_sink = [x for x in man["sinks"] if x["function"] == "use_ok"][0]
+    check("a flag set to true only AFTER a poison early return is poison by omission: 'not poison' for it is 1, not 0 (the ablation must not make everything look poisoned)", ok_sink["atoms"][0]["replace"] == "1" and "ok" in man["carriers"])
+    check("a flag assigned under a poison test says 'not poison' with 0", [a["replace"] for a in [x for x in man["sinks"] if x["function"] == "use_carrier"][0]["atoms"]] == ["0"])
     check("an assert on poison is not a sink", "use_assert" not in fns)
     check("a plain read of a carrier is flow, not a sink", "plain" not in fns)
     src_line = [l for l in open(os.path.join(root, "tools/mannac/ir_fx.c")).read().split("\n") if l.startswith("int use_pred")][0]
@@ -74,7 +82,7 @@ try:
     check("a sink carries the range of its atom and the constant that ablates it", len(s["atoms"]) == 1 and s["atoms"][0]["replace"] == "0" and s["atoms"][0]["text"] == "zorp(a)")
     src = open(os.path.join(root, "tools/mannac/ir_fx.c"), "rb").read()
     check("the atom range is the atom's bytes in the source", src[s["atoms"][0]["start"]:s["atoms"][0]["end"]] == b"zorp(a)")
-    check("emitters name their diag constructor", [e["constructor"] for e in man["emitters"]] == ["diag_ir_x", "diag_ir_x"])
+    check("emitters name their diag constructor", [e["constructor"] for e in man["emitters"]] == ["diag_ir_x"] * 3)
     check("the creation sites include the call to the type constructor", any(p["function"] == "make" for p in man["producer_sites"]))
     ids = [x["id"] for x in man["sinks"]]
     check("sink ids are unique", len(ids) == len(set(ids)))
