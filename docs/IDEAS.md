@@ -8,6 +8,7 @@ Format: `- YYYY-MM-DD: idea, one or two sentences, and where it might eventually
 
 - M1.5 "screen + keyboard" (candidate, small): use Limine's framebuffer to draw a text console in the QEMU window (bitmap font); PS/2 keyboard driver; echo typed keys. Validation: boot in QEMU, type, and see characters on screen. Candidate slot: after M2.
 - M3+ "Deus shell": TempleOS-style prompt that compiles and runs Manna instantly (e.g. `> 2 + 3` prints `5`). Requires the M2 compiler + M3 Wasm runtime.
+  - Self-describing commands (from Omarchy review 2026-10-26): each shell command declares its summary, args and examples in its own source header. The shell builds help and listings from those headers only, with no separate registry, and a check mode reports two commands claiming the same name. Precondition: the shell exists.
 - Real hardware: boot from USB on a cheap x86_64 UEFI mini PC. Requires a USB keyboard driver. MacBooks are poor targets (custom keyboard/hardware).
 - Later: mouse + windowed GUI. Out of scope until the shell exists.
 
@@ -265,6 +266,7 @@ Shape: a supervisor policy per task: restart, give up after N restarts in a time
 Prior art: Erlang/OTP supervision trees.
 Open questions: who owns the restart policy; what capabilities a restarted task gets; host-call side effects completed before the trap (kept, rolled back, or logged); how restarts interact with record and replay ("Deterministic record and replay of apps").
 Alternatives rejected: panic the system (one bug kills everything); silent auto-restart with no limit (hides crash loops).
+Crash record for diagnosis (Omarchy review 2026-10-26): on a trap the kernel writes a fixed record (task, module, trap kind, time). A future agent service may read it and explain the cause, but may not restart, patch or change anything. Read-only by rule.
 Earliest milestone boundary: M3 (Wasm runtime + IPC).
 Admission Test status: not applicable (runtime, not language).
 Status: candidate
@@ -373,6 +375,7 @@ Status:                 candidate
 2. The device set for the first cloud target: virtio-net, virtio-blk, a serial console. Which hypervisors first (QEMU/KVM, Firecracker)?
 3. Image and boot: Limine on UEFI as today, or a direct-boot path some micro-VM monitors need?
 4. How a service is configured and updated without a shell (connects to "Provenance on every module" and "Live component replacement", IDEAS 2026-10-19).
+   - Prior art: Omarchy runs updates through one locked command with timestamp-ordered, idempotent one-time migrations that leave completion markers.
 5. Benchmarks that would show it is better, not just smaller: boot time, memory, request latency, against a Linux micro-VM running the same Wasm app.
 
 ## 2026-10-09: Considered and rejected ("Omni/AetherOS" brainstorm)
