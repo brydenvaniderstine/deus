@@ -287,7 +287,7 @@ Each entry's **Trigger-id** is one of the ids below, in the order they fall due.
 
 - **Status:** CLOSED (2026-10-25, ci.yml run 40166779034 on 3258f9d)
 - **Reason:** The C is meant to build elsewhere (an open IDEAS question: portable C on any OS); the only Linux/gcc runs are the reviewer's manual ones. The Linux job (Ubuntu, gcc, plus clang with llvm-cov for the poison audit) runs the whole host-side list on every push. CLOSED: the Linux job (Ubuntu, gcc 13, plus clang with llvm-cov for the poison audit) ran the whole host-side list green in ci.yml run 40166779034 on 3258f9d, 0 compiler warnings under -Werror.
-- **Promise:** `docs/IDEAS.md:19` "Mac-only vs portable C on any OS"
+- **Promise:** `docs/IDEAS.md:20` "Mac-only vs portable C on any OS"
 - **Where it stands:** (before step 20) `.github/workflows/ci.yml:26` "runs-on: macos-14"
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** Step 20 (an Ubuntu gcc job)
@@ -370,7 +370,7 @@ Each entry's **Trigger-id** is one of the ids below, in the order they fall due.
 
 - **Status:** OPEN
 - **Reason:** Open since 2026-10-15; IDEAS says Deus runs no models, VISION describes an off-box or local model behind an agent service (parked for M3).
-- **Promise:** `docs/IDEAS.md:72` "No model-token budgets: Deus runs no models."
+- **Promise:** `docs/IDEAS.md:73` "No model-token budgets: Deus runs no models."
 - **Where it stands:** `VISION.md:56` "The model never runs in the kernel; it is reached off-box (API) or, later, run as a local model."
 - **Owner:** Bryden (decision); Claude Code (work)
 - **Trigger:** Before M3 start (PROPOSED by Claude Code, approved by Bryden 2026-10-24)
@@ -414,7 +414,7 @@ Each entry's **Trigger-id** is one of the ids below, in the order they fall due.
 
 - **Status:** OPEN
 - **Reason:** If the verifier is designed without it the TCB stays the whole compiler by default.
-- **Promise:** `docs/IDEAS.md:253` "Earliest milestone boundary: before the verifier is designed (M2)."
+- **Promise:** `docs/IDEAS.md:254` "Earliest milestone boundary: before the verifier is designed (M2)."
 - **Where it stands:** `CLAUDE.md:134` "- **TCB:** the compiler, verifier, and Wasm runtime all run in ring 0."
 - **Owner:** Bryden (decision); Claude Code (work)
 - **Trigger:** Before verifier design
