@@ -55,6 +55,8 @@ jobs:
       - run: make test-poison-paths-script
       - run: make check-poison-paths
       - run: make test-nocascade-sinks-script
+      - run: make check-nocascade-holes
+      - run: make test-gen-nocascade-script
       - run: make test-ir-unit
       - run: make test-ir-unit-asan
       - run: make test-ir-ndebug
@@ -147,6 +149,8 @@ jobs:
       - run: make test-poison-paths-script
       - run: make check-poison-paths
       - run: make test-nocascade-sinks-script
+      - run: make check-nocascade-holes
+      - run: make test-gen-nocascade-script
       - run: make test-ir-unit
       - run: make test-ir-unit-asan
       - run: make test-ir-ndebug

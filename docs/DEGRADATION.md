@@ -72,7 +72,7 @@ Each entry's **Trigger-id** is one of the ids below, in the order they fall due.
 - **Status:** CLOSED (2026-10-25, ci.yml run 40213325096 on d478be8)
 - **Reason:** The CI job is a compile check; boots are manual. CLOSED: the `boot` job of ci.yml run 40213325096 on d478be8 runs `make test-boot` on the 8 GiB machine (never shrunk; the runner has 7.9 GiB of RAM and TCG booted it): `qemu_boot: reached /starting A/B preemption proof/ after 3s`, `boot_check smoke: ok` against `tests/boot_expected.txt` (memmap, GDT, IDT, the three mappings and the CR3 load, calibration source and rate, interleaved A/B).
 - **Promise:** `CLAUDE.md:7` "Every milestone must boot in QEMU."
-- **Where it stands:** (before step 20) `.github/workflows/ci.yml:83` "# Kernel compile check only (make all -> build/kernel.elf). Does not"
+- **Where it stands:** (before step 20) `.github/workflows/ci.yml:85` "# Kernel compile check only (make all -> build/kernel.elf). Does not"
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** Step 20 (a QEMU boot smoke test asserting the M1 serial-log lines)
 - **Trigger-id:** `step-20`
