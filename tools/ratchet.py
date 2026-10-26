@@ -88,12 +88,22 @@ def compute():
     for i, line in enumerate([l for l in read("tests/rename_property.expected").split("\n") if l.startswith("rename property test")]):
         metrics["rename_property.part%d.programs" % (i + 1)] = int(re.search(r"(\d+) random programs", line).group(1))
         metrics["rename_property.part%d.fixes_changed" % (i + 1)] = int(re.search(r"fixes changed (\d+)", line).group(1))
-    for f in ("ratchet_test.py", "check_register_test.py", "check_ci_targets_test.py", "boot_check_test.py", "check_batch_cap_test.py", "check_retro_rules_test.py", "coverage_check_test.py"):
+    for f in ("ratchet_test.py", "check_register_test.py", "check_ci_targets_test.py", "boot_check_test.py", "check_batch_cap_test.py", "check_retro_rules_test.py", "coverage_check_test.py", "poison_paths_test.py", "nocascade_inject_test.py", "nocascade_sinks_test.py", "gen_ir_nocascade_test.py", "check_generated_test.py", "nocascade_prove_test.py"):
         metrics["script_checks." + f] = len(re.findall(r"^\s*check\(", read("tools/" + f), re.M))
+    # step 21g (F8): the no-cascade proof only grows. The SINK count is not ratcheted: removing a redundant guard after the D3 procedure legitimately lowers it, and
+    # that is caught by PATHS.lock (F2) instead, which changes with it and must be regenerated and reviewed.
+    metrics["generators"] = len(files("tools/gen_ir_*.py"))
+    metrics["mistakes_sidecars"] = len(files("tests/ir/*.mistakes")) + len(files("tests/ir_fix/*.mistakes"))
+    metrics["nocascade_goldens"] = len(files("tests/nocascade/*.mn"))
+    metrics["nocascade_index_rows"] = len([l for l in read("tests/nocascade/INDEX.tsv").split("\n") if l.strip() and not l.startswith("#")])
+    for line in read("tests/nocascade/sweep.expected").split("\n"):
+        if line.strip():
+            k, v = line.split()
+            metrics["nocascade_sweep_" + k] = int(v)
     metrics["memory_stress_cases"] = len(re.findall(r"^case\(", read("tools/ir_memory_stress.py"), re.M))
     reasons = [l for l in read("tools/audit_ir_poison_reasons.txt").split("\n") if l.strip() and not l.startswith("#")]
     metrics["audit_poison_reasons"] = len(reasons)
-    for pat in ("tests/ir/*.ir", "tests/ir_fix/*.remaining", "tests/parser/*.ast", "tests/audit_repros/*.out"):
+    for pat in ("tests/ir/*.ir", "tests/ir_fix/*.remaining", "tests/parser/*.ast", "tests/audit_repros/*.out", "tests/nocascade/*.ir"):
         for f in files(pat):
             text = read(f)
             diags[f] = [count_diags(text), hashlib.sha256(text.encode("utf-8", "replace")).hexdigest()[:16]]

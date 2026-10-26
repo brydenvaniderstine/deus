@@ -26,3 +26,6 @@ if __name__ == "__main__":
     mistakes("fix_e0261_in_an_unannotated_let_has_no_fix_a_comparison_of_it_is_returned_as_another_type", 2)
     mistakes("fix_e0261_in_an_unannotated_let_keeps_its_fix_arithmetic_on_the_bool_that_a_comparison_of_it_gives", 2)
     mistakes("fix_e0261_none_when_the_local_reaches_an_index_through_a_comparison", 2)
+    # two E0261 in one operator: the two mistakes are the two diagnostics (D5)
+    mistakes("fix_e0261_two_waiting_fixes_meeting_in_one_operator_are_both_withdrawn", 2)
+    mistakes("fix_e0261_two_lets_met_in_one_operator_have_no_fix_yet", 2)

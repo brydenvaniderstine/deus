@@ -1,0 +1,17 @@
+manna v0;
+struct P {
+    x: u8,
+}
+fn nothing() {
+}
+fn take(v: u8) -> u8 {
+    return v;
+}
+fn two(v: u8, w: u8) -> u8 {
+    return v;
+}
+fn f(p: P, a: u8, b: bool, xs: [4]u8, n: u32) -> u8 {
+    for let i: u8 = 0; i < 3; i = ~b {
+    }
+    return 0;
+}

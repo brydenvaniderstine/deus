@@ -59,7 +59,7 @@ try:
         shutil.copytree(os.path.join(repo, "tests"), os.path.join(root, "tests"))
         os.remove(os.path.join(root, "tests", "ratchet.json"))   # the scratch repository's first version is made by its own `update`
         for f in ("docs/DEGRADATION.md", "docs/error_codes.md", "tools/audit_ir_poison_reasons.txt", "tools/ir_memory_stress.py", "tools/ratchet_test.py",
-                  "tools/check_register_test.py", "tools/check_ci_targets_test.py", "tools/boot_check_test.py", "tools/check_batch_cap_test.py", "tools/check_retro_rules_test.py", "tools/coverage_check_test.py", "tools/ratchet.py"):
+                  "tools/check_register_test.py", "tools/check_ci_targets_test.py", "tools/boot_check_test.py", "tools/check_batch_cap_test.py", "tools/check_retro_rules_test.py", "tools/coverage_check_test.py", "tools/poison_paths_test.py", "tools/nocascade_inject_test.py", "tools/nocascade_sinks_test.py", "tools/gen_ir_nocascade_test.py", "tools/check_generated_test.py", "tools/nocascade_prove_test.py", "tools/ratchet.py"):
             shutil.copy(os.path.join(repo, f), os.path.join(root, f))
         with open(os.path.join(root, "docs", "DEGRADATION.md"), "a") as f:   # an entry of the test's own, so the waivers do not depend on the real register
             f.write("\n### ZT - an entry for the ratchet tests\n\n- **Status:** OPEN\n")

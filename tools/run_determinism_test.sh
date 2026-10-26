@@ -77,7 +77,7 @@ for f in tests/parser/*.mn; do
 done
 
 if [ -n "$IR_PLAIN" ] && [ -n "$IR_ASAN" ]; then
-    for f in tests/ir/*.mn; do
+    for f in tests/ir/*.mn tests/nocascade/*.mn; do
         check_one "$IR_PLAIN" "$IR_ASAN" "$f"
     done
     # Typed-IR step 14: the sources with every rename fix applied (`ir_dump --fixed`) must be just as stable.

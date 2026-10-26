@@ -66,7 +66,9 @@ if __name__ == "__main__":
     write("fix_e0261_two_waiting_fixes_meeting_in_one_operator_are_both_withdrawn", L, L,
           [g.err(L, 3, "a + b", "E0261", e261("u8", "u16")), g.err(L, 4, "c + d", "E0261", e261("u8", "u32"))])
     L = ["manna v0;", "fn f(a: u8, b: u32) -> u8 {", "    let r = a + b;", "    let ok = r < 5;", "    return ok;", "}"]
-    drop("fix_e0261_in_an_unannotated_let_has_no_fix_a_comparison_of_it_is_returned_as_another_type", L, 3, "a + b", "u8", "u32")
+    # step 21d (D1): the comparison is bool, so the `-> u8` that returns it reports its own mistake beside the E0261 (still no fix)
+    write("fix_e0261_in_an_unannotated_let_has_no_fix_a_comparison_of_it_is_returned_as_another_type", L, L,
+          [g.err(L, 3, "a + b", "E0261", e261("u8", "u32")), g.err(L, 5, "ok", "E0223", "type mismatch: expected u8, found bool")])
     L = ["manna v0;", "fn f(a: u8, b: u32, xs: [2]u8) {", "    let r = a + b;", "    len(r);", "}"]
     drop("fix_e0261_in_an_unannotated_let_has_no_fix_it_is_the_argument_of_len", L, 3, "a + b", "u8", "u32")
     L = ["manna v0;", "fn f(a: u8, b: u32) {", "    let r = a + b;", "    let xs = [r, 1];", "    let q = xs[0] + a;", "}"]
@@ -93,7 +95,10 @@ if __name__ == "__main__":
 
     # the operator must be DEFINED for the type the waiting fix gives the operand, even when both operands are the same waiting local
     L = ["manna v0;", "fn f(a: u8, b: u32) {", "    let r = a + b;", "    let ok = r < 5;", "    let q = ok + ok;", "}"]
-    drop("fix_e0261_in_an_unannotated_let_has_no_fix_arithmetic_on_the_bool_that_a_comparison_of_it_gives", L, 3, "a + b", "u8", "u32")
+    # step 21d (D1): `ok` is bool even though `r` waits for its fix, so `ok + ok` is reported (E0260) and the E0261 KEEPS its fix (the case was renamed from "has_no_fix")
+    F = list(L); F[2] = "    let r = u32(a) + b;"
+    write("fix_e0261_in_an_unannotated_let_keeps_its_fix_arithmetic_on_the_bool_that_a_comparison_of_it_gives", L, F,
+          [g.err(F, 5, "ok + ok", "E0260", "operator '+' is not defined for bool")])
     L = ["manna v0;", "fn f(a: u8, b: u32) {", "    let r = a + b;", "    let q = r && r;", "}"]
     drop("fix_e0261_in_an_unannotated_let_has_no_fix_it_is_both_operands_of_a_logical_and", L, 3, "a + b", "u8", "u32")
     # A sibling that is silent because of ANOTHER mistake has no known type yet: once that mistake is fixed it may disagree, so the fix is not
@@ -244,7 +249,8 @@ if __name__ == "__main__":
           [g.err(L, 3, "a + b", "E0261", e261("u8", "u32")), g.err(L, 4, "a + b", "E0261", e261("u8", "u32"))])
 
     # ---- 19f: a waiting fix whose new type is NOT an integer reaches an index (ir_expr.c accept_int_pending): `r < c` is bool, so the wrap that
-    # makes `r` u32 is no use as an index; the E0261 stays the only diagnostic (the bool index is silent while its operand is an ERROR) and
-    # has no fix.
+    # makes `r` u32 is no use as an index and the E0261 has no fix. Since step 21d (D1) the bool index is reported (E0253) beside it, as a second mistake.
     L = ["manna v0;", "fn f(xs: [4]u8, a: u8, b: u32, c: u32) {", "    let r = a + b;", "    xs[r < c];", "}"]
-    write("fix_e0261_none_when_the_local_reaches_an_index_through_a_comparison", L, L, [g.err(L, 3, "a + b", "E0261", e261("u8", "u32"))])
+    # step 21d (D1): the bool index is reported (E0253) beside the E0261, which still has no fix
+    write("fix_e0261_none_when_the_local_reaches_an_index_through_a_comparison", L, L,
+          [g.err(L, 3, "a + b", "E0261", e261("u8", "u32")), g.err(L, 4, "r < c", "E0253", "index/bound must be an integer, found bool")])

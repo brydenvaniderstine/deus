@@ -1,0 +1,2 @@
+ERRORS:
+14:23 E0242 struct 'P' has no field 'zz'

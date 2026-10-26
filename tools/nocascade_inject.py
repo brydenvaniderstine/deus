@@ -72,10 +72,13 @@ def run_one(args):
 
 def main(argv):
     corpus_dirs, exe, jobs = [], None, os.cpu_count() or 4
+    floor = write_floor = None
     i = 0
     while i < len(argv):
         if argv[i] == "--corpus": corpus_dirs.append(argv[i + 1]); i += 1
         elif argv[i] == "--bin": exe = argv[i + 1]; i += 1
+        elif argv[i] == "--floor": floor = argv[i + 1]; i += 1
+        elif argv[i] == "--write-floor": write_floor = argv[i + 1]; i += 1
         elif argv[i] == "-j": jobs = int(argv[i + 1]); i += 1
         elif argv[i] == "--cov":
             global COV
@@ -153,6 +156,17 @@ def main(argv):
     print("slowest programs (s): " + ", ".join("%.1f %s" % (t, os.path.basename(p)) for t, p in slow))
     print("nocascade sweep: %d finding(s), %d crash(es); build %.1f s, sweep %.1f s on %d workers (%s, every point, no sampling)" %
           (findings, crashes, t_build, t_run, jobs, "coverage build" if COV else "ASan+UBSan"))
+    if write_floor:
+        open(write_floor, "w").write("programs %d\npoints %d\n" % (programs, points))
+        print("nocascade sweep: wrote the floor %s (%d programs, %d points)" % (write_floor, programs, points))
+    if floor:
+        # F8: the sweep never shrinks: fewer programs or fewer injection points than the committed floor is a failure, however many findings there are
+        want = dict((k, int(v)) for k, v in (l.split() for l in open(floor).read().split("\n") if l.strip()))
+        for k, have in (("programs", programs), ("points", points)):
+            if have < want[k]:
+                print("nocascade sweep: FAILED the floor %s: %d %s swept, the floor is %d (F8: the sweep may only grow)" % (floor, have, k, want[k]))
+                return 1
+        print("nocascade sweep: floor ok (%d programs >= %d, %d points >= %d)" % (programs, want["programs"], points, want["points"]))
     return 1 if findings or crashes else 0
 
 

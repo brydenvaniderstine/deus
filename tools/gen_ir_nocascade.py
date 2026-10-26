@@ -78,8 +78,13 @@ SKELETONS = {
     "Expr.array.elems[]": [
         ("first", "u8", ["    let v: [2]u8 = [@E@, 1];", "    return 0;"], {}),
         ("second", "u8", ["    let v: [2]u8 = [1, @E@];", "    return 0;"], {}),
+        ("inferred_first", "u8", ["    let v = [@E@, 1];", "    return 0;"], {}),
+        # `let v = [1, @E@];` is not a valid skeleton: the FIRST element decides the type, so the literal `1` is its own E0225 whatever follows
     ],
-    "Expr.array_repeat.value": [("repeat", "u8", ["    let v: [3]u8 = [@E@; 3];", "    return 0;"], {})],
+    "Expr.array_repeat.value": [
+        ("repeat", "u8", ["    let v: [3]u8 = [@E@; 3];", "    return 0;"], {}),
+        ("inferred", "u8", ["    let v = [@E@; 3];", "    return 0;"], {}),
+    ],
     "Expr.named_arg.value": [("construct", "u8", ["    let q: P = P(x: @E@);", "    return 0;"], {})],
     "Stmt.let_stmt.init": [
         ("annotated", "u8", ["    let y: u32 = @E@;", "    return 0;"], {}),
@@ -101,6 +106,12 @@ SKELETONS = {
     ],
     "Stmt.expr_stmt.expr": [("statement", "u8", ["    @E@;", "    return 0;"], STMT_OK)],
 }
+
+# A literal array or repeat whose element is poisoned has no element type: the local it initialises is then unknown, and every use of it must stay silent. Four uses are
+# enough to tell an unknown local from an array of unknown elements (the shape the builder must never invent).
+for _un, _lines in (("arith", "    let r = x + 1;"), ("index", "    let r = x[0];"), ("compare", "    let r = x < 1;"), ("call_arg", "    let r = take(x);")):
+    SKELETONS["Expr.array.elems[]"].append(("inferred_first_then_" + _un, "u8", ["    let x = [@E@, 1];", _lines, "    return 0;"], {}))
+    SKELETONS["Expr.array_repeat.value"].append(("inferred_then_" + _un, "u8", ["    let x = [@E@; 3];", _lines, "    return 0;"], {}))
 
 # The type holes. A poisoned DECLARATION is only consumed where it is used, so each type skeleton is crossed with the ways a name of that type is used.
 # USES: (name, lines using the poisoned name `x`, ends the function with its own return)

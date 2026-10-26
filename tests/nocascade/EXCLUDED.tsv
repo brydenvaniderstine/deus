@@ -1,0 +1,12 @@
+# generated: combinations the matrix leaves out, with the reason (a whole hole, or one producer in one skeleton)
+Expr.named_arg.name	*	*	the name slot of `P(x: 1)` is a field NAME: any other expression there is itself the mistake (E0243), not a poisoned value passing through
+Expr.field_access.base	read	bad_operator	a prefix operator binds looser than a postfix one: `~b.x` is `~(b.x)`, not `(~b).x`
+Expr.index.base	read	bad_operator	a prefix operator binds looser than a postfix one: `~b.x` is `~(b.x)`, not `(~b).x`
+Expr.slice.base	both	bad_operator	a prefix operator binds looser than a postfix one: `~b.x` is `~(b.x)`, not `(~b).x`
+Stmt.assign_stmt.target	name	unknown_function	the target of an assignment must be a place; this producer is not one
+Stmt.assign_stmt.target	name	unit_call	the target of an assignment must be a place; this producer is not one
+Stmt.assign_stmt.target	name	unknown_field	the target of an assignment must be a place; this producer is not one
+Stmt.assign_stmt.target	name	bad_operator	the target of an assignment must be a place; this producer is not one
+Stmt.assign_stmt.target	name	not_indexable	the target of an assignment must be a place; this producer is not one
+Stmt.assign_stmt.target	name	no_fields	the target of an assignment must be a place; this producer is not one
+Stmt.expr_stmt.expr	statement	unit_call	a call to a function that returns nothing is a valid statement

@@ -10,7 +10,7 @@ set -u
 BIN="${1:?usage: run_ir_tests.sh <path-to-ir_dump-binary>}"
 fail=0
 
-for mn in tests/ir/*.mn; do
+for mn in tests/ir/*.mn tests/nocascade/*.mn; do
     expected="${mn%.mn}.ir"
     stderr_file=$(mktemp)
     actual=$("$BIN" "$mn" 2>"$stderr_file")

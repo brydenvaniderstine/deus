@@ -42,4 +42,6 @@ if __name__ == "__main__":
     g.errors("oversized_let_annotation_used_in_every_position_stays_silent", L, [
         e(L, 9, "[4294967296]u8", "E0222", big), e(L, 10, "[4294967296]u8", "E0222", big),  # the array whose size overflows, inside the slice type
         e(L, 11, "[4294967296]u8", "E0222", big),
-        e(L, 14, "take(big) + len(big)", "E0261", "operands have different types: u8 and u64; convert one explicitly")])
+        e(L, 14, "take(big) + len(big)", "E0261", "operands have different types: u8 and u64; convert one explicitly"),
+        # step 21d (D1): `big == big` is bool whatever its poisoned operands are, so the `-> u8` that returns it reports its own mistake
+        e(L, L.index("    return big == big;") + 1, "big == big", "E0223", "type mismatch: expected u8, found bool")])
