@@ -51,20 +51,18 @@ static void print_diags(const DiagList *diags) {
     }
 }
 
-int main(int argc, char **argv) {
-    bool fixed = argc == 3 && strcmp(argv[1], "--fixed") == 0;
-    if (argc != 2 && !fixed) {
-        fprintf(stderr, "usage: ir_dump [--fixed] <file.mn>\n");
-        return 1;
-    }
+/* One file: the whole of the harness for it. Returns the exit status (0, 3 for IR_UNIMPLEMENTED, 4 for a failed fix self-check). Everything it allocates it frees on every
+ * path, so `--batch` can call it once per file. */
+static int run_file(const char *path, bool fixed) {
     size_t len;
-    char *src = read_file(argv[fixed ? 2 : 1], &len);
+    char *src = read_file(path, &len);
 
     /* static: modified after setjmp and read after the longjmp (C11 7.13.2.1; see
      * parser_main.c). */
     static ParserState ps;
     static NodeList items;
     static IrState st;
+    items = (NodeList){0}; /* a batch run reuses these: a fresh list for every file */
     parser_state_init(&ps, 16 * 1024 * 1024);
     ir_state_init(&st, IR_ARENA_CAP);
 
@@ -123,3 +121,30 @@ int main(int argc, char **argv) {
     free(src);
     return rc;
 }
+
+/* `ir_dump [--fixed] <file.mn>` is the golden harness. `ir_dump --batch [--fixed] <file.mn>...` runs the same code on many files in ONE process (the no-cascade proof
+ * runs hundreds of candidates on every mutant, and a sanitizer's start-up would dominate): each file's output is framed by `@@@ BEGIN <path>` and `@@@ END <status>` (on a line of its own after one added newline), and the
+ * first file whose status is not 0 ends the batch with that status; a process that dies leaves a BEGIN without its END, which names the file. */
+int main(int argc, char **argv) {
+    if (argc >= 3 && strcmp(argv[1], "--batch") == 0) {
+        int first = 2;
+        bool fixed = strcmp(argv[2], "--fixed") == 0;
+        if (fixed) first = 3;
+        for (int i = first; i < argc; i++) {
+            printf("@@@ BEGIN %s\n", argv[i]);
+            fflush(stdout);
+            int rc = run_file(argv[i], fixed);
+            printf("\n@@@ END %d\n", rc); /* the leading newline is the frame's: a --fixed output may not end in one */
+            fflush(stdout);
+            if (rc != 0) return rc;
+        }
+        return 0;
+    }
+    bool fixed = argc == 3 && strcmp(argv[1], "--fixed") == 0;
+    if (argc != 2 && !fixed) {
+        fprintf(stderr, "usage: ir_dump [--fixed] <file.mn> | ir_dump --batch [--fixed] <file.mn>...\n");
+        return 1;
+    }
+    return run_file(argv[fixed ? 2 : 1], fixed);
+}
+

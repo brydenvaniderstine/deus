@@ -164,7 +164,7 @@ Each entry's **Trigger-id** is one of the ids below, in the order they fall due.
 ### C1 - The no-cascade proof was downgraded
 
 - **Status:** OPEN
-- **Reason:** The plan promised a no-cascade golden per poisoning path; what shipped is a script that checks each poisoning line is RUN by a one-diagnostic golden, and step 18e deleted the promise from TYPED_IR.md. The script also under-counts (re-audit 3, finding 9: 25 silent-consumption lines are not counted).
+- **Reason:** The plan promised a no-cascade golden per poisoning path; what shipped is a script that checks each poisoning line is RUN by a one-diagnostic golden, and step 18e deleted the promise from TYPED_IR.md. The script also under-counts (re-audit 3, finding 9: 25 silent-consumption lines are not counted). From step 21h the proof is the ablation of `tools/nocascade_prove.py` (a sink is proven by a golden whose output changes, or whose run dies or hangs, when the sink cannot see poison); the sinks proven ONLY by a death (18 at step C2a) are proven as CRASH GUARDS: blinding them crashes or hangs the builder under ASan, UBSan and zero-initialised locals, which shows the guard holds the builder up, not that it keeps a wrong diagnostic away. The count and the list are printed by `python3 tools/nocascade_prove.py --report`.
 - **Promise:** `docs/history/TYPED_IR.md @6b3f537:140` "plus a no-cascade golden for each poisoning path."
 - **Where it stands:** `tools/audit_ir_poison.py:138` "(this is not a no-cascade proof)"
 - **Owner:** Claude Code (work); Bryden (approval)

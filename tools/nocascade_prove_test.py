@@ -55,9 +55,22 @@ try:
     crash = fake("crash", "kill -SEGV $$")
     noisy = fake("noisy", "echo ERRORS:; echo '3:1 E0230 unknown name x'; echo 'internal error' 1>&2")
     check("a clean single-diagnostic run is ok with 1 diagnostic", np_.run_one(one, "x.mn", d)[0] == "ok" and np_.ndiags(np_.run_one(one, "x.mn", d)[1]) == 1)
+    asrt = fake("asrt", "echo 'Assertion failed: (x), function f, file ir.c, line 9.' 1>&2; exit 134")
+    ubsan = fake("ubsan", "echo 'ir_decls.c:249:30: runtime error: division by zero' 1>&2; exit 1")
+    asan = fake("asan", "echo '==1==ERROR: AddressSanitizer: heap-buffer-overflow on address 0x1' 1>&2; exit 1")
+    selfchk = fake("selfchk", "echo 'ir_dump: internal error: a fix-it did not re-check (please report this): x' 1>&2; exit 4")
+    other = fake("other", "echo 'boom' 1>&2; exit 3")
+    check("why a mutant died: a signal is named", np_.run_one(crash, "x.mn", d)[2] == "signal 11 (SIGSEGV)")
+    check("why a mutant died: an assert", np_.run_one(asrt, "x.mn", d)[2] == "assert")
+    check("why a mutant died: a UBSan report keeps its message", np_.run_one(ubsan, "x.mn", d)[2] == "sanitizer (UBSan: division by zero)")
+    check("why a mutant died: an ASan report keeps its kind", np_.run_one(asan, "x.mn", d)[2] == "sanitizer (ASan: heap-buffer-overflow)")
+    check("why a mutant died: the fix self-check (exit 4)", np_.run_one(selfchk, "x.mn", d)[2].startswith("self-check (exit 4"))
+    check("why a mutant died: any other exit says its status and first stderr line", np_.run_one(other, "x.mn", d)[2] == "exit status 3: boom")
+    check("a hang says so", np_.run_one(hang, "x.mn", d, timeout=1)[2].startswith("hang"))
     check("two diagnostics are counted", np_.ndiags(np_.run_one(two, "x.mn", d)[1]) == 2)
     check("a program that never returns is a timeout (and the run does not wait for it)", np_.run_one(hang, "x.mn", d, timeout=1)[0] == "timeout")
     check("a crash is 'died'", np_.run_one(crash, "x.mn", d)[0] == "died")
+    check("the base kind of a recorded death or hang is 'died' / 'hang'", np_.base_kind("died: signal 8 (SIGFPE)") == "died" and np_.base_kind("hang: hang (no answer in 10 s)") == "hang" and np_.base_kind("more") == "more")
     check("anything on stderr (a failed fix self-check, a sanitizer) is 'died'", np_.run_one(noisy, "x.mn", d)[0] == "died")
     os.makedirs(os.path.join(d, "tests", "ir"))
     for n, declared in (("a", None), ("b", 2)):
@@ -83,6 +96,52 @@ try:
         check("a mutant that does not compile is a hard failure naming the sink", "does not compile" in str(e) and "ir_expr.c::fake::0::0" in str(e))
 finally:
     shutil.rmtree(tmp, ignore_errors=True)
+
+# ---- every build is the same on every OS: unset locals are zero, ASan and UBSan are on ----
+flags = np_.sanitize_flags()
+check("the build flags zero unset locals and turn on ASan and UBSan without recovery", "-ftrivial-auto-var-init=zero" in flags and "-fsanitize=address,undefined" in flags and "-fno-sanitize-recover=undefined" in flags)
+tmp2 = tempfile.mkdtemp(prefix="np_zero_")
+try:
+    src = os.path.join(tmp2, "u.c")
+    open(src, "w").write("#include <stdio.h>\nint f(int *out) { int d; *out = 100 / d; return *out; }\nint main(int argc, char **argv) { int o; (void)argv; return f(&o) + argc; }\n")
+    import subprocess as sp
+    r = sp.run(["clang", "-O1", "-o", os.path.join(tmp2, "u")] + flags + [src], capture_output=True, text=True)
+    check("an unset local is zero in a build with these flags", r.returncode == 0)
+    st, text, why = np_.run_one(os.path.join(tmp2, "u"), "x", tmp2)
+    check("so dividing by one is a UBSan death with the same reason on every OS (here: %s)" % why, st == "died" and "division by zero" in why)
+finally:
+    shutil.rmtree(tmp2, ignore_errors=True)
+
+# ---- batch mode: the same output as one process per file, with a death or a hang pinned to its file ----
+out = "@@@ BEGIN a.mn\nERRORS:\n1:1 E0230 x\n\n@@@ END 0\n@@@ BEGIN b.mn\n\n@@@ END 0\n@@@ BEGIN c.mn\nERR"
+frames, culprit = np_.parse_frames(out)
+check("parse_frames returns every complete frame with its exact text and names the one that began and did not end", frames == [("a.mn", 0, "ERRORS:\n1:1 E0230 x\n"), ("b.mn", 0, "")] and culprit == "c.mn")
+check("a frame whose status is not 0 is returned with that status", np_.parse_frames("@@@ BEGIN a\nx\n@@@ END 4\n")[0] == [("a", 4, "x")])
+check("a --fixed output that does not end in a newline survives the frame byte for byte", np_.parse_frames("@@@ BEGIN a\nno newline\n@@@ END 0\n")[0] == [("a", 0, "no newline")])
+d2 = tempfile.mkdtemp(prefix="np_batch_")
+# the real builder: a batch gives the same bytes as one process per file, for the diagnostics and for the fixed source
+real = tempfile.mkdtemp(prefix="np_real_")
+try:
+    exe = os.path.join(real, "ir_dump")
+    import subprocess as sp2
+    r = sp2.run(["clang", "-std=c11", "-O1", "-w", "-I", os.path.join(REPO, "tools/mannac"), "-o", exe] + [os.path.join(REPO, "tools/mannac", x + ".c") for x in np_.SRCS], capture_output=True, text=True)
+    check("the real builder compiles for the batch test", r.returncode == 0)
+    gold = sorted(f for f in ["tests/ir/" + n for n in os.listdir(os.path.join(REPO, "tests/ir")) if n.endswith(".mn")])[:60] + \
+           ["tests/ir_fix/" + n for n in sorted(os.listdir(os.path.join(REPO, "tests/ir_fix"))) if n.endswith(".mn") and ".fixed" not in n][:30]
+    got = np_.run_batch(exe, gold, REPO)
+    same = all(got[g] == (lambda t: (t[0], t[1], t[2]))(np_.run_one(exe, g, REPO)) for g in gold)
+    check("a batch of %d goldens gives, for every one, the status, the bytes and the reason of a single run" % len(gold), same and len(got) == len(gold))
+    fx = [g for g in gold if g.startswith("tests/ir_fix/")]
+    gotf = np_.run_batch(exe, fx, REPO, fixed=True)
+    check("... and so does a --fixed batch (%d fix cases)" % len(fx), all(gotf[g] == np_.run_one(exe, g, REPO, fixed=True) for g in fx))
+    # a death inside a batch: the culprit is found and the rest still runs
+    bad = os.path.join(real, "zz_missing.mn")   # read_file fails: the process exits 1 with a message on stderr
+    mixed = gold[:3] + [bad] + gold[3:6]
+    gm = np_.run_batch(exe, mixed, REPO)
+    check("a file that kills the batch is reported dead with its reason, and the files after it still run", gm[bad][0] == "died" and all(gm[g][0] == "ok" for g in gold[:6]))
+finally:
+    shutil.rmtree(real, ignore_errors=True)
+    shutil.rmtree(d2, ignore_errors=True)
 
 # ---- the rules ----
 S = [{"id": "s1"}, {"id": "s2"}]
