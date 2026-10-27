@@ -123,7 +123,6 @@ static void test_table_growth(void) {
 static void test_interner_layout_ignores_addresses(void) {
     static IrState a, b;
     ir_state_init(&a, 16 << 20);
-    (void)malloc(1 << 20);   /* the second arena does not land where the first did */
     ir_state_init(&b, 16 << 20);
     assert((uintptr_t)a.arena != (uintptr_t)b.arena);
     static IrStruct sa[6], sb[6];
