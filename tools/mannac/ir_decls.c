@@ -240,12 +240,20 @@ static void layout_struct(Ctx *cx, StructInfo *s) {
     IrStruct *ir = s->ir;
     uint64_t off = 0;
     uint32_t max_align = 1;
+    /* A field whose type has no layout (a struct in a cycle, or in error) leaves this struct without one, silently: that mistake is reported elsewhere. It does NOT end the look at
+     * the other fields: a later field whose own type is too large is a second, independent mistake and is reported (step C2c; it used to be withheld, the same kind of hidden
+     * diagnostic D1 removed). The unsized field is skipped, so its size and alignment, which were never set, are never read; the offsets after it are a LOWER bound of the real ones
+     * (it counts for 0), so `off > IR_MAX_TYPE_SIZE` below is still a certain mistake, reported at the struct, and the struct is left without a layout either way. */
+    bool unsized = false;
     for (size_t i = 0; i < ir->n_fields; i++) {
-        uint64_t fs;
-        uint32_t fa;
+        uint64_t fs = 0;
+        uint32_t fa = 0;
         Span bad;
         LayResult r = type_layout(cx, s->field_types[i], ir->fields[i].type, &fs, &fa, &bad);
-        if (r == LAY_UNSIZED) return;
+        if (r == LAY_UNSIZED) {
+            unsized = true;
+            continue;
+        }
         if (r == LAY_TOO_BIG) {
             s->size_error = true;
             s->size_error_span = bad;
@@ -261,6 +269,7 @@ static void layout_struct(Ctx *cx, StructInfo *s) {
             return;
         }
     }
+    if (unsized) return;
     uint64_t total = align_up(off, max_align);
     if (total > IR_MAX_TYPE_SIZE) {
         s->size_error = true;

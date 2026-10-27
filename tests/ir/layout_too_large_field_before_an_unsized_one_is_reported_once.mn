@@ -1,0 +1,4 @@
+manna v0;
+struct A { b: B, }
+struct B { a: A, }
+struct D { big: [4294967296]u8, c: A, }

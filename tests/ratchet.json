@@ -980,6 +980,30 @@
    0,
    "be85909ed4560d9f"
   ],
+  "tests/ir/layout_a_struct_holding_an_unsized_one_gives_its_dependents_no_size.ir": [
+   1,
+   "5664f53dbec844b7"
+  ],
+  "tests/ir/layout_dependents_of_an_unsized_struct_stay_silent.ir": [
+   1,
+   "5664f53dbec844b7"
+  ],
+  "tests/ir/layout_known_fields_beside_an_unsized_one_that_exceed_the_limit_are_reported.ir": [
+   2,
+   "c6b713abe55e9cd7"
+  ],
+  "tests/ir/layout_too_large_field_before_an_unsized_one_is_reported_once.ir": [
+   2,
+   "d690a8bce58075c7"
+  ],
+  "tests/ir/layout_two_unsized_fields_are_one_silent_struct.ir": [
+   1,
+   "5664f53dbec844b7"
+  ],
+  "tests/ir/layout_unsized_field_does_not_hide_a_later_fields_own_size_error.ir": [
+   2,
+   "bf0e94cb3c500f07"
+  ],
   "tests/ir/len_argument_must_be_an_array_or_a_slice.ir": [
    9,
    "f93fa1e909b324bb"
@@ -5850,10 +5874,10 @@
   "error_codes_with_fix": 8,
   "generators": 25,
   "ir_fix_cases": 131,
-  "ir_goldens": 468,
+  "ir_goldens": 474,
   "lexer_goldens": 15,
   "memory_stress_cases": 8,
-  "mistakes_sidecars": 30,
+  "mistakes_sidecars": 33,
   "nocascade_goldens": 428,
   "nocascade_index_rows": 428,
   "nocascade_sweep_points": 26871,
@@ -5872,14 +5896,14 @@
   "script_checks.coverage_check_test.py": 14,
   "script_checks.gen_ir_nocascade_test.py": 22,
   "script_checks.nocascade_inject_test.py": 4,
-  "script_checks.nocascade_prove_test.py": 29,
+  "script_checks.nocascade_prove_test.py": 47,
   "script_checks.nocascade_sinks_test.py": 19,
-  "script_checks.poison_paths_test.py": 39,
+  "script_checks.poison_paths_test.py": 40,
   "script_checks.ratchet_test.py": 32,
   "unit_test_functions.arena_test.c": 7,
   "unit_test_functions.ast_test.c": 6,
   "unit_test_functions.ir_ndebug_test.c": 0,
-  "unit_test_functions.ir_test.c": 48,
+  "unit_test_functions.ir_test.c": 49,
   "unit_test_functions.parser_fixes_test.c": 20,
   "unit_test_functions.parser_state_test.c": 5
  }

@@ -200,6 +200,8 @@ class Program:
         self.predicates, self.producers, self.nullpoison, self.reporters = set(), set(), set(), set()
         self.poison_params = {}  # function -> {parameter name}: a parameter that a caller fills with a null-poison value
         self.carriers = set()
+        self.local_flags = {}            # function -> local variables set to true under a poison test (`if (r == LAY_UNSIZED) { unsized = true; continue; }`): a decision on one is a sink
+        self._flags = set()
         self.omission_carriers = set()   # flags that are TRUE for a healthy value and left false for a poisoned one: "not poison" is the constant 1, not 0
         self.derive()
 
@@ -287,7 +289,8 @@ class Program:
                         self.poison_params[g].add(params[i])
                         self.changed = True
         # carriers
-        self.find_carriers(body)
+        self._flags = self.local_flags.get(name, set())
+        self.find_carriers(body, name)
 
     def is_test_value(self, v):
         v = strip(v)
@@ -347,17 +350,24 @@ class Program:
             return any(go(x, guarded, reported) for x in kids(n)) if k in ("SwitchStmt", "CaseStmt", "DefaultStmt", "WhileStmt", "ForStmt", "DoStmt") else False
         return go(body, False, False)
 
-    def find_carriers(self, body):
+    def find_carriers(self, body, fname=None):
         init_poison_vars = set()
+        nv = self.nullvars_of(body, fname)   # a test of a null-poison value (`r == LAY_UNSIZED`) is a poison test too
         for n in walk(body):
             if n.get("kind") == "VarDecl" and kids(n) and self.makes_poison(kids(n)[0]):
                 init_poison_vars.add(n.get("name"))
 
-        def go(n, guarded):
+        def go(n, guarded, flagged):
+            """guarded: inside a branch decided by a poison test of a field or an enumerator (carries a FIELD); flagged: also by a test of a null-poison value (`r == LAY_UNSIZED`),
+            which decides only whether a LOCAL flag is poison-carrying (a wider rule for fields would take in every field written beside a NULL test)"""
             k = n.get("kind")
             if k == "BinaryOperator" and n.get("opcode") == "=":
                 l, r = kids(n)
                 l = strip(l)
+                if l.get("kind") == "DeclRefExpr" and ref_name(l)[1] == "VarDecl" and flagged and fname:
+                    rv = strip(r)
+                    if rv.get("kind") == "IntegerLiteral" and rv.get("value") == "1" or ref_name(rv)[0] == "true" or rv.get("kind") == "CXXBoolLiteralExpr":
+                        self.local_flags.setdefault(fname, set()).add(ref_name(l)[0])
                 if l.get("kind") == "MemberExpr":
                     base = next((ref_name(b)[0] for b in walk(l) if b.get("kind") == "DeclRefExpr"), None)
                     if guarded or self.atoms_in(r, set()) or base in init_poison_vars:
@@ -365,13 +375,14 @@ class Program:
             if k == "IfStmt":
                 c = kids(n)
                 g = guarded or bool(self.atoms_in(c[0], set()))
-                go(c[0], guarded)
+                f = flagged or bool(self.atoms_in(c[0], nv))
+                go(c[0], guarded, flagged)
                 for x in c[1:]:
-                    go(x, g)
+                    go(x, g, f)
                 return
             for x in kids(n):
-                go(x, guarded)
-        go(body, False)
+                go(x, guarded, flagged)
+        go(body, False, False)
 
         # poison encoded by omission: `if (<poison>) return; ...; flag = true;` leaves flag at its default for a poisoned value
         def omit(n):
@@ -420,6 +431,8 @@ class Program:
                 return "0"
         if k == "DeclRefExpr" and logic and ref_name(n)[1] in ("VarDecl", "ParmVarDecl") and ref_name(n)[0] in nullvars:
             return "1"
+        if k == "DeclRefExpr" and ref_name(n)[1] == "VarDecl" and ref_name(n)[0] in self._flags:
+            return "0"   # a local flag set under a poison test: false is "not poisoned"
         return None
 
     def atoms_in(self, expr, nullvars):
@@ -459,6 +472,7 @@ class Program:
                 continue
             body = next(c for c in kids(fn) if c.get("kind") == "CompoundStmt")
             nv = self.nullvars_of(body, name)
+            self._flags = self.local_flags.get(name, set())
             groups, flow, owner = {}, {}, {}
 
             def visit(n, ctx, logic, dec):

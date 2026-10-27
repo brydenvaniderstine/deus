@@ -1061,6 +1061,18 @@
    "atoms": [
     {
      "replace": "0",
+     "text": "unsized"
+    }
+   ],
+   "file": "ir_decls.c",
+   "function": "layout_struct",
+   "id": "ir_decls.c::layout_struct::a6cb3dc2::0",
+   "text": "unsized"
+  },
+  {
+   "atoms": [
+    {
+     "replace": "0",
      "text": "s.pending"
     }
    ],

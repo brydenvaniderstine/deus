@@ -48,6 +48,7 @@ static Type *fold(State *st, int v) { if (v > 5) { ir_error(st, diag_ir_x(v)); r
 int use_fold(State *st) { Type *f = fold(st, 1); if (f) return 1; return 0; }
 void set_ok(Info *i, Type *t) { if (t->kind == IR_T_ERROR) return; i->ok = true; }
 int use_ok(Info *i) { if (!i->ok) return 0; return 1; }
+int use_flag(State *st) { bool bad = false; Type *t = lookup(st, 1); if (!t) { bad = true; } if (bad) return 0; return 1; }
 Type *make(State *st) { ir_error(st, diag_ir_x(1)); return type_error(st); }
 """
 
@@ -70,9 +71,11 @@ try:
     check("a field assigned under a poison test is a carrier (poisoned)", "poisoned" in man["carriers"])
     check("a function that returns NULL after a reported error is null-poison (lookup)", man["nullpoison"] == ["lookup"])
     check("a NULL that means 'nothing to fold', after a branch that reported and returned, is NOT poison (fold): a sink on it would be a false sink", "fold" not in man["nullpoison"] and "use_fold" not in {x["function"] for x in man["sinks"]})
-    check("sinks are exactly the decisions", fns == ["mark", "set_ok", "use_carrier", "use_direct", "use_null", "use_ok", "use_pred"])
+    check("sinks are exactly the decisions", fns == ["mark", "set_ok", "use_carrier", "use_direct", "use_flag", "use_null", "use_ok", "use_pred"])
     ok_sink = [x for x in man["sinks"] if x["function"] == "use_ok"][0]
     check("a flag set to true only AFTER a poison early return is poison by omission: 'not poison' for it is 1, not 0 (the ablation must not make everything look poisoned)", ok_sink["atoms"][0]["replace"] == "1" and "ok" in man["carriers"])
+    fl = [x for x in man["sinks"] if x["function"] == "use_flag" and x["text"] == "bad"]
+    check("a LOCAL flag set to true under a test of a null-poison value is poison-carrying: a decision on it is a sink whose ablation says 'false'", len(fl) == 1 and fl[0]["atoms"][0]["replace"] == "0")
     check("a flag assigned under a poison test says 'not poison' with 0", [a["replace"] for a in [x for x in man["sinks"] if x["function"] == "use_carrier"][0]["atoms"]] == ["0"])
     check("an assert on poison is not a sink", "use_assert" not in fns)
     check("a plain read of a carrier is flow, not a sink", "plain" not in fns)

@@ -86,3 +86,27 @@ if __name__ == "__main__":
     golden("poison_negation_stays_silent", L, [e(L, 3, "nope", "E0230", unk("nope"))])
     L = ["manna v0;", "fn f() -> bool {", "    return ~nope;", "}"]
     golden("poison_complement_stays_silent", L, [e(L, 3, "nope", "E0230", unk("nope"))])
+
+    # ---- step C2c: an unsized field no longer hides the other fields' own size mistakes (layout_struct), and the dependents of an unsized struct stay silent ----
+    cyc = "struct 'A' contains itself"
+    big = "type is too large (size exceeds the limit)"
+    CYCLE = ["manna v0;", "struct A { b: B, }", "struct B { a: A, }"]
+    L = CYCLE + ["struct D { c: A, big: [4294967296]u8, }"]
+    golden("layout_unsized_field_does_not_hide_a_later_fields_own_size_error", L,
+           [e(L, 2, "A", "E0221", cyc), e(L, 4, "[4294967296]u8", "E0222", big)])
+    L = CYCLE + ["struct D { big: [4294967296]u8, c: A, }"]
+    golden("layout_too_large_field_before_an_unsized_one_is_reported_once", L,
+           [e(L, 2, "A", "E0221", cyc), e(L, 4, "[4294967296]u8", "E0222", big)])
+    L = CYCLE + ["struct D { c: A, d: A, }"]
+    golden("layout_two_unsized_fields_are_one_silent_struct", L, [e(L, 2, "A", "E0221", cyc)])
+    # the cascade the `!dep->sized` guard prevents: D holds 2^31-1 bytes beside an unsized field, so a size that were computed for it (the unset size of A read as 0) would make [2]D too
+    # large; D has no layout, so E says nothing. One mistake, one diagnostic.
+    L = CYCLE + ["struct D { c: A, x: [2147483647]u8, }", "struct E { d: [2]D, }"]
+    golden("layout_dependents_of_an_unsized_struct_stay_silent", L, [e(L, 2, "A", "E0221", cyc)])
+    # the offsets after an unsized field are a lower bound: known fields that alone exceed the limit are a certain mistake (two mistakes: the cycle and the sum)
+    L = CYCLE + ["struct D { c: A, x: [2147483647]u8, y: u8, }"]
+    golden("layout_known_fields_beside_an_unsized_one_that_exceed_the_limit_are_reported", L,
+           [e(L, 2, "A", "E0221", cyc), e(L, 4, "D", "E0222", big)])
+    # a struct holding an unsized one has no size, so a struct holding THAT stays silent too (one mistake): were D given a size from its other field, F would be too large
+    L = CYCLE + ["struct D { c: A, y: u8, }", "struct F { d: D, z: [2147483647]u8, }"]
+    golden("layout_a_struct_holding_an_unsized_one_gives_its_dependents_no_size", L, [e(L, 2, "A", "E0221", cyc)])
