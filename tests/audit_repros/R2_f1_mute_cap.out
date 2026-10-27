@@ -18,5 +18,5 @@ ERRORS:
 22:19 E0223 type mismatch: expected u8, found bool
 23:19 E0223 type mismatch: expected u8, found bool
 26:13 E0270 can't assign to this expression
-28:13 E0270 can't assign to this expression
-28:13 E0203 too many errors, stopping
+26:13 E0233 'g' takes 1 argument, found 4
+26:13 E0203 too many errors, stopping

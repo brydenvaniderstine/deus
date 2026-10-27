@@ -1,2 +1,22 @@
 ERRORS:
 5:5 E0270 can't assign to this expression
+5:5 E0232 unknown function 'g'
+5:7 E0230 unknown name 'zz'
+5:11 E0230 unknown name 'zz'
+5:15 E0230 unknown name 'zz'
+5:19 E0230 unknown name 'zz'
+5:23 E0230 unknown name 'zz'
+5:27 E0230 unknown name 'zz'
+5:31 E0230 unknown name 'zz'
+5:35 E0230 unknown name 'zz'
+5:39 E0230 unknown name 'zz'
+5:43 E0230 unknown name 'zz'
+5:47 E0230 unknown name 'zz'
+5:51 E0230 unknown name 'zz'
+5:55 E0230 unknown name 'zz'
+5:59 E0230 unknown name 'zz'
+5:63 E0230 unknown name 'zz'
+5:67 E0230 unknown name 'zz'
+5:71 E0230 unknown name 'zz'
+5:75 E0230 unknown name 'zz'
+5:75 E0203 too many errors, stopping

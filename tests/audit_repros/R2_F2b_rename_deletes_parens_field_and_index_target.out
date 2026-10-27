@@ -2,3 +2,4 @@ ERRORS:
 8:9 E0280 'myP' is not snake_case
 9:5 E0270 can't assign to this expression
 10:5 E0270 can't assign to this expression
+10:5 E0252 can't index/slice type P

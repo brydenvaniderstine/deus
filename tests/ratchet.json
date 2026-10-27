@@ -137,12 +137,12 @@
    "e966cd167036ca0e"
   ],
   "tests/audit_repros/R2_F2b_rename_deletes_parens_field_and_index_target.fixed.out": [
-   2,
-   "3987da9dfb76e482"
+   3,
+   "43e812536433f9a9"
   ],
   "tests/audit_repros/R2_F2b_rename_deletes_parens_field_and_index_target.out": [
-   3,
-   "dd835fe7e458c7f0"
+   4,
+   "2e71b2806f1ae9ab"
   ],
   "tests/audit_repros/R2_F3a_fn_rename_moves_e0231_use_onto_local.fixed.out": [
    2,
@@ -186,19 +186,19 @@
   ],
   "tests/audit_repros/R2_f1_mute_cap.fixed.out": [
    21,
-   "72c61b233221ddee"
+   "19acf81d96248ec0"
   ],
   "tests/audit_repros/R2_f1_mute_cap.out": [
    21,
-   "72c61b233221ddee"
+   "19acf81d96248ec0"
   ],
   "tests/audit_repros/R2_f2_mute_branches.fixed.out": [
-   6,
-   "21d99add9319fb7a"
+   10,
+   "b0af1ef4ab799a93"
   ],
   "tests/audit_repros/R2_f2_mute_branches.out": [
-   6,
-   "21d99add9319fb7a"
+   10,
+   "b0af1ef4ab799a93"
   ],
   "tests/audit_repros/R2_g1_oversized_let.fixed.out": [
    5,
@@ -273,20 +273,20 @@
    "fd6f60e636aa789a"
   ],
   "tests/audit_repros/R3_mem_min.fixed.out": [
-   1,
-   "5b6c65c6a3ad864f"
+   21,
+   "ddf94fe3af8f4bd7"
   ],
   "tests/audit_repros/R3_mem_min.out": [
-   3,
-   "f6cc4d05a9ec8bac"
+   21,
+   "ddf94fe3af8f4bd7"
   ],
   "tests/audit_repros/R3_mem_min_snake_control.fixed.out": [
-   1,
-   "5b6c65c6a3ad864f"
+   21,
+   "1dafa6e36411c921"
   ],
   "tests/audit_repros/R3_mem_min_snake_control.out": [
-   1,
-   "5b6c65c6a3ad864f"
+   21,
+   "1dafa6e36411c921"
   ],
   "tests/audit_repros/R3_mu1_e0261_array_element_in_an_unannotated_let.fixed.out": [
    1,
