@@ -1,4 +1,12 @@
 {
+ "ir.c::ir_error::mute-recorder::0": [
+  "Stmt_assign_stmt_target__muted_call_arg__bad_operator",
+  "Stmt_assign_stmt_target__muted_call_arg__no_fields"
+ ],
+ "ir_body.c::check_muted::mute-site::0": [
+  "Stmt_assign_stmt_target__muted_call_arg__bad_operator",
+  "Stmt_assign_stmt_target__muted_call_arg__no_fields"
+ ],
  "ir_decls.c::build_fields::3bc4fbf1::0": [
   "Field_type__struct_field_construct__unknown_type",
   "Field_type__struct_field_construct_and_read__unknown_type"
@@ -131,9 +139,16 @@
   "Stmt_assign_stmt_target__name__unknown_name",
   "Stmt_let_stmt_type__local_arith__unknown_type"
  ],
+ "ir_expr.c::group_fits::mute-site::0": [
+  "fix_e0261_in_an_unannotated_let_has_no_fix_a_literal_beside_it_does_not_fit",
+  "fix_e0261_withdrawn_when_a_group_of_literals_beside_it_does_not_fit"
+ ],
  "ir_expr.c::indexable_element::d51e23d1::0": [
   "Expr_array_elems_list__inferred_first_then_index__bad_operator",
   "Expr_array_elems_list__inferred_first_then_index__no_fields"
+ ],
+ "ir_expr.c::ir_assign_to_pending::mute-site::0": [
+  "fix_e0261_in_an_unannotated_let_has_no_fix_it_is_assigned_another_type"
  ],
  "ir_expr.c::ir_check_expr::189dc3fa::0": [
   "Expr_array_elems_list__first__bad_operator",

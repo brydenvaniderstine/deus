@@ -533,6 +533,66 @@ class Program:
                 })
         return out
 
+    def muting(self):
+        """the mute flag, its recorder test and its muting sites, as sink-shaped records ({id, file, function, line, text, atoms, extent}); [] only if the code has no mute flag"""
+        recorders = []
+        for name in sorted(self.funcs):
+            f, fn = self.funcs[name]
+            body = next(c for c in kids(fn) if c.get("kind") == "CompoundStmt")
+            adds = [n["_s"] for n in walk(body) if n.get("kind") == "CallExpr" and callee(n) == "diag_add" and "_s" in n]
+            if not adds:
+                continue
+            first = min(adds)
+            for n in walk(body):
+                if n.get("kind") != "IfStmt" or "_s" not in n or n["_s"] >= first:
+                    continue
+                c = kids(n)
+                cond = strip(c[0])
+                if cond.get("kind") == "MemberExpr" and any(x.get("kind") == "ReturnStmt" for x in walk(c[1])):
+                    recorders.append((name, fn, n, cond))
+                    break
+        flags = {cond.get("name") for _, _, _, cond in recorders}
+        if not recorders:
+            return []
+        if len(flags) != 1:
+            raise Fail("the recorders test different mute flags (%s): the tool handles exactly one" % ", ".join(sorted(flags)))
+        flag = flags.pop()
+        out = []
+
+        def rec(name, n, atoms, role):
+            key = kids(n)[0] if n.get("kind") == "IfStmt" else n
+            out.append({"id": "%s::%s::%s::%d" % (os.path.basename(n["_f"]), name, "mute-" + role, sum(1 for o in out if o["function"] == name and o["id"].split("::")[2] == "mute-" + role)),
+                        "file": os.path.basename(n["_f"]), "function": name, "line": self.line_of(n), "text": self.text(key)[:140], "role": role,
+                        "extent": [self.line_of(n), self.line_of(dict(n, _s=n["_e"] - 1))] if "_e" in n else [self.line_of(n)] * 2,
+                        "atoms": sorted(({"start": a["_s"], "end": a["_e"], "replace": "0", "text": self.text(a)[:100]} for a in atoms), key=lambda d: d["start"])})
+        for name, fn, ifn, cond in recorders:
+            rec(name, ifn, [cond], "recorder")
+        for name in sorted(self.funcs):
+            f, fn = self.funcs[name]
+            writes = []
+            for n in walk(fn):
+                if "_s" not in n:
+                    continue
+                k = n.get("kind")
+                tgt = None
+                if k == "UnaryOperator" and n.get("opcode") in ("++", "--"):
+                    tgt = strip(kids(n)[0])
+                elif k == "CompoundAssignOperator" and n.get("opcode") in ("+=", "-="):
+                    tgt = strip(kids(n)[0])
+                elif k == "BinaryOperator" and n.get("opcode") == "=":
+                    t = strip(kids(n)[0])
+                    if t.get("kind") == "MemberExpr" and t.get("name") == flag:
+                        v = strip(kids(n)[1])
+                        if not (v.get("kind") == "IntegerLiteral" and v.get("value") == "0"):
+                            raise Fail("%s assigns the mute flag %s something other than 0 (%s): an unsupported way to mute" % (name, flag, self.text(n)))
+                if tgt is not None and tgt.get("kind") == "MemberExpr" and tgt.get("name") == flag:
+                    writes.append(n)
+            if writes:
+                if not any(w.get("opcode") in ("++", "+=") for w in writes) or not any(w.get("opcode") in ("--", "-=") for w in writes):
+                    raise Fail("%s raises or lowers the mute flag %s without the other half: the tool ablates the pair together" % (name, flag))
+                rec(name, writes[0], writes, "site")
+        return out
+
     def line_of(self, n):
         src = self.sources.get(n["_f"])
         return src[:n["_s"]].count(b"\n") + 1 if src else 0
@@ -590,7 +650,7 @@ class Program:
             "files": sorted(set(f for f, _ in self.funcs.values())),
             "root": ROOT_ENUM, "aliases": sorted(self.aliases), "predicates": sorted(self.predicates), "producers": sorted(self.producers),
             "nullpoison": sorted(self.nullpoison), "reporters": sorted(self.reporters), "carriers": sorted(self.carriers),
-            "emitters": self.emitters(), "producer_sites": self.producer_sites(), "sinks": self.sinks(), "flow": self.flow_sites,
+            "emitters": self.emitters(), "producer_sites": self.producer_sites(), "sinks": self.sinks(), "muting": self.muting(), "flow": self.flow_sites,
             "predicate_defs": self.predicate_defs(), "functions": self.function_extents(),
         }
 
@@ -605,6 +665,8 @@ def stable(man):
     out["producer_sites"] = [{"file": f, "function": fn, "kind": k} for f, fn, k in out["producer_sites"]]
     out["sinks"] = [{"id": x["id"], "file": x["file"], "function": x["function"], "text": x["text"],
                      "atoms": [{"text": a["text"], "replace": a["replace"]} for a in x["atoms"]]} for x in man["sinks"]]
+    out["muting"] = [{"id": x["id"], "file": x["file"], "function": x["function"], "role": x["role"], "text": x["text"],
+                      "atoms": [{"text": a["text"], "replace": a["replace"]} for a in x["atoms"]]} for x in man["muting"]]
     return out
 
 

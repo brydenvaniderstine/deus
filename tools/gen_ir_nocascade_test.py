@@ -84,16 +84,22 @@ check("%d programs, all with distinct names" % len(progs), len(progs) >= 350 and
 check("every hole with a skeleton is exercised", {p["hole"] for p in progs} == set(gen.skeleton_holes()))
 check("every producer is used", {p["producer"] for p in progs} == {x[0] for x in gen.EXPR_PRODUCERS + gen.TYPE_PRODUCERS})
 check("every skipped combination has a reason", all(len(w[3]) > 15 for w in skipped) and len(skipped) >= 5)
-bad = []
+bad, muted = [], [p for p in progs if p["variant"].startswith("muted_")]
 for p in progs:
     pos = p["diags"][0].split(" ")[0]
     ln, col = [int(x) for x in pos.split(":")]
     line = p["lines"][ln - 1]
     prod = next(x for x in gen.EXPR_PRODUCERS + gen.TYPE_PRODUCERS if x[0] == p["producer"])
+    if p in muted:
+        # a muted-target program (step 21i): the one diagnostic is E0270 at the first token of the target, the line's first character after the indent; the producer sits INSIDE the target
+        if " E0270 " not in p["diags"][0] or col != len(line) - len(line.lstrip()) + 1 or line.find(prod[1]) + 1 <= col:
+            bad.append(p["name"])
+        continue
     # the column the generator computed is where the producer's diagnostic starts INSIDE the producer's text, found independently here
     if line.find(prod[1]) < 0 or line.find(prod[1]) + 1 + prod[2] != col:
         bad.append(p["name"])
 check("the expected column is the producer's own, computed from where its text went (%d programs checked)" % len(progs), not bad)
+check("the muted-target programs (step 21i): every shape x every expression producer, each reporting only E0270 at the target", len(muted) == len(gen.MUTED_TARGETS) * len(gen.EXPR_PRODUCERS))
 check("no program holds two holes or an unreplaced marker", all("@E@" not in "\n".join(p["lines"]) for p in progs))
 check("every program is a single-mistake program (INDEX says 1)", all(p["mistakes"] == 1 and len(p["diags"]) == 1 for p in progs))
 

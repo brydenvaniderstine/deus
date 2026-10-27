@@ -21,6 +21,10 @@ text = "if (has_error(l) || has_error(r)) { x(); }\n"
 atoms = [{"start": 4, "end": 16, "replace": "0"}, {"start": 20, "end": 32, "replace": "0"}]
 check("patch replaces each atom's byte range by the parenthesised constant, last first", np_.patch(text, atoms) == "if ((0) || (0)) { x(); }\n")
 check("patch keeps multi-byte text before an atom intact (offsets are bytes)", np_.patch("é x==1;", [{"start": 3, "end": 7, "replace": "0"}]) == "é (0);")
+mt = "st->muted++;\n f(st);\n st->muted--;\n"
+ma = [{"start": mt.index(w), "end": mt.index(w) + len(w), "replace": "0"} for w in ("st->muted++", "st->muted--")]
+check("a muting site is ablated by removing the raise and the lower together: both become `(0)` (an expression that does nothing), so the flag is never negative",
+      np_.patch(mt, ma) == "(0);\n f(st);\n (0);\n")
 
 # ---- what counts as a kill ----
 R = "ERRORS:\n1:1 E0230 unknown name x\n"

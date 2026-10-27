@@ -161,6 +161,54 @@ try:
 finally:
     shutil.rmtree(root, ignore_errors=True)
 
+# ---- muting (step 21i): the mute flag is DERIVED (the member the recorder tests before diag_add), its writers are the muting sites ----
+MUTE_HEADER = """#include <stddef.h>
+typedef enum { T_INT, IR_T_ERROR } Kind;
+enum { P_INT, P_ERROR };
+typedef struct { Kind kind; } Type;
+typedef struct { int hush; int count; Type prim[2]; } St;
+void diag_add(St *st, int d);
+int diag_ir_x(int v);
+"""
+MUTE_BODY = """
+static void prims(St *st) { st->prim[P_ERROR].kind = IR_T_ERROR; }
+void ir_error(St *st, int d) { if (st->hush) { return; } diag_add(st, d); st->count++; }
+int dry(St *st, int v) { int h = st->count; st->hush++; ir_error(st, v); st->hush--; return st->count == h; }
+void reset(St *st) { st->hush = 0; }
+void other(St *st) { st->count += 1; }
+"""
+root = scratch(body=MUTE_BODY, header=MUTE_HEADER)
+try:
+    prog = pp.load(root)
+    mu = prog.manifest()["muting"]
+    check("muting: the recorder's test and the one site that raises the flag are found, and nothing else (a reset and an unrelated counter are not sites)",
+          sorted((x["function"], x["role"]) for x in mu) == [("dry", "site"), ("ir_error", "recorder")])
+    check("muting: the flag name is read from the recorder, not listed in the tool (here it is `hush`)", all("hush" in a["text"] for x in mu for a in x["atoms"]))
+    site = [x for x in mu if x["role"] == "site"][0]
+    check("muting: a site's atoms are the raise AND the lower, both made `0` (the flag can never go negative in the mutant)",
+          [a["text"] for a in site["atoms"]] == ["st->hush++", "st->hush--"] and all(a["replace"] == "0" for a in site["atoms"]))
+    check("muting: the committed (stable) form carries the muting sinks", len(pp.stable(prog.manifest())["muting"]) == 2)
+finally:
+    shutil.rmtree(root, ignore_errors=True)
+root = scratch(body=MUTE_BODY + "void odd(St *st) { st->hush = 2; }\n", header=MUTE_HEADER)
+try:
+    try:
+        pp.load(root).manifest()
+        check("muting: assigning the flag something other than 0 is a hard failure", False)
+    except pp.Fail as e:
+        check("muting: assigning the flag something other than 0 is a hard failure", "unsupported way to mute" in str(e))
+finally:
+    shutil.rmtree(root, ignore_errors=True)
+root = scratch(body=MUTE_BODY + "void half(St *st) { st->hush++; }\n", header=MUTE_HEADER)
+try:
+    try:
+        pp.load(root).manifest()
+        check("muting: a raise without its lower is a hard failure", False)
+    except pp.Fail as e:
+        check("muting: a raise without its lower is a hard failure", "without the other half" in str(e))
+finally:
+    shutil.rmtree(root, ignore_errors=True)
+
 # the real tree
 os.chdir(REPO)
 pp.ROOT = REPO
@@ -168,6 +216,7 @@ prog = pp.load(REPO)
 man = prog.manifest()
 cands, missing = pp.audit_diff(man)
 check("real tree: the tool classifies every one of the audit's %d lines" % len(cands), missing == [])
+check("real tree: the muting sites are found: the recorder and the three that raise the flag", sorted((x["function"], x["role"]) for x in man["muting"]) == [("check_muted", "site"), ("group_fits", "site"), ("ir_assign_to_pending", "site"), ("ir_error", "recorder")])
 check("real tree: the sinks are found (%d)" % len(man["sinks"]), len(man["sinks"]) >= 30)
 check("real tree: every ir_error call site is an emitter with a diag_ir_ constructor",
       len(man["emitters"]) >= 45 and all(e["constructor"] for e in man["emitters"]))

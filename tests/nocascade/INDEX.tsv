@@ -427,3 +427,24 @@ Type_slice_elem__param_length__unknown_type	Type.slice.elem	param_length	unknown
 Type_slice_elem__param_condition__unknown_type	Type.slice.elem	param_condition	unknown_type	1	13:11 E0220 unknown type 'Nope'
 Type_slice_elem__param_assign__unknown_type	Type.slice.elem	param_assign	unknown_type	1	13:11 E0220 unknown type 'Nope'
 Type_slice_elem__param_return__unknown_type	Type.slice.elem	param_return	unknown_type	1	13:11 E0220 unknown type 'Nope'
+Stmt_assign_stmt_target__muted_paren__unknown_name	Stmt.assign_stmt.target	muted_paren	unknown_name	1	14:5 E0270 can't assign to this expression
+Stmt_assign_stmt_target__muted_paren__unknown_function	Stmt.assign_stmt.target	muted_paren	unknown_function	1	14:5 E0270 can't assign to this expression
+Stmt_assign_stmt_target__muted_paren__unit_call	Stmt.assign_stmt.target	muted_paren	unit_call	1	14:5 E0270 can't assign to this expression
+Stmt_assign_stmt_target__muted_paren__unknown_field	Stmt.assign_stmt.target	muted_paren	unknown_field	1	14:5 E0270 can't assign to this expression
+Stmt_assign_stmt_target__muted_paren__bad_operator	Stmt.assign_stmt.target	muted_paren	bad_operator	1	14:5 E0270 can't assign to this expression
+Stmt_assign_stmt_target__muted_paren__not_indexable	Stmt.assign_stmt.target	muted_paren	not_indexable	1	14:5 E0270 can't assign to this expression
+Stmt_assign_stmt_target__muted_paren__no_fields	Stmt.assign_stmt.target	muted_paren	no_fields	1	14:5 E0270 can't assign to this expression
+Stmt_assign_stmt_target__muted_call_arg__unknown_name	Stmt.assign_stmt.target	muted_call_arg	unknown_name	1	14:5 E0270 can't assign to this expression
+Stmt_assign_stmt_target__muted_call_arg__unknown_function	Stmt.assign_stmt.target	muted_call_arg	unknown_function	1	14:5 E0270 can't assign to this expression
+Stmt_assign_stmt_target__muted_call_arg__unit_call	Stmt.assign_stmt.target	muted_call_arg	unit_call	1	14:5 E0270 can't assign to this expression
+Stmt_assign_stmt_target__muted_call_arg__unknown_field	Stmt.assign_stmt.target	muted_call_arg	unknown_field	1	14:5 E0270 can't assign to this expression
+Stmt_assign_stmt_target__muted_call_arg__bad_operator	Stmt.assign_stmt.target	muted_call_arg	bad_operator	1	14:5 E0270 can't assign to this expression
+Stmt_assign_stmt_target__muted_call_arg__not_indexable	Stmt.assign_stmt.target	muted_call_arg	not_indexable	1	14:5 E0270 can't assign to this expression
+Stmt_assign_stmt_target__muted_call_arg__no_fields	Stmt.assign_stmt.target	muted_call_arg	no_fields	1	14:5 E0270 can't assign to this expression
+Stmt_assign_stmt_target__muted_operand__unknown_name	Stmt.assign_stmt.target	muted_operand	unknown_name	1	14:5 E0270 can't assign to this expression
+Stmt_assign_stmt_target__muted_operand__unknown_function	Stmt.assign_stmt.target	muted_operand	unknown_function	1	14:5 E0270 can't assign to this expression
+Stmt_assign_stmt_target__muted_operand__unit_call	Stmt.assign_stmt.target	muted_operand	unit_call	1	14:5 E0270 can't assign to this expression
+Stmt_assign_stmt_target__muted_operand__unknown_field	Stmt.assign_stmt.target	muted_operand	unknown_field	1	14:5 E0270 can't assign to this expression
+Stmt_assign_stmt_target__muted_operand__bad_operator	Stmt.assign_stmt.target	muted_operand	bad_operator	1	14:5 E0270 can't assign to this expression
+Stmt_assign_stmt_target__muted_operand__not_indexable	Stmt.assign_stmt.target	muted_operand	not_indexable	1	14:5 E0270 can't assign to this expression
+Stmt_assign_stmt_target__muted_operand__no_fields	Stmt.assign_stmt.target	muted_operand	no_fields	1	14:5 E0270 can't assign to this expression

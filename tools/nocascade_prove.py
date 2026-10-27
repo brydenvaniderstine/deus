@@ -409,7 +409,7 @@ def main(argv):
     only = argv[argv.index("--only") + 1] if "--only" in argv else None
     jobs = int(argv[argv.index("-j") + 1]) if "-j" in argv else (os.cpu_count() or 4)
     man = poison_paths.load(root).manifest()
-    sinks = [s for s in man["sinks"] if only is None or s["id"] == only]
+    sinks = [s for s in man["sinks"] + man["muting"] if only is None or s["id"] == only]   # the poison sinks and the muting sites (step 21i): both are ablated and proven the same way
     if only and not sinks:
         raise Fail("no sink %s" % only)
     t0 = time.time()

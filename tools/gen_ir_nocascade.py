@@ -47,6 +47,15 @@ EXCLUDED_HOLES = {
     "Expr.named_arg.name": "the name slot of `P(x: 1)` is a field NAME: any other expression there is itself the mistake (E0243), not a poisoned value passing through",
 }
 
+# A MUTED target (step 21i): the target of `=` that is not a place is reported once (E0270, at the target's first token) and its subtree is then checked with the diagnostics
+# muted (ir_body.c check_muted), so a real mistake inside it is NOT reported while the target is wrong; it will be, once the target is a place. Each shape holds one producer
+# in the muted subtree; the expected output is the E0270 alone. The ablation of check_muted makes the producer's own diagnostic show: that is what proves the mute.
+MUTED_TARGETS = [
+    ("muted_paren", "    (@E@) = 1;"),
+    ("muted_call_arg", "    take(@E@) = 1;"),
+    ("muted_operand", "    (@E@ + 1) = 1;"),
+]
+
 # ---- skeletons: hole -> [variant]; variant = (name, return type, body lines with one @E@, {producer: reason it does not apply}) ----
 POSTFIX = {"bad_operator": "a prefix operator binds looser than a postfix one: `~b.x` is `~(b.x)`, not `(~b).x`"}
 NOT_PLACE = {p[0]: "the target of an assignment must be a place; this producer is not one" for p in EXPR_PRODUCERS if p[0] != "unknown_name"}
@@ -194,6 +203,14 @@ def programs():
             name = "%s__%s__%s" % (hole.replace(".", "_").replace("[]", "_list"), vn, pn)
             out.append({"name": name, "hole": hole, "variant": vn, "producer": pn, "lines": lines, "mistakes": 1,
                         "diags": ["%d:%d %s %s" % (at + 1, col, code, msg)]})
+    for vn, line in MUTED_TARGETS:
+        for pn, text, off, code, msg in EXPR_PRODUCERS:
+            lines = PREAMBLE + [SIG % "u8"] + [line, "    return 0;"] + ["}"]
+            at = next(i for i, l in enumerate(lines) if "@E@" in l)
+            col = lines[at].index(line.strip()[0]) + 1        # E0270 is at the target's first token: the `(` or the callee's name
+            lines = [l.replace("@E@", text) for l in lines]
+            out.append({"name": "Stmt_assign_stmt_target__%s__%s" % (vn, pn), "hole": "Stmt.assign_stmt.target", "variant": vn, "producer": pn, "lines": lines, "mistakes": 1,
+                        "diags": ["%d:%d E0270 can't assign to this expression" % (at + 1, col)]})
     return out, skipped
 
 

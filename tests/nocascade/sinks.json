@@ -267,6 +267,72 @@
   "tools/mannac/ir_names.c",
   "tools/mannac/ir_rename.c"
  ],
+ "muting": [
+  {
+   "atoms": [
+    {
+     "replace": "0",
+     "text": "st->muted"
+    }
+   ],
+   "file": "ir.c",
+   "function": "ir_error",
+   "id": "ir.c::ir_error::mute-recorder::0",
+   "role": "recorder",
+   "text": "st->muted"
+  },
+  {
+   "atoms": [
+    {
+     "replace": "0",
+     "text": "bc->st->muted++"
+    },
+    {
+     "replace": "0",
+     "text": "bc->st->muted--"
+    }
+   ],
+   "file": "ir_body.c",
+   "function": "check_muted",
+   "id": "ir_body.c::check_muted::mute-site::0",
+   "role": "site",
+   "text": "bc->st->muted++"
+  },
+  {
+   "atoms": [
+    {
+     "replace": "0",
+     "text": "st->muted++"
+    },
+    {
+     "replace": "0",
+     "text": "st->muted--"
+    }
+   ],
+   "file": "ir_expr.c",
+   "function": "group_fits",
+   "id": "ir_expr.c::group_fits::mute-site::0",
+   "role": "site",
+   "text": "st->muted++"
+  },
+  {
+   "atoms": [
+    {
+     "replace": "0",
+     "text": "st->muted++"
+    },
+    {
+     "replace": "0",
+     "text": "st->muted--"
+    }
+   ],
+   "file": "ir_expr.c",
+   "function": "ir_assign_to_pending",
+   "id": "ir_expr.c::ir_assign_to_pending::mute-site::0",
+   "role": "site",
+   "text": "st->muted++"
+  }
+ ],
  "nullpoison": [
   "deciding_type",
   "indexable_element",
