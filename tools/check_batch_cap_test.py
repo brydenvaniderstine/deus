@@ -79,39 +79,71 @@ ok, msg, steps = cb.check(base, root)
 check("a base that is not an ancestor of HEAD fails", ok is False and "not an ancestor" in msg)
 shutil.rmtree(root)
 
-# last_green_base: a fake gh on PATH
-def fake_gh(body):
+# last_run_base: a fake gh on PATH. `gh run list` prints the runs (newest first), `gh run view ID --json jobs` the jobs of ID: a file per run id in $FAKE/view_ID
+def fake_gh(runs, views=None, view_rc=0):
     d = tempfile.mkdtemp()
-    open(os.path.join(d, "gh"), "w").write("#!/bin/sh\n" + body + "\n")
+    open(os.path.join(d, "runs"), "w").write(runs)
+    for rid, body in (views or {}).items():
+        open(os.path.join(d, "view_" + rid), "w").write(body)
+    script = '#!/bin/sh\nD=%s\nif [ "$2" = list ]; then cat "$D/runs"; exit 0; fi\n' % d
+    script += 'if [ "$2" = view ]; then [ %d -ne 0 ] && { echo boom >&2; exit %d; }; cat "$D/view_$3"; exit 0; fi\nexit 9\n' % (view_rc, view_rc)
+    open(os.path.join(d, "gh"), "w").write(script)
     os.chmod(os.path.join(d, "gh"), 0o755)
     return d
 
 
-def green(body):
-    d = fake_gh(body)
+def run_json(rid, sha, conclusion):
+    return '{"databaseId":%s,"headSha":"%s","conclusion":"%s"}' % (rid, sha, conclusion)
+
+
+RAN_OK = '{"jobs":[{"steps":[{"conclusion":"success"},{"conclusion":"success"}]}]}'
+RAN_RED = '{"jobs":[{"steps":[{"conclusion":"success"},{"conclusion":"failure"},{"conclusion":"skipped"}]}]}'
+NEVER = '{"jobs":[{"steps":[]},{"steps":[]}]}'                                   # the billing block: failure, jobs with no steps
+CANCELLED_STEPS = '{"jobs":[{"steps":[{"conclusion":"cancelled"},{"conclusion":"skipped"}]}]}'
+
+
+def base_of(runs, views=None, view_rc=0):
+    d = fake_gh(runs, views, view_rc)
     old = os.environ["PATH"]
     os.environ["PATH"] = d + os.pathsep + old
     try:
-        return cb.last_green_base()
+        return cb.last_run_base()
     finally:
         os.environ["PATH"] = old
         shutil.rmtree(d)
 
 
-sha = "a" * 40
-b, why = green("echo '[{\"headSha\":\"%s\"}]'" % sha)
-check("the base is the headSha of the last successful ci.yml run", b == sha)
-b, why = green("echo '[]'")
-check("no successful run: no base (the caller fails)", b is None and "no successful" in why)
-b, why = green("echo boom >&2; exit 1")
-check("gh failing: no base", b is None and "failed" in why)
-b, why = green("echo 'not json'")
-check("gh printing no JSON: no base", b is None)
-b, why = green("echo '[{\"headSha\":\"zz\"}]'")
-check("a headSha that is not a commit id: no base", b is None)
-rc = subprocess.run([sys.executable, os.path.join(HERE, "check_batch_cap.py"), "last-green"], capture_output=True, text=True,
-                    env=dict(os.environ, PATH=fake_gh("echo '[]'") + os.pathsep + os.environ["PATH"]), cwd=HERE)
-check("main with last-green and no successful run exits 1, not 0", rc.returncode == 1 and "FAILED" in rc.stdout)
-
+sha, sha2, sha3 = "a" * 40, "b" * 40, "c" * 40
+b, why = base_of("[%s]" % run_json(1, sha, "success"), {"1": RAN_OK})
+check("the base is the headSha of the newest ci.yml run whose jobs ran (green)", b == sha and "success" in why)
+b, why = base_of("[%s,%s]" % (run_json(2, sha2, "failure"), run_json(1, sha, "success")), {"2": RAN_RED, "1": RAN_OK})
+check("a RED run whose jobs ran is the base, ahead of an older green one", b == sha2 and "failure" in why)
+b, why = base_of("[%s,%s]" % (run_json(2, sha2, "cancelled"), run_json(1, sha, "success")), {"1": RAN_OK})
+check("a cancelled run is skipped (the older run is the base; its jobs are not even asked for)", b == sha)
+b, why = base_of("[%s,%s]" % (run_json(2, sha2, "failure"), run_json(1, sha, "success")), {"2": NEVER, "1": RAN_OK})
+check("a run that never started (conclusion failure, no step ever ran) is skipped", b == sha)
+b, why = base_of("[%s,%s]" % (run_json(2, sha2, "failure"), run_json(1, sha, "success")), {"2": CANCELLED_STEPS, "1": RAN_OK})
+check("a failure whose steps were only cancelled or skipped did not run either", b == sha)
+b, why = base_of("[%s,%s,%s]" % (run_json(3, sha3, "cancelled"), run_json(2, sha2, "failure"), run_json(1, sha, "failure")), {"2": NEVER, "1": RAN_RED})
+check("cancelled, then never started, then red-and-ran: the third is the base", b == sha)
+b, why = base_of("[%s,%s]" % (run_json(2, sha2, "failure"), run_json(1, sha, "cancelled")), {"2": NEVER})
+check("every run cancelled or never started: no base (the caller fails)", b is None and "no ci.yml run" in why)
+b, why = base_of("[]")
+check("no runs at all: no base", b is None)
+b, why = base_of("[%s]" % run_json(1, sha, "success"), {"1": RAN_OK}, view_rc=1)
+check("gh run view failing: no base, not a guess", b is None and "failed" in why)
+b, why = base_of("[%s]" % run_json(1, "zz", "success"), {"1": RAN_OK})
+check("a headSha that is not a commit id is not a base", b is None)
+d = fake_gh("boom")
+old = os.environ["PATH"]
+os.environ["PATH"] = d + os.pathsep + old
+b, why = cb.last_run_base()
+os.environ["PATH"] = old
+shutil.rmtree(d)
+check("gh printing no JSON: no base", b is None and "no JSON" in why)
+rc = subprocess.run([sys.executable, os.path.join(HERE, "check_batch_cap.py"), "last-run"], capture_output=True, text=True,
+                    env=dict(os.environ, PATH=fake_gh("[]") + os.pathsep + os.environ["PATH"]), cwd=HERE)
+check("main with last-run and no run that ran exits 1, not 0", rc.returncode == 1 and "FAILED" in rc.stdout)
+check("the old name last-green is gone (a stale workflow fails loudly instead of being read as a ref)", subprocess.run([sys.executable, os.path.join(HERE, "check_batch_cap.py"), "last-green"], capture_output=True, text=True, cwd=HERE).returncode == 1)
 print("batch-cap tests: %d failed" % len(fails) if fails else "batch-cap tests: all passed")
 sys.exit(1 if fails else 0)

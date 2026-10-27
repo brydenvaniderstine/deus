@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 """The batch cap (step 20i; CLAUDE.md "A batch is at most 3 steps, then STOP"; register R1): a push carries at most three distinct STEPS.
 
-  tools/check_batch_cap.py [BASE]      BASE defaults to $BATCH_BASE, else origin/main. BASE = last-green: the head of the last SUCCESSFUL ci.yml run on main (gh)
+  tools/check_batch_cap.py [BASE]      BASE defaults to $BATCH_BASE, else origin/main. BASE = last-run: the head of the newest ci.yml run on main whose jobs RAN
+                                       to a conclusion, success OR failure (gh); cancelled runs and runs that never started (billing, no step ran) are skipped.
 
 The commits in BASE..HEAD are read; a commit names its step in its subject ("Step 20f-3: ...", "IR 19c-6: ...": the step id is the number and letter, 20f, 19c).
 Rules (Linux review of batch C, finding 2):
   - every commit that changes a path outside docs/ and *.md must carry a step id in its subject, or the check FAILS (a commit cannot escape the count by its wording);
     commits that change only docs/ and *.md need none;
   - more than three distinct ids fail, listing the commits per step;
-  - the base is the head of the last successful ci.yml run on main, not github.event.before (a cancelled run's head would hide the commits of the push it replaced);
+  - the base is the head of the newest ci.yml run on main that ran (green or red), not github.event.before (a cancelled run's head would hide the commits of the push it
+    replaced), and not only a green one (a red run's commits were already seen and reported; a push that follows a red run must not be charged for them again);
     it must be an ancestor of HEAD;
   - no base found (an all-zero base, no successful run, gh failing, an unknown commit) FAILS: there is no "not checked" exit 0.
 What this cannot check: that the batch was REPORTED and APPROVED before the next one began (that stays a review rule, register R1, each tag).
@@ -23,22 +25,45 @@ def is_docs(path):
     return path.startswith("docs/") or path.endswith(".md")
 
 
-def last_green_base(root=None):
-    """(sha, message): the head of the last successful ci.yml run on main, or (None, why)."""
+def _gh(args, root=None):
+    """(parsed JSON, None) or (None, why)"""
     try:
-        r = subprocess.run(["gh", "run", "list", "--workflow", "ci.yml", "--branch", "main", "--status", "success", "-L", "1", "--json", "headSha"],
-                           capture_output=True, text=True, cwd=root)
+        r = subprocess.run(["gh"] + args, capture_output=True, text=True, cwd=root)
     except OSError as e:
         return None, "cannot run gh: %s" % e
     if r.returncode != 0:
-        return None, "gh run list failed: %s" % r.stderr.strip()[:200]
+        return None, "gh %s failed: %s" % (" ".join(args[:2]), r.stderr.strip()[:200])
     try:
-        runs = json.loads(r.stdout)
+        return json.loads(r.stdout), None
     except ValueError:
-        return None, "gh run list printed no JSON: %s" % r.stdout[:100]
-    if not runs or not re.fullmatch(r"[0-9a-f]{40}", runs[0].get("headSha", "")):
-        return None, "no successful ci.yml run on main was found"
-    return runs[0]["headSha"], "last successful ci.yml run on main"
+        return None, "gh %s printed no JSON: %s" % (" ".join(args[:2]), r.stdout[:100])
+
+
+def ran_to_a_conclusion(jobs):
+    """True if some step of some job actually executed and finished (success or failure). A run that GitHub refused to start (billing, a runner outage) concludes
+    `failure` with jobs that have no steps at all, and a cancelled run's steps are cancelled or skipped: neither says anything about the code."""
+    return any(st.get("conclusion") in ("success", "failure") for j in jobs for st in j.get("steps", []))
+
+
+def last_run_base(root=None, limit=30):
+    """(sha, message): the head of the newest ci.yml run on main whose jobs RAN to a conclusion, green OR red; or (None, why).
+    Skipped: a run still going, a cancelled one, a skipped one, and one that never started (conclusion failure, no step ever ran: the billing block of run 40546449691).
+    A red run is a valid base because the batch cap counts what the push adds to the history Bryden has already seen run, not what passed; the steps of a red run were
+    reported and are not new work."""
+    runs, why = _gh(["run", "list", "--workflow", "ci.yml", "--branch", "main", "--status", "completed", "-L", str(limit), "--json", "databaseId,headSha,conclusion"], root)
+    if runs is None:
+        return None, why
+    for run in runs:
+        if run.get("conclusion") not in ("success", "failure"):
+            continue
+        if not re.fullmatch(r"[0-9a-f]{40}", run.get("headSha", "")):
+            continue
+        view, why = _gh(["run", "view", str(run["databaseId"]), "--json", "jobs"], root)
+        if view is None:
+            return None, why
+        if ran_to_a_conclusion(view.get("jobs", [])):
+            return run["headSha"], "newest ci.yml run on main whose jobs ran (%s)" % run["conclusion"]
+    return None, "no ci.yml run on main (of the last %d) had jobs that ran to a conclusion" % limit
 
 
 def check(base, root=None):
@@ -74,8 +99,8 @@ def check(base, root=None):
 
 def main(argv):
     base = argv[1] if len(argv) > 1 else (os.environ.get("BATCH_BASE") or "origin/main")
-    if base == "last-green":
-        base, why = last_green_base()
+    if base == "last-run":
+        base, why = last_run_base()
         if base is None:
             print("check_batch_cap: FAILED: %s: the batch cap cannot be checked" % why)
             return 1

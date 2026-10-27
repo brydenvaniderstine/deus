@@ -3856,6 +3856,90 @@
    1,
    "dc32975496b929e4"
   ],
+  "tests/nocascade/Stmt_assign_stmt_target__muted_call_arg__bad_operator.ir": [
+   1,
+   "3420bd630ffa81bc"
+  ],
+  "tests/nocascade/Stmt_assign_stmt_target__muted_call_arg__no_fields.ir": [
+   1,
+   "3420bd630ffa81bc"
+  ],
+  "tests/nocascade/Stmt_assign_stmt_target__muted_call_arg__not_indexable.ir": [
+   1,
+   "3420bd630ffa81bc"
+  ],
+  "tests/nocascade/Stmt_assign_stmt_target__muted_call_arg__unit_call.ir": [
+   1,
+   "3420bd630ffa81bc"
+  ],
+  "tests/nocascade/Stmt_assign_stmt_target__muted_call_arg__unknown_field.ir": [
+   1,
+   "3420bd630ffa81bc"
+  ],
+  "tests/nocascade/Stmt_assign_stmt_target__muted_call_arg__unknown_function.ir": [
+   1,
+   "3420bd630ffa81bc"
+  ],
+  "tests/nocascade/Stmt_assign_stmt_target__muted_call_arg__unknown_name.ir": [
+   1,
+   "3420bd630ffa81bc"
+  ],
+  "tests/nocascade/Stmt_assign_stmt_target__muted_operand__bad_operator.ir": [
+   1,
+   "3420bd630ffa81bc"
+  ],
+  "tests/nocascade/Stmt_assign_stmt_target__muted_operand__no_fields.ir": [
+   1,
+   "3420bd630ffa81bc"
+  ],
+  "tests/nocascade/Stmt_assign_stmt_target__muted_operand__not_indexable.ir": [
+   1,
+   "3420bd630ffa81bc"
+  ],
+  "tests/nocascade/Stmt_assign_stmt_target__muted_operand__unit_call.ir": [
+   1,
+   "3420bd630ffa81bc"
+  ],
+  "tests/nocascade/Stmt_assign_stmt_target__muted_operand__unknown_field.ir": [
+   1,
+   "3420bd630ffa81bc"
+  ],
+  "tests/nocascade/Stmt_assign_stmt_target__muted_operand__unknown_function.ir": [
+   1,
+   "3420bd630ffa81bc"
+  ],
+  "tests/nocascade/Stmt_assign_stmt_target__muted_operand__unknown_name.ir": [
+   1,
+   "3420bd630ffa81bc"
+  ],
+  "tests/nocascade/Stmt_assign_stmt_target__muted_paren__bad_operator.ir": [
+   1,
+   "3420bd630ffa81bc"
+  ],
+  "tests/nocascade/Stmt_assign_stmt_target__muted_paren__no_fields.ir": [
+   1,
+   "3420bd630ffa81bc"
+  ],
+  "tests/nocascade/Stmt_assign_stmt_target__muted_paren__not_indexable.ir": [
+   1,
+   "3420bd630ffa81bc"
+  ],
+  "tests/nocascade/Stmt_assign_stmt_target__muted_paren__unit_call.ir": [
+   1,
+   "3420bd630ffa81bc"
+  ],
+  "tests/nocascade/Stmt_assign_stmt_target__muted_paren__unknown_field.ir": [
+   1,
+   "3420bd630ffa81bc"
+  ],
+  "tests/nocascade/Stmt_assign_stmt_target__muted_paren__unknown_function.ir": [
+   1,
+   "3420bd630ffa81bc"
+  ],
+  "tests/nocascade/Stmt_assign_stmt_target__muted_paren__unknown_name.ir": [
+   1,
+   "3420bd630ffa81bc"
+  ],
   "tests/nocascade/Stmt_assign_stmt_target__name__unknown_name.ir": [
    1,
    "6d9c3419c3e7f6ca"
@@ -5878,8 +5962,8 @@
   "lexer_goldens": 15,
   "memory_stress_cases": 8,
   "mistakes_sidecars": 33,
-  "nocascade_goldens": 428,
-  "nocascade_index_rows": 428,
+  "nocascade_goldens": 449,
+  "nocascade_index_rows": 449,
   "nocascade_sweep_points": 26871,
   "nocascade_sweep_programs": 180,
   "parser_goldens": 376,
@@ -5888,17 +5972,17 @@
   "rename_property.part2.fixes_changed": 1355,
   "rename_property.part2.programs": 2500,
   "script_checks.boot_check_test.py": 25,
-  "script_checks.check_batch_cap_test.py": 20,
+  "script_checks.check_batch_cap_test.py": 27,
   "script_checks.check_ci_targets_test.py": 21,
   "script_checks.check_generated_test.py": 16,
   "script_checks.check_register_test.py": 35,
   "script_checks.check_retro_rules_test.py": 13,
   "script_checks.coverage_check_test.py": 14,
-  "script_checks.gen_ir_nocascade_test.py": 22,
+  "script_checks.gen_ir_nocascade_test.py": 23,
   "script_checks.nocascade_inject_test.py": 4,
-  "script_checks.nocascade_prove_test.py": 47,
+  "script_checks.nocascade_prove_test.py": 48,
   "script_checks.nocascade_sinks_test.py": 19,
-  "script_checks.poison_paths_test.py": 40,
+  "script_checks.poison_paths_test.py": 49,
   "script_checks.ratchet_test.py": 32,
   "unit_test_functions.arena_test.c": 7,
   "unit_test_functions.ast_test.c": 6,

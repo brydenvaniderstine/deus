@@ -40,7 +40,10 @@ QEMU         := qemu-system-x86_64
 # that reports a path unconditionally, even when qemu was installed
 # some other way (e.g. a manual ./configure --prefix build) and the
 # formula was never `brew link`ed, so the guessed path doesn't exist.
-QEMU_PREFIX  := $(shell dirname $(shell dirname $(shell command -v $(QEMU))))
+# No QEMU on PATH (the macOS CI runner, which only compiles and tests the compiler): an empty prefix, which tools/find_ovmf.sh reads as its default. The old line
+# ran `dirname` with no argument and printed "usage: dirname string [...]" twice on every make invocation (CI run 40546449691).
+QEMU_BIN     := $(shell command -v $(QEMU))
+QEMU_PREFIX  := $(if $(QEMU_BIN),$(shell dirname $(shell dirname $(QEMU_BIN))),)
 OVMF_CODE    ?= $(shell tools/find_ovmf.sh code $(QEMU_PREFIX))
 OVMF_VARS    ?= $(shell tools/find_ovmf.sh vars $(QEMU_PREFIX))
 
@@ -60,7 +63,7 @@ QEMU_FLAGS   := $(QEMU_MACHINE) \
                 -serial file:serial.log -monitor stdio -no-reboot \
                 -d int,cpu_reset -D qemu.log
 
-.PHONY: all image run debug clean limine stage-esp test-wx test-lexer test-lexer-asan test-arena test-arena-asan test-ast test-ast-asan test-parser-state test-parser-state-asan test-parser-fixes test-parser-fixes-asan test-parser test-parser-asan test-determinism test-ir test-ir-asan test-ir-unit test-ir-unit-asan test-ir-ndebug test-ir-fix test-ir-fix-asan test-ir-error-codes audit-ir-poison test-poison-paths-script check-poison-paths check-nocascade-holes check-nocascade-index check-nocascade-prove check-nocascade-sinks test-nocascade-prove-script nocascade-all check-generated test-check-generated-script test-gen-nocascade-script test-nocascade-sinks-script nocascade-sink-report test-nocascade-inject test-nocascade-inject-script check-inject-hook-absent test-e0261-exhaustive test-rename-property test-ir-memory-stress test-ratchet test-ratchet-script ratchet-update check-register register-fix-lines test-register-script check-ci-targets test-ci-targets-script test-audit-repros test-fuzz-script test-boot test-boot-check-script check-kernel-loc test-kernel-loc-script test-measure-height-script coverage-check test-coverage-check-script check-batch-cap test-batch-cap-script check-retro-rules test-retro-rules-script coverage fuzz fuzz-lexer fuzz-parser fuzz-ir fuzz-ir-ungated measure-height measure-ir-stack measure-ir-build-stack
+.PHONY: test-makefile-no-qemu check-nocascade-wired test-nocascade-wired-script all image run debug clean limine stage-esp test-wx test-lexer test-lexer-asan test-arena test-arena-asan test-ast test-ast-asan test-parser-state test-parser-state-asan test-parser-fixes test-parser-fixes-asan test-parser test-parser-asan test-determinism test-ir test-ir-asan test-ir-unit test-ir-unit-asan test-ir-ndebug test-ir-fix test-ir-fix-asan test-ir-error-codes audit-ir-poison test-poison-paths-script check-poison-paths check-nocascade-holes check-nocascade-index check-nocascade-prove check-nocascade-sinks test-nocascade-prove-script nocascade-all check-generated test-check-generated-script test-gen-nocascade-script test-nocascade-sinks-script nocascade-sink-report test-nocascade-inject test-nocascade-inject-script check-inject-hook-absent test-e0261-exhaustive test-rename-property test-ir-memory-stress test-ratchet test-ratchet-script ratchet-update check-register register-fix-lines test-register-script check-ci-targets test-ci-targets-script test-audit-repros test-fuzz-script test-boot test-boot-check-script check-kernel-loc test-kernel-loc-script test-measure-height-script coverage-check test-coverage-check-script check-batch-cap test-batch-cap-script check-retro-rules test-retro-rules-script coverage fuzz fuzz-lexer fuzz-parser fuzz-ir fuzz-ir-ungated measure-height measure-ir-stack measure-ir-build-stack
 
 all: $(KERNEL_ELF)
 
@@ -521,6 +524,10 @@ check-batch-cap:
 test-batch-cap-script:
 	@python3 tools/check_batch_cap_test.py
 
+# Step 21j: with no QEMU on PATH, make prints nothing on stderr while it reads the Makefile (the "usage: dirname" bug), and with QEMU the prefix is still derived.
+test-makefile-no-qemu:
+	@./tools/makefile_no_qemu_test.sh
+
 check-retro-rules:
 	@python3 tools/check_retro_rules.py
 
@@ -571,8 +578,17 @@ test-nocascade-prove-script:
 check-nocascade-sinks:
 	@python3 tools/nocascade_sinks.py --check
 
+# Step 21j (W1-W4): the proof is wired into CI as a whole - every part is a prerequisite of nocascade-all and run by a step that can fail, the three expensive parts are in
+# their own job (D4), and that job's timeout is at least twice the measured run time (tests/nocascade/JOB_TIME, seconds).
+check-nocascade-wired:
+	@python3 tools/check_nocascade_wired.py
+
+test-nocascade-wired-script:
+	@python3 tools/check_nocascade_wired_test.py
+
 # Everything of the no-cascade proof at once (the CI `nocascade` job runs the pieces as separate steps).
-nocascade-all: check-poison-paths check-nocascade-holes check-nocascade-index check-generated check-nocascade-prove check-nocascade-sinks test-nocascade-inject
+nocascade-all: check-poison-paths check-nocascade-holes check-nocascade-index check-generated check-nocascade-prove check-nocascade-sinks test-nocascade-inject \
+	check-inject-hook-absent check-nocascade-wired
 
 # Step 21c: REPORT, not a check (it becomes rules F3 and F7 of check-nocascade in step 21h): runs the whole sweep with coverage and lists the static sinks no
 # injection moved and the poison-only code outside every static sink. About 40 s.

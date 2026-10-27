@@ -153,3 +153,5 @@ The token-benchmark ratio stays blank until the benchmark in `docs/IDEAS.md` ("T
 | CLAUDE.md | **Rule: no behavior change without a test.** | make test-ratchet; register R6 |
 | CLAUDE.md | **At every tag**, list uncovered lines in `lexer.c` | make coverage-check |
 | CLAUDE.md | At every tag, run the refinement loop in docs/REFINEMENT.md | register R2 |
+| CLAUDE.md | A silencer is proven by removing it, not by reading it. | make check-nocascade-prove; make check-nocascade-wired |
+| CLAUDE.md | A red CI run is not always a failing test: read the check-run annotations before the code. | make test-batch-cap-script; make test-makefile-no-qemu |

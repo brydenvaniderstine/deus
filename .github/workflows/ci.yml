@@ -9,7 +9,7 @@ on:
 
 permissions:
   contents: read
-  actions: read   # check-batch-cap asks gh for the last successful run
+  actions: read   # check-batch-cap asks gh for the newest run that ran
 
 # Cancel a run still in flight when a newer push to the same branch lands.
 concurrency:
@@ -75,20 +75,25 @@ jobs:
       - run: make test-measure-height-script
       - run: make test-boot-check-script
       - run: make test-batch-cap-script
-      # The base is the head of the last SUCCESSFUL ci.yml run on main, not github.event.before (a run cancelled by the next push would hide its commits);
-      # no base found fails (Linux review of batch C, finding 2).
-      - run: make check-batch-cap
-        env:
-          BATCH_BASE: last-green
-          GH_TOKEN: ${{ github.token }}
+      - run: make test-makefile-no-qemu
+      - run: make test-nocascade-wired-script
+      - run: make check-nocascade-wired
+
+      # One failing check must not hide the others (CI run 40546449691: check-batch-cap failed and seven later steps never ran). Every step from here
+      # on runs unless the run was cancelled, whatever failed before it; the job still fails if any of them failed.
       - run: make test-retro-rules-script
+        if: ${{ !cancelled() }}
       - run: make check-retro-rules
+        if: ${{ !cancelled() }}
       - run: make test-ratchet
+        if: ${{ !cancelled() }}
       - run: make test-audit-repros
+        if: ${{ !cancelled() }}
 
       # Kernel compile check only (make all -> build/kernel.elf). Does not
       # boot it - no Limine/QEMU/OVMF needed for that, just clang + ld.lld.
       - name: Cache Homebrew downloads
+        if: ${{ !cancelled() }}
         uses: actions/cache@v4
         with:
           path: ~/Library/Caches/Homebrew
@@ -96,12 +101,23 @@ jobs:
           restore-keys: |
             brew-lld-${{ runner.os }}-
       - name: Install ld.lld
+        if: ${{ !cancelled() }}
         run: |
           brew install lld
           echo "$(brew --prefix lld)/bin" >> "$GITHUB_PATH"
       # limine/ is gitignored (vendored, not tracked); make all fetches it
       # at the pinned tag/hash automatically - see tools/fetch-limine.sh.
       - run: make all
+        if: ${{ !cancelled() }}
+
+      # The batch cap is LAST so that it hides nothing: it asks gh for the base, so it is the one check that needs the network and the token.
+      # The base is the head of the newest ci.yml run on main whose jobs RAN to a conclusion, green or red (a run cancelled by the next push, or one GitHub refused to start,
+      # is skipped); no base found fails (Linux review of batch C, finding 2; Bryden 2026-10-27 for the red-run base).
+      - run: make check-batch-cap
+        if: ${{ !cancelled() }}
+        env:
+          BATCH_BASE: last-run
+          GH_TOKEN: ${{ github.token }}
 
   # Step 20d/20e (register V2, V3, V1, C6, V7): the same host-side suites on Linux with gcc, ASan + UBSan + LSan, the audit repros, the poison audit with
   # clang + llvm-cov, and a short fuzz run (60 s per target) on every push. Cost decision (register V7, Bryden 2026-10-25): this job runs on every
@@ -195,6 +211,7 @@ jobs:
   nocascade:
     name: No-cascade injection sweep (ASan + UBSan, every point)
     runs-on: ubuntu-latest
+    # Measured on the hosted runner: 8 min 07 s (487 s, CI run 40546449691, kept in tests/nocascade/JOB_TIME); `make check-nocascade-wired` (W4) fails if this is under twice that.
     timeout-minutes: 45
     env:
       MANNAC_WERROR: -Werror
