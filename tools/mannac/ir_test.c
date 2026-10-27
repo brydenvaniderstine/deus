@@ -118,6 +118,39 @@ static void test_table_growth(void) {
     pass("table growth: 5000 distinct arrays, every pointer stable across rehashes");
 }
 
+/* The interner hashes serials, never addresses (step C2b): two states whose arenas sit at different addresses, given the same types in the same order, lay their tables out slot for
+ * slot the same, so the collision path of every run is the same run after run (the no-cascade check F3 saw it as poison-only in some runs only before). */
+static void test_interner_layout_ignores_addresses(void) {
+    static IrState a, b;
+    ir_state_init(&a, 16 << 20);
+    (void)malloc(1 << 20);   /* the second arena does not land where the first did */
+    ir_state_init(&b, 16 << 20);
+    assert((uintptr_t)a.arena != (uintptr_t)b.arena);
+    static IrStruct sa[6], sb[6];
+    for (int i = 0; i < 6; i++) { sa[i].serial = sb[i].serial = (uint32_t)i; }
+    IrState *both[2] = {&a, &b};
+    for (int k = 0; k < 2; k++) {
+        IrState *st = both[k];
+        IrStruct *ss = k == 0 ? sa : sb;
+        const IrType *u8 = ir_type_int(st, 8, false), *err = ir_type_error(st);
+        for (int i = 0; i < 300; i++) {
+            const IrType *arr = ir_type_array(st, (uint64_t)i, i % 3 == 0 ? u8 : err);
+            const IrType *sl = ir_type_slice(st, arr);
+            (void)ir_type_array(st, 2, sl);
+            (void)ir_type_struct(st, &ss[i % 6]);
+        }
+    }
+    assert(a.composites.cap == b.composites.cap && a.composites.count == b.composites.count);
+    for (size_t i = 0; i < a.composites.cap; i++) {
+        const IrType *x = a.composites.slots[i], *y = b.composites.slots[i];
+        assert((x == NULL) == (y == NULL));
+        if (x) assert(x->kind == y->kind && x->serial == y->serial);
+    }
+    ir_state_destroy(&a);
+    ir_state_destroy(&b);
+    pass("interner: the table layout is the same in two states at different addresses (no address is hashed)");
+}
+
 /* Rehashing must carry every kind of composite across, not just arrays: slices and
  * structs interleaved with arrays, enough of each to force several growths. */
 static void test_table_growth_mixed_kinds(void) {
@@ -2445,6 +2478,7 @@ int main(int argc, char **argv) {
     test_primitives();
     test_composites();
     test_table_growth();
+    test_interner_layout_ignores_addresses();
     test_table_growth_mixed_kinds();
     test_e0203();
     test_e0201_and_reuse();

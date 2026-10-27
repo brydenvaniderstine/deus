@@ -26,6 +26,7 @@ static void prims_init(IrState *st) {
     st->prim[P_UNIT].kind = IR_T_UNIT;
     memset(&st->prim[P_ERROR], 0, sizeof(IrType));
     st->prim[P_ERROR].kind = IR_T_ERROR;
+    for (int i = 0; i < IR_N_PRIM; i++) st->prim[i].serial = (uint32_t)i;
 }
 
 /* ---- state ---- */
@@ -44,6 +45,7 @@ void ir_state_reset_for_build(IrState *st) {
     st->composites.slots = NULL;
     st->composites.cap = 0;
     st->composites.count = 0;
+    st->type_serial = IR_N_PRIM;
 }
 
 /* The hook runs just before the overflow unwind and records E0201 in the
@@ -138,12 +140,17 @@ static uint64_t mix(uint64_t h, uint64_t v) {
     return h;
 }
 
-/* Structural key of a composite: its kind plus (len, elem) or (decl). Element
- * pointers are themselves canonical, so equal keys <=> equal types. */
+/* Structural key of a composite: its kind plus (len, elem) or (decl). Element pointers are themselves canonical, so equal keys <=> equal types. The HASH uses no address (an address
+ * differs between runs, and with it the interner's collision path: the no-cascade check of step 21h saw that path as poison-only in some runs only): an element contributes its serial, a
+ * struct its declaration index (its name and span are not set yet when a field that names a later struct is resolved). */
+static uint64_t key_of(IrTypeKind kind, const void *p) {
+    return kind == IR_T_STRUCT ? ((const IrStruct *)p)->serial : ((const IrType *)p)->serial;
+}
+
 static uint64_t type_hash(IrTypeKind kind, uint64_t a, const void *p) {
     uint64_t h = mix(0, (uint64_t)kind);
     h = mix(h, a);
-    return mix(h, (uint64_t)(uintptr_t)p);
+    return mix(h, key_of(kind, p));
 }
 
 static bool type_matches(const IrType *t, IrTypeKind kind, uint64_t a, const void *p) {
@@ -191,6 +198,7 @@ static const IrType *intern(IrState *st, IrTypeKind kind, uint64_t a, const void
     IrType *t = arena_alloc(st->arena, sizeof(IrType), alignof(IrType));
     memset(t, 0, sizeof(*t));
     t->kind = kind;
+    t->serial = st->type_serial++;
     if (kind == IR_T_ARRAY)       { t->as.array.len = a; t->as.array.elem = p; }
     else if (kind == IR_T_SLICE)  { t->as.slice.elem = p; }
     else                          { t->as.strukt.decl = p; }

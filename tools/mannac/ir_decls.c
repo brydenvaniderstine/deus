@@ -95,6 +95,7 @@ static void declare_names(Ctx *cx, const NodeList *items) {
         if (is_struct) {
             cx->structs[si].decl = d;
             cx->structs[si].ir = &cx->irs[si];
+            cx->irs[si].serial = (uint32_t)si; /* before any type that names this struct can be interned (a forward reference) */
         }
         bool inserted;
         const SymEntry *e = symtab_insert(&cx->top, decl_name(d), decl_name_span(d), is_struct, is_struct ? si : fi, &inserted);
@@ -118,7 +119,9 @@ static void build_fields(Ctx *cx, StructInfo *s) {
     st->progress = d->span;
 
     IrStruct *ir = s->ir;
+    uint32_t serial = ir->serial;
     memset(ir, 0, sizeof *ir);
+    ir->serial = serial;
     ir->name = d->as.struct_decl.name;
     ir->span = d->span;
     ir->align = 1;

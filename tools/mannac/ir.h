@@ -37,6 +37,8 @@ typedef enum {
  * is unwritable in source. */
 struct IrType {
     IrTypeKind kind;
+    uint32_t   serial; /* a stable number given when the type is made (a primitive: its slot; a composite: the next number): the interner hashes THIS, never an address,
+                        * so its collision path is the same on every run and every OS (step C2b). Sits in the padding: sizeof(IrType) is unchanged. */
     union {
         struct { uint8_t bits; bool is_signed; } integer;      /* bits: 8, 16, 32, 64 */
         struct { uint64_t len; const IrType *elem; } array;     /* [len]elem */
@@ -59,6 +61,7 @@ struct IrStruct {
     size_t      n_fields;
     uint64_t    size;
     uint32_t    align;
+    uint32_t    serial; /* the struct's declaration index, set before anything can intern a type that names it: the interner's hash (ir.c key_of), never an address or a name that may not be set yet */
 };
 
 /* ---- State ---- */
@@ -88,6 +91,7 @@ typedef struct {
     jmp_buf      fatal_target; /* ir_build owns the setjmp; E0201/E0203 land here */
     IrType       prim[IR_N_PRIM];
     IrTypeTable  composites;
+    uint32_t     type_serial; /* the serial of the next composite type */
     Span         progress;     /* the declaration being built: where E0201 reports */
     const char  *unimplemented; /* set with IR_UNIMPLEMENTED: the construct step 3 cannot build yet */
     size_t       expr_visits;   /* expression nodes visited by the checker this build (tests prove the checker is linear) */
