@@ -4,11 +4,11 @@ Written 2026-10-23 from Bryden's rule "No degradation" (`CLAUDE.md`) and the rev
 
 How to read an entry: **Promise** is what the project said (a `file:line` quote), **Where it stands** is what exists, **Trigger** is the hard revisit point (a tag, milestone or step). Triggers marked "PROPOSED by Claude Code, approved by Bryden 2026-10-24" were chosen by Claude Code where the audit gave none; Bryden approved them as written. **Approval record (Bryden, 2026-10-24; C9 and C10 and the closing of C5 approved the same day):** Bryden approves every entry's existence and its trigger. No entry is approved as permanent: each closes by its trigger, and no tag or milestone closes while an entry's trigger has passed. All entries below were found by the audit and predate the rule. Quotes are checked against the repository at the commit that added this file (historical quotes name their commit). Line numbers drift; the quote is the anchor.
 
-Step numbers: step 19 is the third audit round's fixes (done and pushed), step 20 is the guardrails step (CI ratchet, CI parity, an automated check of this register's quotes), step 21 is the no-cascade proof.
+Step numbers: step 19 is the third audit round's fixes (done and pushed), step 20 is the guardrails step (CI ratchet, CI parity, an automated check of this register's quotes), step 21 is the no-cascade proof (done, closed C1 at 21k; pushed with batch D).
 
 ## Trigger ids
 
-Each entry's **Trigger-id** is one of the ids below, in the order they fall due. **Current point:** `step-21`. `make check-register` fails if an OPEN or PARTLY CLOSED entry's id comes BEFORE the current point (its trigger has passed); `make check-register AT=<id>` (run when a tag or milestone closes) also fails for an id equal to or before `<id>`. The person closing a step or tag advances the current point in the same commit. `each-tag` recurs at every tag, so it is never "passed" by position: instead, `make check-register AT=<tag>` requires every OPEN `each-tag` entry to carry a `- **Checked at:** <tag>, ...` line naming that tag (the field is empty until the first tag).
+Each entry's **Trigger-id** is one of the ids below, in the order they fall due. **Current point:** `m2-ir-v0`. `make check-register` fails if an OPEN or PARTLY CLOSED entry's id comes BEFORE the current point (its trigger has passed); `make check-register AT=<id>` (run when a tag or milestone closes) also fails for an id equal to or before `<id>`. The person closing a step or tag advances the current point in the same commit. `each-tag` recurs at every tag, so it is never "passed" by position: instead, `make check-register AT=<tag>` requires every OPEN `each-tag` entry to carry a `- **Checked at:** <tag>, ...` line naming that tag (the field is empty until the first tag).
 
 - `step-19` - the third audit round's fixes
 - `step-20` - this guardrails step
@@ -72,7 +72,7 @@ Each entry's **Trigger-id** is one of the ids below, in the order they fall due.
 - **Status:** CLOSED (2026-10-25, ci.yml run 40213325096 on d478be8)
 - **Reason:** The CI job is a compile check; boots are manual. CLOSED: the `boot` job of ci.yml run 40213325096 on d478be8 runs `make test-boot` on the 8 GiB machine (never shrunk; the runner has 7.9 GiB of RAM and TCG booted it): `qemu_boot: reached /starting A/B preemption proof/ after 3s`, `boot_check smoke: ok` against `tests/boot_expected.txt` (memmap, GDT, IDT, the three mappings and the CR3 load, calibration source and rate, interleaved A/B).
 - **Promise:** `CLAUDE.md:7` "Every milestone must boot in QEMU."
-- **Where it stands:** (before step 20) `.github/workflows/ci.yml:89` "# Kernel compile check only (make all -> build/kernel.elf). Does not"
+- **Where it stands:** (before step 20) `.github/workflows/ci.yml:93` "# Kernel compile check only (make all -> build/kernel.elf). Does not"
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** Step 20 (a QEMU boot smoke test asserting the M1 serial-log lines)
 - **Trigger-id:** `step-20`
@@ -163,8 +163,8 @@ Each entry's **Trigger-id** is one of the ids below, in the order they fall due.
 
 ### C1 - The no-cascade proof was downgraded
 
-- **Status:** OPEN
-- **Reason:** The plan promised a no-cascade golden per poisoning path; what shipped is a script that checks each poisoning line is RUN by a one-diagnostic golden, and step 18e deleted the promise from TYPED_IR.md. The script also under-counts (re-audit 3, finding 9: 25 silent-consumption lines are not counted). From step 21h the proof is the ablation of `tools/nocascade_prove.py` (a sink is proven by a golden whose output changes, or whose run dies or hangs, when the sink cannot see poison); the sinks proven ONLY by a death (18 at step C2a) are proven as CRASH GUARDS: blinding them crashes or hangs the builder under ASan, UBSan and zero-initialised locals, which shows the guard holds the builder up, not that it keeps a wrong diagnostic away. The count and the list are printed by `python3 tools/nocascade_prove.py --report`.
+- **Status:** CLOSED (2026-10-27, step 21k; the ci.yml run of the batch D push is recorded here when it is green, and this entry reopens if that run is not)
+- **Reason:** The plan promised a no-cascade golden per poisoning path; what shipped was a script that checks each poisoning line is RUN by a one-diagnostic golden, and step 18e deleted the promise from TYPED_IR.md. CLOSED by step 21: `tools/poison_paths.py` finds every decision that reads poison and stays silent (50 sinks) and every place the builder mutes (4: the recorder's `muted` test and the three functions that raise it), and `tools/nocascade_prove.py` rebuilds the builder once per sink with that sink blind (ASan + UBSan + zero-initialised locals) and runs every golden on it: a sink is proven when a golden whose output is exactly its declared mistakes changes (more, fewer, a swapped diagnostic, a different fixed source), dies or hangs. `tests/nocascade/PATHS.lock` holds the proof; `make check-nocascade-prove` fails on an unproven sink, a stale lock, or a sink whose proof is missing; `make check-nocascade-sinks` cross-checks the static sinks against the injection sweep (26,871 injected values, 0 findings); `make check-nocascade-wired` fails if any part is not run by CI. **What this proves and what it does not (the limits, as part of the closing):** (1) SINGLE MISTAKES: each proving golden holds one mistake (or the few its `.mistakes` file declares); two mistakes that interact in a way no golden has are not covered. (2) SINKS THE CORPUS REACHES: a sink is proven by a golden that reaches it, and an input shape no golden has is not covered; the 28 consumer holes of `ast.h` x 7 expression producers and 1 type producer are covered by 449 generated goldens, and the sweep covers every value the valid corpus builds. (3) CRASH GUARDS: 18 of the 54 sinks are proven ONLY because blinding them crashes or hangs the builder (an assert, a UBSan report, a self-check failure); that shows the guard holds the builder up, not that it keeps a wrong diagnostic away, and they are printed as such by `python3 tools/nocascade_prove.py --report`. (4) MUTED SUBTREES: a real mistake inside the target of a non-assignable assignment (`take(nope) = 1;`) is muted on purpose and is reported only once the target is a place (the muted-target goldens pin exactly that); this is register entry C11, not a pass.
 - **Promise:** `docs/history/TYPED_IR.md @6b3f537:140` "plus a no-cascade golden for each poisoning path."
 - **Where it stands:** `tools/audit_ir_poison.py:138` "(this is not a no-cascade proof)"
 - **Owner:** Claude Code (work); Bryden (approval)
@@ -221,6 +221,16 @@ Each entry's **Trigger-id** is one of the ids below, in the order they fall due.
 - **Trigger:** The post-m2-ir-v0 fix-it pass (collect the uses of declarations in a pass that does not stop at a declaration error)
 - **Trigger-id:** `post-m2-ir-v0`
 
+### C11 - A mistake inside the target of a non-assignable assignment is not reported until the target is a place
+
+- **Status:** OPEN
+- **Reason:** PROPOSED by Claude Code at the batch D STOP (2026-10-27), awaiting Bryden's approval or the full fix. Audit finding 2, option B (step 17c): `take(nope) = 1;` reports E0270 at the target and checks the target with the diagnostics muted (`ir_body.c` `check_muted`) so its calls still count toward recursion and its names are still uses; the unknown name inside is a second, independent mistake that is NOT reported until the first is fixed. Proven by 21 goldens (`tests/nocascade/Stmt_assign_stmt_target__muted_*`) whose output is the E0270 alone and on which the unmuted builder reports more. Decision D5 says an input has as many diagnostics as independent mistakes; this is one the builder withholds. The full fix: check the target with diagnostics on and without blaming its type (the call edges and name uses are recorded either way), which makes the 21 goldens report two diagnostics each.
+- **Promise:** `docs/M2_PLAN.md:717` "Anything else"
+- **Where it stands:** `tools/mannac/ir_body.c:164` "Checks `e` for its resolved names and its calls only"
+- **Owner:** Claude Code (work); Bryden (approval pending)
+- **Trigger:** The post-m2-ir-v0 fix-it pass, or at once if Bryden asks for the full fix at the batch D STOP
+- **Trigger-id:** `post-m2-ir-v0`
+
 ### C6 - The audit repros are not run by CI
 
 - **Status:** CLOSED (2026-10-25, ci.yml run 40166779034 on 3258f9d)
@@ -236,7 +246,7 @@ Each entry's **Trigger-id** is one of the ids below, in the order they fall due.
 - **Status:** CLOSED (2026-10-24, step 19 batch 3 and step 20a)
 - **Reason:** `make test-e0261-exhaustive` and `make test-rename-property` printed their counts and asserted only 'no violation', so a generator that silently shrank passed. Done in 19g/19h (both compare their whole report with `tests/e0261_exhaustive.expected` and `tests/rename_property.expected`) and in 20a (`make test-ratchet` ratchets the numbers in those files, the golden, fix-case and repro counts and the memory-stress case count).
 - **Promise:** `CLAUDE.md:160` "Rule: no behavior change without a test."
-- **Where it stands:** `Makefile:324` "@diff -u tests/e0261_exhaustive.expected"
+- **Where it stands:** `Makefile:327` "@diff -u tests/e0261_exhaustive.expected"
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** Step 20 (every generated-test count is asserted in the Makefile/CI); done
 - **Trigger-id:** `step-20`
@@ -254,7 +264,7 @@ Each entry's **Trigger-id** is one of the ids below, in the order they fall due.
 ### C9 - E0261: two un-annotated lets whose fixes meet in one operator get no fix
 
 - **Status:** OPEN
-- **Reason:** `let r = a + b; let s = a + b; return r + s;` has two E0261 whose fixes would both be right (each local becomes u32, `r + s` agrees), but a binary operator with two different waiting fixes withdraws both (step 19c-4), so neither is offered. A missed fix, not a wrong one.
+- **Reason:** `let r = a + b; let s = a + b; return r + s;` has two E0261 whose fixes would both be right (each local becomes u32, `r + s` agrees), but a binary operator with two different waiting fixes withdraws both (step 19c-4), so neither is offered. A missed fix, not a wrong one. LEAD found in step 21 (not investigated): `ir_expr.c` `accept_int_pending` withdraws a waiting fix when the new type is not an integer (a conversion operand, an index, a slice bound); since D1 (a comparison keeps its bool type) the self-check may accept that fix, so the withdrawal may be a missing fix too. Look at it in this pass, with the self-check as the judge.
 - **Promise:** `docs/MANNA_PRINCIPLES.md:22` "Fix hints are machine-applicable edits"
 - **Where it stands:** `tests/ir_fix/fix_e0261_two_lets_met_in_one_operator_have_no_fix_yet.mn:5` "    return r + s;"
 - **Owner:** Claude Code (work); Bryden (approval, 2026-10-24)
