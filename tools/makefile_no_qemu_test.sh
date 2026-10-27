@@ -6,15 +6,23 @@ cd "$(dirname "$0")/.."
 fail=0
 check() { if [ "$2" = ok ]; then echo "PASS: $1"; else echo "FAIL: $1"; fail=1; fi; }
 
-# a PATH of the system directories only: it has make, the shell and dirname, and (checked below) no qemu-system-x86_64
-sys_path=/usr/bin:/bin
+# A PATH that holds every tool of the system directories EXCEPT qemu-system-x86_64, so the test runs the same on every machine, also where QEMU is installed in /usr/bin
+# (Linux packages, Homebrew's prefix on an Intel Mac): a directory of symlinks, one per executable of /usr/bin and /bin, skipping any qemu-system-*.
 bin=$(mktemp -d)
 trap 'rm -rf "$bin"' EXIT
-if PATH="$sys_path" command -v qemu-system-x86_64 >/dev/null; then echo "FAIL: qemu-system-x86_64 is in $sys_path: this test cannot show the no-QEMU case"; exit 1; fi
-if env -i PATH="$sys_path" make -n check-batch-cap >"$bin/out" 2>"$bin/err"; then check "make -n with no QEMU on PATH succeeds" ok; else check "make -n with no QEMU on PATH succeeds" no; fi
+mkdir "$bin/path"
+for d in /usr/bin /bin; do
+    for f in "$d"/*; do
+        n=${f##*/}
+        case "$n" in qemu-system-*) continue;; esac
+        [ -e "$bin/path/$n" ] || ln -s "$f" "$bin/path/$n" 2>/dev/null
+    done
+done
+if PATH="$bin/path" command -v qemu-system-x86_64 >/dev/null; then echo "FAIL: qemu-system-x86_64 is still on the simulated PATH: this test cannot show the no-QEMU case"; exit 1; fi
+if env -i PATH="$bin/path" make -n check-batch-cap >"$bin/out" 2>"$bin/err"; then check "make -n with no QEMU on PATH succeeds" ok; else check "make -n with no QEMU on PATH succeeds" no; fi
 if [ ! -s "$bin/err" ]; then check "... and prints nothing on stderr" ok; else check "... and prints nothing on stderr ($(head -c 80 "$bin/err"))" no; fi
 
-# a fake qemu in /x/y/bin: the prefix is /x/y
+# a fake qemu in /x/y/bin: the prefix is /x/y (this one also works where a real QEMU exists: the fake comes first on PATH)
 fake=$(mktemp -d)
 mkdir -p "$fake/y/bin"
 printf '#!/bin/sh\n' >"$fake/y/bin/qemu-system-x86_64"

@@ -39,15 +39,31 @@ def _gh(args, root=None):
         return None, "gh %s printed no JSON: %s" % (" ".join(args[:2]), r.stdout[:100])
 
 
+def _bookkeeping(name):
+    """the steps GitHub adds around a job's own: they conclude `success` even when nothing of the job ran"""
+    return name == "Set up job" or name == "Complete job" or name.startswith("Post ")
+
+
 def ran_to_a_conclusion(jobs):
-    """True if some step of some job actually executed and finished (success or failure). A run that GitHub refused to start (billing, a runner outage) concludes
-    `failure` with jobs that have no steps at all, and a cancelled run's steps are cancelled or skipped: neither says anything about the code."""
-    return any(st.get("conclusion") in ("success", "failure") for j in jobs for st in j.get("steps", []))
+    """True if, in some job, a step AFTER the checkout actually executed and finished (success or failure). A run GitHub refused to start (billing, a runner outage)
+    concludes `failure` with jobs that have no steps; a run whose checkout failed has a successful "Set up job" and nothing after the failed checkout; a cancelled
+    run's steps are cancelled or skipped: none of them says anything about the code. The bookkeeping steps (Set up job, Post ..., Complete job) never count; the checkout
+    step itself (`Run actions/checkout...`) does not either. A job with no checkout step counts any step of its own."""
+    for j in jobs:
+        work = [st for st in j.get("steps", []) if not _bookkeeping(st.get("name", ""))]
+        after = work
+        for i, st in enumerate(work):
+            if st.get("name", "").startswith("Run actions/checkout"):
+                after = work[i + 1:]
+                break
+        if any(st.get("conclusion") in ("success", "failure") for st in after):
+            return True
+    return False
 
 
 def last_run_base(root=None, limit=30):
     """(sha, message): the head of the newest ci.yml run on main whose jobs RAN to a conclusion, green OR red; or (None, why).
-    Skipped: a run still going, a cancelled one, a skipped one, and one that never started (conclusion failure, no step ever ran: the billing block of run 40546449691).
+    Skipped: a run still going, a cancelled one, a skipped one, and one that never started (conclusion failure, no step after the checkout ever ran: the billing block of run 40546449691, or a checkout that failed).
     A red run is a valid base because the batch cap counts what the push adds to the history Bryden has already seen run, not what passed; the steps of a red run were
     reported and are not new work."""
     runs, why = _gh(["run", "list", "--workflow", "ci.yml", "--branch", "main", "--status", "completed", "-L", str(limit), "--json", "databaseId,headSha,conclusion"], root)

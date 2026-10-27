@@ -96,10 +96,20 @@ def run_json(rid, sha, conclusion):
     return '{"databaseId":%s,"headSha":"%s","conclusion":"%s"}' % (rid, sha, conclusion)
 
 
-RAN_OK = '{"jobs":[{"steps":[{"conclusion":"success"},{"conclusion":"success"}]}]}'
-RAN_RED = '{"jobs":[{"steps":[{"conclusion":"success"},{"conclusion":"failure"},{"conclusion":"skipped"}]}]}'
+def steps_json(*pairs):
+    return '{"jobs":[{"steps":[%s]}]}' % ",".join('{"name":"%s","conclusion":"%s"}' % p for p in pairs)
+
+
+SETUP = ("Set up job", "success")
+CHECKOUT_OK = ("Run actions/checkout@v4", "success")
+POST = [("Post Run actions/checkout@v4", "success"), ("Complete job", "success")]
+RAN_OK = steps_json(SETUP, CHECKOUT_OK, ("Run make test-lexer", "success"), ("Run make test-parser", "success"), *POST)
+RAN_RED = steps_json(SETUP, CHECKOUT_OK, ("Run make test-lexer", "success"), ("Run make check-batch-cap", "failure"), ("Run make all", "skipped"), *POST)
 NEVER = '{"jobs":[{"steps":[]},{"steps":[]}]}'                                   # the billing block: failure, jobs with no steps
-CANCELLED_STEPS = '{"jobs":[{"steps":[{"conclusion":"cancelled"},{"conclusion":"skipped"}]}]}'
+CANCELLED_STEPS = steps_json(SETUP, CHECKOUT_OK, ("Run make test-lexer", "cancelled"), ("Run make test-parser", "skipped"), *POST)
+CHECKOUT_FAILED = steps_json(SETUP, ("Run actions/checkout@v4", "failure"), ("Run make test-lexer", "skipped"), *POST)   # Set up job succeeded, nothing after the failed checkout ran
+CHECKOUT_ONLY = steps_json(SETUP, CHECKOUT_OK, ("Run make test-lexer", "skipped"), *POST)                                  # the checkout worked and then nothing was run
+NO_CHECKOUT_JOB = steps_json(SETUP, ("Run make test-lexer", "success"), *POST)                                              # a job with no checkout: its own steps count
 
 
 def base_of(runs, views=None, view_rc=0):
@@ -130,6 +140,15 @@ b, why = base_of("[%s,%s]" % (run_json(2, sha2, "failure"), run_json(1, sha, "ca
 check("every run cancelled or never started: no base (the caller fails)", b is None and "no ci.yml run" in why)
 b, why = base_of("[]")
 check("no runs at all: no base", b is None)
+b, why = base_of("[%s,%s]" % (run_json(2, sha2, "failure"), run_json(1, sha, "success")), {"2": CHECKOUT_FAILED, "1": RAN_OK})
+check("a run whose checkout FAILED (Set up job succeeded, nothing after the checkout ran) did not run: skipped", b == sha)
+b, why = base_of("[%s,%s]" % (run_json(2, sha2, "failure"), run_json(1, sha, "success")), {"2": CHECKOUT_ONLY, "1": RAN_OK})
+check("a checkout that worked and then nothing else ran did not run either", b == sha)
+b, why = base_of("[%s,%s]" % (run_json(2, sha2, "failure"), run_json(1, sha, "success")), {"2": NO_CHECKOUT_JOB, "1": RAN_OK})
+check("a job with no checkout step counts its own steps (the bookkeeping steps never count)", b == sha2)
+check("ran_to_a_conclusion: one job that ran among jobs that did not is enough", cb.ran_to_a_conclusion(
+    [{"steps": [{"name": "Set up job", "conclusion": "success"}, {"name": "Run actions/checkout@v4", "conclusion": "failure"}]},
+     {"steps": [{"name": "Set up job", "conclusion": "success"}, {"name": "Run actions/checkout@v4", "conclusion": "success"}, {"name": "Run make x", "conclusion": "failure"}]}]))
 b, why = base_of("[%s]" % run_json(1, sha, "success"), {"1": RAN_OK}, view_rc=1)
 check("gh run view failing: no base, not a guess", b is None and "failed" in why)
 b, why = base_of("[%s]" % run_json(1, "zz", "success"), {"1": RAN_OK})
