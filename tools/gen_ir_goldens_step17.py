@@ -19,16 +19,17 @@ if __name__ == "__main__":
     L = ["manna v0;", "fn f(v: u8) {", "    let x: [4294967296]u8 = [v; 4294967296];", "}"]
     g.errors("one_error_let_oversized_annotation_with_a_literal", L, [e(L, 3, "[4294967296]u8", "E0222", big)])
 
-    # Finding 2: the target of a non-assignable assignment is checked muted. Its calls still count toward recursion (E0235), a cycle through
-    # one included; nothing else in it is reported (one mistake, one error).
+    # Finding 2: the target of a non-assignable assignment still counts its calls toward recursion (E0235), a cycle through one included. (Until C11, Bryden 2026-10-27,
+    # the target was checked muted and nothing else in it was reported; it is now checked with diagnostics on, below.)
     rec, notlv = "recursion is not allowed in v0", "can't assign to this expression"
     L = ["manna v0;", "fn f() {", "    f() = 1;", "}", "fn a() {", "    b() = 1;", "}", "fn b() {", "    a();", "}"]
     g.errors("assign_target_calls_count_toward_recursion", L, [e(L, 3, "f()", "E0270", notlv), e(L, 6, "b()", "E0270", notlv),
         e(L, 3, "f()", "E0235", rec), e(L, 6, "b()", "E0235", rec)])
-    # An unknown function and a wrong argument count inside the target are not reported; the errors after the assignment are (the mute is lowered).
+    # An unknown function and a wrong argument count inside the target are reported beside the E0270 (C11); so are the errors after the assignment. (The golden keeps its
+    # name: renaming a golden is a removed path to the ratchet.)
     L = ["manna v0;", "fn g(x: u8) {", "}", "fn f(x: u8) {", "    g(x) = 3;", "    nope(x) = 1;", "    g(x, x) = 3;", "    let y: u8 = nope;", "    let z: u8 = true;", "}"]
     g.errors("assign_target_is_silent_but_later_errors_still_print", L, [e(L, 5, "g(x)", "E0270", notlv), e(L, 6, "nope(x)", "E0270", notlv),
-        e(L, 7, "g(x, x)", "E0270", notlv), e(L, 8, "nope", "E0230", "unknown name 'nope'"), e(L, 9, "true", "E0223", "type mismatch: expected u8, found bool")])
+        e(L, 6, "nope", "E0232", "unknown function 'nope'"), e(L, 7, "g(x, x)", "E0270", notlv), e(L, 7, "g(x, x)", "E0233", "'g' takes 1 argument, found 2"), e(L, 8, "nope", "E0230", "unknown name 'nope'"), e(L, 9, "true", "E0223", "type mismatch: expected u8, found bool")])
 
     # Finding 9: a size computation that really multiplies. The inner array is 65536 bytes, within the limit; the outer is 2^48 of them, 2^64
     # bytes, which wraps to 0 if the multiplication is done in u64 (size_computation_overflowing_u64 never gets that far: its inner array is

@@ -15,12 +15,6 @@ fn f(c: bool) {
     let a9: u8 = true;
     let a10: u8 = true;
     let a11: u8 = true;
-    let a12: u8 = true;
-    let a13: u8 = true;
-    let a14: u8 = true;
-    let a15: u8 = true;
-    let a16: u8 = true;
-    let a17: u8 = true;
     while c {
         if c {
             g(nope1, true + 1, P(q: 1).z, [1, 2][7..x]) = g(1);

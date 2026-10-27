@@ -91,17 +91,26 @@ for p in progs:
     line = p["lines"][ln - 1]
     prod = next(x for x in gen.EXPR_PRODUCERS + gen.TYPE_PRODUCERS if x[0] == p["producer"])
     if p in muted:
-        # a muted-target program (step 21i): the one diagnostic is E0270 at the first token of the target, the line's first character after the indent; the producer sits INSIDE the target
-        if " E0270 " not in p["diags"][0] or col != len(line) - len(line.lstrip()) + 1 or line.find(prod[1]) + 1 <= col:
+        # a bad-assignment-target program (step 21i, C11): E0270 at the first token of the target (the line's first character after the indent) and, unless the combination is
+        # listed as one-mistake, the producer's own diagnostic second, inside the target
+        two = (p["variant"], p["producer"]) not in gen.ONE_MISTAKE
+        e270 = p["diags"][0].split(" ")
+        if e270[1] != "E0270" or int(e270[0].split(":")[1]) != len(line) - len(line.lstrip()) + 1 or line.find(prod[1]) + 1 <= int(e270[0].split(":")[1]) or len(p["diags"]) != (2 if two else 1):
             bad.append(p["name"])
+        elif two:
+            pl, pc = [int(x) for x in p["diags"][1].split(" ")[0].split(":")]
+            want = line.find(prod[1]) + 1 + prod[2] - (1 if p["variant"] == "muted_paren" and p["producer"] in gen.PAREN_IS_THE_EXPRESSION else 0)
+            if pl != ln or pc != want or p["diags"][1].split(" ")[1] != prod[3]:
+                bad.append(p["name"])
         continue
     # the column the generator computed is where the producer's diagnostic starts INSIDE the producer's text, found independently here
     if line.find(prod[1]) < 0 or line.find(prod[1]) + 1 + prod[2] != col:
         bad.append(p["name"])
 check("the expected column is the producer's own, computed from where its text went (%d programs checked)" % len(progs), not bad)
-check("the muted-target programs (step 21i): every shape x every expression producer, each reporting only E0270 at the target", len(muted) == len(gen.MUTED_TARGETS) * len(gen.EXPR_PRODUCERS))
+check("the muted-target programs (step 21i): every shape x every expression producer", len(muted) == len(gen.MUTED_TARGETS) * len(gen.EXPR_PRODUCERS))
 check("no program holds two holes or an unreplaced marker", all("@E@" not in "\n".join(p["lines"]) for p in progs))
-check("every program is a single-mistake program (INDEX says 1)", all(p["mistakes"] == 1 and len(p["diags"]) == 1 for p in progs))
+check("every program is a single-mistake program (INDEX says 1), except the bad-assignment-target ones, which hold E0270 and the mistake inside the target",
+      all(p["mistakes"] == len(p["diags"]) and (p["mistakes"] == 1 or p in muted) for p in progs) and sum(p["mistakes"] == 2 for p in progs) == len(muted) - len(gen.ONE_MISTAKE))
 
 # written files
 out = tempfile.mkdtemp(prefix="nc_out_")
@@ -112,6 +121,10 @@ try:
     first = open(os.path.join(out, progs[0]["name"] + ".ir")).read()
     check("the expected .ir is the ERRORS header and the intended diagnostics", first == "ERRORS:\n" + progs[0]["diags"][0] + "\n")
     check("the INDEX has one row per golden plus the header comment", len(open(os.path.join(out, "INDEX.tsv")).read().strip().split("\n")) == len(progs) + 1)
+    side = sorted(f for f in files if f.endswith(".mistakes"))
+    check("a .mistakes sidecar is written exactly for the programs with more than one mistake, holding that number (read by the ablation proof and check_generated)",
+          side == sorted(p["name"] + ".mistakes" for p in progs if p["mistakes"] != 1) and len(side) > 0
+          and all(open(os.path.join(out, f)).read() == "2\n" for f in side))
     out2 = tempfile.mkdtemp(prefix="nc_out2_")
     gen.write(out2)
     same = all(open(os.path.join(out, f), "rb").read() == open(os.path.join(out2, f), "rb").read() for f in files)

@@ -161,24 +161,16 @@ static bool lvalue_shape(const Expr *e) {
     }
 }
 
-/* Checks `e` for its resolved names and its calls only: the call edges (so a call in it still counts toward recursion, E0235) and
- * the name uses (so a rename reaches them) are recorded, and nothing is reported. The one place that raises st->muted; it lowers it
- * on the single path out (an unwind to ir_build resets it there). */
-static IR_NOINLINE void check_muted(BodyCtx *bc, const Expr *e) {
-    bc->st->muted++;
-    ir_check_silent(bc, e);
-    bc->st->muted--;
-}
-
 static IR_NOINLINE IrStmt *build_assign(BodyCtx *bc, const Stmt *s) {
     IrState *st = bc->st;
     const Expr *target = s->as.assign_stmt.target;
     const Expr *value = s->as.assign_stmt.value;
     if (!lvalue_shape(target)) {
         ir_error(st, diag_ir_not_assignable(target->span));
-        /* The target is not blamed for anything else (one mistake, one error), but its calls still count toward
-         * recursion and its names are still uses. The value is checked for its own mistakes, against no type. */
-        check_muted(bc, target);
+        /* The target is blamed for being no place, and for nothing else about its type; its OWN mistakes (an unknown name in it) are independent mistakes and are
+         * reported beside the E0270 (step 21i, C11: Bryden 2026-10-27), and its calls still count toward recursion and its names are still uses. The value is
+         * checked for its own mistakes, against no type. */
+        ir_check_silent(bc, target);
         ir_check_silent(bc, value);
         return ir_stmt_assign(st, s->span, ir_expr_int(st, target->span, ir_type_error(st), 0),
                               ir_expr_int(st, value->span, ir_type_error(st), 0));

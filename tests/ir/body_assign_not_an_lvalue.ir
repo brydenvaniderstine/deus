@@ -1,11 +1,16 @@
 ERRORS:
 5:5 E0270 can't assign to this expression
 6:5 E0270 can't assign to this expression
+6:5 E0233 'g' takes 0 arguments, found 1
 7:5 E0270 can't assign to this expression
 8:5 E0270 can't assign to this expression
+8:6 E0225 cannot infer the type of this integer literal; annotate it
 9:5 E0270 can't assign to this expression
 10:5 E0270 can't assign to this expression
 11:5 E0270 can't assign to this expression
 12:5 E0270 can't assign to this expression
+12:5 E0252 can't index/slice type u8
 13:5 E0270 can't assign to this expression
+13:5 E0233 'g' takes 0 arguments, found 1
+13:5 E0226 a 'unit' value can't be used here
 14:5 E0270 can't assign to this expression

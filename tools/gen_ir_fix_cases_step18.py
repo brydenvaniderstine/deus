@@ -49,7 +49,9 @@ if __name__ == "__main__":
     L = ["manna v0;", "struct P {", "    x: u8,", "}", "fn f() -> u8 {", "    let myP: P = P(x: 1);", "    (myP).x = 2;", "    (myP)[0] = 3;", "    return myP.x;", "}"]
     F = rename(L, {"myP": "my_p"})
     write("fix_rename_keeps_the_parentheses_of_a_field_and_an_index_target", L, F,
-          [g.err(F, 7, "(my_p).x", "E0270", "can't assign to this expression"), g.err(F, 8, "(my_p)[0]", "E0270", "can't assign to this expression")])
+          [g.err(F, 7, "(my_p).x", "E0270", "can't assign to this expression"), g.err(F, 8, "(my_p)[0]", "E0270", "can't assign to this expression"),
+           # C11 (Bryden 2026-10-27): the target is checked with diagnostics on, so indexing a struct, which is a mistake of its own, is reported beside the E0270
+           g.err(F, 8, "(my_p)[0]", "E0252", "can't index/slice type P")])
     L = ["manna v0;", "fn doIt() -> u8 {", "    return 1;", "}", "fn g() -> u8 {", "    let myVar: u8 = 1;", "    ( ( myVar ) ) = 2;", "    let x: u8 = ( myVar );", "    let y: u8 = (doIt);", "    return ((myVar));", "}"]
     F = rename(L, {"myVar": "my_var", "doIt": "do_it"})
     write("fix_rename_keeps_nested_and_spaced_parentheses", L, F,

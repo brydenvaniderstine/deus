@@ -1,3 +1,3 @@
-rename property test: 2500 random programs, 2434 with naming errors, fixes changed 1618 (8823 identifiers renamed), 816 left unchanged; no new error, no use resolves differently
+rename property test: 2500 random programs, 2434 with naming errors, fixes changed 1592 (8534 identifiers renamed), 842 left unchanged; no new error, no use resolves differently
 rename property test, structs/fields/types: 2500 random programs, 2499 with naming errors, fixes changed 1355 (13094 identifiers renamed), 1144 left unchanged; no new error, every spelling resolves as before
   programs with E0220 (unknown type) 1473, E0232 (unknown callee) 944, E0240 (positional construction) 561, E0242 (unknown field) 932, E0244 (field given twice) 295, E0210 (duplicate top-level) 395

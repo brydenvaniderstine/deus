@@ -2,5 +2,5 @@ manna v0;
 fn f() {
     let my_a: u8 = 0;
     let my_b: u8 = 0;
-    g(zz, zz, zz, zz, zz, zz, zz, zz, zz, zz, zz, zz, zz, zz, zz, zz, zz, zz, zz, zz, zz, zz, zz, zz, zz, zz, zz, zz, zz, zz, zz, zz, zz, zz, zz, zz, zz, zz, zz, zz) = my_a + my_b;
+    g(zz, zz, zz, zz, zz, zz, zz, zz, zz, zz, zz, zz) = my_a + my_b;
 }

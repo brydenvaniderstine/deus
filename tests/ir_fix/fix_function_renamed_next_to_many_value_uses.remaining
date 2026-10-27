@@ -1,2 +1,15 @@
 ERRORS:
 6:5 E0270 can't assign to this expression
+6:5 E0232 unknown function 'g'
+6:7 E0231 'do_it' is a function, not a value
+6:14 E0231 'do_it' is a function, not a value
+6:21 E0231 'do_it' is a function, not a value
+6:28 E0231 'do_it' is a function, not a value
+6:35 E0231 'do_it' is a function, not a value
+6:42 E0231 'do_it' is a function, not a value
+6:49 E0231 'do_it' is a function, not a value
+6:56 E0231 'do_it' is a function, not a value
+6:63 E0231 'do_it' is a function, not a value
+6:70 E0231 'do_it' is a function, not a value
+6:77 E0231 'do_it' is a function, not a value
+6:84 E0231 'do_it' is a function, not a value

@@ -138,7 +138,7 @@ if __name__ == "__main__":
     # ---------- element assignment ----------
     L = ["manna v0;", "fn f(a: [2]u8, n: u8, b: bool) {", "    a[0] = true;", "    a[b] = 1;", "    n[0] = 1;", "    a[0..1] = a;", "    [1, 2][0] = 3;", "    a[0] = 300;", "}"]
     g.errors("index_assignment_errors", L, [e(L, 3, "true", "E0223", mismatch("u8", "bool")), e(L, 4, "b", "E0253", notint("bool")), e(L, 5, "n", "E0252", noindex("u8")),
-        e(L, 6, "a[0..1]", "E0270", notassign), e(L, 7, "[1, 2][0]", "E0270", notassign), e(L, 8, "300", "E0224", "integer literal 300 does not fit in u8")])
+        e(L, 6, "a[0..1]", "E0270", notassign), e(L, 7, "[1, 2][0]", "E0270", notassign), e(L, 7, "1", "E0225", infer), e(L, 8, "300", "E0224", "integer literal 300 does not fit in u8")])
 
     # ---------- pins for the mutation survivors (A07, A15, A22, A23) ----------
     L = ["manna v0;", "struct Q { x: u32, }", "fn f(a: [4]u32, q: [3]Q) {", "    let b = a[0..2];", "    let c = q[1..3];", "}"]

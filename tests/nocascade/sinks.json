@@ -285,23 +285,6 @@
    "atoms": [
     {
      "replace": "0",
-     "text": "bc->st->muted++"
-    },
-    {
-     "replace": "0",
-     "text": "bc->st->muted--"
-    }
-   ],
-   "file": "ir_body.c",
-   "function": "check_muted",
-   "id": "ir_body.c::check_muted::mute-site::0",
-   "role": "site",
-   "text": "bc->st->muted++"
-  },
-  {
-   "atoms": [
-    {
-     "replace": "0",
      "text": "st->muted++"
     },
     {
@@ -610,7 +593,6 @@
   "check_array_literal",
   "check_ident",
   "check_index_operand",
-  "check_muted",
   "construct_field",
   "construct_finish",
   "construct_shape_ok",

@@ -806,8 +806,9 @@ static void test_unimplemented(void) {
     pass("IR_UNIMPLEMENTED: only an ExprKind no case handles (a state the parser never produces) reaches it, no diagnostic, no module; real errors win; state reusable");
 }
 
-/* Audit finding 2: the target of a non-assignable assignment is checked muted (call edges and name uses, no diagnostics). The mute
- * is lowered on the way out, and an unwind out of the muted subtree (here: the arena runs out inside it, E0201) leaves it at 0. */
+/* Audit finding 2, as C11 changed it (Bryden 2026-10-27): the target of a non-assignable assignment is checked with diagnostics ON and nothing blamed on its type: its own
+ * mistakes are reported beside the E0270, its calls still count toward recursion (E0235), and an unwind out of it (here: the arena runs out inside it, E0201) leaves the
+ * mute flag at 0 (it is only ever raised by the dry checks). */
 static void test_muted_target(void) {
     enum { N_ARGS = 8000 };
     size_t cap = 64 + N_ARGS * 3;
@@ -822,20 +823,20 @@ static void test_muted_target(void) {
     ir_state_init(&st, 64 << 10);
     IrModule *m = (IrModule *)0x1;
     assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_ERRORS && m == NULL);
-    assert(st.diags.len == 2 && strcmp(st.diags.items[0].code, "E0270") == 0 && strcmp(st.diags.items[1].code, "E0201") == 0);
+    assert(st.diags.len == 3 && strcmp(st.diags.items[0].code, "E0270") == 0 && strcmp(st.diags.items[1].code, "E0233") == 0 && strcmp(st.diags.items[2].code, "E0201") == 0);
     assert(st.muted == 0);
     ir_state_destroy(&st);
     parse_done();
     free(src);
-    /* Without the unwind: a bad target with an error inside it reports the E0270 only, and the next statement's error is not lost. */
+    /* Without the unwind: a bad target with an error inside it reports the E0270 AND the error inside it (C11), and the next statement's error is not lost. */
     parse_src("manna v0;\nfn f() {\n    nope(1) = 1;\n    let x: u8 = true;\n}\n");
     assert(g_ps.diags.len == 0);
     ir_state_init(&st, 1 << 20);
     assert(ir_build(&st, &g_ps.diags, &g_items, &m) == IR_ERRORS);
-    assert(st.diags.len == 2 && strcmp(st.diags.items[0].code, "E0270") == 0 && strcmp(st.diags.items[1].code, "E0223") == 0 && st.muted == 0);
+    assert(st.diags.len == 3 && strcmp(st.diags.items[0].code, "E0270") == 0 && strcmp(st.diags.items[1].code, "E0232") == 0 && strcmp(st.diags.items[2].code, "E0223") == 0 && st.muted == 0);
     ir_state_destroy(&st);
     parse_done();
-    pass("muted target: no diagnostic from inside it, the mute is lowered on every path (also after an E0201 unwind), later errors still print");
+    pass("bad assignment target: its own mistakes are reported beside the E0270 (C11), the mute flag stays 0 on every path (also after an E0201 unwind), later errors still print");
 }
 
 /* `fn f() -> T { return <expr>; }` for one case of the range matrix. Returns the build status;

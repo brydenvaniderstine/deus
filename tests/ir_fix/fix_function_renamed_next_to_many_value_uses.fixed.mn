@@ -3,5 +3,5 @@ fn do_it() -> u8 {
     return 1;
 }
 fn f() {
-    g(do_it, do_it, do_it, do_it, do_it, do_it, do_it, do_it, do_it, do_it, do_it, do_it, do_it, do_it, do_it, do_it, do_it, do_it, do_it, do_it, do_it, do_it, do_it, do_it, do_it, do_it, do_it, do_it, do_it, do_it, do_it, do_it, do_it, do_it, do_it, do_it, do_it, do_it, do_it, do_it) = 1;
+    g(do_it, do_it, do_it, do_it, do_it, do_it, do_it, do_it, do_it, do_it, do_it, do_it) = 1;
 }

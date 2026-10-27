@@ -9,25 +9,33 @@ notlv = "can't assign to this expression"
 mism = "type mismatch: expected u8, found bool"
 
 if __name__ == "__main__":
-    # A bad assignment target (muted) inside a loop and both branches of an `if`, with 18 real errors before it and 3 after: the 20-error cap
-    # (E0203) is reached while later targets are still to come. The mute is lowered whenever a target is done, and the cap unwinds cleanly.
+    # A bad assignment target inside a loop and both branches of an `if`: the 20-error cap (E0203) is reached on the SECOND target. Twelve real errors come first, then the
+    # first target (since C11, Bryden 2026-10-27, a target is checked with diagnostics on, so its own mistakes count): the E0270 and six mistakes of its own - the arity of
+    # `g` (4 arguments for 1), the unknown names `nope1` and `x`, `+` on a bool, the unknown function `P`, and the integer literals of `[1, 2]` that have no type - so 19
+    # errors, and the E0270 of the second target is the 20th. The cap unwinds cleanly there. (Before C11 the filler was 18 `let`s and the first target was silent; the six
+    # last filler `let`s went because the first target now supplies six real errors.)
     L = ["manna v0;", "fn g(x: u8) -> u8 {", "    return x;", "}", "fn f(c: bool) {"]
-    L += ["    let a%d: u8 = true;" % i for i in range(18)]
+    L += ["    let a%d: u8 = true;" % i for i in range(12)]
     L += ["    while c {", "        if c {", "            g(nope1, true + 1, P(q: 1).z, [1, 2][7..x]) = g(1);", "        } else {", "            (g(nope2)) = 4;",
           "        }", "    }", "    let z1: u8 = true;", "    let z2: u8 = true;", "    let z3: u8 = true;", "}"]
-    errs = [e(L, 6 + i, "true", "E0223", mism) for i in range(18)]
-    errs += [e(L, 26, "g(nope1, true + 1, P(q: 1).z, [1, 2][7..x])", "E0270", notlv), e(L, 28, "(g(nope2))", "E0270", notlv),
-             e(L, 28, "(g(nope2))", "E0203", "too many errors, stopping")]
+    t1 = "g(nope1, true + 1, P(q: 1).z, [1, 2][7..x])"
+    errs = [e(L, 6 + i, "true", "E0223", mism) for i in range(12)]
+    errs += [e(L, 20, t1, "E0270", notlv), e(L, 20, t1, "E0233", "'g' takes 1 argument, found 4"), e(L, 20, "nope1", "E0230", "unknown name 'nope1'"),
+             e(L, 20, "true + 1", "E0260", "operator '+' is not defined for bool"), e(L, 20, "P(q", "E0232", "unknown function 'P'"),
+             e(L, 20, "1, 2", "E0225", "cannot infer the type of this integer literal; annotate it"), e(L, 20, "x", "E0230", "unknown name 'x'"),
+             e(L, 22, "(g(nope2))", "E0270", notlv), e(L, 22, "(g(nope2))", "E0203", "too many errors, stopping")]
     g.errors("assign_target_muted_in_loops_and_branches_with_the_error_cap_reached", L, errs)
 
-    # The same targets where the cap is NOT reached: the mute is lowered after each, so the value on the right of the assignment, a later
-    # statement and a later `let` still report. Nothing inside a target does (`nope`, `h()` in a target are silent; `nope2`, `h()` as a value are not).
+    # The same kind of targets where the cap is NOT reached: the value on the right of the assignment, a later statement and a later `let` still report, and so does
+    # every mistake inside a target (C11): `nope` in the for step, the `true` argument of `g(true)`, the arity of `g(1, 2)` and the field of its u8 result.
     L = ["manna v0;", "fn g(x: u8) -> u8 {", "    return x;", "}", "fn f(c: bool) -> u8 {", "    for let i: u8 = 0; i < 3; g(i + nope) = 1 {",
          "        if c {", "            g(true) = nope2;", "        } else {", "            (g(1, 2)).x = h();", "        }", "    }",
          "    let y: u8 = true;", "    return y;", "}"]
     g.errors("assign_target_muted_in_a_for_step_and_both_branches_later_errors_print", L, [
-        e(L, 6, "g(i + nope)", "E0270", notlv), e(L, 8, "g(true)", "E0270", notlv), e(L, 8, "nope2", "E0230", "unknown name 'nope2'"),
-        e(L, 10, "(g(1, 2)).x", "E0270", notlv), e(L, 10, "h", "E0232", "unknown function 'h'"), e(L, 13, "true", "E0223", mism)])
+        e(L, 6, "g(i + nope)", "E0270", notlv), e(L, 6, "nope", "E0230", "unknown name 'nope'"), e(L, 8, "g(true)", "E0270", notlv), e(L, 8, "true", "E0223", mism),
+        e(L, 8, "nope2", "E0230", "unknown name 'nope2'"),
+        e(L, 10, "(g(1, 2)).x", "E0270", notlv), e(L, 10, "(g(1, 2))", "E0233", "'g' takes 1 argument, found 2"), e(L, 10, "(g(1, 2))", "E0251", "type u8 has no fields"),
+        e(L, 10, "h", "E0232", "unknown function 'h'"), e(L, 13, "true", "E0223", mism)])
 
     # An oversized `let` annotation in every position that uses the variable: assignment, element assignment, argument, length, slice,
     # construction field, conversion, unary, field access, condition, return, comparison. One E0222 per annotation; the variable's type is

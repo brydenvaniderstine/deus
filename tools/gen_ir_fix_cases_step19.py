@@ -10,14 +10,20 @@ e261 = lambda x, y: "operands have different types: %s and %s; convert one expli
 notlv = "can't assign to this expression"
 
 if __name__ == "__main__":
-    # ---- 19a (finding 1): uses of names that are not locals, in muted targets, while misnamed declarations are visible. The auditor's inputs
-    # (mem_min, mem_fn) are scaled down here and run at full size by `make test-ir-memory-stress`; the renames must still be offered.
-    L = ["manna v0;", "fn f() {", "    let myA: u8 = 0;", "    let myB: u8 = 0;", "    g(" + ", ".join(["zz"] * 40) + ") = myA + myB;", "}"]
+    # ---- 19a (finding 1): uses of names that are not locals, in bad targets, while misnamed declarations are visible. The auditor's inputs (mem_min, mem_fn) are scaled
+    # down here and run by `make test-ir-memory-stress`; the renames must still be offered. Since C11 (Bryden 2026-10-27) every use in a target is REPORTED, so the 20-error
+    # cap bounds how many uses one build can note: these cases hold 12 uses (the 40 of the muted days would stop the build at E0203 and offer no fix).
+    uses = 12
+    L = ["manna v0;", "fn f() {", "    let myA: u8 = 0;", "    let myB: u8 = 0;", "    g(" + ", ".join(["zz"] * uses) + ") = myA + myB;", "}"]
     F = rename(L, {"myA": "my_a", "myB": "my_b"})
-    write("fix_locals_renamed_next_to_many_uses_of_an_unknown_name", L, F, [g.err(F, 5, "g(" + ", ".join(["zz"] * 40) + ")", "E0270", notlv)])
-    L = ["manna v0;", "fn doIt() -> u8 {", "    return 1;", "}", "fn f() {", "    g(" + ", ".join(["doIt"] * 40) + ") = 1;", "}"]
+    t = "g(" + ", ".join(["zz"] * uses) + ")"
+    write("fix_locals_renamed_next_to_many_uses_of_an_unknown_name", L, F, [g.err(F, 5, t, "E0270", notlv), g.err(F, 5, "g", "E0232", "unknown function 'g'")] +
+          [g.err(F, 5, "zz", "E0230", "unknown name 'zz'", occ=i) for i in range(uses)])
+    L = ["manna v0;", "fn doIt() -> u8 {", "    return 1;", "}", "fn f() {", "    g(" + ", ".join(["doIt"] * uses) + ") = 1;", "}"]
     F = rename(L, {"doIt": "do_it"})
-    write("fix_function_renamed_next_to_many_value_uses", L, F, [g.err(F, 6, "g(" + ", ".join(["do_it"] * 40) + ")", "E0270", notlv)])
+    t = "g(" + ", ".join(["do_it"] * uses) + ")"
+    write("fix_function_renamed_next_to_many_value_uses", L, F, [g.err(F, 6, t, "E0270", notlv), g.err(F, 6, "g", "E0232", "unknown function 'g'")] +
+          [g.err(F, 6, "do_it", "E0231", "'do_it' is a function, not a value", occ=i) for i in range(uses)])
 
     # ---- 19b (finding 2): the inserted `T(` never joins the keyword before the operand (the applier adds a space). The auditor's k1-k4 and
     # `else if`. The fixed source is written with the space; the wrap itself is the ordinary one.

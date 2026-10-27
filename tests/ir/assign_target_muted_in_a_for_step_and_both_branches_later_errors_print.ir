@@ -1,7 +1,11 @@
 ERRORS:
 6:31 E0270 can't assign to this expression
+6:37 E0230 unknown name 'nope'
 8:13 E0270 can't assign to this expression
+8:15 E0223 type mismatch: expected u8, found bool
 8:23 E0230 unknown name 'nope2'
 10:13 E0270 can't assign to this expression
+10:13 E0233 'g' takes 1 argument, found 2
+10:13 E0251 type u8 has no fields
 10:27 E0232 unknown function 'h'
 13:17 E0223 type mismatch: expected u8, found bool

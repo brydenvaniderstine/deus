@@ -4,4 +4,5 @@ ERRORS:
 5:5 E0252 can't index/slice type u8
 6:5 E0270 can't assign to this expression
 7:5 E0270 can't assign to this expression
+7:6 E0225 cannot infer the type of this integer literal; annotate it
 8:12 E0224 integer literal 300 does not fit in u8

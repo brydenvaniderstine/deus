@@ -261,11 +261,14 @@ if __name__ == "__main__":
          "    g(x).y = 1;",
          "    (p).x = 1;",
          "}"]
-    errors("body_assign_not_an_lvalue", L, [err(L, 5, "1", "E0270", msg), err(L, 6, "g(x)", "E0270", msg),
-                                               err(L, 7, "u8(x)", "E0270", msg), err(L, 8, "[1, 2][0]", "E0270", msg),
+    # C11 (Bryden 2026-10-27): the target is checked with diagnostics ON, so a mistake of its own is reported beside the E0270 (arity, a literal array with no type, an
+    # index of an integer, a field of a unit value); nothing is blamed on the target's type.
+    errors("body_assign_not_an_lvalue", L, [err(L, 5, "1", "E0270", msg), err(L, 6, "g(x)", "E0270", msg), err(L, 6, "g(x)", "E0233", "'g' takes 0 arguments, found 1"),
+                                               err(L, 7, "u8(x)", "E0270", msg), err(L, 8, "[1, 2][0]", "E0270", msg), err(L, 8, "1", "E0225", "cannot infer the type of this integer literal; annotate it"),
                                                err(L, 9, "(a + b)", "E0270", msg), err(L, 10, "P(x: 1)", "E0270", msg),
-                                               err(L, 11, "(a)", "E0270", msg), err(L, 12, "a[0..2]", "E0270", msg),
-                                               err(L, 13, "g(x).y", "E0270", msg), err(L, 14, "(p).x", "E0270", msg)])
+                                               err(L, 11, "(a)", "E0270", msg), err(L, 12, "a[0..2]", "E0270", msg), err(L, 12, "a", "E0252", "can't index/slice type u8"),
+                                               err(L, 13, "g(x).y", "E0270", msg), err(L, 13, "g(x)", "E0233", "'g' takes 0 arguments, found 1"),
+                                               err(L, 13, "g(x)", "E0226", "a 'unit' value can't be used here"), err(L, 14, "(p).x", "E0270", msg)])
 
     # ---------- 7c: if and block scopes ----------
     def blk_span(L, open_ln, close_ln, open_occ_last=True, close_col=None):

@@ -216,7 +216,8 @@ prog = pp.load(REPO)
 man = prog.manifest()
 cands, missing = pp.audit_diff(man)
 check("real tree: the tool classifies every one of the audit's %d lines" % len(cands), missing == [])
-check("real tree: the muting sites are found: the recorder and the three that raise the flag", sorted((x["function"], x["role"]) for x in man["muting"]) == [("check_muted", "site"), ("group_fits", "site"), ("ir_assign_to_pending", "site"), ("ir_error", "recorder")])
+check("real tree: the muting sites are found: the recorder and the two dry checks that raise the flag (check_muted is gone since C11: a bad assignment target is checked with diagnostics on)",
+      sorted((x["function"], x["role"]) for x in man["muting"]) == [("group_fits", "site"), ("ir_assign_to_pending", "site"), ("ir_error", "recorder")])
 check("real tree: the sinks are found (%d)" % len(man["sinks"]), len(man["sinks"]) >= 30)
 check("real tree: every ir_error call site is an emitter with a diag_ir_ constructor",
       len(man["emitters"]) >= 45 and all(e["constructor"] for e in man["emitters"]))

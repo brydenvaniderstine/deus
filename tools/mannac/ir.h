@@ -84,7 +84,7 @@ typedef struct {
     Arena       *arena;
     DiagList     diags;
     int          error_count;
-    int          muted;       /* > 0: ir_error records nothing (a subtree checked only for its call edges and name uses); always 0 outside one call of ir_body.c:check_muted or ir_expr.c:group_fits */
+    int          muted;       /* > 0: ir_error records nothing (a dry check of a subtree); always 0 outside one call of ir_expr.c:group_fits or ir_assign_to_pending (the dry checks) */
     size_t       decl_diags_end; /* diagnostics before this index came from the declaration pass; set when the bodies are reached (the whole list if they never were) */
     bool         bodies_reached; /* the build got past the declaration pass (a naming error alone does not stop it) */
     size_t       muted_hits;  /* how many diagnostics ir_error dropped because muted > 0 (a dry check compares it before and after) */

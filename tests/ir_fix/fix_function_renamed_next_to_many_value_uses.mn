@@ -3,5 +3,5 @@ fn doIt() -> u8 {
     return 1;
 }
 fn f() {
-    g(doIt, doIt, doIt, doIt, doIt, doIt, doIt, doIt, doIt, doIt, doIt, doIt, doIt, doIt, doIt, doIt, doIt, doIt, doIt, doIt, doIt, doIt, doIt, doIt, doIt, doIt, doIt, doIt, doIt, doIt, doIt, doIt, doIt, doIt, doIt, doIt, doIt, doIt, doIt, doIt) = 1;
+    g(doIt, doIt, doIt, doIt, doIt, doIt, doIt, doIt, doIt, doIt, doIt, doIt) = 1;
 }

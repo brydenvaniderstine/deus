@@ -11,12 +11,12 @@ ERRORS:
 15:18 E0223 type mismatch: expected u8, found bool
 16:19 E0223 type mismatch: expected u8, found bool
 17:19 E0223 type mismatch: expected u8, found bool
-18:19 E0223 type mismatch: expected u8, found bool
-19:19 E0223 type mismatch: expected u8, found bool
-20:19 E0223 type mismatch: expected u8, found bool
-21:19 E0223 type mismatch: expected u8, found bool
-22:19 E0223 type mismatch: expected u8, found bool
-23:19 E0223 type mismatch: expected u8, found bool
-26:13 E0270 can't assign to this expression
-28:13 E0270 can't assign to this expression
-28:13 E0203 too many errors, stopping
+20:13 E0270 can't assign to this expression
+20:13 E0233 'g' takes 1 argument, found 4
+20:15 E0230 unknown name 'nope1'
+20:22 E0260 operator '+' is not defined for bool
+20:32 E0232 unknown function 'P'
+20:44 E0225 cannot infer the type of this integer literal; annotate it
+20:53 E0230 unknown name 'x'
+22:13 E0270 can't assign to this expression
+22:13 E0203 too many errors, stopping

@@ -1,2 +1,3 @@
 ERRORS:
 14:5 E0270 can't assign to this expression
+14:5 E0230 unknown name 'nope'
