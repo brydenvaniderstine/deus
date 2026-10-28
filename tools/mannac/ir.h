@@ -327,6 +327,10 @@ char *ir_apply_fixes(const char *src, size_t len, const DiagList *diags);
 /* The same, and the length of the result: the text may contain NUL bytes (a comment can hold any byte), so a caller that treats the result as bytes
  * must use this one; strlen of the plain variant truncates at the first NUL (the "--fixed NUL truncation" of register C3, found by the fuzz self-check). */
 char *ir_apply_fixes_n(const char *src, size_t len, const DiagList *diags, size_t *out_len);
+/* The same, and the edits that were applied, in source order: each replaced the bytes [a, b) of `src` with `new_len` bytes (a deletion has new_len 0, an insertion
+ * a == b), so a position of the old source maps to the new one (ir_fix_selfcheck). `*spans_out` is malloc'd; the caller frees it. */
+typedef struct { size_t a, b, new_len; } FixSpan;
+char *ir_apply_fixes_map(const char *src, size_t len, const DiagList *diags, size_t *out_len, FixSpan **spans_out, size_t *n_spans_out);
 
 /* The self-check (step 20f; docs/error_codes.md "Fix-it rules"). A fix-it the compiler offers must make the program better and change nothing else.
  * `orig` is a state whose ir_build just returned IR_ERRORS for `src`, a source the parser accepted (the gate: a file with parse diagnostics

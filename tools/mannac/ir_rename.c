@@ -285,7 +285,7 @@ void ir_edit_padding(const char *src, size_t len, size_t start, size_t end, cons
     *space_after = tl && end < len && ident_byte(text[tl - 1]) && ident_byte(src[end]);
 }
 
-char *ir_apply_fixes_n(const char *src, size_t len, const DiagList *diags, size_t *out_len) {
+char *ir_apply_fixes_map(const char *src, size_t len, const DiagList *diags, size_t *out_len, FixSpan **spans_out, size_t *n_spans_out) {
     size_t n = 0;
     for (size_t i = 0; i < diags->len; i++) if (diags->items[i].fix) n += (size_t)diags->items[i].fix->n_edits;
     Edit *edits = malloc((n ? n : 1) * sizeof(Edit));
@@ -306,6 +306,8 @@ char *ir_apply_fixes_n(const char *src, size_t len, const DiagList *diags, size_
     size_t cap = len + 1;
     for (size_t i = 0; i < n; i++) cap += strlen(edits[i].text) + 2; /* + a separating space on each side (ir_edit_padding) */
     char *out = malloc(cap + 1);
+    FixSpan *applied = spans_out ? malloc((n ? n : 1) * sizeof(FixSpan)) : NULL;
+    size_t n_applied = 0;
     size_t o = 0, pos = 0;
     for (size_t i = 0; i < n; i++) {
         size_t a = line_start[edits[i].span.start_line - 1] + (size_t)edits[i].span.start_col - 1;
@@ -316,10 +318,12 @@ char *ir_apply_fixes_n(const char *src, size_t len, const DiagList *diags, size_
         bool before, after;
         ir_edit_padding(src, len, a, b, edits[i].text, &before, &after);
         size_t tl = strlen(edits[i].text);
+        size_t o_start = o;
         if (before) out[o++] = ' ';
         memcpy(out + o, edits[i].text, tl);
         o += tl;
         if (after) out[o++] = ' ';
+        if (applied) applied[n_applied++] = (FixSpan){a, b, o - o_start};
         pos = b;
     }
     memcpy(out + o, src + pos, len - pos);
@@ -328,7 +332,12 @@ char *ir_apply_fixes_n(const char *src, size_t len, const DiagList *diags, size_
     free(edits);
     free(line_start);
     if (out_len) *out_len = o;
+    if (spans_out) { *spans_out = applied; *n_spans_out = n_applied; }
     return out;
+}
+
+char *ir_apply_fixes_n(const char *src, size_t len, const DiagList *diags, size_t *out_len) {
+    return ir_apply_fixes_map(src, len, diags, out_len, NULL, NULL);
 }
 
 char *ir_apply_fixes(const char *src, size_t len, const DiagList *diags) {

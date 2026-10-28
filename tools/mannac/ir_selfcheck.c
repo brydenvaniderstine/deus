@@ -8,8 +8,10 @@
 #include "parser.h"
 #include "parser_state.h"
 
-/* The fix-it self-check (typed-IR step 20f). See ir.h for the invariant. A diagnostic is identified by (line, code, message): a fix never
- * inserts a newline, so lines are stable, and columns shift on the line an edit touches. Messages quote names ('myFn'); a rename fix may change
+/* The fix-it self-check (typed-IR step 20f). See ir.h for the invariant. A diagnostic is identified by (line, code, message). A fix CAN change lines (the E0215
+ * fix deletes a whole attribute, a newline with it) and columns, so every position of an original diagnostic - its line, and any `at L:C` its message quotes
+ * (only E0210 does: diag_ir_duplicate_decl) - is mapped through the edits that were applied (ir_apply_fixes_map) before it is compared (step 22A, round-4 finding 1).
+ * Messages quote names ('myFn'); a rename fix may change
  * the quoted spelling in a message that mentions the name (the approved shape: a function used as a type stays E0220 with the new name). So a
  * re-check message matches an original one if it is equal except for names that an APPLIED rename renamed (the fix titles `rename 'old' to 'new'`
  * are the only source of the mapping), word by word with either spelling (names_match): nothing else about a message may differ. */
@@ -62,6 +64,60 @@ static bool names_match(const char *orig, const char *re, const Rename *rn, size
         }
     }
     return *p == '\0' && *q == '\0';
+}
+
+/* ---- positions: the old source's (line, column) -> the fixed source's, through the applied edits ---- */
+
+typedef struct {
+    const char     *src, *fixed;
+    size_t          len, flen;
+    const FixSpan  *sp;
+    size_t          n_sp;
+} PosMap;
+
+static size_t offset_of(const char *t, size_t len, int line, int col) {
+    size_t off = 0;
+    for (int l = 1; l < line && off < len; off++) if (t[off] == '\n') l++;
+    return off + (size_t)col - 1;
+}
+
+/* an offset inside a replaced or deleted range maps to where the replacement starts; an insertion at the offset itself shifts it */
+static size_t map_offset(const PosMap *m, size_t off) {
+    long delta = 0;
+    for (size_t i = 0; i < m->n_sp; i++) {
+        if (m->sp[i].b <= off) delta += (long)m->sp[i].new_len - (long)(m->sp[i].b - m->sp[i].a);
+        else if (m->sp[i].a <= off) return (size_t)((long)m->sp[i].a + delta);
+        else break;
+    }
+    return (size_t)((long)off + delta);
+}
+
+static void map_pos(const PosMap *m, int line, int col, int *nline, int *ncol) {
+    size_t off = map_offset(m, offset_of(m->src, m->len, line, col)), ls = 0;
+    int l = 1;
+    for (size_t i = 0; i < off && i < m->flen; i++) if (m->fixed[i] == '\n') { l++; ls = i + 1; }
+    *nline = l;
+    *ncol = (int)(off - ls) + 1;
+}
+
+/* the message with every `at L:C` mapped (a copy) */
+static char *map_message(const PosMap *m, const char *msg) {
+    size_t n = strlen(msg);
+    size_t cap = 4 * n + 32; /* "at 1:1" (6 bytes) becomes at most "at 2147483647:2147483647" (24) */
+    char *out = malloc(cap), *o = out;
+    for (const char *p = msg; *p;) {
+        int l, c, used = 0;
+        if (strncmp(p, "at ", 3) == 0 && sscanf(p + 3, "%d:%d%n", &l, &c, &used) == 2 && used > 0) {
+            int nl, nc;
+            map_pos(m, l, c, &nl, &nc);
+            o += snprintf(o, cap - (size_t)(o - out), "at %d:%d", nl, nc);
+            p += 3 + used;
+        } else {
+            *o++ = *p++;
+        }
+    }
+    *o = '\0';
+    return out;
 }
 
 static void key_free(Key *k, size_t n) {
@@ -148,8 +204,10 @@ char *ir_fix_selfcheck(const char *src, size_t len, const IrState *orig) {
     bool stopped = !orig->bodies_reached || has_code(od, "E0203") || has_code(od, "E0201");
 
     /* the fixed source, rebuilt with a fresh state */
-    size_t fixed_len = 0;
-    char *fixed = ir_apply_fixes_n(src, len, od, &fixed_len);
+    size_t fixed_len = 0, n_sp = 0;
+    FixSpan *sp = NULL;
+    char *fixed = ir_apply_fixes_map(src, len, od, &fixed_len, &sp, &n_sp);
+    PosMap pm = {src, fixed, len, fixed_len, sp, n_sp};
     char *why = NULL;
     static ParserState ps;   /* large: kept off the stack */
     NodeList items;
@@ -173,7 +231,9 @@ char *ir_fix_selfcheck(const char *src, size_t len, const IrState *orig) {
         size_t n_d1 = 0, n_b1 = 0;
         for (size_t i = 0; i < od->len; i++) {
             if (od->items[i].fix) continue;
-            Key k = {od->items[i].span.start_line, dup(od->items[i].code), dup(od->items[i].message), false};
+            int nl, nc;
+            map_pos(&pm, od->items[i].span.start_line, od->items[i].span.start_col, &nl, &nc);
+            Key k = {nl, dup(od->items[i].code), map_message(&pm, od->items[i].message), false};
             if (i < decl1) d1[n_d1++] = k;
             else b1[n_b1++] = k;
         }
@@ -206,6 +266,7 @@ char *ir_fix_selfcheck(const char *src, size_t len, const IrState *orig) {
     ir_state_destroy(&st);
     parser_state_destroy(&ps);
     free(fixed);
+    free(sp);
     for (size_t i = 0; i < n_rn; i++) {
         free(rn[i].old_name);
         free(rn[i].new_name);

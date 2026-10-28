@@ -2616,6 +2616,22 @@
    1,
    "a9c04d0bb311cb25"
   ],
+  "tests/ir_fix/fix_selfcheck_a_deleted_two_line_attribute_moves_a_rename_up_a_line.remaining": [
+   1,
+   "751fb7eec45817fd"
+  ],
+  "tests/ir_fix/fix_selfcheck_e0210_after_a_deleted_two_line_attribute.remaining": [
+   1,
+   "efe6172697df40b6"
+  ],
+  "tests/ir_fix/fix_selfcheck_e0210_on_the_line_where_a_two_line_attribute_ended.remaining": [
+   1,
+   "11e93dfcf0747a22"
+  ],
+  "tests/ir_fix/fix_selfcheck_e0210_quotes_a_position_that_a_deleted_attribute_moves.remaining": [
+   1,
+   "efe6172697df40b6"
+  ],
   "tests/ir_fix/fix_sibling_blocks_with_the_same_misnamed_local_and_an_unknown_name.remaining": [
    1,
    "a02c42f5182d19e1"
@@ -5964,8 +5980,8 @@
   "e0261_exhaustive.programs": 995456,
   "error_codes_documented": 55,
   "error_codes_with_fix": 8,
-  "generators": 25,
-  "ir_fix_cases": 131,
+  "generators": 26,
+  "ir_fix_cases": 135,
   "ir_goldens": 474,
   "lexer_goldens": 15,
   "memory_stress_cases": 8,
