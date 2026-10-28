@@ -3,13 +3,13 @@
 #
 # Usage: tools/ir_memory_stress.py <ir_dump>        (make test-ir-memory-stress)
 #
-# Each case is a small-to-medium program whose diagnostics are known by construction and whose use lists are large: value uses of
-# a name that is not a local (an unknown name, a misnamed function) while misnamed locals are visible, distinct unknown names, long
-# names, and 30,000 well-named locals. SINCE C11 (Bryden 2026-10-27) the target of a non-assignable assignment is checked with diagnostics ON,
-# so every use in it is reported and the 20-error cap bounds the number of uses one build can note (at step 19 a muted target noted 3,000 or
-# 150,000 silently): cases 1-6 keep their shape (the same names, the same misnamed declarations) with as many uses as fit under the cap, and
-# the bulk dimensions that remain reachable - 30,000 well-named locals (4, 8) and 20,000-character names (1, 7) - are kept at full size. At step 18 the bookkeeping that notes such a use converted every visible misnamed local's name
-# again per use (17 bytes per name byte, in the IR arena), so 5 KB reached E0201 ("input too large"); the arena use must be linear in
+# Each case is a small-to-large program whose diagnostics are known by construction and whose use lists are large. Cases 1-6 keep their bulk through VALID uses
+# (step 21i, D3: calls of a misnamed function and of well-named functions, next to misnamed locals), as many as the arena limits allow; cases 4, 7 and 8 have
+# 30,000 well-named locals or 20,000-character names. SINCE C11 (Bryden 2026-10-27) the target of a non-assignable assignment is checked with diagnostics ON, so a
+# use of a name that is not a local is always an error, and the 20-error cap bounds how many one build can note (at step 19 a muted target noted 3,000 or 150,000
+# silently). The path of step 18 that cost 17 bytes per name byte per use (ir_note_free_name, in the IR arena) runs ONLY for such a use, so cases 1-6 do not
+# discriminate against e45c0bc (they pass there too: measured in step 21i, D3); case 7 (long names, 5 errors) still does (E0201 there; case 8 guards collides(), step 19a-2, and passes there too). The limits a case hits are
+# named in its comment: the IR arena (16 MiB, E0201) or the parser's (16 MiB, E0110). At step 18, 5 KB reached E0201 ("input too large"); the arena use must be linear in
 # the input. Every case asserts the EXACT diagnostic codes (so no E0201, and no fix lost to an unwinding build) and a time bound.
 import subprocess, sys, os, tempfile, time, re
 
@@ -27,7 +27,7 @@ def codes(out):
     return re.findall(r"^\d+:\d+ (E\d{4}) ", out, re.M)
 
 
-def case(name, src, want, fixed_has=None, fixed_keeps=None):
+def case(name, src, want, fixed_has=None, fixed_keeps=None, fixed_count=None):
     p = os.path.join(tmp, name + ".mn")
     open(p, "w").write(src)
     r, dt = run([p])
@@ -37,6 +37,9 @@ def case(name, src, want, fixed_has=None, fixed_keeps=None):
     if ok and fixed_has is not None:
         r2, _ = run(["--fixed", p])
         ok = fixed_has in r2.stdout and (fixed_keeps is None or fixed_keeps in r2.stdout)
+        # every spelling of a renamed name must be renamed: the old spelling is gone and the new one stands exactly where the old ones stood
+        if ok and fixed_count is not None:
+            ok = r2.stdout.count(fixed_count[0]) == fixed_count[1]
     print(("PASS" if ok else "FAIL"), name, "%d bytes" % len(src), "%.2fs" % dt, "codes=%s" % ",".join(got[:8]) + ("..." if len(got) > 8 else ""))
     if not ok:
         print("  expected codes:", want[:8], "status", r.returncode, "stderr", r.stderr[:200], "time limit", TIME_LIMIT)
@@ -45,40 +48,42 @@ def case(name, src, want, fixed_has=None, fixed_keeps=None):
 
 tmp = tempfile.mkdtemp()
 
-# 1. the audit's mem_min.mn: two misnamed 2,000-character locals, then a bad target with 14 uses of an unknown name (300 before C11; the cap is 20 errors:
-# 2 naming errors + E0270 + the unknown function g + 14 = 18)
+# 1. the audit's mem_min.mn, with valid uses: two misnamed 2,000-character locals, then 300 calls of a well-named function (fn g)
 pad = "a" * 1996
-case("two_long_misnamed_locals_300_unknown_uses",
-     "manna v0;\nfn f() {\n    let loc0X%s: u8 = 0;\n    let loc1X%s: u8 = 0;\n    g(%s) = 1;\n}\n" % (pad, pad, ", ".join(["zz"] * 14)),
-     ["E0280", "E0280", "E0270", "E0232"] + ["E0230"] * 14, fixed_has="loc0_x" + pad)
+case("two_long_misnamed_locals_300_valid_uses",
+     "manna v0;\nfn g() -> u8 {\n    return 1;\n}\nfn f() {\n    let loc0X%s: u8 = 0;\n    let loc1X%s: u8 = 0;\n%s}\n" % (pad, pad, "    g();\n" * 300),
+     ["E0280", "E0280"], fixed_has="loc0_x" + pad)
 
-# 2. 14 misnamed locals, a bad target with 3 uses of an unknown name (18 misnamed locals and 3,000 uses before C11): 14 + E0270 + E0232 + 3 = 19 errors
-names = ["loc%dX%s" % (i, "a" * 500) for i in range(14)]
-case("eighteen_misnamed_locals_3000_unknown_uses",
-     "manna v0;\nfn f() {\n" + "".join("    let %s: u8 = 0;\n" % n for n in names) + "    g(%s) = 1;\n}\n" % ", ".join(["zz"] * 3),
-     ["E0280"] * 14 + ["E0270", "E0232"] + ["E0230"] * 3)
+# 2. 18 misnamed 500-character locals (E0280 each; 20 is the cap), then 3,000 calls of a well-named function
+names = ["loc%dX%s" % (i, "a" * 500) for i in range(18)]
+case("eighteen_misnamed_locals_3000_valid_uses",
+     "manna v0;\nfn g() -> u8 {\n    return 1;\n}\nfn f() {\n" + "".join("    let %s: u8 = 0;\n" % n for n in names) + "    g();\n" * 3000 + "}\n",
+     ["E0280"] * 18, fixed_has="loc17_x" + "a" * 500)
 
-# 3. the audit's mem_fn.mn: ONE misnamed 1,000-character function used as a value 15 times (1,100 before C11) in one bad target: E0280 + E0270 + E0232 + 15 E0231
+# 3. the audit's mem_fn.mn, with valid uses: ONE misnamed 1,000-character function CALLED 1,100 times (the audit used it as a value, which is an error);
+# every one of the 1,101 spellings must be renamed by the fix
 fname = "doIt" + "x" * 996
-case("one_misnamed_function_1100_value_uses",
-     "manna v0;\nfn %s() -> u8 {\n    return 1;\n}\nfn f() {\n    g(%s) = 1;\n}\n" % (fname, ", ".join([fname] * 15)),
-     ["E0280", "E0270", "E0232"] + ["E0231"] * 15, fixed_has="do_itx")
+case("one_misnamed_function_1100_valid_calls",
+     "manna v0;\nfn %s() -> u8 {\n    return 1;\n}\nfn f() {\n%s}\n" % (fname, ("    %s();\n" % fname) * 1100),
+     ["E0280"], fixed_has="do_itx", fixed_count=("do_it" + "x" * 996, 1101))
 
-# 4. 30,000 well-named locals, one misnamed local, a bad target with 15 unknown names (30,000 before C11; time: it was 0.72 s, quadratic)
+# 4. 30,000 well-named locals, one misnamed local, then 30,000 calls of a well-named function
 body = "".join("    let v%d: u8 = 0;\n" % i for i in range(30000))
-case("thirty_thousand_locals_one_misnamed_30000_unknown_uses",
-     "manna v0;\nfn f() {\n" + body + "    let badName: u8 = 0;\n    g(%s) = 1;\n}\n" % ", ".join(["zz"] * 15),
-     ["E0280", "E0270", "E0232"] + ["E0230"] * 15, fixed_has="bad_name")
+case("thirty_thousand_locals_one_misnamed_30000_valid_uses",
+     "manna v0;\nfn g() -> u8 {\n    return 1;\n}\nfn f() {\n" + body + "    let badName: u8 = 0;\n" + "    g();\n" * 30000 + "}\n",
+     ["E0280"], fixed_has="bad_name")
 
-# 5. a top-level rename exists (so unknown names are recorded) and 15 DISTINCT unknown names are used in a bad target (30,000 before C11)
-case("misnamed_function_and_30000_distinct_unknown_names",
-     "manna v0;\nfn doIt() -> u8 {\n    return 1;\n}\nfn f() {\n    g(%s) = 1;\n}\n" % ", ".join("un%d" % i for i in range(15)),
-     ["E0280", "E0270", "E0232"] + ["E0230"] * 15, fixed_has="do_it")
+# 5. a misnamed function, and 19,000 DISTINCT well-named functions called once each (30,000 unknown names before C11; each function is a declaration of its own, so the
+# IR arena (16 MiB, E0201) is the limit: 19,917 functions fit, 19,974 do not)
+case("misnamed_function_and_19000_distinct_valid_calls",
+     "manna v0;\nfn doIt() -> u8 {\n    return 1;\n}\n" + "".join("fn g%d() -> u8 {\n    return 1;\n}\n" % i for i in range(19000)) + "fn f() {\n    doIt();\n" + "".join("    g%d();\n" % i for i in range(19000)) + "}\n",
+     ["E0280"], fixed_has="do_it")
 
-# 6. the same unknown name 15 times next to a misnamed function (stored once; 150,000 before C11)
-case("misnamed_function_and_150000_repeated_unknown_uses",
-     "manna v0;\nfn doIt() -> u8 {\n    return 1;\n}\nfn f() {\n    g(%s) = 1;\n}\n" % ", ".join(["zz"] * 15),
-     ["E0280", "E0270", "E0232"] + ["E0230"] * 15, fixed_has="do_it")
+# 6. the same misnamed function called 60,000 times (150,000 before C11 and before the valid-use rewrite). The most one build can hold is a limit of the IR arena
+# (16 MiB, E0201), measured at 65,063 call statements of this shape: 60,000 stays under it
+case("misnamed_function_and_60000_repeated_valid_calls",
+     "manna v0;\nfn doIt() -> u8 {\n    return 1;\n}\nfn f() {\n" + "    doIt();\n" * 60000 + "}\n",
+     ["E0280"], fixed_has="do_it", fixed_count=("do_it", 60001))
 
 # 7. (never muted) 10 misnamed locals with 20,000-character names and 5 unknown names (14 errors, under the cap)
 names = ["loc%dX%s" % (i, "a" * 19990) for i in range(10)]

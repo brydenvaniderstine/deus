@@ -288,6 +288,14 @@
    21,
    "1dafa6e36411c921"
   ],
+  "tests/audit_repros/R3_mem_min_valid_uses.fixed.out": [
+   0,
+   "468e5668e2e002d6"
+  ],
+  "tests/audit_repros/R3_mem_min_valid_uses.out": [
+   2,
+   "4f5b001e7ab45b54"
+  ],
   "tests/audit_repros/R3_mu1_e0261_array_element_in_an_unannotated_let.fixed.out": [
    1,
    "c0fbca2a6cef4605"
@@ -5951,7 +5959,7 @@
  },
  "metrics": {
   "audit_poison_reasons": 0,
-  "audit_repro_inputs": 47,
+  "audit_repro_inputs": 48,
   "e0261_exhaustive.fixes_offered": 286968,
   "e0261_exhaustive.programs": 995456,
   "error_codes_documented": 55,
