@@ -51,6 +51,7 @@ jobs:
       - run: make test-e0261-exhaustive
       - run: make test-rename-property
       - run: make test-ir-memory-stress
+      - run: make test-ir-fix-limits
       - run: make audit-ir-poison
       - run: make test-poison-paths-script
       - run: make check-poison-paths
@@ -165,6 +166,7 @@ jobs:
       - run: make test-e0261-exhaustive
       - run: make test-rename-property
       - run: make test-ir-memory-stress
+      - run: make test-ir-fix-limits
       - run: make audit-ir-poison
       - run: make test-poison-paths-script
       - run: make check-poison-paths

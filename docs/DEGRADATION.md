@@ -72,7 +72,7 @@ Each entry's **Trigger-id** is one of the ids below, in the order they fall due.
 - **Status:** CLOSED (2026-10-25, ci.yml run 40213325096 on d478be8)
 - **Reason:** The CI job is a compile check; boots are manual. CLOSED: the `boot` job of ci.yml run 40213325096 on d478be8 runs `make test-boot` on the 8 GiB machine (never shrunk; the runner has 7.9 GiB of RAM and TCG booted it): `qemu_boot: reached /starting A/B preemption proof/ after 3s`, `boot_check smoke: ok` against `tests/boot_expected.txt` (memmap, GDT, IDT, the three mappings and the CR3 load, calibration source and rate, interleaved A/B).
 - **Promise:** `CLAUDE.md:7` "Every milestone must boot in QEMU."
-- **Where it stands:** (before step 20) `.github/workflows/ci.yml:93` "# Kernel compile check only (make all -> build/kernel.elf). Does not"
+- **Where it stands:** (before step 20) `.github/workflows/ci.yml:94` "# Kernel compile check only (make all -> build/kernel.elf). Does not"
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** Step 20 (a QEMU boot smoke test asserting the M1 serial-log lines)
 - **Trigger-id:** `step-20`
@@ -114,7 +114,7 @@ Each entry's **Trigger-id** is one of the ids below, in the order they fall due.
 - **Status:** OPEN
 - **Reason:** Principle 6 was never amended; the 'documented exception' entries grew instead. Several rest on a mechanism limit that no longer holds (E0245, E0265: 'needs source text the fix mechanism does not carry'; E0257: 'would need every use', and the use list exists since step 16). Measured on error_codes.md at 2794f66: 55 codes, 8 with a fix (E0102, E0107, E0108, E0109, E0215, E0261, E0280, E0281), 47 'None' (the audit counted 7 and 48). Fix-it policy C (CLAUDE.md, docs/error_codes.md): every diagnostic gets a fix or a short list of choices; the six safety limits below are the only exceptions. One entry per code follows in section 7.
 - **Promise:** `docs/MANNA_PRINCIPLES.md:22` "Fix hints are machine-applicable edits"
-- **Where it stands:** `docs/error_codes.md:79` "a reorder needs source text the fix mechanism does not carry"; `docs/error_codes.md:88` "a rename fix-it would need every use"
+- **Where it stands:** `docs/error_codes.md:80` "a reorder needs source text the fix mechanism does not carry"; `docs/error_codes.md:89` "a rename fix-it would need every use"
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** Post-m2-ir-v0 fix-it pass (after the tag)
 - **Trigger-id:** `post-m2-ir-v0`
@@ -124,7 +124,7 @@ Each entry's **Trigger-id** is one of the ids below, in the order they fall due.
 - **Status:** OPEN
 - **Reason:** Deferred in the plan with no trigger; the parser was tagged long ago and there is still no JSON output and no `manna` binary.
 - **Promise:** `docs/MANNA_PRINCIPLES.md:45` "`manna check --json` returns structured errors and fix-it edits in milliseconds."
-- **Where it stands:** `docs/M2_PLAN.md:820` "(implemented after the parser exists — not yet)"
+- **Where it stands:** `docs/M2_PLAN.md:821` "(implemented after the parser exists — not yet)"
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** After the tag m2-ir-v0 and before the next compiler stage (loop-counter injection) starts
 - **Trigger-id:** `loop-counter-injection`
@@ -196,7 +196,7 @@ Each entry's **Trigger-id** is one of the ids below, in the order they fall due.
 - **Status:** OPEN
 - **Reason:** When neither direction is a lossless widening (`u8` and `i8`) there is no fix, and the docs call that a feature. Policy C wants a fix or a list of choices (for example a signed or unsigned wrap to either type).
 - **Promise:** `docs/MANNA_PRINCIPLES.md:22` "Fix hints are machine-applicable edits"
-- **Where it stands:** `docs/error_codes.md:90` "If neither direction is lossless (`u8` and `i8`) there is **no fix**"
+- **Where it stands:** `docs/error_codes.md:91` "If neither direction is lossless (`u8` and `i8`) there is **no fix**"
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** Post-m2-ir-v0 fix-it pass
 - **Trigger-id:** `post-m2-ir-v0`
@@ -206,7 +206,7 @@ Each entry's **Trigger-id** is one of the ids below, in the order they fall due.
 - **Status:** CLOSED (2026-10-24, step 19 batch 2)
 - **Reason:** 19c-1 removed working fixes in un-annotated `let`; 19d withheld renames instead of completing the use list; choice 6 documented a quadratic scan. Revised 2026-10-23 and done: 19c-1 became 'the fix waits for the local's uses' (157534d), choice 6 became an index (90f048c), 19d renames the stale spellings (c460bff), and the 511-chain known issue was fixed (de84d89). The withheld first version of 19d sits on the local branch wip-19de, unmerged and not to be merged.
 - **Promise:** `docs/M2_PLAN.md@f981a51:753` "the declaration and every resolved use"
-- **Where it stands:** `docs/M2_PLAN.md:757` "renamed along rather than left stale"
+- **Where it stands:** `docs/M2_PLAN.md:758` "renamed along rather than left stale"
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** Step 19 batch 2 (done); kept for the record until the m2-ir-v0 tag
 - **Trigger-id:** `step-19`
@@ -248,8 +248,8 @@ RATCHET-WAIVER rename_property.part1.fixes_changed 1618 -> 1592 C10
 
 - **Status:** OPEN
 - **Reason:** Steps 11 and 12 recorded their policy points as 'pending review'; whether the review happened is not recorded.
-- **Promise:** `docs/M2_PLAN.md:697` "the points the rules above leave open, pending review"
-- **Where it stands:** `docs/M2_PLAN.md:724` "the points the rules above leave open, pending review"
+- **Promise:** `docs/M2_PLAN.md:698` "the points the rules above leave open, pending review"
+- **Where it stands:** `docs/M2_PLAN.md:725` "the points the rules above leave open, pending review"
 - **Owner:** Bryden (decision); Claude Code (work)
 - **Trigger:** The m2-ir-v0 tag (the refinement loop's review step) (PROPOSED by Claude Code, approved by Bryden 2026-10-24)
 - **Trigger-id:** `m2-ir-v0`
@@ -271,7 +271,7 @@ RATCHET-WAIVER rename_property.part1.fixes_changed 1618 -> 1592 C10
 - **Status:** CLOSED (2026-10-25, ci.yml run 40166779034 on 3258f9d and fuzz.yml run 40167344686)
 - **Reason:** The TCB rule says fuzz continuously; fuzzing is 10 minutes by hand per round and 'deliberately not in CI'. The Linux job fuzzes the lexer, parser and typed IR (gated and ungated) for 60 s each on every push, and `.github/workflows/fuzz.yml` fuzzes each target 30 min every night; `tools/fuzz/run_fuzzers.sh` now exits 1 on any artifact (crash, timeout, out-of-memory, sanitizer report), so a finding turns the run red and uploads the artifact. CLOSED: the Linux job's per-push fuzz ran 61 s per target in ci.yml run 40166779034 on 3258f9d (lexer 1,527,009, parser 47,871, IR gated 24,113, IR ungated 24,193 runs, 0 artifacts); `fuzz.yml` dispatched once, run 40167344686: 30 min per target (lexer 54,571,001, parser 1,272,554, IR 798,007, IR ungated 924,734 runs), 0 artifacts, all four corpus caches saved. The first scheduled (cron) run is still to be seen; STATUS says how to re-enable the workflow if GitHub switches it off.
 - **Promise:** `CLAUDE.md:134` "Fuzz them continuously."
-- **Where it stands:** (before step 20) `docs/M2_PLAN.md:790` "Deliberately not in CI - a fixed wall-clock budget, not a pass/fail check."
+- **Where it stands:** (before step 20) `docs/M2_PLAN.md:791` "Deliberately not in CI - a fixed wall-clock budget, not a pass/fail check."
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** Step 20 (a short fuzz run on every push and a long scheduled one)
 - **Trigger-id:** `step-20`
@@ -465,12 +465,12 @@ Bryden's policy C names these six as the only exceptions: each limit exists to s
 
 | Code | Location | Quote |
 |---|---|---|
-| E0104 | `docs/error_codes.md:35` | "None - documented exception: fix the earlier errors first; the cap is a cascade" |
-| E0110 | `docs/error_codes.md:41` | "None - documented exception: the only remedy is a smaller input (split the file" |
-| E0111 | `docs/error_codes.md:42` | "None - documented exception: the input has to be split into several statements" |
-| E0201 | `docs/error_codes.md:52` | "None - documented exception: the only remedy is a smaller input (split the" |
-| E0203 | `docs/error_codes.md:53` | "None - documented exception: fix the earlier errors first; the cap is a cascade" |
-| E0222 | `docs/error_codes.md:62` | "None - documented exception: the type has to be smaller, which is not an edit" |
+| E0104 | `docs/error_codes.md:36` | "None - documented exception: fix the earlier errors first; the cap is a cascade" |
+| E0110 | `docs/error_codes.md:42` | "None - documented exception: the only remedy is a smaller input (split the file" |
+| E0111 | `docs/error_codes.md:43` | "None - documented exception: the input has to be split into several statements" |
+| E0201 | `docs/error_codes.md:53` | "None - documented exception: the only remedy is a smaller input (split the" |
+| E0203 | `docs/error_codes.md:54` | "None - documented exception: fix the earlier errors first; the cap is a cascade" |
+| E0222 | `docs/error_codes.md:63` | "None - documented exception: the type has to be smaller, which is not an edit" |
 
 ### 7b. Fix-it exceptions to close (41 codes)
 
@@ -480,46 +480,46 @@ Each is a register entry (reason: the exception's own text; promise: `docs/MANNA
 
 | Code | Location | The exception, quoted |
 |---|---|---|
-| E0101 | `docs/error_codes.md:32` | "None - documented exception. The natural rewrite, `a < b && b < c`, evaluates" |
-| E0103 | `docs/error_codes.md:34` | "None - documented exception: the input has to be restructured, there is no" |
-| E0105 | `docs/error_codes.md:36` | "None by default - documented exception: a generic expected/found has no single" |
-| E0106 | `docs/error_codes.md:37` | "None - documented exception: rewriting the version to `v0` would assert the" |
-| E0210 | `docs/error_codes.md:54` | "None - documented exception: which declaration to rename or delete is the" |
-| E0211 | `docs/error_codes.md:55` | "None - documented exception: renaming needs the author's intent." |
-| E0212 | `docs/error_codes.md:56` | "None - documented exception: renaming needs the author's intent." |
-| E0213 | `docs/error_codes.md:57` | "None - documented exception: renaming needs the author's intent." |
-| E0214 | `docs/error_codes.md:58` | "None - documented exception: which attribute was meant is the author's call." |
-| E0220 | `docs/error_codes.md:60` | "None - documented exception: the intended type is unknowable from the text." |
-| E0221 | `docs/error_codes.md:61` | "None - documented exception: breaking a cycle means choosing which field to" |
-| E0223 | `docs/error_codes.md:63` | "None - documented exception: which side to change is the author's call." |
-| E0224 | `docs/error_codes.md:64` | "None - documented exception: which value was meant is the author's call." |
-| E0225 | `docs/error_codes.md:65` | "None - documented exception: the intended type is the author's call (the" |
-| E0226 | `docs/error_codes.md:66` | "None - documented exception: what to bind or pass instead is the author's call." |
-| E0227 | `docs/error_codes.md:67` | "None - documented exception: the field has to be redesigned (e.g. an array, or" |
-| E0230 | `docs/error_codes.md:68` | "None - documented exception: which name was meant is the author's call." |
-| E0231 | `docs/error_codes.md:69` | "None - documented exception: functions are called, not passed (v0 has no" |
-| E0232 | `docs/error_codes.md:70` | "None - documented exception: which function was meant is the author's call." |
-| E0233 | `docs/error_codes.md:71` | "None - documented exception: which argument to add or drop is the author's" |
-| E0234 | `docs/error_codes.md:72` | "None - documented exception: dropping the names is the author's call, and they" |
-| E0235 | `docs/error_codes.md:73` | "None - documented exception: breaking a cycle is a redesign." |
-| E0240 | `docs/error_codes.md:74` | "None - documented exception: which field each value was for is the author's" |
-| E0241 | `docs/error_codes.md:75` | "None - documented exception: the author's call." |
-| E0242 | `docs/error_codes.md:76` | "None - documented exception: a rename-to-the-nearest-field hint needs a" |
-| E0243 | `docs/error_codes.md:77` | "None - documented exception: the value to give is the author's." |
-| E0244 | `docs/error_codes.md:78` | "None - documented exception: which of the two values was meant is the author's" |
-| E0245 | `docs/error_codes.md:79` | "None - documented exception: a reorder needs source text the fix mechanism does" |
-| E0251 | `docs/error_codes.md:80` | "None - documented exception: the author's call." |
-| E0252 | `docs/error_codes.md:83` | "None - documented exception: the author's call." |
-| E0253 | `docs/error_codes.md:84` | "None - documented exception: the author's call." |
-| E0254 | `docs/error_codes.md:85` | "None - documented exception: which argument was meant is the author's call." |
-| E0255 | `docs/error_codes.md:86` | "None - documented exception: the author's call." |
-| E0256 | `docs/error_codes.md:87` | "None - documented exception: the call to write needs its argument." |
-| E0257 | `docs/error_codes.md:88` | "None - documented exception: the new name is the author's call (a rename fix-it" |
-| E0260 | `docs/error_codes.md:89` | "None - documented exception: which operator or type was meant is the author's" |
-| E0265 | `docs/error_codes.md:91` | "None - documented exception: `x != 0` needs source text the fix mechanism does" |
-| E0270 | `docs/error_codes.md:92` | "None - documented exception: what to assign to is the author's call." |
-| E0275 | `docs/error_codes.md:93` | "None - documented exception: the loop (or a different statement) is the" |
-| E0276 | `docs/error_codes.md:94` | "None - documented exception: whether to add a value or drop it is the author's" |
-| E0277 | `docs/error_codes.md:95` | "None - documented exception: where the return belongs is the author's call." |
+| E0101 | `docs/error_codes.md:33` | "None - documented exception. The natural rewrite, `a < b && b < c`, evaluates" |
+| E0103 | `docs/error_codes.md:35` | "None - documented exception: the input has to be restructured, there is no" |
+| E0105 | `docs/error_codes.md:37` | "None by default - documented exception: a generic expected/found has no single" |
+| E0106 | `docs/error_codes.md:38` | "None - documented exception: rewriting the version to `v0` would assert the" |
+| E0210 | `docs/error_codes.md:55` | "None - documented exception: which declaration to rename or delete is the" |
+| E0211 | `docs/error_codes.md:56` | "None - documented exception: renaming needs the author's intent." |
+| E0212 | `docs/error_codes.md:57` | "None - documented exception: renaming needs the author's intent." |
+| E0213 | `docs/error_codes.md:58` | "None - documented exception: renaming needs the author's intent." |
+| E0214 | `docs/error_codes.md:59` | "None - documented exception: which attribute was meant is the author's call." |
+| E0220 | `docs/error_codes.md:61` | "None - documented exception: the intended type is unknowable from the text." |
+| E0221 | `docs/error_codes.md:62` | "None - documented exception: breaking a cycle means choosing which field to" |
+| E0223 | `docs/error_codes.md:64` | "None - documented exception: which side to change is the author's call." |
+| E0224 | `docs/error_codes.md:65` | "None - documented exception: which value was meant is the author's call." |
+| E0225 | `docs/error_codes.md:66` | "None - documented exception: the intended type is the author's call (the" |
+| E0226 | `docs/error_codes.md:67` | "None - documented exception: what to bind or pass instead is the author's call." |
+| E0227 | `docs/error_codes.md:68` | "None - documented exception: the field has to be redesigned (e.g. an array, or" |
+| E0230 | `docs/error_codes.md:69` | "None - documented exception: which name was meant is the author's call." |
+| E0231 | `docs/error_codes.md:70` | "None - documented exception: functions are called, not passed (v0 has no" |
+| E0232 | `docs/error_codes.md:71` | "None - documented exception: which function was meant is the author's call." |
+| E0233 | `docs/error_codes.md:72` | "None - documented exception: which argument to add or drop is the author's" |
+| E0234 | `docs/error_codes.md:73` | "None - documented exception: dropping the names is the author's call, and they" |
+| E0235 | `docs/error_codes.md:74` | "None - documented exception: breaking a cycle is a redesign." |
+| E0240 | `docs/error_codes.md:75` | "None - documented exception: which field each value was for is the author's" |
+| E0241 | `docs/error_codes.md:76` | "None - documented exception: the author's call." |
+| E0242 | `docs/error_codes.md:77` | "None - documented exception: a rename-to-the-nearest-field hint needs a" |
+| E0243 | `docs/error_codes.md:78` | "None - documented exception: the value to give is the author's." |
+| E0244 | `docs/error_codes.md:79` | "None - documented exception: which of the two values was meant is the author's" |
+| E0245 | `docs/error_codes.md:80` | "None - documented exception: a reorder needs source text the fix mechanism does" |
+| E0251 | `docs/error_codes.md:81` | "None - documented exception: the author's call." |
+| E0252 | `docs/error_codes.md:84` | "None - documented exception: the author's call." |
+| E0253 | `docs/error_codes.md:85` | "None - documented exception: the author's call." |
+| E0254 | `docs/error_codes.md:86` | "None - documented exception: which argument was meant is the author's call." |
+| E0255 | `docs/error_codes.md:87` | "None - documented exception: the author's call." |
+| E0256 | `docs/error_codes.md:88` | "None - documented exception: the call to write needs its argument." |
+| E0257 | `docs/error_codes.md:89` | "None - documented exception: the new name is the author's call (a rename fix-it" |
+| E0260 | `docs/error_codes.md:90` | "None - documented exception: which operator or type was meant is the author's" |
+| E0265 | `docs/error_codes.md:92` | "None - documented exception: `x != 0` needs source text the fix mechanism does" |
+| E0270 | `docs/error_codes.md:93` | "None - documented exception: what to assign to is the author's call." |
+| E0275 | `docs/error_codes.md:94` | "None - documented exception: the loop (or a different statement) is the" |
+| E0276 | `docs/error_codes.md:95` | "None - documented exception: whether to add a value or drop it is the author's" |
+| E0277 | `docs/error_codes.md:96` | "None - documented exception: where the return belongs is the author's call." |
 
 Promise, for every row: `docs/MANNA_PRINCIPLES.md:22` "Fix hints are machine-applicable edits".

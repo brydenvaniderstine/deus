@@ -63,7 +63,7 @@ QEMU_FLAGS   := $(QEMU_MACHINE) \
                 -serial file:serial.log -monitor stdio -no-reboot \
                 -d int,cpu_reset -D qemu.log
 
-.PHONY: test-makefile-no-qemu check-nocascade-wired test-nocascade-wired-script all image run debug clean limine stage-esp test-wx test-lexer test-lexer-asan test-arena test-arena-asan test-ast test-ast-asan test-parser-state test-parser-state-asan test-parser-fixes test-parser-fixes-asan test-parser test-parser-asan test-determinism test-ir test-ir-asan test-ir-unit test-ir-unit-asan test-ir-ndebug test-ir-fix test-ir-fix-asan test-ir-error-codes audit-ir-poison test-poison-paths-script check-poison-paths check-nocascade-holes check-nocascade-index check-nocascade-prove check-nocascade-sinks test-nocascade-prove-script nocascade-all check-generated test-check-generated-script test-gen-nocascade-script test-nocascade-sinks-script nocascade-sink-report test-nocascade-inject test-nocascade-inject-script check-inject-hook-absent test-e0261-exhaustive test-rename-property test-ir-memory-stress test-ratchet test-ratchet-script ratchet-update check-register register-fix-lines test-register-script check-ci-targets test-ci-targets-script test-audit-repros test-fuzz-script test-boot test-boot-check-script check-kernel-loc test-kernel-loc-script test-measure-height-script coverage-check test-coverage-check-script check-batch-cap test-batch-cap-script check-retro-rules test-retro-rules-script coverage fuzz fuzz-lexer fuzz-parser fuzz-ir fuzz-ir-ungated measure-height measure-ir-stack measure-ir-build-stack
+.PHONY: test-makefile-no-qemu check-nocascade-wired test-nocascade-wired-script all image run debug clean limine stage-esp test-wx test-lexer test-lexer-asan test-arena test-arena-asan test-ast test-ast-asan test-parser-state test-parser-state-asan test-parser-fixes test-parser-fixes-asan test-parser test-parser-asan test-determinism test-ir test-ir-asan test-ir-unit test-ir-unit-asan test-ir-ndebug test-ir-fix test-ir-fix-asan test-ir-error-codes audit-ir-poison test-poison-paths-script check-poison-paths check-nocascade-holes check-nocascade-index check-nocascade-prove check-nocascade-sinks test-nocascade-prove-script nocascade-all check-generated test-check-generated-script test-gen-nocascade-script test-nocascade-sinks-script nocascade-sink-report test-nocascade-inject test-nocascade-inject-script check-inject-hook-absent test-e0261-exhaustive test-rename-property test-ir-memory-stress test-ir-fix-limits test-ratchet test-ratchet-script ratchet-update check-register register-fix-lines test-register-script check-ci-targets test-ci-targets-script test-audit-repros test-fuzz-script test-boot test-boot-check-script check-kernel-loc test-kernel-loc-script test-measure-height-script coverage-check test-coverage-check-script check-batch-cap test-batch-cap-script check-retro-rules test-retro-rules-script coverage fuzz fuzz-lexer fuzz-parser fuzz-ir fuzz-ir-ungated measure-height measure-ir-stack measure-ir-build-stack
 
 all: $(KERNEL_ELF)
 
@@ -375,6 +375,12 @@ test-ir-memory-stress:
 	@mkdir -p $(IR_DUMP_DIR)
 	$(MANNAC_CC) -std=c11 -Wall -Wextra $(MANNAC_WERROR) -O2 -g -o $(IR_DUMP_DIR)/ir_dump $(IR_DUMP_SRCS)
 	python3 tools/ir_memory_stress.py $(IR_DUMP_DIR)/ir_dump
+
+# Step 22C (round-4 finding 3): a rename whose fixed source overflows the parser's 16 MiB arena is reported without a fix, exit 0; generated in the test (~10 MB), the boundary found by bisection.
+test-ir-fix-limits:
+	@mkdir -p $(IR_DUMP_DIR)
+	$(MANNAC_CC) -std=c11 -Wall -Wextra $(MANNAC_WERROR) -O2 -g -o $(IR_DUMP_DIR)/ir_dump $(IR_DUMP_SRCS)
+	python3 tools/ir_fix_limits_test.py $(IR_DUMP_DIR)/ir_dump
 
 # Typed-IR step 15: every E02xx code docs/error_codes.md calls emitted has a golden or unit test (and a constructor in
 # diag.c, and nothing emitted is undocumented); prints the per-code table.
