@@ -2453,14 +2453,16 @@ static void test_fix_selfcheck(void) {
 
 /* ---- fixes that exceed a compiler limit are not offered (step 22A, round-4 findings 2 and 3; ir.h ir_withhold_over_limit) ----
  * A forged fix (the E0230 of `zz` replaced by TEXT) stands for any fix whose fixed source the parser refuses for a limit: E0103 depth, E0111 height, E0110 the arena. */
-static void forge_fix(IrState *st, char *text) {
+static void forge_fix_at(IrState *st, size_t d, char *text) {
     DiagFix *f = diag_fix_new(st->arena, 1);
     f->title = "forged";
     f->n_edits = 1;
-    f->edits[0].span = st->diags.items[0].span;
+    f->edits[0].span = st->diags.items[d].span;
     f->edits[0].text = text;
-    ((Diagnostic *)&st->diags.items[0])->fix = f;
+    ((Diagnostic *)&st->diags.items[d])->fix = f;
 }
+
+static void forge_fix(IrState *st, char *text) { forge_fix_at(st, 0, text); }
 
 static void check_limit_withheld(const char *what, char *text) {
     const char *src = "manna v0;\nfn f() {\n    let x: u8 = zz;\n}\n";
@@ -2492,6 +2494,27 @@ static void test_fix_limits(void) {
     check_limit_withheld("a fix that makes a 600-operation chain (E0111)", tall);
     free(deep);
     free(tall);
+    /* two fixes that fit one by one and exceed the parser's arena together (two 9 MB identifiers, 16 MiB): the one adding the most bytes goes, the later one on a tie */
+    {
+        const char *src = "manna v0;\nfn f() {\n    let x: u8 = zz;\n    let y: u8 = ww;\n}\n";
+        size_t big = 9u << 20;
+        char *a = malloc(big + 1), *b = malloc(big + 1);
+        memset(a, 'a', big); a[big] = '\0';
+        memset(b, 'b', big); b[big] = '\0';
+        IrState st;
+        IrModule *m = NULL;
+        ir_state_init(&st, 4 << 20);
+        parse_src(src);
+        assert(g_ps.diags.len == 0 && ir_build(&st, &g_ps.diags, &g_items, &m) == IR_ERRORS && st.diags.len == 2);
+        forge_fix_at(&st, 0, a);
+        forge_fix_at(&st, 1, b);
+        int n = ir_withhold_over_limit(src, strlen(src), &st);
+        if (n != 1 || !st.diags.items[0].fix || st.diags.items[1].fix) { fprintf(stderr, "FAIL: two fixes that fit alone and exceed the arena together: withheld %d, first kept %d, second kept %d\n", n, st.diags.items[0].fix != NULL, st.diags.items[1].fix != NULL); exit(1); }
+        parse_done();
+        ir_state_destroy(&st);
+        free(a);
+        free(b);
+    }
     /* the control: a fix inside every limit is kept */
     {
         const char *src = "manna v0;\nfn f() {\n    let x: u8 = zz;\n}\n";
@@ -2505,7 +2528,7 @@ static void test_fix_limits(void) {
         parse_done();
         ir_state_destroy(&st);
     }
-    printf("PASS: fixes over a compiler limit: a fix whose fixed source hits E0103 (depth) or E0111 (height) is withheld by parsing it, one inside the limits is kept, and the self-check raises no internal error for the withheld one\n");
+    printf("PASS: fixes over a compiler limit: a fix whose fixed source hits E0103 (depth) or E0111 (height) is withheld by parsing it, two that exceed the arena only together lose the larger/later one, one inside the limits is kept, and the self-check raises no internal error for the withheld one\n");
 }
 
 int main(int argc, char **argv) {

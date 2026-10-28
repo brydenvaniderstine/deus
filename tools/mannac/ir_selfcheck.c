@@ -211,11 +211,13 @@ int ir_withhold_over_limit(const char *src, size_t len, IrState *st) {
         }
         free(only);
         /* the rest together: drop the fix that adds the most bytes (the later one on a tie) until the combination fits */
-        while (exceeds_limit(src, len, st, keep, NULL)) {
+        size_t kept = 0;
+        for (size_t i = 0; i < n; i++) kept += keep[i];
+        while (kept > 0 && exceeds_limit(src, len, st, keep, NULL)) {
             long best = -1;
             for (size_t i = 0; i < n; i++) if (keep[i] && (best < 0 || added[i] >= added[best])) best = (long)i;
-            if (best < 0) break;
             keep[best] = false;
+            kept--;
             withheld++;
         }
         for (size_t i = 0; i < n; i++) if (st->diags.items[i].fix && !keep[i]) st->diags.items[i].fix = NULL;
