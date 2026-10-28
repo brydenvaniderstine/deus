@@ -2496,6 +2496,14 @@
    1,
    "fb8975a477785ebb"
   ],
+  "tests/ir_fix/fix_e0261_wrap_would_pass_the_nesting_limit_at_127_nested_ifs_so_there_is_no_fix.remaining": [
+   1,
+   "ef7a737eef4ce09a"
+  ],
+  "tests/ir_fix/fix_e0261_wrap_would_pass_the_nesting_limit_at_254_nested_parentheses_so_there_is_no_fix.remaining": [
+   1,
+   "051f3cf7a3f8a835"
+  ],
   "tests/ir_fix/fix_field_given_twice_in_a_construction.remaining": [
    1,
    "64d85ceb1556b8d7"
@@ -5981,7 +5989,7 @@
   "error_codes_documented": 55,
   "error_codes_with_fix": 8,
   "generators": 26,
-  "ir_fix_cases": 135,
+  "ir_fix_cases": 139,
   "ir_goldens": 474,
   "lexer_goldens": 15,
   "memory_stress_cases": 8,
@@ -6011,7 +6019,7 @@
   "unit_test_functions.arena_test.c": 7,
   "unit_test_functions.ast_test.c": 6,
   "unit_test_functions.ir_ndebug_test.c": 0,
-  "unit_test_functions.ir_test.c": 49,
+  "unit_test_functions.ir_test.c": 50,
   "unit_test_functions.parser_fixes_test.c": 20,
   "unit_test_functions.parser_state_test.c": 5
  }

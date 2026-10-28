@@ -166,7 +166,68 @@ static void parse_fixed(ParserState *ps, NodeList *items, const char *text, size
     }
 }
 
-char *ir_fix_selfcheck(const char *src, size_t len, const IrState *orig) {
+/* ---- the compiler's own limits (step 22A, round-4 findings 2 and 3; docs/error_codes.md "Fix-it rules") ----
+ * A fix whose fixed source the PARSER refuses for a compiler limit - E0103 (nesting depth), E0110 (the 16 MiB arena), E0111 (expression height) - is not offered: the
+ * mistake stays reported without it. It is decided by parsing the fixed source, never by estimating. Every other way a fixed source can fail to parse stays an internal
+ * error of the self-check. */
+
+static bool limit_code(const char *c) { return strcmp(c, "E0103") == 0 || strcmp(c, "E0110") == 0 || strcmp(c, "E0111") == 0; }
+
+/* Does the source with only the fixes marked in `keep` applied hit a compiler limit when parsed? `*added` receives how many bytes the edits add (may be negative). */
+static bool exceeds_limit(const char *src, size_t len, const IrState *st, const bool *keep, long *added) {
+    size_t n = st->diags.len;
+    DiagList sub = {malloc((n ? n : 1) * sizeof(Diagnostic)), n, n};
+    memcpy(sub.items, st->diags.items, n * sizeof(Diagnostic));
+    for (size_t i = 0; i < n; i++) if (!keep[i]) sub.items[i].fix = NULL;
+    size_t flen = 0;
+    char *fixed = ir_apply_fixes_n(src, len, &sub, &flen);
+    if (added) *added = (long)flen - (long)len;
+    static ParserState ps;   /* large: kept off the stack */
+    NodeList items;
+    parse_fixed(&ps, &items, fixed, flen);
+    bool over = false;
+    for (size_t i = 0; i < ps.diags.len; i++) over = over || limit_code(ps.diags.items[i].code);
+    parser_state_destroy(&ps);
+    free(fixed);
+    free(sub.items);
+    return over;
+}
+
+int ir_withhold_over_limit(const char *src, size_t len, IrState *st) {
+    size_t n = st->diags.len;
+    bool *keep = calloc(n + 1, sizeof(bool));
+    long *added = calloc(n + 1, sizeof(long));
+    int withheld = 0;
+    size_t nfix = 0;
+    for (size_t i = 0; i < n; i++) { keep[i] = st->diags.items[i].fix != NULL; nfix += keep[i]; }
+    if (nfix && exceeds_limit(src, len, st, keep, NULL)) {
+        /* a fix that exceeds a limit on its own goes first */
+        bool *only = calloc(n + 1, sizeof(bool));
+        for (size_t i = 0; i < n; i++) {
+            if (!keep[i]) continue;
+            only[i] = true;
+            if (exceeds_limit(src, len, st, only, &added[i])) { keep[i] = false; withheld++; }
+            only[i] = false;
+        }
+        free(only);
+        /* the rest together: drop the fix that adds the most bytes (the later one on a tie) until the combination fits */
+        while (exceeds_limit(src, len, st, keep, NULL)) {
+            long best = -1;
+            for (size_t i = 0; i < n; i++) if (keep[i] && (best < 0 || added[i] >= added[best])) best = (long)i;
+            if (best < 0) break;
+            keep[best] = false;
+            withheld++;
+        }
+        for (size_t i = 0; i < n; i++) if (st->diags.items[i].fix && !keep[i]) st->diags.items[i].fix = NULL;
+    }
+    free(keep);
+    free(added);
+    return withheld;
+}
+
+char *ir_fix_selfcheck(const char *src, size_t len, IrState *orig_state) {
+    (void)ir_withhold_over_limit(src, len, orig_state);
+    const IrState *orig = orig_state;
     const DiagList *od = &orig->diags;
     size_t nfix = 0;
     for (size_t i = 0; i < od->len; i++) nfix += od->items[i].fix != NULL;

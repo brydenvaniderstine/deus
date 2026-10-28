@@ -343,7 +343,12 @@ char *ir_apply_fixes_map(const char *src, size_t len, const DiagList *diags, siz
  * satisfy (a)-(c), and the body pass, which did not run (or not to the end) before, may report new diagnostics.
  * Returns NULL if the fixes hold, else a malloc'd explanation (the caller prints "internal error: a fix-it did not re-check" with it and
  * exits non-zero, or aborts: a failure is a bug in the compiler, never filtered or hidden). Also NULL when `orig` offers no fix. */
-char *ir_fix_selfcheck(const char *src, size_t len, const IrState *orig);
+char *ir_fix_selfcheck(const char *src, size_t len, IrState *orig);
+/* Step 22A (round-4 findings 2 and 3): the compiler's own limits. A fix whose fixed source the parser refuses for a LIMIT - E0103 nesting depth, E0110 the arena, E0111
+ * expression height - is not offered: the mistake stays reported and its fix is cleared (`fix = NULL`). Decided by parsing the fixed source with each fix alone and then
+ * the rest together, never by estimating; when the fixes together exceed a limit but none alone does, the one adding the most bytes goes first. Returns how many fixes were
+ * withheld. ir_fix_selfcheck calls it first, so every driver that self-checks gets it; any other way a fixed source fails to parse is still an internal error there. */
+int ir_withhold_over_limit(const char *src, size_t len, IrState *st);
 
 /* The one rule every function that applies a DiagEdit to source text must follow (docs/error_codes.md, fix-it rules): an edit never
  * joins two tokens. `start`..`end` are the byte offsets the edit replaces (equal for an insert: only an insert is padded, a replacement keeps

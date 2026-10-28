@@ -37,3 +37,27 @@ if __name__ == "__main__":
     F = ["manna v0;", "fn f() {}", "[kernel_hook]  fn f() {}"]
     write("fix_selfcheck_e0210_on_the_line_where_a_two_line_attribute_ended", L, F,
           [g.err(F, 3, "f() ", "E0210", dup("f", 2, g.col(F, 2, "f() ")))])
+
+    # ---- 22b (finding 2): the E0261 wrap adds nesting depth (the parser's limit is 256 units, E0103). The fix is offered only where the fixed source parses.
+    # Boundaries measured on 761eb7a with the plain build: a parenthesised `a + b` holds up to 253 parentheses (254 failed: exit 4, "the fixed source does not parse: E0103"),
+    # `return a + b;` inside nested `if true {` holds up to 126 (127 failed).
+    e261 = lambda: "operands have different types: u8 and u32; convert one explicitly"
+    def parens(n):
+        return ["manna v0;", "fn f(a: u8, b: u32) -> u32 {", "    return " + "(" * n + "a + b" + ")" * n + ";", "}"]
+    def ifs(n):
+        return ["manna v0;", "fn f(a: u8, b: u32) -> u32 {"] + ["    if true {"] * n + ["    return a + b;"] + ["    }"] * n + ["    return b;", "}"]
+    for n in (253, 254):
+        L = parens(n)
+        if n == 253:
+            F = list(L); F[2] = "    return " + "(" * n + "u32(a) + b" + ")" * n + ";"
+            write("fix_e0261_wrap_holds_at_253_nested_parentheses", L, F)
+        else:
+            write("fix_e0261_wrap_would_pass_the_nesting_limit_at_254_nested_parentheses_so_there_is_no_fix", L, L, [g.err(L, 3, "(", "E0261", e261())])  # the diagnostic is at the outermost parenthesis: a group's span includes them
+    for n in (126, 127):
+        L = ifs(n)
+        ln = 2 + n + 1
+        if n == 126:
+            F = list(L); F[ln - 1] = "    return u32(a) + b;"
+            write("fix_e0261_wrap_holds_at_126_nested_ifs", L, F)
+        else:
+            write("fix_e0261_wrap_would_pass_the_nesting_limit_at_127_nested_ifs_so_there_is_no_fix", L, L, [g.err(L, ln, "a + b", "E0261", e261())])

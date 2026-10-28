@@ -2451,6 +2451,63 @@ static void test_fix_selfcheck(void) {
     printf("PASS: fix-it self-check: real fixes hold (wrap, rename, the E0220 stale spelling), a wrong wrap / a missed use / a fix that removes nothing / a fixed source that does not parse are reported, and a stopped build (E0215 before the bodies) is the only exception\n");
 }
 
+/* ---- fixes that exceed a compiler limit are not offered (step 22A, round-4 findings 2 and 3; ir.h ir_withhold_over_limit) ----
+ * A forged fix (the E0230 of `zz` replaced by TEXT) stands for any fix whose fixed source the parser refuses for a limit: E0103 depth, E0111 height, E0110 the arena. */
+static void forge_fix(IrState *st, char *text) {
+    DiagFix *f = diag_fix_new(st->arena, 1);
+    f->title = "forged";
+    f->n_edits = 1;
+    f->edits[0].span = st->diags.items[0].span;
+    f->edits[0].text = text;
+    ((Diagnostic *)&st->diags.items[0])->fix = f;
+}
+
+static void check_limit_withheld(const char *what, char *text) {
+    const char *src = "manna v0;\nfn f() {\n    let x: u8 = zz;\n}\n";
+    IrState st;
+    IrModule *m = NULL;
+    ir_state_init(&st, 4 << 20);
+    parse_src(src);
+    assert(g_ps.diags.len == 0 && ir_build(&st, &g_ps.diags, &g_items, &m) == IR_ERRORS && st.diags.len == 1 && !st.diags.items[0].fix);
+    forge_fix(&st, text);
+    int n = ir_withhold_over_limit(src, strlen(src), &st);
+    if (n != 1 || st.diags.items[0].fix) { fprintf(stderr, "FAIL: %s: the fix that exceeds the limit was not withheld (withheld %d)\n", what, n); exit(1); }
+    forge_fix(&st, text);
+    char *why = ir_fix_selfcheck(src, strlen(src), &st);   /* the self-check withholds first: nothing left to check, and no internal error */
+    assert(why == NULL && !st.diags.items[0].fix);
+    parse_done();
+    ir_state_destroy(&st);
+}
+
+static void test_fix_limits(void) {
+    enum { DEEP = 300, LONG = 600 };
+    char *deep = malloc(2 * DEEP + 3), *tall = malloc(4 * LONG + 3);
+    memset(deep, '(', DEEP);
+    memcpy(deep + DEEP, "zz", 2);
+    memset(deep + DEEP + 2, ')', DEEP);
+    deep[2 * DEEP + 2] = '\0';
+    strcpy(tall, "zz");
+    for (int i = 0; i < LONG; i++) strcat(tall, "+zz");
+    check_limit_withheld("a fix that nests 300 parentheses (E0103)", deep);
+    check_limit_withheld("a fix that makes a 600-operation chain (E0111)", tall);
+    free(deep);
+    free(tall);
+    /* the control: a fix inside every limit is kept */
+    {
+        const char *src = "manna v0;\nfn f() {\n    let x: u8 = zz;\n}\n";
+        IrState st;
+        IrModule *m = NULL;
+        ir_state_init(&st, 4 << 20);
+        parse_src(src);
+        assert(g_ps.diags.len == 0 && ir_build(&st, &g_ps.diags, &g_items, &m) == IR_ERRORS);
+        forge_fix(&st, "(zz)");
+        assert(ir_withhold_over_limit(src, strlen(src), &st) == 0 && st.diags.items[0].fix);
+        parse_done();
+        ir_state_destroy(&st);
+    }
+    printf("PASS: fixes over a compiler limit: a fix whose fixed source hits E0103 (depth) or E0111 (height) is withheld by parsing it, one inside the limits is kept, and the self-check raises no internal error for the withheld one\n");
+}
+
 int main(int argc, char **argv) {
     setvbuf(stdout, NULL, _IOLBF, 0); /* a hang or abort must not swallow the PASS lines before it */
     if (argc == 2 && strcmp(argv[1], "--stack") == 0) { /* the Makefile's 2 MB (4x) gate */
@@ -2511,6 +2568,7 @@ int main(int argc, char **argv) {
     test_naming_errors();
     test_rename_fixes();
     test_fix_selfcheck();
+    test_fix_limits();
     test_rename_edit_order_and_dedupe();
     test_array_checker_is_linear();
     test_checker_is_linear();
