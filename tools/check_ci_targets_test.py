@@ -62,5 +62,16 @@ check("-Werror: a job that does not set MANNAC_WERROR: -Werror fails", any("job 
 ct.SKIPPED = {}
 check("the real tree passes (nothing is skipped any more)", ct.check(os.path.dirname(HERE))[0] == [])
 
+# the guard on every step (step 22e, round-4 finding 11): one failing step must not hide the steps after it
+ct.SKIPPED = {"test-wx": "K4"}   # the synthetic trees again
+GUARDED = ("jobs:\n  one:\n    runs-on: x\n    env:\n      MANNAC_WERROR: -Werror\n    steps:\n      - uses: actions/checkout@v4\n        with:\n          fetch-depth: 0\n\n"
+           "      - name: Toolchain\n        run: sudo apt-get install -y gcc\n      - run: make test-a\n        if: ${{ !cancelled() }}\n      - run: make test-b\n        if: ${{ !cancelled() }}\n"
+           "      - run: make audit-c\n        if: ${{ !cancelled() }}\n      - run: make check-d\n        if: ${{ !cancelled() }}\n      - name: Upload\n        if: failure()\n        uses: actions/upload-artifact@v4\n")
+check("finding 11: a job whose steps all carry an if: passes (checkout and Toolchain at the start are setup)", problems(tree(ci=GUARDED)) == [])
+check("finding 11: a step without an if: fails (the seeded defect)", any("make test-b" in p and "no `if:`" in p for p in problems(tree(ci=GUARDED.replace("      - run: make test-b\n        if: ${{ !cancelled() }}\n", "      - run: make test-b\n")))))
+check("finding 11: a step with its own failure()/always() is accepted", problems(tree(ci=GUARDED.replace("if: failure()", "if: always()"))) == [])
+check("finding 11: a Toolchain step that is NOT at the start needs an if:", any("Toolchain" in p for p in problems(tree(ci=GUARDED.replace("      - run: make test-a\n", "      - run: make test-a\n        if: ${{ !cancelled() }}\n      - name: Toolchain again\n        run: true\n      - run: make test-x\n", 1)))))
+check("finding 11: a later checkout is not exempt", any("checkout" in p for p in problems(tree(ci=GUARDED.replace("      - run: make test-b\n", "      - uses: actions/checkout@v4\n      - run: make test-b\n", 1)))))
+check("finding 11: a list inside a step (with:) is not a step", problems(tree(ci=GUARDED.replace("          fetch-depth: 0\n", "          fetch-depth: 0\n          sparse-checkout: |\n            a\n"))) == [])
 print("ci-target tests: %d failed" % len(fails) if fails else "ci-target tests: all passed")
 sys.exit(1 if fails else 0)

@@ -32,53 +32,101 @@ jobs:
           fetch-depth: 0   # the ratchet replays the whole history of tests/ratchet.json
 
       - run: make test-lexer
+        if: ${{ !cancelled() }}
       - run: make test-lexer-asan
+        if: ${{ !cancelled() }}
       - run: make test-arena
+        if: ${{ !cancelled() }}
       - run: make test-arena-asan
+        if: ${{ !cancelled() }}
       - run: make test-ast
+        if: ${{ !cancelled() }}
       - run: make test-ast-asan
+        if: ${{ !cancelled() }}
       - run: make test-parser-state
+        if: ${{ !cancelled() }}
       - run: make test-parser-state-asan
+        if: ${{ !cancelled() }}
       - run: make test-parser-fixes
+        if: ${{ !cancelled() }}
       - run: make test-parser-fixes-asan
+        if: ${{ !cancelled() }}
       - run: make test-parser
+        if: ${{ !cancelled() }}
       - run: make test-parser-asan
+        if: ${{ !cancelled() }}
       - run: make test-ir
+        if: ${{ !cancelled() }}
       - run: make test-ir-asan
+        if: ${{ !cancelled() }}
       - run: make test-ir-fix
+        if: ${{ !cancelled() }}
       - run: make test-ir-fix-asan
+        if: ${{ !cancelled() }}
       - run: make test-ir-error-codes
+        if: ${{ !cancelled() }}
       - run: make test-e0261-exhaustive
+        if: ${{ !cancelled() }}
       - run: make test-rename-property
+        if: ${{ !cancelled() }}
       - run: make test-ir-memory-stress
+        if: ${{ !cancelled() }}
       - run: make test-ir-fix-limits
+        if: ${{ !cancelled() }}
       - run: make audit-ir-poison
+        if: ${{ !cancelled() }}
       - run: make test-poison-paths-script
+        if: ${{ !cancelled() }}
       - run: make check-poison-paths
+        if: ${{ !cancelled() }}
       - run: make test-nocascade-sinks-script
+        if: ${{ !cancelled() }}
       - run: make check-nocascade-holes
+        if: ${{ !cancelled() }}
       - run: make test-gen-nocascade-script
+        if: ${{ !cancelled() }}
       - run: make test-nocascade-prove-script
+        if: ${{ !cancelled() }}
       - run: make check-nocascade-index
+        if: ${{ !cancelled() }}
       - run: make check-generated
+        if: ${{ !cancelled() }}
       - run: make test-check-generated-script
+        if: ${{ !cancelled() }}
       - run: make test-ir-unit
+        if: ${{ !cancelled() }}
       - run: make test-ir-unit-asan
+        if: ${{ !cancelled() }}
       - run: make test-ir-ndebug
+        if: ${{ !cancelled() }}
       - run: make test-determinism
+        if: ${{ !cancelled() }}
       - run: make test-ratchet-script
+        if: ${{ !cancelled() }}
       - run: make test-register-script
+        if: ${{ !cancelled() }}
       - run: make check-register
+        if: ${{ !cancelled() }}
       - run: make test-ci-targets-script
+        if: ${{ !cancelled() }}
       - run: make check-ci-targets
+        if: ${{ !cancelled() }}
       - run: make check-kernel-loc
+        if: ${{ !cancelled() }}
       - run: make test-kernel-loc-script
+        if: ${{ !cancelled() }}
       - run: make test-measure-height-script
+        if: ${{ !cancelled() }}
       - run: make test-boot-check-script
+        if: ${{ !cancelled() }}
       - run: make test-batch-cap-script
+        if: ${{ !cancelled() }}
       - run: make test-makefile-no-qemu
+        if: ${{ !cancelled() }}
       - run: make test-nocascade-wired-script
+        if: ${{ !cancelled() }}
       - run: make check-nocascade-wired
+        if: ${{ !cancelled() }}
 
       # One failing check must not hide the others (CI run 40546449691: check-batch-cap failed and seven later steps never ran). Every step from here
       # on runs unless the run was cancelled, whatever failed before it; the job still fails if any of them failed.
@@ -147,52 +195,96 @@ jobs:
           echo "LLVM_CLANG=$(command -v clang)" >> "$GITHUB_ENV"
 
       - run: make test-lexer
+        if: ${{ !cancelled() }}
       - run: make test-lexer-asan
+        if: ${{ !cancelled() }}
       - run: make test-arena
+        if: ${{ !cancelled() }}
       - run: make test-arena-asan
+        if: ${{ !cancelled() }}
       - run: make test-ast
+        if: ${{ !cancelled() }}
       - run: make test-ast-asan
+        if: ${{ !cancelled() }}
       - run: make test-parser-state
+        if: ${{ !cancelled() }}
       - run: make test-parser-state-asan
+        if: ${{ !cancelled() }}
       - run: make test-parser-fixes
+        if: ${{ !cancelled() }}
       - run: make test-parser-fixes-asan
+        if: ${{ !cancelled() }}
       - run: make test-parser
+        if: ${{ !cancelled() }}
       - run: make test-parser-asan
+        if: ${{ !cancelled() }}
       - run: make test-ir
+        if: ${{ !cancelled() }}
       - run: make test-ir-asan
+        if: ${{ !cancelled() }}
       - run: make test-ir-fix
+        if: ${{ !cancelled() }}
       - run: make test-ir-fix-asan
+        if: ${{ !cancelled() }}
       - run: make test-ir-error-codes
+        if: ${{ !cancelled() }}
       - run: make test-e0261-exhaustive
+        if: ${{ !cancelled() }}
       - run: make test-rename-property
+        if: ${{ !cancelled() }}
       - run: make test-ir-memory-stress
+        if: ${{ !cancelled() }}
       - run: make test-ir-fix-limits
+        if: ${{ !cancelled() }}
       - run: make audit-ir-poison
+        if: ${{ !cancelled() }}
       - run: make test-poison-paths-script
+        if: ${{ !cancelled() }}
       - run: make check-poison-paths
+        if: ${{ !cancelled() }}
       - run: make test-nocascade-sinks-script
+        if: ${{ !cancelled() }}
       - run: make check-nocascade-holes
+        if: ${{ !cancelled() }}
       - run: make test-gen-nocascade-script
+        if: ${{ !cancelled() }}
       - run: make test-nocascade-prove-script
+        if: ${{ !cancelled() }}
       - run: make check-nocascade-index
+        if: ${{ !cancelled() }}
       - run: make check-generated
+        if: ${{ !cancelled() }}
       - run: make test-check-generated-script
+        if: ${{ !cancelled() }}
       - run: make test-ir-unit
+        if: ${{ !cancelled() }}
       - run: make test-ir-unit-asan
+        if: ${{ !cancelled() }}
       - run: make test-ir-ndebug
+        if: ${{ !cancelled() }}
       - run: make test-determinism
+        if: ${{ !cancelled() }}
       - run: make test-audit-repros
+        if: ${{ !cancelled() }}
       - run: make test-fuzz-script
+        if: ${{ !cancelled() }}
       - run: make check-kernel-loc
+        if: ${{ !cancelled() }}
       - run: make test-kernel-loc-script
+        if: ${{ !cancelled() }}
       - run: make test-measure-height-script
+        if: ${{ !cancelled() }}
       - run: make test-boot-check-script
+        if: ${{ !cancelled() }}
       - run: make test-coverage-check-script
+        if: ${{ !cancelled() }}
       # Every uncovered line of lexer.c, parser.c and ir*.c has a reason in tests/coverage_justified.txt (register V6); runs the instrumented suites with clang.
       - run: make coverage-check
+        if: ${{ !cancelled() }}
       # The short fuzz run: lexer, parser, typed IR gated and ungated, 60 s each, from the committed corpora. Any crash, timeout, out-of-memory
       # or sanitizer report leaves an artifact and fails the step (tools/fuzz/run_fuzzers.sh exits 1).
       - name: Short fuzz run (60 s per target)
+        if: ${{ !cancelled() }}
         run: |
           export DURATION_LEXER=60 DURATION_PARSER=60 DURATION_IR=60
           make fuzz
@@ -225,10 +317,15 @@ jobs:
           sudo apt-get install -y gcc make python3 clang
           clang --version | head -1
       - run: make check-inject-hook-absent
+        if: ${{ !cancelled() }}
       - run: make test-nocascade-inject-script
+        if: ${{ !cancelled() }}
       - run: make test-nocascade-inject
+        if: ${{ !cancelled() }}
       - run: make check-nocascade-prove
+        if: ${{ !cancelled() }}
       - run: make check-nocascade-sinks
+        if: ${{ !cancelled() }}
 
   boot:
     name: Kernel boot smoke (QEMU, 8 GiB) + W^X tests
@@ -247,8 +344,11 @@ jobs:
           free -m | head -2
       # make all fetches limine at the pinned tag/hash (tools/fetch-limine.sh)
       - run: make all
+        if: ${{ !cancelled() }}
       - run: make test-boot
+        if: ${{ !cancelled() }}
       - run: make test-wx
+        if: ${{ !cancelled() }}
       - name: Serial logs
         if: always()
         run: |

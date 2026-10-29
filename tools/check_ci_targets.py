@@ -5,6 +5,8 @@ A target is a *check* if its name starts with test-, audit- or check-. Each must
 starts with `make`, not inside an echo) of .github/workflows/ci.yml or docs.yml, and that step must be able to fail the job: a step with
 `continue-on-error: true`, `if: false`, or a command followed by `|| true` does not count (Linux review of batch A, finding 4). Unless it is in SKIPPED below with a register entry that is still open (the entry says why and when it is wired; a closed entry
 makes the skip stale and the check fails). A `make <target>` step in a workflow whose target the Makefile does not define fails too.
+Also (step 22e, round-4 finding 11): in ci.yml every step of a job, after the setup steps at its start (actions/checkout, a step named Toolchain...), must carry an `if:` (`${{ !cancelled() }}`,
+or its own `failure()` / `always()`), so that one failing step cannot hide the steps after it: a step without one is skipped when an earlier step fails.
 Run from the repo root: python3 tools/check_ci_targets.py [root]  (make check-ci-targets)"""
 import os, re, sys
 
@@ -88,6 +90,28 @@ def make_targets(shell):
     return found, why
 
 
+def unguarded_steps(ci):
+    """[(job, first line of the step)] of the steps of ci.yml that have no `if:` and are not setup steps at the start of their job (actions/checkout, a step named Toolchain...)"""
+    out = []
+    for jm in re.finditer(r"^  ([a-z][a-z0-9_-]*):\s*\n(.*?)(?=^  [a-z][a-z0-9_-]*:\s*\n|\Z)", re.split(r"^jobs:\s*\n", ci, maxsplit=1, flags=re.M)[-1] if re.search(r"^jobs:\s*$", ci, re.M) else "", re.M | re.S):
+        job, body = jm.group(1), jm.group(2)
+        sm = re.search(r"^(\s*)steps:\s*$", body, re.M)
+        if not sm:
+            continue
+        item_ind = len(sm.group(1)) + 2
+        leading = True
+        for st in steps(body[sm.end():]):
+            if len(st[0]) - len(st[0].lstrip()) != item_ind:
+                continue   # a nested list (a `with:` list), not a step of the job
+            text = "\n".join(st)
+            setup = leading and ("uses: actions/checkout" in text or re.search(r"^\s*(- )?name:\s*Toolchain", text, re.M) is not None)
+            if not setup:
+                leading = False
+                if not re.search(r"^\s*(- )?if:\s*\S", text, re.M):
+                    out.append((job, st[0].strip()))
+    return out
+
+
 def check(root):
     problems = []
     mk = read(root, "Makefile")
@@ -135,6 +159,8 @@ def check(root):
         if line.startswith("\t$(MANNAC_CC) -std=c11") and "$(MANNAC_WERROR)" not in line:
             problems.append("Makefile:%d: a host-side compile without $(MANNAC_WERROR)" % n)
     ci = read(root, ".github/workflows/ci.yml")
+    for job, first in unguarded_steps(ci):
+        problems.append("ci.yml: job '%s': the step `%s` has no `if:` (add `if: ${{ !cancelled() }}`): an earlier failing step would skip it" % (job, first[:60]))
     jobs = re.split(r"^  (?=[a-z][a-z0-9_-]*:\s*$)", ci, flags=re.M)
     for j in jobs:
         m = re.match(r"([a-z][a-z0-9_-]*):", j)
