@@ -2,6 +2,7 @@
 #include <assert.h>
 #include <stdalign.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 
 /* Top-level declarations (typed-IR step 4, docs/M2_PLAN.md "Names, scopes,
