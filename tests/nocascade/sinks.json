@@ -1060,18 +1060,6 @@
    "atoms": [
     {
      "replace": "0",
-     "text": "s->poisoned"
-    }
-   ],
-   "file": "ir_decls.c",
-   "function": "layout_struct",
-   "id": "ir_decls.c::layout_struct::525d9880::0",
-   "text": "s->poisoned"
-  },
-  {
-   "atoms": [
-    {
-     "replace": "0",
      "text": "ir->fields[i].type->kind == IR_T_ERROR"
     }
    ],
@@ -1108,6 +1096,18 @@
    "atoms": [
     {
      "replace": "0",
+     "text": "unknown"
+    }
+   ],
+   "file": "ir_decls.c",
+   "function": "layout_struct",
+   "id": "ir_decls.c::layout_struct::50d8b4a9::0",
+   "text": "unknown"
+  },
+  {
+   "atoms": [
+    {
+     "replace": "0",
      "text": "s->dup_ir[i]->kind == IR_T_ERROR"
     }
    ],
@@ -1125,8 +1125,24 @@
    ],
    "file": "ir_decls.c",
    "function": "layout_struct",
-   "id": "ir_decls.c::layout_struct::50d8b4a9::0",
-   "text": "unknown"
+   "id": "ir_decls.c::layout_struct::78cd7192::0",
+   "text": "!unknown && align_up(off, max_align) > IR_MAX_TYPE_SIZE"
+  },
+  {
+   "atoms": [
+    {
+     "replace": "0",
+     "text": "unknown"
+    },
+    {
+     "replace": "0",
+     "text": "s->poisoned"
+    }
+   ],
+   "file": "ir_decls.c",
+   "function": "layout_struct",
+   "id": "ir_decls.c::layout_struct::22173d16::0",
+   "text": "unknown || s->poisoned"
   },
   {
    "atoms": [

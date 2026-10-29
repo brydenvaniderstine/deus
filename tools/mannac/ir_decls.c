@@ -265,31 +265,26 @@ static void layout_struct(Ctx *cx, StructInfo *s) {
     IrStruct *ir = s->ir;
     uint64_t off = 0;
     uint32_t max_align = 1;
-    bool unknown = false; /* the struct will have no layout */
-    if (s->poisoned) unknown = true; /* a repeated field's type failed (a kept field's type is looked at below) */
-    bool counting = true;                    /* every field so far has a known size */
+    bool unknown = false; /* some field so far has no known size (or the sum is too large): the offsets after it are not known, and the struct gets no layout */
     for (size_t i = 0; i < ir->n_fields; i++) {
         uint64_t fs = 0;
         uint32_t fa = 0;
         Span bad;
         if (ir->fields[i].type->kind == IR_T_ERROR) { /* no size: the mistake is reported where the type was resolved */
             unknown = true;
-            counting = false;
             continue;
         }
         LayResult r = type_layout(cx, s->field_types[i], ir->fields[i].type, &fs, &fa, &bad);
         if (r == LAY_UNSIZED) {
             unknown = true;
-            counting = false;
             continue;
         }
         if (r == LAY_TOO_BIG) {
             add_size_span(cx, s, bad);
             unknown = true;
-            counting = false;
             continue;
         }
-        if (!counting) continue;
+        if (unknown) continue;
         off = align_up(off, fa);
         ir->fields[i].offset = off;
         off += fs;
@@ -297,7 +292,6 @@ static void layout_struct(Ctx *cx, StructInfo *s) {
         if (off > IR_MAX_TYPE_SIZE) {
             add_size_span(cx, s, s->decl->as.struct_decl.name_span);
             unknown = true;
-            counting = false;
         }
     }
     for (size_t i = 0; i < s->n_dup; i++) {
@@ -307,11 +301,11 @@ static void layout_struct(Ctx *cx, StructInfo *s) {
         if (s->dup_ir[i]->kind == IR_T_ERROR) continue; /* a repeated field whose type failed has no size (it marked the struct poisoned) */
         if (type_layout(cx, s->dup_types[i], s->dup_ir[i], &fs, &fa, &bad) == LAY_TOO_BIG) add_size_span(cx, s, bad);
     }
-    if (counting && align_up(off, max_align) > IR_MAX_TYPE_SIZE) {
+    if (!unknown && align_up(off, max_align) > IR_MAX_TYPE_SIZE) {
         add_size_span(cx, s, s->decl->as.struct_decl.name_span);
         unknown = true;
     }
-    if (unknown) return;
+    if (unknown || s->poisoned) return; /* a repeated field's type failed: no layout (its own size mistakes were reported above) */
     ir->size = align_up(off, max_align);
     ir->align = max_align;
     s->sized = true;
