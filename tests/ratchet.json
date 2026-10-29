@@ -6041,7 +6041,7 @@
   "rename_property.part2.programs": 2500,
   "script_checks.boot_check_test.py": 25,
   "script_checks.check_batch_cap_test.py": 31,
-  "script_checks.check_ci_targets_test.py": 21,
+  "script_checks.check_ci_targets_test.py": 27,
   "script_checks.check_generated_test.py": 16,
   "script_checks.check_register_test.py": 35,
   "script_checks.check_retro_rules_test.py": 13,

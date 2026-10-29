@@ -320,8 +320,7 @@ static void layout_struct(Ctx *cx, StructInfo *s) {
 static int cmp_span_pos(const void *pa, const void *pb) {
     const Span *a = pa, *b = pb;
     if (a->start_line != b->start_line) return a->start_line < b->start_line ? -1 : 1;
-    if (a->start_col != b->start_col) return a->start_col < b->start_col ? -1 : 1;
-    return 0;
+    return (a->start_col > b->start_col) - (a->start_col < b->start_col);
 }
 
 /* ---- cycles and layout order ---- */
