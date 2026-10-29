@@ -147,7 +147,16 @@ static void build_fields(Ctx *cx, StructInfo *s) {
         }
         const IrType *t = ir_resolve_type(cx, f->type, CTX_FIELD);
         if (t->kind == IR_T_ERROR) s->poisoned = true;
-        if (!inserted) continue;
+        if (!inserted) {
+            /* a repeated field is not kept, but a type that is too large is a mistake of its own: layout_struct looks at it (a type that failed to resolve has no size and is skipped there) */
+            if (!s->dup_types) {
+                s->dup_types = arena_alloc(st->arena, fl->len * sizeof(const Type *), alignof(const Type *));
+                s->dup_ir = arena_alloc(st->arena, fl->len * sizeof(const IrType *), alignof(const IrType *));
+            }
+            s->dup_types[s->n_dup] = f->type;
+            s->dup_ir[s->n_dup++] = t;
+            continue;
+        }
         s->field_types[ir->n_fields] = f->type;
         IrField *out = &ir->fields[ir->n_fields++];
         out->name = f->name;
@@ -218,7 +227,8 @@ static LayResult type_layout(Ctx *cx, const Type *ast, const IrType *t, uint64_t
             break;
     }
     /* A struct: unit and ERROR never reach here (unit is unwritable; a failed type is
-     * never laid out). */
+     * never laid out: layout_struct skips a field whose type failed, and a failed array or
+     * slice type is ERROR as a whole). */
     assert(t->kind == IR_T_STRUCT);
     const StructInfo *dep = &cx->structs[t->as.strukt.decl - cx->irs];
     if (!dep->sized) return LAY_UNSIZED;
@@ -231,54 +241,87 @@ static uint64_t align_up(uint64_t v, uint64_t a) {
     return (v + a - 1) / a * a;
 }
 
+static void add_size_span(Ctx *cx, StructInfo *s, Span at) {
+    if (s->n_size_spans == s->cap_size_spans) {
+        size_t cap = s->cap_size_spans ? s->cap_size_spans * 2 : 4;
+        Span *list = arena_alloc(cx->st->arena, cap * sizeof(Span), alignof(Span));
+        if (s->n_size_spans) memcpy(list, s->size_spans, s->n_size_spans * sizeof(Span));
+        s->size_spans = list;
+        s->cap_size_spans = cap;
+    }
+    s->size_spans[s->n_size_spans++] = at;
+}
+
 /* Fields in declaration order, natural alignment per field, trailing padding to the
  * struct's alignment, no reordering (docs/M2_PLAN.md "Layout and limits"). All
  * intermediate values stay below 2^32 because each is checked against the limit
- * before the next addition, so nothing wraps. */
+ * before the next addition, so nothing wraps.
+ *
+ * Called for EVERY struct, also one in a cycle or with a field that failed to resolve (step 22d, round-4 finding 4, Bryden 2026-10-29): such a struct gets no layout, but a field whose
+ * OWN type is too large is a mistake of its own and is always reported (E0222 at that type, one per field; the first used to end the look at the others, and a struct in error was not
+ * looked at). A field whose size is unknown (unsized struct, failed type) is skipped. The TOTAL is checked only while every field so far has a known size: the offsets after a field
+ * whose size is unknown (or too large) are not known, so an overflow there is not claimed (it was, as a lower bound, until step 22d). */
 static void layout_struct(Ctx *cx, StructInfo *s) {
-    if (s->poisoned) return;
     IrStruct *ir = s->ir;
     uint64_t off = 0;
     uint32_t max_align = 1;
-    /* A field whose type has no layout (a struct in a cycle, or in error) leaves this struct without one, silently: that mistake is reported elsewhere. It does NOT end the look at
-     * the other fields: a later field whose own type is too large is a second, independent mistake and is reported (step C2c; it used to be withheld, the same kind of hidden
-     * diagnostic D1 removed). The unsized field is skipped, so its size and alignment, which were never set, are never read; the offsets after it are a LOWER bound of the real ones
-     * (it counts for 0), so `off > IR_MAX_TYPE_SIZE` below is still a certain mistake, reported at the struct, and the struct is left without a layout either way. */
-    bool unsized = false;
+    bool unknown = false; /* the struct will have no layout */
+    if (s->poisoned) unknown = true; /* a repeated field's type failed (a kept field's type is looked at below) */
+    bool counting = true;                    /* every field so far has a known size */
     for (size_t i = 0; i < ir->n_fields; i++) {
         uint64_t fs = 0;
         uint32_t fa = 0;
         Span bad;
+        if (ir->fields[i].type->kind == IR_T_ERROR) { /* no size: the mistake is reported where the type was resolved */
+            unknown = true;
+            counting = false;
+            continue;
+        }
         LayResult r = type_layout(cx, s->field_types[i], ir->fields[i].type, &fs, &fa, &bad);
         if (r == LAY_UNSIZED) {
-            unsized = true;
+            unknown = true;
+            counting = false;
             continue;
         }
         if (r == LAY_TOO_BIG) {
-            s->size_error = true;
-            s->size_error_span = bad;
-            return;
+            add_size_span(cx, s, bad);
+            unknown = true;
+            counting = false;
+            continue;
         }
+        if (!counting) continue;
         off = align_up(off, fa);
         ir->fields[i].offset = off;
         off += fs;
         if (fa > max_align) max_align = fa;
         if (off > IR_MAX_TYPE_SIZE) {
-            s->size_error = true;
-            s->size_error_span = s->decl->as.struct_decl.name_span;
-            return;
+            add_size_span(cx, s, s->decl->as.struct_decl.name_span);
+            unknown = true;
+            counting = false;
         }
     }
-    if (unsized) return;
-    uint64_t total = align_up(off, max_align);
-    if (total > IR_MAX_TYPE_SIZE) {
-        s->size_error = true;
-        s->size_error_span = s->decl->as.struct_decl.name_span;
-        return;
+    for (size_t i = 0; i < s->n_dup; i++) {
+        uint64_t fs;
+        uint32_t fa;
+        Span bad;
+        if (s->dup_ir[i]->kind == IR_T_ERROR) continue; /* a repeated field whose type failed has no size (it marked the struct poisoned) */
+        if (type_layout(cx, s->dup_types[i], s->dup_ir[i], &fs, &fa, &bad) == LAY_TOO_BIG) add_size_span(cx, s, bad);
     }
-    ir->size = total;
+    if (counting && align_up(off, max_align) > IR_MAX_TYPE_SIZE) {
+        add_size_span(cx, s, s->decl->as.struct_decl.name_span);
+        unknown = true;
+    }
+    if (unknown) return;
+    ir->size = align_up(off, max_align);
     ir->align = max_align;
     s->sized = true;
+}
+
+static int cmp_span_pos(const void *pa, const void *pb) {
+    const Span *a = pa, *b = pb;
+    if (a->start_line != b->start_line) return a->start_line < b->start_line ? -1 : 1;
+    if (a->start_col != b->start_col) return a->start_col < b->start_col ? -1 : 1;
+    return 0;
 }
 
 /* ---- cycles and layout order ---- */
@@ -366,6 +409,7 @@ static void analyze_structs(Ctx *cx) {
                     if (scc_stack[k] < lowest) lowest = scc_stack[k];
                 }
                 cx->structs[lowest].cycle_error = true;
+                for (size_t k = base; k < scc_top; k++) layout_struct(cx, &cx->structs[scc_stack[k]]); /* no layout, but the fields' own size mistakes (step 22d) */
             } else {
                 layout_struct(cx, &cx->structs[v]);
             }
@@ -509,9 +553,12 @@ bool ir_declare_items(IrState *st, const NodeList *items, IrModule *m, Ctx **out
                                                     cx.structs[i].ir->name));
     }
     for (size_t i = 0; i < n; i++) {
-        if (!cx.structs[i].size_error) continue;
-        st->progress = cx.structs[i].decl->span;
-        ir_error(st, diag_ir_type_too_large(cx.structs[i].size_error_span));
+        StructInfo *si = &cx.structs[i];
+        if (si->n_size_spans > 1) qsort(si->size_spans, si->n_size_spans, sizeof(Span), cmp_span_pos);
+        for (size_t k = 0; k < si->n_size_spans; k++) {
+            st->progress = si->decl->span;
+            ir_error(st, diag_ir_type_too_large(si->size_spans[k]));
+        }
     }
 
     for (size_t i = 0; i < items->len; i++) {

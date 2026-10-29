@@ -992,17 +992,53 @@
    1,
    "5664f53dbec844b7"
   ],
+  "tests/ir/layout_dependents_of_a_struct_with_a_failed_repeated_field_stay_silent.ir": [
+   2,
+   "9a1feb7eecc41ca2"
+  ],
   "tests/ir/layout_dependents_of_an_unsized_struct_stay_silent.ir": [
    1,
    "5664f53dbec844b7"
   ],
-  "tests/ir/layout_known_fields_beside_an_unsized_one_that_exceed_the_limit_are_reported.ir": [
+  "tests/ir/layout_every_oversized_field_is_reported.ir": [
    2,
-   "c6b713abe55e9cd7"
+   "894f316eccfedf95"
+  ],
+  "tests/ir/layout_known_fields_beside_an_unsized_one_that_exceed_the_limit_are_reported.ir": [
+   1,
+   "5664f53dbec844b7"
+  ],
+  "tests/ir/layout_oversized_field_after_an_unknown_type_is_reported.ir": [
+   2,
+   "abd8b151d6354d22"
+  ],
+  "tests/ir/layout_oversized_field_before_an_unknown_type_is_reported.ir": [
+   2,
+   "5a88a0e1836a698e"
+  ],
+  "tests/ir/layout_oversized_field_beside_a_duplicate_field_with_an_unknown_type_is_reported.ir": [
+   3,
+   "d55242dd663d95f5"
+  ],
+  "tests/ir/layout_oversized_field_of_a_struct_that_contains_itself_is_reported.ir": [
+   2,
+   "4f2bee4c8bc30a78"
+  ],
+  "tests/ir/layout_oversized_type_of_a_duplicate_field_is_reported.ir": [
+   2,
+   "6c1fedd9274ff21d"
   ],
   "tests/ir/layout_too_large_field_before_an_unsized_one_is_reported_once.ir": [
    2,
    "d690a8bce58075c7"
+  ],
+  "tests/ir/layout_total_overflow_after_an_unknown_field_is_not_reported.ir": [
+   1,
+   "ab7a9a42947779f5"
+  ],
+  "tests/ir/layout_total_overflow_before_an_unknown_field_is_reported.ir": [
+   2,
+   "0d9e6d324126ca5d"
   ],
   "tests/ir/layout_two_unsized_fields_are_one_silent_struct.ir": [
    1,
@@ -5988,12 +6024,12 @@
   "e0261_exhaustive.programs": 995456,
   "error_codes_documented": 55,
   "error_codes_with_fix": 8,
-  "generators": 26,
+  "generators": 27,
   "ir_fix_cases": 139,
-  "ir_goldens": 474,
+  "ir_goldens": 483,
   "lexer_goldens": 15,
   "memory_stress_cases": 8,
-  "mistakes_sidecars": 33,
+  "mistakes_sidecars": 40,
   "nocascade_goldens": 449,
   "nocascade_index_rows": 449,
   "nocascade_sweep_points": 26871,

@@ -4,14 +4,9 @@
   "fix_e0261_in_an_unannotated_let_has_no_fix_it_is_assigned_another_type"
  ],
  "ir_decls.c::build_fields::3bc4fbf1::0": [
-  "Field_type__struct_field_construct__unknown_type",
-  "Field_type__struct_field_construct_and_read__unknown_type"
+  "layout_dependents_of_a_struct_with_a_failed_repeated_field_stay_silent"
  ],
  "ir_decls.c::ir_check_type_size::3bc4fbf1::0": [
-  "Decl_function_decl_return_type__call_arith__unknown_type",
-  "Decl_function_decl_return_type__call_assign__unknown_type"
- ],
- "ir_decls.c::ir_declare_items::8e7a4070::0": [
   "Decl_function_decl_return_type__call_arith__unknown_type",
   "Decl_function_decl_return_type__call_assign__unknown_type"
  ],
@@ -23,29 +18,36 @@
   "Type_slice_elem__param_arith__unknown_type",
   "Type_slice_elem__param_assign__unknown_type"
  ],
+ "ir_decls.c::layout_struct::50d8b4a9::0": [
+  "layout_a_struct_holding_an_unsized_one_gives_its_dependents_no_size",
+  "layout_dependents_of_a_struct_with_a_failed_repeated_field_stay_silent"
+ ],
  "ir_decls.c::layout_struct::525d9880::0": [
+  "layout_dependents_of_a_struct_with_a_failed_repeated_field_stay_silent"
+ ],
+ "ir_decls.c::layout_struct::5ba98046::0": [
   "Field_type__struct_field_construct__unknown_type",
   "Field_type__struct_field_construct_and_read__unknown_type"
  ],
- "ir_decls.c::layout_struct::a6cb3dc2::0": [
-  "layout_a_struct_holding_an_unsized_one_gives_its_dependents_no_size",
-  "layout_dependents_of_an_unsized_struct_stay_silent"
+ "ir_decls.c::layout_struct::ca4cc230::0": [
+  "layout_dependents_of_a_struct_with_a_failed_repeated_field_stay_silent",
+  "layout_oversized_field_beside_a_duplicate_field_with_an_unknown_type_is_reported"
  ],
  "ir_decls.c::layout_struct::fb9f6d4f::0": [
   "cycle_dependent_is_silent",
-  "cycle_entered_from_higher_index"
+  "cycle_direct"
  ],
  "ir_decls.c::layout_struct::fc184521::0": [
-  "layout_too_large_field_before_an_unsized_one_is_reported_once",
-  "layout_unsized_field_does_not_hide_a_later_fields_own_size_error"
+  "layout_every_oversized_field_is_reported",
+  "layout_oversized_field_after_an_unknown_type_is_reported"
  ],
  "ir_decls.c::type_layout::479d9259::0": [
   "layout_a_struct_holding_an_unsized_one_gives_its_dependents_no_size",
   "layout_dependents_of_an_unsized_struct_stay_silent"
  ],
  "ir_decls.c::type_layout::e11146f2::0": [
-  "layout_dependents_of_an_unsized_struct_stay_silent",
-  "size_error_is_silent_downstream"
+  "cycle_mutual_via_arrays",
+  "cycle_via_array"
  ],
  "ir_decls.c::type_layout::e11146f2::1": [
   "param_slice_of_too_large_array"

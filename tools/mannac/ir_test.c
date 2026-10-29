@@ -1012,7 +1012,7 @@ static void test_build_e0201_and_reuse(void) {
     assert(strcmp(d->code, "E0201") == 0);
     assert(d->span.start_col == 1 && d->span.start_line > 2 && d->span.start_line <= N + 1);
     /* Pinned (like the parser's G5): the line of the function being built when the cap is hit. */
-    assert(d->span.start_line == 13503); /* function #13501, in the SIGNATURE pass (one earlier again at step 14: Ctx grew by the rename tables, ~56 bytes; before that 13504, one earlier than before step 7: the body context' Ctx, ~104 bytes, is now allocated first): the 4 MiB cap less the 16 KiB reserve, the 2.6 MB name table and the 160 KB signature array leaves ~1.4 MB, and each signature (IrFunc 88 + "fn:fNNNN" + alignment) is ~103 bytes: 1.4 MB / 103 ~ 13500 */
+    assert(d->span.start_line == 13502); /* function #13500, in the SIGNATURE pass (one earlier again at step 22d: StructInfo grew by the size-error list and the repeated-field types, ~56 bytes; was 13503, #13501, before; one earlier again at step 14: Ctx grew by the rename tables, ~56 bytes; before that 13504, one earlier than before step 7: the body context' Ctx, ~104 bytes, is now allocated first): the 4 MiB cap less the 16 KiB reserve, the 2.6 MB name table and the 160 KB signature array leaves ~1.4 MB, and each signature (IrFunc 88 + "fn:fNNNN" + alignment) is ~103 bytes: 1.4 MB / 103 ~ 13500 */
 
     /* The state stays exhausted (the arena is not reset): a second build reports E0201
      * again - the hook is re-armed, so reuse is never silent (the parser's G4 lesson). */

@@ -110,12 +110,15 @@ typedef struct {
     const Decl   *decl;
     IrStruct     *ir;
     const Type  **field_types; /* the AST type of each KEPT field (parallel to ir->fields) */
-    bool          poisoned;    /* a field type failed to resolve: no layout, no further errors from it */
+    bool          poisoned;    /* a field type failed to resolve (a repeated field's too): the struct has no layout; its other fields' own size mistakes are still reported (step 22d) */
     bool          sized;       /* ir->size/align/offsets are valid */
     bool          cyclic;      /* member of a containment cycle (E0221 reported for the cycle) */
     bool          cycle_error; /* this member is where E0221 is reported (lowest declaration index) */
-    bool          size_error;  /* E0222 to report at size_error_span */
-    Span          size_error_span;
+    Span         *size_spans;  /* E0222 to report, one per mistake (a field whose own type is too large, or the total), sorted by position when reported */
+    size_t        n_size_spans, cap_size_spans;
+    const Type  **dup_types;   /* the AST type and the IR type of each REPEATED field (E0211): not a field, but its type can be too large */
+    const IrType **dup_ir;
+    size_t        n_dup;
     Rename      **field_renames; /* per kept field, NULL entries for the well-named; the array itself NULL if none */
 } StructInfo;
 

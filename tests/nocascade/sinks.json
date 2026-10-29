@@ -6,7 +6,6 @@
   "pending",
   "poisoned",
   "ptype",
-  "size_error",
   "sized"
  ],
  "emitters": [
@@ -1036,18 +1035,6 @@
   {
    "atoms": [
     {
-     "replace": "1",
-     "text": "cx.structs[i].size_error"
-    }
-   ],
-   "file": "ir_decls.c",
-   "function": "ir_declare_items",
-   "id": "ir_decls.c::ir_declare_items::8e7a4070::0",
-   "text": "!cx.structs[i].size_error"
-  },
-  {
-   "atoms": [
-    {
      "replace": "0",
      "text": "elem->kind == IR_T_ERROR"
     }
@@ -1085,6 +1072,18 @@
    "atoms": [
     {
      "replace": "0",
+     "text": "ir->fields[i].type->kind == IR_T_ERROR"
+    }
+   ],
+   "file": "ir_decls.c",
+   "function": "layout_struct",
+   "id": "ir_decls.c::layout_struct::5ba98046::0",
+   "text": "ir->fields[i].type->kind == IR_T_ERROR"
+  },
+  {
+   "atoms": [
+    {
+     "replace": "0",
      "text": "r == LAY_UNSIZED"
     }
    ],
@@ -1109,13 +1108,25 @@
    "atoms": [
     {
      "replace": "0",
-     "text": "unsized"
+     "text": "s->dup_ir[i]->kind == IR_T_ERROR"
     }
    ],
    "file": "ir_decls.c",
    "function": "layout_struct",
-   "id": "ir_decls.c::layout_struct::a6cb3dc2::0",
-   "text": "unsized"
+   "id": "ir_decls.c::layout_struct::ca4cc230::0",
+   "text": "s->dup_ir[i]->kind == IR_T_ERROR"
+  },
+  {
+   "atoms": [
+    {
+     "replace": "0",
+     "text": "unknown"
+    }
+   ],
+   "file": "ir_decls.c",
+   "function": "layout_struct",
+   "id": "ir_decls.c::layout_struct::50d8b4a9::0",
+   "text": "unknown"
   },
   {
    "atoms": [

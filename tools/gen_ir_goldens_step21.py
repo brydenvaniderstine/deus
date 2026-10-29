@@ -3,6 +3,7 @@
 # to the E0230 instead of showing it only after the first mistake is fixed, and the operand that is not poisoned is still checked for its own mistake. Arithmetic,
 # bitwise, shift and unary `-` / `~` take the operand's type and stay silent (controls). The intended diagnostics are written here from the mistakes, never read
 # from the builder; columns come from the source text. Run from the repo root with PYTHONPATH=tools.
+import os
 import gen_ir_goldens_step7 as g
 import gen_ir_goldens_step12 as s12
 
@@ -18,6 +19,8 @@ def golden(name, L, errs, mistakes=None):
     n = mistakes or len(errs)
     if n > 1:
         open("tests/ir/%s.mistakes" % name, "w").write("%d\n" % n)
+    elif os.path.exists("tests/ir/%s.mistakes" % name):  # a golden that went from several mistakes to one (step 22d) must not keep its old count
+        os.remove("tests/ir/%s.mistakes" % name)
 
 if __name__ == "__main__":
     # every comparison operator, the poison on either side, in a return that rejects bool: two mistakes each
@@ -103,10 +106,10 @@ if __name__ == "__main__":
     # large; D has no layout, so E says nothing. One mistake, one diagnostic.
     L = CYCLE + ["struct D { c: A, x: [2147483647]u8, }", "struct E { d: [2]D, }"]
     golden("layout_dependents_of_an_unsized_struct_stay_silent", L, [e(L, 2, "A", "E0221", cyc)])
-    # the offsets after an unsized field are a lower bound: known fields that alone exceed the limit are a certain mistake (two mistakes: the cycle and the sum)
+    # the offsets after an unsized field are NOT known (step 22d, Bryden 2026-10-29: a total overflow is reported only up to the first field whose size is unknown; at step C2c
+    # this was reported as a lower bound): the sum that exceeds the limit only after the unsized field is not claimed. One mistake: the cycle.
     L = CYCLE + ["struct D { c: A, x: [2147483647]u8, y: u8, }"]
-    golden("layout_known_fields_beside_an_unsized_one_that_exceed_the_limit_are_reported", L,
-           [e(L, 2, "A", "E0221", cyc), e(L, 4, "D", "E0222", big)])
+    golden("layout_known_fields_beside_an_unsized_one_that_exceed_the_limit_are_reported", L, [e(L, 2, "A", "E0221", cyc)])
     # a struct holding an unsized one has no size, so a struct holding THAT stays silent too (one mistake): were D given a size from its other field, F would be too large
     L = CYCLE + ["struct D { c: A, y: u8, }", "struct F { d: D, z: [2147483647]u8, }"]
     golden("layout_a_struct_holding_an_unsized_one_gives_its_dependents_no_size", L, [e(L, 2, "A", "E0221", cyc)])

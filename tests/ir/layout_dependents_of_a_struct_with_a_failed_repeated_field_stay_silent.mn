@@ -1,0 +1,5 @@
+manna v0;
+struct S { a: u8, a: Nope, }
+struct T { s: [4294967296]S, }
+fn main() {
+}
