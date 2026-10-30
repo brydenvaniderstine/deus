@@ -472,9 +472,6 @@ Bryden's policy C names these six as the only exceptions: each limit exists to s
 | E0203 | `docs/error_codes.md:54` | "None - documented exception: fix the earlier errors first; the cap is a cascade" |
 | E0222 | `docs/error_codes.md:63` | "None - documented exception: the type has to be smaller, which is not an edit" |
 
-A RATCHET-WAIVER for round-4 finding 4 (decided by Bryden 2026-10-29, step 22d): E0222 is no longer withheld beside an unrelated field mistake, and a TOTAL-size overflow is reported only up to the first field whose size is unknown (the offsets after it are not known; at step C2c it was reported there as a lower bound). The golden of step C2c that held such a sum after an unsized field (`tests/ir/layout_known_fields_beside_an_unsized_one_that_exceed_the_limit_are_reported`) loses its second diagnostic (the sum at `struct D`); its cycle E0221 stays, and its `.mistakes` file (2) is deleted with it. Nine new goldens report the oversized fields that were withheld, or pin what stays silent.
-RATCHET-WAIVER tests/ir/layout_known_fields_beside_an_unsized_one_that_exceed_the_limit_are_reported.ir 2 -> 1 7a
-
 ### 7b. Fix-it exceptions to close (41 codes)
 
 **Trigger-id:** `post-m2-ir-v0`

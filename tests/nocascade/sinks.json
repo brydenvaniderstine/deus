@@ -1096,13 +1096,13 @@
    "atoms": [
     {
      "replace": "0",
-     "text": "unknown"
+     "text": "stopped"
     }
    ],
    "file": "ir_decls.c",
    "function": "layout_struct",
-   "id": "ir_decls.c::layout_struct::50d8b4a9::0",
-   "text": "unknown"
+   "id": "ir_decls.c::layout_struct::5acf4111::0",
+   "text": "stopped"
   },
   {
    "atoms": [
@@ -1120,13 +1120,13 @@
    "atoms": [
     {
      "replace": "0",
-     "text": "unknown"
+     "text": "stopped"
     }
    ],
    "file": "ir_decls.c",
    "function": "layout_struct",
-   "id": "ir_decls.c::layout_struct::78cd7192::0",
-   "text": "!unknown && align_up(off, max_align) > IR_MAX_TYPE_SIZE"
+   "id": "ir_decls.c::layout_struct::3684c877::0",
+   "text": "!stopped && align_up(off, max_align) > IR_MAX_TYPE_SIZE"
   },
   {
    "atoms": [

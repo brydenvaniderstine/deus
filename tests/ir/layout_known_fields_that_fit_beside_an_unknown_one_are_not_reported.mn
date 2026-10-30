@@ -1,0 +1,4 @@
+manna v0;
+struct S { a: Nope, b: [2147483640]u8, }
+fn main() {
+}

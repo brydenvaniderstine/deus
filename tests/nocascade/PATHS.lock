@@ -22,17 +22,16 @@
   "layout_a_struct_holding_an_unsized_one_gives_its_dependents_no_size",
   "layout_dependents_of_a_struct_with_a_failed_repeated_field_stay_silent"
  ],
- "ir_decls.c::layout_struct::50d8b4a9::0": [
+ "ir_decls.c::layout_struct::3684c877::0": [
   "layout_known_fields_beside_an_unsized_one_that_exceed_the_limit_are_reported",
-  "layout_total_overflow_after_an_unknown_field_is_not_reported"
+  "layout_total_overflow_after_an_unknown_field_is_reported"
+ ],
+ "ir_decls.c::layout_struct::5acf4111::0": [
+  "layout_total_after_an_oversized_field_is_not_checked"
  ],
  "ir_decls.c::layout_struct::5ba98046::0": [
   "Field_type__struct_field_construct__unknown_type",
   "Field_type__struct_field_construct_and_read__unknown_type"
- ],
- "ir_decls.c::layout_struct::78cd7192::0": [
-  "layout_total_overflow_before_an_unknown_field_is_reported",
-  "size_two_fields_over_limit"
  ],
  "ir_decls.c::layout_struct::ca4cc230::0": [
   "layout_dependents_of_a_struct_with_a_failed_repeated_field_stay_silent",

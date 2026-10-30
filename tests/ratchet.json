@@ -1005,8 +1005,12 @@
    "894f316eccfedf95"
   ],
   "tests/ir/layout_known_fields_beside_an_unsized_one_that_exceed_the_limit_are_reported.ir": [
+   2,
+   "c6b713abe55e9cd7"
+  ],
+  "tests/ir/layout_known_fields_that_fit_beside_an_unknown_one_are_not_reported.ir": [
    1,
-   "5664f53dbec844b7"
+   "ab7a9a42947779f5"
   ],
   "tests/ir/layout_oversized_field_after_an_unknown_type_is_reported.ir": [
    2,
@@ -1032,9 +1036,13 @@
    2,
    "d690a8bce58075c7"
   ],
-  "tests/ir/layout_total_overflow_after_an_unknown_field_is_not_reported.ir": [
+  "tests/ir/layout_total_after_an_oversized_field_is_not_checked.ir": [
    1,
-   "ab7a9a42947779f5"
+   "8aacb926da338453"
+  ],
+  "tests/ir/layout_total_overflow_after_an_unknown_field_is_reported.ir": [
+   2,
+   "29e996662140deec"
   ],
   "tests/ir/layout_total_overflow_before_an_unknown_field_is_reported.ir": [
    2,
@@ -6026,10 +6034,10 @@
   "error_codes_with_fix": 8,
   "generators": 27,
   "ir_fix_cases": 139,
-  "ir_goldens": 483,
+  "ir_goldens": 485,
   "lexer_goldens": 15,
   "memory_stress_cases": 8,
-  "mistakes_sidecars": 40,
+  "mistakes_sidecars": 42,
   "nocascade_goldens": 449,
   "nocascade_index_rows": 449,
   "nocascade_sweep_points": 26871,
