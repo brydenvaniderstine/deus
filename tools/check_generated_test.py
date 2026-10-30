@@ -61,8 +61,8 @@ finally:
     shutil.rmtree(root, ignore_errors=True)
 
 # ---- the INDEX check ----
-INDEX = "# header\n" + "\t".join(["g1", "Expr.unary.operand", "neg", "unknown_name", "1", "14:13 E0230 unknown name 'nope'"]) + "\n" + \
-        "\t".join(["g2", "Expr.binary.lhs", "add", "unknown_name", "2", "14:12 E0230 unknown name 'nope' | 14:20 E0230 unknown name 'x'"]) + "\n"
+INDEX = "# header\n" + "\t".join(["g1", "Expr.unary.operand", "neg", "unknown_name", "1", "14:13 E0230 unknown name 'nope'", "body"]) + "\n" + \
+        "\t".join(["g2", "Expr.binary.lhs", "add", "unknown_name", "2", "14:12 E0230 unknown name 'nope' | 14:20 E0230 unknown name 'x'", "body"]) + "\n"
 
 
 def nc():

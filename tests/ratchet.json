@@ -2892,59 +2892,59 @@
    1,
    "e10b6a3b64691e41"
   ],
-  "tests/nocascade/Decl_function_decl_return_type__call_arith__unknown_type.ir": [
+  "tests/nocascade/Decl_function_decl_return_type__declaration_stops_bodies_call_arith__unknown_type.ir": [
    1,
    "f926525e09d134bf"
   ],
-  "tests/nocascade/Decl_function_decl_return_type__call_assign__unknown_type.ir": [
+  "tests/nocascade/Decl_function_decl_return_type__declaration_stops_bodies_call_assign__unknown_type.ir": [
    1,
    "f926525e09d134bf"
   ],
-  "tests/nocascade/Decl_function_decl_return_type__call_call_arg__unknown_type.ir": [
+  "tests/nocascade/Decl_function_decl_return_type__declaration_stops_bodies_call_call_arg__unknown_type.ir": [
    1,
    "f926525e09d134bf"
   ],
-  "tests/nocascade/Decl_function_decl_return_type__call_compare__unknown_type.ir": [
+  "tests/nocascade/Decl_function_decl_return_type__declaration_stops_bodies_call_compare__unknown_type.ir": [
    1,
    "f926525e09d134bf"
   ],
-  "tests/nocascade/Decl_function_decl_return_type__call_condition__unknown_type.ir": [
+  "tests/nocascade/Decl_function_decl_return_type__declaration_stops_bodies_call_condition__unknown_type.ir": [
    1,
    "f926525e09d134bf"
   ],
-  "tests/nocascade/Decl_function_decl_return_type__call_convert__unknown_type.ir": [
+  "tests/nocascade/Decl_function_decl_return_type__declaration_stops_bodies_call_convert__unknown_type.ir": [
    1,
    "f926525e09d134bf"
   ],
-  "tests/nocascade/Decl_function_decl_return_type__call_equal__unknown_type.ir": [
+  "tests/nocascade/Decl_function_decl_return_type__declaration_stops_bodies_call_equal__unknown_type.ir": [
    1,
    "f926525e09d134bf"
   ],
-  "tests/nocascade/Decl_function_decl_return_type__call_field__unknown_type.ir": [
+  "tests/nocascade/Decl_function_decl_return_type__declaration_stops_bodies_call_field__unknown_type.ir": [
    1,
    "f926525e09d134bf"
   ],
-  "tests/nocascade/Decl_function_decl_return_type__call_index__unknown_type.ir": [
+  "tests/nocascade/Decl_function_decl_return_type__declaration_stops_bodies_call_index__unknown_type.ir": [
    1,
    "f926525e09d134bf"
   ],
-  "tests/nocascade/Decl_function_decl_return_type__call_length__unknown_type.ir": [
+  "tests/nocascade/Decl_function_decl_return_type__declaration_stops_bodies_call_length__unknown_type.ir": [
    1,
    "f926525e09d134bf"
   ],
-  "tests/nocascade/Decl_function_decl_return_type__call_logic__unknown_type.ir": [
+  "tests/nocascade/Decl_function_decl_return_type__declaration_stops_bodies_call_logic__unknown_type.ir": [
    1,
    "f926525e09d134bf"
   ],
-  "tests/nocascade/Decl_function_decl_return_type__call_negate__unknown_type.ir": [
+  "tests/nocascade/Decl_function_decl_return_type__declaration_stops_bodies_call_negate__unknown_type.ir": [
    1,
    "f926525e09d134bf"
   ],
-  "tests/nocascade/Decl_function_decl_return_type__call_not__unknown_type.ir": [
+  "tests/nocascade/Decl_function_decl_return_type__declaration_stops_bodies_call_not__unknown_type.ir": [
    1,
    "f926525e09d134bf"
   ],
-  "tests/nocascade/Decl_function_decl_return_type__call_return__unknown_type.ir": [
+  "tests/nocascade/Decl_function_decl_return_type__declaration_stops_bodies_call_return__unknown_type.ir": [
    1,
    "f926525e09d134bf"
   ],
@@ -4028,75 +4028,75 @@
    1,
    "150a398c14ba3898"
   ],
-  "tests/nocascade/Field_type__param_arith__unknown_type.ir": [
+  "tests/nocascade/Field_type__declaration_stops_bodies_param_arith__unknown_type.ir": [
    1,
    "647204fddcf61f1b"
   ],
-  "tests/nocascade/Field_type__param_assign__unknown_type.ir": [
+  "tests/nocascade/Field_type__declaration_stops_bodies_param_assign__unknown_type.ir": [
    1,
    "647204fddcf61f1b"
   ],
-  "tests/nocascade/Field_type__param_call_arg__unknown_type.ir": [
+  "tests/nocascade/Field_type__declaration_stops_bodies_param_call_arg__unknown_type.ir": [
    1,
    "647204fddcf61f1b"
   ],
-  "tests/nocascade/Field_type__param_compare__unknown_type.ir": [
+  "tests/nocascade/Field_type__declaration_stops_bodies_param_compare__unknown_type.ir": [
    1,
    "647204fddcf61f1b"
   ],
-  "tests/nocascade/Field_type__param_condition__unknown_type.ir": [
+  "tests/nocascade/Field_type__declaration_stops_bodies_param_condition__unknown_type.ir": [
    1,
    "647204fddcf61f1b"
   ],
-  "tests/nocascade/Field_type__param_convert__unknown_type.ir": [
+  "tests/nocascade/Field_type__declaration_stops_bodies_param_convert__unknown_type.ir": [
    1,
    "647204fddcf61f1b"
   ],
-  "tests/nocascade/Field_type__param_equal__unknown_type.ir": [
+  "tests/nocascade/Field_type__declaration_stops_bodies_param_equal__unknown_type.ir": [
    1,
    "647204fddcf61f1b"
   ],
-  "tests/nocascade/Field_type__param_field__unknown_type.ir": [
+  "tests/nocascade/Field_type__declaration_stops_bodies_param_field__unknown_type.ir": [
    1,
    "647204fddcf61f1b"
   ],
-  "tests/nocascade/Field_type__param_index__unknown_type.ir": [
+  "tests/nocascade/Field_type__declaration_stops_bodies_param_index__unknown_type.ir": [
    1,
    "647204fddcf61f1b"
   ],
-  "tests/nocascade/Field_type__param_length__unknown_type.ir": [
+  "tests/nocascade/Field_type__declaration_stops_bodies_param_length__unknown_type.ir": [
    1,
    "647204fddcf61f1b"
   ],
-  "tests/nocascade/Field_type__param_logic__unknown_type.ir": [
+  "tests/nocascade/Field_type__declaration_stops_bodies_param_logic__unknown_type.ir": [
    1,
    "647204fddcf61f1b"
   ],
-  "tests/nocascade/Field_type__param_negate__unknown_type.ir": [
+  "tests/nocascade/Field_type__declaration_stops_bodies_param_negate__unknown_type.ir": [
    1,
    "647204fddcf61f1b"
   ],
-  "tests/nocascade/Field_type__param_not__unknown_type.ir": [
+  "tests/nocascade/Field_type__declaration_stops_bodies_param_not__unknown_type.ir": [
    1,
    "647204fddcf61f1b"
   ],
-  "tests/nocascade/Field_type__param_return__unknown_type.ir": [
+  "tests/nocascade/Field_type__declaration_stops_bodies_param_return__unknown_type.ir": [
    1,
    "647204fddcf61f1b"
   ],
-  "tests/nocascade/Field_type__struct_field_construct__unknown_type.ir": [
+  "tests/nocascade/Field_type__declaration_stops_bodies_struct_field_construct__unknown_type.ir": [
    1,
    "dc32975496b929e4"
   ],
-  "tests/nocascade/Field_type__struct_field_construct_and_read__unknown_type.ir": [
+  "tests/nocascade/Field_type__declaration_stops_bodies_struct_field_construct_and_read__unknown_type.ir": [
    1,
    "dc32975496b929e4"
   ],
-  "tests/nocascade/Field_type__struct_field_pass_on__unknown_type.ir": [
+  "tests/nocascade/Field_type__declaration_stops_bodies_struct_field_pass_on__unknown_type.ir": [
    1,
    "dc32975496b929e4"
   ],
-  "tests/nocascade/Field_type__struct_field_read_param__unknown_type.ir": [
+  "tests/nocascade/Field_type__declaration_stops_bodies_struct_field_read_param__unknown_type.ir": [
    1,
    "dc32975496b929e4"
   ],
@@ -4632,59 +4632,59 @@
    1,
    "dcf2ff6b4377b9c4"
   ],
-  "tests/nocascade/Type_slice_elem__param_arith__unknown_type.ir": [
+  "tests/nocascade/Type_slice_elem__declaration_stops_bodies_param_arith__unknown_type.ir": [
    1,
    "f926525e09d134bf"
   ],
-  "tests/nocascade/Type_slice_elem__param_assign__unknown_type.ir": [
+  "tests/nocascade/Type_slice_elem__declaration_stops_bodies_param_assign__unknown_type.ir": [
    1,
    "f926525e09d134bf"
   ],
-  "tests/nocascade/Type_slice_elem__param_call_arg__unknown_type.ir": [
+  "tests/nocascade/Type_slice_elem__declaration_stops_bodies_param_call_arg__unknown_type.ir": [
    1,
    "f926525e09d134bf"
   ],
-  "tests/nocascade/Type_slice_elem__param_compare__unknown_type.ir": [
+  "tests/nocascade/Type_slice_elem__declaration_stops_bodies_param_compare__unknown_type.ir": [
    1,
    "f926525e09d134bf"
   ],
-  "tests/nocascade/Type_slice_elem__param_condition__unknown_type.ir": [
+  "tests/nocascade/Type_slice_elem__declaration_stops_bodies_param_condition__unknown_type.ir": [
    1,
    "f926525e09d134bf"
   ],
-  "tests/nocascade/Type_slice_elem__param_convert__unknown_type.ir": [
+  "tests/nocascade/Type_slice_elem__declaration_stops_bodies_param_convert__unknown_type.ir": [
    1,
    "f926525e09d134bf"
   ],
-  "tests/nocascade/Type_slice_elem__param_equal__unknown_type.ir": [
+  "tests/nocascade/Type_slice_elem__declaration_stops_bodies_param_equal__unknown_type.ir": [
    1,
    "f926525e09d134bf"
   ],
-  "tests/nocascade/Type_slice_elem__param_field__unknown_type.ir": [
+  "tests/nocascade/Type_slice_elem__declaration_stops_bodies_param_field__unknown_type.ir": [
    1,
    "f926525e09d134bf"
   ],
-  "tests/nocascade/Type_slice_elem__param_index__unknown_type.ir": [
+  "tests/nocascade/Type_slice_elem__declaration_stops_bodies_param_index__unknown_type.ir": [
    1,
    "f926525e09d134bf"
   ],
-  "tests/nocascade/Type_slice_elem__param_length__unknown_type.ir": [
+  "tests/nocascade/Type_slice_elem__declaration_stops_bodies_param_length__unknown_type.ir": [
    1,
    "f926525e09d134bf"
   ],
-  "tests/nocascade/Type_slice_elem__param_logic__unknown_type.ir": [
+  "tests/nocascade/Type_slice_elem__declaration_stops_bodies_param_logic__unknown_type.ir": [
    1,
    "f926525e09d134bf"
   ],
-  "tests/nocascade/Type_slice_elem__param_negate__unknown_type.ir": [
+  "tests/nocascade/Type_slice_elem__declaration_stops_bodies_param_negate__unknown_type.ir": [
    1,
    "f926525e09d134bf"
   ],
-  "tests/nocascade/Type_slice_elem__param_not__unknown_type.ir": [
+  "tests/nocascade/Type_slice_elem__declaration_stops_bodies_param_not__unknown_type.ir": [
    1,
    "f926525e09d134bf"
   ],
-  "tests/nocascade/Type_slice_elem__param_return__unknown_type.ir": [
+  "tests/nocascade/Type_slice_elem__declaration_stops_bodies_param_return__unknown_type.ir": [
    1,
    "f926525e09d134bf"
   ],

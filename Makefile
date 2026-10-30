@@ -63,7 +63,7 @@ QEMU_FLAGS   := $(QEMU_MACHINE) \
                 -serial file:serial.log -monitor stdio -no-reboot \
                 -d int,cpu_reset -D qemu.log
 
-.PHONY: test-makefile-no-qemu check-nocascade-wired test-nocascade-wired-script all image run debug clean limine stage-esp test-wx test-lexer test-lexer-asan test-arena test-arena-asan test-ast test-ast-asan test-parser-state test-parser-state-asan test-parser-fixes test-parser-fixes-asan test-parser test-parser-asan test-determinism test-ir test-ir-asan test-ir-unit test-ir-unit-asan test-ir-ndebug test-ir-fix test-ir-fix-asan test-ir-error-codes audit-ir-poison test-poison-paths-script check-poison-paths check-nocascade-holes check-nocascade-index check-nocascade-prove check-nocascade-sinks test-nocascade-prove-script nocascade-all check-generated test-check-generated-script test-gen-nocascade-script test-nocascade-sinks-script nocascade-sink-report test-nocascade-inject test-nocascade-inject-script check-inject-hook-absent test-e0261-exhaustive test-rename-property test-ir-memory-stress test-ir-fix-limits test-ratchet test-ratchet-script ratchet-update check-register register-fix-lines test-register-script check-ci-targets test-ci-targets-script test-audit-repros test-fuzz-script test-boot test-boot-check-script check-kernel-loc test-kernel-loc-script test-measure-height-script coverage-check test-coverage-check-script check-batch-cap test-batch-cap-script check-retro-rules test-retro-rules-script coverage fuzz fuzz-lexer fuzz-parser fuzz-ir fuzz-ir-ungated measure-height measure-ir-stack measure-ir-build-stack
+.PHONY: test-makefile-no-qemu check-nocascade-wired test-nocascade-wired-script all image run debug clean limine stage-esp test-wx test-lexer test-lexer-asan test-arena test-arena-asan test-ast test-ast-asan test-parser-state test-parser-state-asan test-parser-fixes test-parser-fixes-asan test-parser test-parser-asan test-determinism test-ir test-ir-asan test-ir-unit test-ir-unit-asan test-ir-ndebug test-ir-fix test-ir-fix-asan test-ir-error-codes audit-ir-poison test-poison-paths-script check-poison-paths check-nocascade-holes check-nocascade-index check-nocascade-reach test-nocascade-reach-script check-nocascade-prove check-nocascade-sinks test-nocascade-prove-script nocascade-all check-generated test-check-generated-script test-gen-nocascade-script test-nocascade-sinks-script nocascade-sink-report test-nocascade-inject test-nocascade-inject-script check-inject-hook-absent test-e0261-exhaustive test-rename-property test-ir-memory-stress test-ir-fix-limits test-ratchet test-ratchet-script ratchet-update check-register register-fix-lines test-register-script check-ci-targets test-ci-targets-script test-audit-repros test-fuzz-script test-boot test-boot-check-script check-kernel-loc test-kernel-loc-script test-measure-height-script coverage-check test-coverage-check-script check-batch-cap test-batch-cap-script check-retro-rules test-retro-rules-script coverage fuzz fuzz-lexer fuzz-parser fuzz-ir fuzz-ir-ungated measure-height measure-ir-stack measure-ir-build-stack
 
 all: $(KERNEL_ELF)
 
@@ -564,6 +564,16 @@ test-gen-nocascade-script:
 check-nocascade-index:
 	@python3 tools/check_nocascade_index.py
 
+# Step 22k (round-4 finding 9): the consumer a golden is named for is really reached - a mistake added to the body of f is reported beside the producer's (reach `body`), or, for a
+# golden whose producer is a type in a declaration (reach `decl`), it is not, because a declaration error stops the build before the bodies (tools/check_nocascade_reach.py).
+check-nocascade-reach:
+	@mkdir -p $(IR_DUMP_DIR)
+	$(MANNAC_CC) -std=c11 -Wall -Wextra $(MANNAC_WERROR) -O2 -g -o $(IR_DUMP_DIR)/ir_dump $(IR_DUMP_SRCS)
+	@python3 tools/check_nocascade_reach.py $(IR_DUMP_DIR)/ir_dump
+
+test-nocascade-reach-script:
+	@python3 tools/check_nocascade_reach_test.py
+
 # Step 21g (the batch B review's finding): every generated golden and every .mistakes file is what its generator writes today; a .mistakes file no generator writes fails.
 check-generated:
 	@python3 tools/check_generated.py
@@ -593,7 +603,7 @@ test-nocascade-wired-script:
 	@python3 tools/check_nocascade_wired_test.py
 
 # Everything of the no-cascade proof at once (the CI `nocascade` job runs the pieces as separate steps).
-nocascade-all: check-poison-paths check-nocascade-holes check-nocascade-index check-generated check-nocascade-prove check-nocascade-sinks test-nocascade-inject \
+nocascade-all: check-poison-paths check-nocascade-holes check-nocascade-index check-nocascade-reach check-generated check-nocascade-prove check-nocascade-sinks test-nocascade-inject \
 	check-inject-hook-absent check-nocascade-wired
 
 # Step 21c: REPORT, not a check (it becomes rules F3 and F7 of check-nocascade in step 21h): runs the whole sweep with coverage and lists the static sinks no

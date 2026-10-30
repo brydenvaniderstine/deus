@@ -89,6 +89,10 @@ jobs:
         if: ${{ !cancelled() }}
       - run: make check-nocascade-index
         if: ${{ !cancelled() }}
+      - run: make check-nocascade-reach
+        if: ${{ !cancelled() }}
+      - run: make test-nocascade-reach-script
+        if: ${{ !cancelled() }}
       - run: make check-generated
         if: ${{ !cancelled() }}
       - run: make test-check-generated-script
@@ -251,6 +255,10 @@ jobs:
       - run: make test-nocascade-prove-script
         if: ${{ !cancelled() }}
       - run: make check-nocascade-index
+        if: ${{ !cancelled() }}
+      - run: make check-nocascade-reach
+        if: ${{ !cancelled() }}
+      - run: make test-nocascade-reach-script
         if: ${{ !cancelled() }}
       - run: make check-generated
         if: ${{ !cancelled() }}

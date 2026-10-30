@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Rule F4/F5 of the no-cascade proof (typed-IR step 21g): tests/nocascade/INDEX.tsv, the goldens and the holes agree. Run from the repo root: python3 tools/check_nocascade_index.py [DIR]
 
-INDEX.tsv is written by tools/gen_ir_nocascade.py: golden, hole, variant, producer, mistakes, the intended diagnostics. This checks, without running the builder (make test-ir
+INDEX.tsv is written by tools/gen_ir_nocascade.py: golden, hole, variant, producer, mistakes, the intended diagnostics, reach (body or decl: step 22k; tools/check_nocascade_reach.py runs it). This checks, without running the builder (make test-ir
 and test-ir-asan run every tests/nocascade/*.mn against its .ir):
   - the .mn and .ir files of DIR are exactly the INDEX rows' (an unlisted golden or a missing one fails; sinks.json, PATHS.lock and the like are not goldens);
   - each .ir is `ERRORS:` and exactly the intended diagnostics: the golden says what the generator meant, so a golden edited to match the builder is caught here;
@@ -21,9 +21,11 @@ def check(d, holes=None):
     for ln in open(idx).read().split("\n"):
         if ln.strip() and not ln.startswith("#"):
             f = ln.split("\t")
-            if len(f) != 6:
-                problems.append("INDEX row with %d fields (want 6): %s" % (len(f), ln[:80]))
+            if len(f) != 7:
+                problems.append("INDEX row with %d fields (want 7): %s" % (len(f), ln[:80]))
                 continue
+            if f[6] not in ("body", "decl"):
+                problems.append("%s: reach is %r (want body or decl)" % (f[0], f[6]))
             rows.append(f)
     names = [r[0] for r in rows]
     if len(names) != len(set(names)):
@@ -34,7 +36,7 @@ def check(d, holes=None):
         problems.append("%s is listed (or required) but missing" % f)
     for f in sorted(f for f in files - expected_files if f.endswith((".mn", ".ir"))):   # the other files of the directory (sinks.json, PATHS.lock, ...) are not goldens
         problems.append("%s is in %s but not in the INDEX" % (f, d))
-    for name, hole, variant, producer, mistakes, intended in rows:
+    for name, hole, variant, producer, mistakes, intended, reach in rows:
         ir = os.path.join(d, name + ".ir")
         if not os.path.exists(ir):
             continue

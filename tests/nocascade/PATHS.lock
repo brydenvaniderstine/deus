@@ -10,16 +10,16 @@
   "layout_dependents_of_a_struct_with_a_failed_repeated_field_stay_silent"
  ],
  "ir_decls.c::ir_check_type_size::3bc4fbf1::0": [
-  "Decl_function_decl_return_type__call_arith__unknown_type",
-  "Decl_function_decl_return_type__call_assign__unknown_type"
+  "Decl_function_decl_return_type__declaration_stops_bodies_call_arith__unknown_type",
+  "Decl_function_decl_return_type__declaration_stops_bodies_call_assign__unknown_type"
  ],
  "ir_decls.c::ir_resolve_type::2172e690::0": [
   "Type_array_elem__local_arith__unknown_type",
   "Type_array_elem__local_assign__unknown_type"
  ],
  "ir_decls.c::ir_resolve_type::2172e690::1": [
-  "Type_slice_elem__param_arith__unknown_type",
-  "Type_slice_elem__param_assign__unknown_type"
+  "Type_slice_elem__declaration_stops_bodies_param_arith__unknown_type",
+  "Type_slice_elem__declaration_stops_bodies_param_assign__unknown_type"
  ],
  "ir_decls.c::layout_struct::22173d16::0": [
   "layout_a_struct_holding_an_unsized_one_gives_its_dependents_no_size",
@@ -33,8 +33,8 @@
   "layout_total_after_an_oversized_field_is_not_checked"
  ],
  "ir_decls.c::layout_struct::5ba98046::0": [
-  "Field_type__struct_field_construct__unknown_type",
-  "Field_type__struct_field_construct_and_read__unknown_type"
+  "Field_type__declaration_stops_bodies_struct_field_construct__unknown_type",
+  "Field_type__declaration_stops_bodies_struct_field_construct_and_read__unknown_type"
  ],
  "ir_decls.c::layout_struct::ca4cc230::0": [
   "layout_dependents_of_a_struct_with_a_failed_repeated_field_stay_silent",
