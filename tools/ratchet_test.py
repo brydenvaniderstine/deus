@@ -45,6 +45,33 @@ check("one new path accounts for only one removed path",
       len(ratchet.compare(snap(b["metrics"], {"t/a.ir": [2, "h1"], "t/b.ir": [2, "h1"]}), snap(b["metrics"], {"u/a.ir": [2, "h1"]}), {})) == 1)
 check("a removed file with a waiver passes", ratchet.compare(b, snap(b["metrics"], {"t/a.ir": [2, "h1"]}), {("t/b.ir", 1, 0): "C1"}) == [])
 
+# ---- codes and fixed sources (step 22l, round-4 finding 10)
+check("diag_codes lists the codes of the ERRORS lines in order", ratchet.diag_codes("ERRORS:\n1:2 E0230 a\n3:4 E0223 b\n\nTREE:\n5:6 E0999 not a diagnostic\n") == ["E0230", "E0223"])
+C = snap({"goldens": 10}, {"t/a.ir": [2, "h1", ["E0230", "E0223"]], "t/b.ir": [1, "h2", ["E0230"]]})
+def with_codes(a, b):
+    return snap(C["metrics"], {"t/a.ir": [len(a), "hx", a], "t/b.ir": [1, "h2", b]})
+check("codes: the same codes pass", ratchet.compare(C, C, {}) == [])
+check("codes: a SWAPPED code at the same count fails and names the file and both lists", any("t/a.ir" in p and "E0223" in p and "E0260" in p for p in ratchet.compare(C, with_codes(["E0230", "E0260"], ["E0230"]), {})))
+check("codes: a reordered list fails", len(ratchet.compare(C, with_codes(["E0223", "E0230"], ["E0230"]), {})) == 1)
+check("codes: a lost code fails (also as a count)", len(ratchet.compare(C, with_codes(["E0230"], ["E0230"]), {})) >= 1)
+check("codes: a code ADDED to the list (the old ones still inside, in order) is not a change", ratchet.compare(C, with_codes(["E0230", "E0265", "E0223"], ["E0230"]), {}) == [])
+check("codes: a swap beside an addition fails", len(ratchet.compare(C, with_codes(["E0230", "E0265", "E0260"], ["E0230"]), {})) == 1)
+check("codes: a RATCHET-WAIVER <path> CHANGED covers that file only", ratchet.compare(C, with_codes(["E0230", "E0260"], ["E0230"]), {("t/a.ir", "CHANGED", 0): "C1"}) == [] and
+      len(ratchet.compare(C, with_codes(["E0230", "E0260"], ["E0260"]), {("t/a.ir", "CHANGED", 0): "C1"})) == 1)
+check("codes: a snapshot from before step 22l (no codes) has nothing to compare, either way", ratchet.compare(b, C, {}) == [] and ratchet.compare(C, b, {}) == [])
+F = {"metrics": {}, "diags": {}, "fixed": {"t/x.fixed.mn": "f1", "t/y.fixed2.mn": "f2"}}
+def with_fixed(d):
+    return {"metrics": {}, "diags": {}, "fixed": d}
+check("fixed: the same hashes pass", ratchet.compare(F, F, {}) == [])
+check("fixed: a changed fixed source fails and names the file", any("t/x.fixed.mn changed" in p for p in ratchet.compare(F, with_fixed({"t/x.fixed.mn": "ZZ", "t/y.fixed2.mn": "f2"}), {})))
+check("fixed: a removed fixed source fails", any("t/y.fixed2.mn was removed" in p for p in ratchet.compare(F, with_fixed({"t/x.fixed.mn": "f1"}), {})))
+check("fixed: a moved fixed source (its bytes at a new path) is not a loss", ratchet.compare(F, with_fixed({"u/x.fixed.mn": "f1", "t/y.fixed2.mn": "f2"}), {}) == [])
+check("fixed: one new path accounts for one removed path only", len(ratchet.compare(with_fixed({"t/x.fixed.mn": "f1", "t/z.fixed.mn": "f1"}), with_fixed({"u/x.fixed.mn": "f1"}), {})) == 1)
+check("fixed: a new fixed source is fine", ratchet.compare(F, with_fixed({"t/x.fixed.mn": "f1", "t/y.fixed2.mn": "f2", "t/n.fixed.mn": "f3"}), {}) == [])
+check("fixed: a RATCHET-WAIVER <path> CHANGED covers a changed one", ratchet.compare(F, with_fixed({"t/x.fixed.mn": "ZZ", "t/y.fixed2.mn": "f2"}), {("t/x.fixed.mn", "CHANGED", 0): "C1"}) == [])
+check("fixed: a snapshot without the key has nothing to compare", ratchet.compare(snap(), F, {}) == [])
+check("CHANGED waivers are read from the register and only for an OPEN entry", ratchet.waivers("### ZT - x\n\n- **Status:** OPEN\n\nRATCHET-WAIVER t/a.ir CHANGED ZT\nRATCHET-WAIVER t/b.ir CHANGED NOPE\n") == {("t/a.ir", "CHANGED", 0): "ZT"})
+
 # ---- the whole script on a scratch git repository (the CLI, so these also run against an older ratchet.py)
 ZERO = None
 tmp = tempfile.mkdtemp()
@@ -59,7 +86,7 @@ try:
         shutil.copytree(os.path.join(repo, "tests"), os.path.join(root, "tests"))
         os.remove(os.path.join(root, "tests", "ratchet.json"))   # the scratch repository's first version is made by its own `update`
         for f in ("docs/DEGRADATION.md", "docs/error_codes.md", "tools/audit_ir_poison_reasons.txt", "tools/ir_memory_stress.py", "tools/ratchet_test.py",
-                  "tools/check_register_test.py", "tools/check_ci_targets_test.py", "tools/boot_check_test.py", "tools/check_batch_cap_test.py", "tools/check_retro_rules_test.py", "tools/coverage_check_test.py", "tools/poison_paths_test.py", "tools/nocascade_inject_test.py", "tools/nocascade_sinks_test.py", "tools/gen_ir_nocascade_test.py", "tools/check_generated_test.py", "tools/nocascade_prove_test.py", "tools/ratchet.py"):
+                  "tools/check_register_test.py", "tools/check_ci_targets_test.py", "tools/boot_check_test.py", "tools/check_batch_cap_test.py", "tools/check_retro_rules_test.py", "tools/coverage_check_test.py", "tools/poison_paths_test.py", "tools/nocascade_inject_test.py", "tools/nocascade_sinks_test.py", "tools/gen_ir_nocascade_test.py", "tools/check_generated_test.py", "tools/nocascade_prove_test.py", "tools/check_nocascade_reach_test.py", "tools/ratchet.py"):
             shutil.copy(os.path.join(repo, f), os.path.join(root, f))
         with open(os.path.join(root, "docs", "DEGRADATION.md"), "a") as f:   # an entry of the test's own, so the waivers do not depend on the real register
             f.write("\n### ZT - an entry for the ratchet tests\n\n- **Status:** OPEN\n")
@@ -148,6 +175,8 @@ try:
             lines = "\nRATCHET-WAIVER ir_fix_cases %d -> %d ZT\n" % (ncase, ncase - 1)
             if os.path.exists(rem):
                 lines += "RATCHET-WAIVER tests/ir_fix/%s.remaining %d -> 0 ZT\n" % (cases[0][:-3], ratchet.count_diags(open(rem).read()))
+            if os.path.exists(os.path.join(root, "tests", "ir_fix", cases[0][:-3] + ".fixed.mn")):
+                lines += "RATCHET-WAIVER tests/ir_fix/%s.fixed.mn CHANGED ZT\n" % cases[0][:-3]
         for ext in (".mn", ".fixed.mn", ".remaining"):
             p = os.path.join(root, "tests", "ir_fix", cases[0][:-3] + ext)
             if os.path.exists(p):
@@ -237,6 +266,49 @@ try:
     commit(root, "restore the golden and close ZT")
     r = run(root, "check")
     check("finding 7: the lowering stays waived after the entry is CLOSED in a later commit", r.returncode == 0 and "FAILED" not in r.stdout)
+
+    # round-4 finding 10, the auditor's simulation: a lost fix and a swapped code, each at the same or a higher count, committed by a careless or hostile change
+    fixdir = os.path.join(repo, "tests", "ir_fix")
+    lost = next(f[:-3] for f in sorted(os.listdir(fixdir)) if f.endswith(".mn") and ".fixed" not in f and os.path.exists(os.path.join(fixdir, f[:-3] + ".fixed.mn")) and
+                not os.path.exists(os.path.join(fixdir, f[:-3] + ".remaining")) and open(os.path.join(fixdir, f)).read() != open(os.path.join(fixdir, f[:-3] + ".fixed.mn")).read())
+    root = baseline("lostfix")
+    fd = os.path.join(root, "tests", "ir_fix")
+    shutil.copy(os.path.join(fd, lost + ".mn"), os.path.join(fd, lost + ".fixed.mn"))              # the fix is gone: the fixed source is the input
+    open(os.path.join(fd, lost + ".remaining"), "w").write("ERRORS:\n1:1 E0230 unknown name 'x'\n")   # and what the fix used to remove is now what remains
+    force_write(root)
+    commit(root, "a fix case reset to its input plus a .remaining")
+    r = run(root, "check")
+    check("finding 10: a fix case whose .fixed.mn was reset to its input, with a .remaining added, FAILS the ratchet (the base passed it)", r.returncode == 1 and lost + ".fixed.mn changed" in r.stdout)
+    root = baseline("lostfix_waived")
+    fd = os.path.join(root, "tests", "ir_fix")
+    shutil.copy(os.path.join(fd, lost + ".mn"), os.path.join(fd, lost + ".fixed.mn"))
+    with open(os.path.join(root, "docs", "DEGRADATION.md"), "a") as f:
+        f.write("\nRATCHET-WAIVER tests/ir_fix/%s.fixed.mn CHANGED ZT\n" % lost)
+    force_write(root)
+    commit(root, "a fixed source changed under a waiver that names it")
+    r = run(root, "check")
+    check("finding 10: a changed fixed source passes when its commit carries a RATCHET-WAIVER naming the file", r.returncode == 0)
+    swap = "one_error_compare_literal_with_bool"
+    root = baseline("swapcode")
+    sp = os.path.join(ir_dir(root), swap + ".ir")
+    old = open(sp).read()
+    assert "E0223" in old
+    open(sp, "w").write(old.replace("E0223", "E0230"))
+    force_write(root)
+    commit(root, "E0223 swapped for E0230 at the same count")
+    r = run(root, "check")
+    check("finding 10: one_error_compare_literal_with_bool.ir with E0223 swapped for E0230 FAILS the ratchet (the base passed it), naming both codes", r.returncode == 1 and swap + ".ir" in r.stdout and "E0223" in r.stdout and "E0230" in r.stdout)
+    root = baseline("swapcode_uncommitted")
+    open(os.path.join(ir_dir(root), swap + ".ir"), "w").write(old.replace("E0223", "E0230"))
+    r = run(root, "check")
+    check("finding 10: ... also in the working tree, before anything is committed", r.returncode == 1 and "codes changed" in r.stdout)
+    r = run(root, "update")
+    check("finding 10: update refuses the swap too", r.returncode == 1 and "refused" in r.stdout)
+    root = baseline("growcode")
+    gp = os.path.join(ir_dir(root), swap + ".ir")
+    open(gp, "w").write(old.rstrip("\n") + "\n99:1 E0265 an added diagnostic\n")
+    r = run(root, "update")
+    check("finding 10: a diagnostic ADDED to a golden (the old codes still in order) is allowed to be recorded", r.returncode == 0)
 
     # finding 6: a removed test call is a lowered unit-test count
     root = baseline("uncalled")

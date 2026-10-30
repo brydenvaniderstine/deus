@@ -299,7 +299,7 @@ RATCHET-WAIVER rename_property.part1.fixes_changed 1618 -> 1592 C10
 ### V4 - The da9f01c rule (no golden may lose diagnostics) is a review rule
 
 - **Status:** CLOSED (2026-10-24, step 20a)
-- **Reason:** CI compared output to the golden and could not see that the golden was edited to match. Now `make test-ratchet` replays the history of `tests/ratchet.json` and compares the diagnostic count of every expected output under `tests/`, and every test count, across every consecutive pair of committed versions; a decrease fails unless a `RATCHET-WAIVER` line names an open register entry.
+- **Reason:** CI compared output to the golden and could not see that the golden was edited to match. Now `make test-ratchet` replays the history of `tests/ratchet.json` and compares the diagnostic count of every expected output under `tests/`, and every test count, across every consecutive pair of committed versions; a decrease fails unless a `RATCHET-WAIVER` line names an open register entry. Since step 22l (round-4 finding 10) it also records, per expected output, the diagnostic CODES in order, and the hash of every `*.fixed.mn` / `*.fixed2.mn` of `tests/ir_fix` and `tests/audit_repros`: a swapped, lost or reordered code (a code only ADDED is fine) and a changed or removed fixed source fail unless `RATCHET-WAIVER <path> CHANGED <open entry>` names that file.
 - **Promise:** `CLAUDE.md:176` "A golden that loses diagnostics or AST nodes in a commit is STOP-tier"
 - **Where it stands:** `docs/REFINEMENT.md:77` "**Enforced since step 20a by `make test-ratchet` (`tools/ratchet.py`):**"
 - **Owner:** Claude Code (work); Bryden (approval)

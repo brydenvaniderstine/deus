@@ -24,7 +24,14 @@ re-baseline). One metric goes the other way: the written reasons in tools/audit_
 
 A decrease is allowed only with a line in docs/DEGRADATION.md of the form
     RATCHET-WAIVER <metric or path> <from> -> <to> <register entry id>
-where the entry exists in the register and is OPEN or PARTLY CLOSED (a closed entry permits nothing). A removed test file counts as MOVED only
+where the entry exists in the register and is OPEN or PARTLY CLOSED (a closed entry permits nothing).
+
+Step 22l (round-4 finding 10): the count is not the whole claim. Per expected-output file the snapshot also records its diagnostic CODES in order (`diags[path] = [count, hash, codes]`),
+and the hash of every `*.fixed.mn` and `*.fixed2.mn` of tests/ir_fix and tests/audit_repros (`fixed[path] = hash`). A swapped code at the same count, a lost fix, a fixed file that
+changed or went away fail unless the register has
+    RATCHET-WAIVER <path> CHANGED <register entry id>
+naming that file. A code list may GROW (the old codes still appear, in the same order, inside the new list: a diagnostic added to a golden); a change that removes, swaps or reorders a code is
+the failure. A fixed file may not change at all: a different fix is a different promise. A snapshot written before step 22l has neither, and the pair that crosses the format has nothing to compare. A removed test file counts as MOVED only
 if its content is at a path that is NOT in the baseline, and each new path accounts for at most one removed path (identical expected outputs
 are common: 229 files share content in 80 groups, so "the hash is somewhere" would excuse any deletion).
 """
@@ -39,6 +46,25 @@ MAX_METRICS = {"audit_poison_reasons"}   # may only go down
 def read(path):
     with open(os.path.join(ROOT, path), encoding="utf-8", errors="replace") as f:
         return f.read()
+
+
+def diag_codes(text):
+    """the codes (the word after `L:C `) of the diagnostics in an expected-output file, in order: the lines count_diags counts"""
+    out, inside = [], False
+    for line in text.split("\n"):
+        if line == "ERRORS:":
+            inside = True
+        elif inside and re.match(r"\d+:\d+ ", line):
+            parts = line.split()
+            out.append(parts[1] if len(parts) > 1 else "")
+        elif inside:
+            inside = False
+    return out
+
+
+def is_subsequence(old, new):
+    it = iter(new)
+    return all(c in it for c in old)
 
 
 def count_diags(text):
@@ -59,7 +85,7 @@ def files(pattern):
 
 
 def compute():
-    metrics, diags = {}, {}
+    metrics, diags, fixed = {}, {}, {}
     metrics["lexer_goldens"] = len(files("tests/lexer/*.mn"))
     metrics["parser_goldens"] = len(files("tests/parser/*.mn"))
     metrics["ir_goldens"] = len(files("tests/ir/*.mn"))
@@ -88,7 +114,7 @@ def compute():
     for i, line in enumerate([l for l in read("tests/rename_property.expected").split("\n") if l.startswith("rename property test")]):
         metrics["rename_property.part%d.programs" % (i + 1)] = int(re.search(r"(\d+) random programs", line).group(1))
         metrics["rename_property.part%d.fixes_changed" % (i + 1)] = int(re.search(r"fixes changed (\d+)", line).group(1))
-    for f in ("ratchet_test.py", "check_register_test.py", "check_ci_targets_test.py", "boot_check_test.py", "check_batch_cap_test.py", "check_retro_rules_test.py", "coverage_check_test.py", "poison_paths_test.py", "nocascade_inject_test.py", "nocascade_sinks_test.py", "gen_ir_nocascade_test.py", "check_generated_test.py", "nocascade_prove_test.py"):
+    for f in ("ratchet_test.py", "check_register_test.py", "check_ci_targets_test.py", "boot_check_test.py", "check_batch_cap_test.py", "check_retro_rules_test.py", "coverage_check_test.py", "poison_paths_test.py", "nocascade_inject_test.py", "nocascade_sinks_test.py", "gen_ir_nocascade_test.py", "check_generated_test.py", "nocascade_prove_test.py", "check_nocascade_reach_test.py"):
         metrics["script_checks." + f] = len(re.findall(r"^\s*check\(", read("tools/" + f), re.M))
     # step 21g (F8): the no-cascade proof only grows. The SINK count is not ratcheted: removing a redundant guard after the D3 procedure legitimately lowers it, and
     # that is caught by PATHS.lock (F2) instead, which changes with it and must be regenerated and reviewed.
@@ -106,8 +132,11 @@ def compute():
     for pat in ("tests/ir/*.ir", "tests/ir_fix/*.remaining", "tests/parser/*.ast", "tests/audit_repros/*.out", "tests/nocascade/*.ir"):
         for f in files(pat):
             text = read(f)
-            diags[f] = [count_diags(text), hashlib.sha256(text.encode("utf-8", "replace")).hexdigest()[:16]]
-    return {"metrics": metrics, "diags": diags, "uncalled": uncalled}
+            diags[f] = [count_diags(text), hashlib.sha256(text.encode("utf-8", "replace")).hexdigest()[:16], diag_codes(text)]
+    for pat in ("tests/ir_fix/*.fixed.mn", "tests/ir_fix/*.fixed2.mn", "tests/audit_repros/*.fixed.mn", "tests/audit_repros/*.fixed2.mn"):
+        for f in files(pat):
+            fixed[f] = hashlib.sha256(read(f).encode("utf-8", "replace")).hexdigest()[:16]
+    return {"metrics": metrics, "diags": diags, "fixed": fixed, "uncalled": uncalled}
 
 
 def waivers(text=None):
@@ -123,6 +152,9 @@ def waivers(text=None):
     for m in re.finditer(r"^RATCHET-WAIVER (\S+) (\d+) -> (\d+) (\S+)\s*$", text, re.M):
         if m.group(4) in open_ids:
             out[(m.group(1), int(m.group(2)), int(m.group(3)))] = m.group(4)
+    for m in re.finditer(r"^RATCHET-WAIVER (\S+) CHANGED (\S+)\s*$", text, re.M):
+        if m.group(2) in open_ids:
+            out[(m.group(1), "CHANGED", 0)] = m.group(2)
     return out
 
 
@@ -138,11 +170,13 @@ def compare(base, cur, waived):
             problems.append("metric %s went %s: %d -> %d" % (name, "up (it may only go down)" if name in MAX_METRICS else "down", b, c))
     # a removed path is MOVED only if its content is at a path that is new (not in the baseline), one removed path per new path
     new_by_hash = {}
-    for path, (n, h) in sorted(cur["diags"].items()):
+    for path, (n, h, *_) in sorted(cur["diags"].items()):
         if path not in base["diags"]:
             new_by_hash.setdefault(h, []).append(path)
-    for path, (n, h) in sorted(base["diags"].items()):
+    for path, (n, h, *bc) in sorted(base["diags"].items()):
         now = cur["diags"].get(path)
+        if now is not None and bc and len(now) > 2 and now[2] != bc[0] and not is_subsequence(bc[0], now[2]) and (path, "CHANGED", 0) not in waived:
+            problems.append("%s: its diagnostic codes changed: %s -> %s (a swapped, lost or reordered code at the same count; `RATCHET-WAIVER %s CHANGED <open entry>` says why)" % (path, " ".join(bc[0]) or "(none)", " ".join(now[2]) or "(none)", path))
         if now is None:
             if new_by_hash.get(h):
                 new_by_hash[h].pop()
@@ -151,6 +185,23 @@ def compare(base, cur, waived):
                 problems.append("%s was removed (it held %d diagnostics)" % (path, n))
         elif now[0] < n and (path, n, now[0]) not in waived:
             problems.append("%s lost diagnostics: %d -> %d" % (path, n, now[0]))
+    # the fixed sources: every *.fixed.mn / *.fixed2.mn is a promise of what the fix gives; it may not change or go away (a moved one keeps its bytes at a new path)
+    if "fixed" in base:
+        cf = cur.get("fixed", {})
+        moved = {}
+        for path, h in sorted(cf.items()):
+            if path not in base["fixed"]:
+                moved.setdefault(h, []).append(path)
+        for path, h in sorted(base["fixed"].items()):
+            if (path, "CHANGED", 0) in waived:
+                continue
+            if path not in cf:
+                if moved.get(h):
+                    moved[h].pop()
+                    continue
+                problems.append("%s was removed (a fix case's fixed source: the fix is lost; `RATCHET-WAIVER %s CHANGED <open entry>` says why)" % (path, path))
+            elif cf[path] != h:
+                problems.append("%s changed (a fixed source is what the fix gives: a different one is a different promise; `RATCHET-WAIVER %s CHANGED <open entry>` says why)" % (path, path))
     return problems
 
 
