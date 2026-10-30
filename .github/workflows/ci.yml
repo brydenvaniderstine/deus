@@ -23,7 +23,7 @@ jobs:
   # more than the few extra seconds of sharing a runner.
   ci:
     name: mannac tests (plain + ASan) + kernel compile check
-    runs-on: macos-14
+    runs-on: macos-15
     env:
       MANNAC_WERROR: -Werror
     steps:

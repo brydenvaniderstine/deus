@@ -291,7 +291,7 @@ RATCHET-WAIVER rename_property.part1.fixes_changed 1618 -> 1592 C10
 - **Status:** CLOSED (2026-10-25, ci.yml run 40166779034 on 3258f9d)
 - **Reason:** The C is meant to build elsewhere (an open IDEAS question: portable C on any OS); the only Linux/gcc runs are the reviewer's manual ones. The Linux job (Ubuntu, gcc, plus clang with llvm-cov for the poison audit) runs the whole host-side list on every push. CLOSED: the Linux job (Ubuntu, gcc 13, plus clang with llvm-cov for the poison audit) ran the whole host-side list green in ci.yml run 40166779034 on 3258f9d, 0 compiler warnings under -Werror.
 - **Promise:** `docs/IDEAS.md:20` "Mac-only vs portable C on any OS"
-- **Where it stands:** (before step 20) `.github/workflows/ci.yml:26` "runs-on: macos-14"
+- **Where it stands:** (before step 20; the job was `macos-14` then and moved to `macos-15` on 2026-10-30, the macos-14 image being retired on 2 November 2026) `.github/workflows/ci.yml:26` "runs-on: macos-15"
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** Step 20 (an Ubuntu gcc job)
 - **Trigger-id:** `step-20`
