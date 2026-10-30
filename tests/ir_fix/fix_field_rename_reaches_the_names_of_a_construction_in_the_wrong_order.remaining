@@ -1,0 +1,2 @@
+ERRORS:
+4:23 E0245 fields must be given in declaration order: 'a' before 'my_b'

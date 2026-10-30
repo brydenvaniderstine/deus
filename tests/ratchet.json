@@ -2628,17 +2628,41 @@
    2,
    "71d5ae5edcf0c905"
   ],
+  "tests/ir_fix/fix_field_rename_reaches_a_doubly_parenthesized_name_in_a_construction.remaining": [
+   1,
+   "4e9ba5cce61a5ba3"
+  ],
+  "tests/ir_fix/fix_field_rename_reaches_a_parenthesized_name_beside_a_positional_argument.remaining": [
+   1,
+   "0a72f4fb17c1bbd4"
+  ],
+  "tests/ir_fix/fix_field_rename_reaches_a_parenthesized_name_in_a_construction.remaining": [
+   1,
+   "4e9ba5cce61a5ba3"
+  ],
   "tests/ir_fix/fix_field_rename_reaches_its_name_in_a_positional_construction.remaining": [
    1,
    "68c10f4d30baedb8"
+  ],
+  "tests/ir_fix/fix_field_rename_reaches_the_names_of_a_construction_in_the_wrong_order.remaining": [
+   1,
+   "0c5f6942640de5ef"
   ],
   "tests/ir_fix/fix_field_rename_refused_when_a_named_argument_writes_its_target.remaining": [
    2,
    "24eae1b6d7877354"
   ],
+  "tests/ir_fix/fix_field_rename_refused_when_a_parenthesized_name_writes_its_target.remaining": [
+   2,
+   "52b2914d1a55ef35"
+  ],
   "tests/ir_fix/fix_field_rename_refused_when_a_positional_construction_writes_its_target.remaining": [
    2,
    "36133dbcf64d0eff"
+  ],
+  "tests/ir_fix/fix_field_rename_with_a_number_left_of_the_colon_in_a_construction.remaining": [
+   1,
+   "4e9ba5cce61a5ba3"
   ],
   "tests/ir_fix/fix_field_renames_reach_every_name_in_a_positional_construction.remaining": [
    1,
@@ -6097,11 +6121,11 @@
   "error_codes_documented": 55,
   "error_codes_with_fix": 8,
   "generators": 29,
-  "ir_fix_cases": 139,
+  "ir_fix_cases": 145,
   "ir_goldens": 501,
   "lexer_goldens": 15,
   "memory_stress_cases": 8,
-  "mistakes_sidecars": 50,
+  "mistakes_sidecars": 51,
   "nocascade_goldens": 449,
   "nocascade_index_rows": 449,
   "nocascade_sweep_points": 26871,

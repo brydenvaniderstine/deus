@@ -1,0 +1,5 @@
+manna v0;
+struct Q { a: u8, my_x: u8, }
+fn f() -> Q {
+    return Q(1, (my_x): 2);
+}

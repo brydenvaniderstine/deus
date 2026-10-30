@@ -710,10 +710,10 @@ static IR_NOINLINE bool construct_shape_ok(BodyCtx *bc, const Construct *c, cons
         ir_error(bc->st, diag_ir_positional_construction(a->span));
         for (size_t j = 0; j < args->len; j++) {
             const Expr *b = args->items[j];
-            if (b->kind != EXPR_NAMED_ARG || b->as.named_arg.name->kind != EXPR_IDENT || b->as.named_arg.name->parenthesized) continue;
+            if (b->kind != EXPR_NAMED_ARG || b->as.named_arg.name->kind != EXPR_IDENT) continue;
             const char *name = b->as.named_arg.name->as.ident.name;
             size_t k = field_index(c->s, name, 0);
-            if (k != SIZE_MAX) ir_note_field_use(bc, c->s, k, b->as.named_arg.name->span);
+            if (k != SIZE_MAX) ir_note_field_use(bc, c->s, k, b->as.named_arg.name->as.ident.name_span); /* the name token only: a parenthesized name keeps its parentheses */
             else ir_note_unresolved(bc->st, bc->decls, NS_FIELD, (size_t)(c->s - bc->decls->irs), name);
         }
         silently_check_args(bc, e);
@@ -730,6 +730,14 @@ static IR_NOINLINE long construct_field(BodyCtx *bc, Construct *c, const Expr *a
     if (n->kind != EXPR_IDENT || n->parenthesized) {
         ir_error(st, diag_ir_not_a_field_name(n->span));
         c->unrecognized = true;
+        /* A parenthesized name is still a SPELLING of a field (step 22h, round-4 finding 6): a name that is a field is a use of it (a rename of the field reaches it, keeping the
+         * parentheses), and a name that is none is written-but-unresolved (a rename whose target is that spelling would make it resolve once the parentheses go). Any other left side
+         * (`1`, `a.b`, a call) has no spelling. */
+        if (n->kind == EXPR_IDENT) {
+            size_t k = field_index(c->s, n->as.ident.name, 0);
+            if (k != SIZE_MAX) ir_note_field_use(bc, c->s, k, n->as.ident.name_span);
+            else ir_note_unresolved(st, bc->decls, NS_FIELD, (size_t)(c->s - bc->decls->irs), n->as.ident.name);
+        }
         return -1;
     }
     const char *name = n->as.ident.name;
