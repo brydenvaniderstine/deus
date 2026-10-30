@@ -1,0 +1,13 @@
+ERRORS:
+4:14 E0230 unknown name 'nope1'
+4:14 E0260 operator '+' is not defined for bool
+5:18 E0230 unknown name 'nope2'
+5:14 E0260 operator '-' is not defined for bool
+6:14 E0230 unknown name 'nope3'
+6:14 E0260 operator '&' is not defined for bool
+7:14 E0230 unknown name 'nope4'
+7:14 E0260 operator '<<' is not defined for bool
+8:18 E0230 unknown name 'nope5'
+8:14 E0260 operator '*' is not defined for P
+9:14 E0230 unknown name 'nope6'
+9:14 E0260 operator '|' is not defined for [4]u8

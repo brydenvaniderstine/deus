@@ -457,6 +457,15 @@ Diagnostic diag_ir_cannot_convert(Arena *a, Span at, const char *from, const cha
     return d;
 }
 
+Diagnostic diag_ir_cannot_convert_to(Arena *a, Span at, const char *to) {
+    Diagnostic d = {0};
+    d.code = "E0265";
+    d.severity = DIAG_ERROR;
+    d.message = arena_sprintf(a, "can't convert to %s; conversions are between integer types only", to);
+    d.span = at;
+    return d;
+}
+
 Diagnostic diag_ir_not_snake_case(Arena *a, Span at, const char *name) {
     Diagnostic d = {0};
     d.code = "E0280";

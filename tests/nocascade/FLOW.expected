@@ -4,3 +4,4 @@
 ir.c	type_matches	the interner's probe meets a differently-kinded composite in the same bucket when an injected ERROR element changes which types exist: a lookup, not a decision about poison (deterministic since the hash uses serials, not addresses: five identical F3 runs)
 ir_expr.c	bool_stand_in	builds the bool node that a comparison, `&&`, `||` or `!` returns over a poisoned operand (D1): production of a typed node, not a test of poison
 ir_expr.c	ir_check_silent	walks a subtree for its own mistakes with diagnostics muted when its base or callee is poisoned: the muted mechanism, proved in step 21i
+ir_expr.c	check_index_beside_bad_base	checks an index or slice bound beside a base that is at fault (poisoned or not indexable) for the one mistake that is certain whatever the base is, E0253 (step 22g, D1 extended): a reporter; the tests inside it are static sinks and are proven

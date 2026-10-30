@@ -1,0 +1,8 @@
+manna v0;
+fn f(b: bool, x: u8, xs: [4]u8) -> bool {
+    let c = nope < b;
+    let d = bool(nope2);
+    let e = nope3[b];
+    let g = xs[b];
+    return true;
+}

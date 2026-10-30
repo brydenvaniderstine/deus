@@ -1,0 +1,11 @@
+manna v0;
+struct P { a: u8, }
+fn f(b: bool, x: u8, xs: [4]u8, p: P) -> bool {
+    let a1 = nope1 + b;
+    let a2 = b - nope2;
+    let a3 = nope3 & b;
+    let a4 = nope4 << b;
+    let a5 = p * nope5;
+    let a6 = nope6 | xs;
+    return true;
+}

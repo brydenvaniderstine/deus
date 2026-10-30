@@ -253,6 +253,7 @@ typedef struct {
 } Synth;
 
 static Synth synth(BodyCtx *bc, const Expr *e);
+static Synth synth_in(BodyCtx *bc, const Expr *e, int mode);
 
 static Synth is_group(void)        { Synth s = {true, 0, NULL, NULL}; return s; }
 static Synth is_node(IrExpr *n)    { Synth s = {false, 0, NULL, n}; return s; }
@@ -485,7 +486,9 @@ static IR_NOINLINE Synth typed_binary(BodyCtx *bc, const Expr *e, Synth l, Synth
      * (`nope < true`). A literal group has no type to check, and a second poisoned operand has nothing to say. */
     if (has_error(l) || has_error(r)) {
         Synth out = settle_pending(bc, e, l, r, !is_arith_class(op));
-        if (is_arith_class(op)) return out;
+        /* The operand that is NOT poisoned is checked for the one mistake that is certain whatever the other turns out to be: an operator its own type can never take is E0260 - for a comparison,
+         * and (step 22g, D1 extended, Bryden 2026-10-30) for arithmetic, bitwise and shift operators too (`nope + b` with a bool `b`). What depends on the poisoned type (`nope + x`, `x: u8`: a
+         * mismatch, E0261) is not claimed. The result type is unchanged: arithmetic stays ERROR. */
         const Synth o = has_error(l) ? r : l;
         if (has_error(l) != has_error(r) && !o.group && !operand_ok(op, o.node->type)) report_operator(st, e->span, ir_binop_text(op), o.node->type);
         return out;
@@ -925,6 +928,9 @@ static IR_NOINLINE Synth finish_convert(BodyCtx *bc, const Expr *e, Synth o) {
         operand = o.node;
         const IrType *from = operand->type;
         if (from->kind != IR_T_ERROR && !(is_int(from) && is_int(target))) report_cannot_convert(st, e->span, from, target);
+        /* D1 extended (step 22g, Bryden 2026-10-30): no operand type converts to `bool`, so that mistake is certain whatever a poisoned operand turns out to be and is reported beside it;
+         * a conversion to an integer type is valid for some operand type, so nothing is claimed (no cascade). */
+        if (from->kind == IR_T_ERROR && target->kind == IR_T_BOOL) ir_error(st, diag_ir_cannot_convert_to(st->arena, e->span, ir_type_text(st, target)));
     }
     return is_node(ir_expr_convert(st, e->span, target, operand));
 }
@@ -993,10 +999,19 @@ static IR_NOINLINE const IrType *indexable_element(BodyCtx *bc, const Expr *base
     return element_type(t);
 }
 
+/* An index or bound beside a base that is at fault (poisoned, or not indexable): its own mistakes, and the one that is certain whatever the base is (step 22g, D1 extended, Bryden
+ * 2026-10-30): a type that can never be an index (E0253: bool, a struct, an array, a slice). A literal takes u64. No fix, nothing blamed on the base's type. A unit value stays unreported
+ * (step 10: a unit value is not blamed where another error already says so). */
+static IR_NOINLINE void check_index_beside_bad_base(BodyCtx *bc, const Expr *e) {
+    Synth s = synth_in(bc, e, FIX_NONE);
+    if (s.group || is_unit(s) || has_error(s)) return;
+    if (!is_int(s.node->type)) report_index_type(bc->st, e->span, s.node->type);
+}
+
 static IR_NOINLINE Synth finish_index(BodyCtx *bc, const Expr *e, Synth b, const IrType *elem) {
     IrState *st = bc->st;
-    if (!elem) { /* the base is at fault: the index is checked for its own mistakes only */
-        ir_check_silent(bc, e->as.index.index);
+    if (!elem) { /* the base is at fault: the index is checked for its own mistakes and the certain ones */
+        check_index_beside_bad_base(bc, e->as.index.index);
         return is_error(st, e->span);
     }
     IrExpr *i = check_index_operand(bc, e->as.index.index);
@@ -1016,8 +1031,8 @@ static bool contains_slice(const IrType *t) {
 static IR_NOINLINE Synth finish_slice(BodyCtx *bc, const Expr *e, Synth b, const IrType *elem) {
     IrState *st = bc->st;
     if (!elem) {
-        ir_check_silent(bc, e->as.slice.lo);
-        ir_check_silent(bc, e->as.slice.hi);
+        check_index_beside_bad_base(bc, e->as.slice.lo);
+        check_index_beside_bad_base(bc, e->as.slice.hi);
         return is_error(st, e->span);
     }
     IrExpr *lo = check_index_operand(bc, e->as.slice.lo);

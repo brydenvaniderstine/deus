@@ -1,0 +1,5 @@
+ERRORS:
+4:13 E0252 can't index/slice type u8
+4:15 E0253 index/bound must be an integer, found bool
+5:13 E0252 can't index/slice type u8
+5:18 E0253 index/bound must be an integer, found P

@@ -2,6 +2,7 @@ ERRORS:
 5:16 E0226 a 'unit' value can't be used here
 6:16 E0230 unknown name 'nope'
 7:18 E0230 unknown name 'nope'
+7:13 E0265 can't convert to bool; conversions are between integer types only
 8:19 E0265 can't convert bool to u8; conversions are between integer types only
 8:19 E0223 type mismatch: expected bool, found u8
 9:20 E0230 unknown name 'nope'

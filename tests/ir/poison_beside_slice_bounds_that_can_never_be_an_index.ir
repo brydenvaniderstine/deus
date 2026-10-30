@@ -1,0 +1,8 @@
+ERRORS:
+4:14 E0230 unknown name 'nope1'
+4:20 E0253 index/bound must be an integer, found bool
+5:14 E0230 unknown name 'nope2'
+5:23 E0253 index/bound must be an integer, found bool
+6:14 E0230 unknown name 'nope3'
+6:20 E0253 index/bound must be an integer, found P
+6:23 E0253 index/bound must be an integer, found [4]u8

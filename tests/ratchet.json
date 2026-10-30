@@ -789,8 +789,8 @@
    "7c51ff7cb59d3fca"
   ],
   "tests/ir/convert_unit_error_operands_and_the_result_type.ir": [
-   6,
-   "4339410565660ce3"
+   7,
+   "283f9219226d0673"
   ],
   "tests/ir/cycle_and_unknown_type.ir": [
    2,
@@ -1844,6 +1844,38 @@
    1,
    "bbe0a3868d411f1f"
   ],
+  "tests/ir/poison_beside_a_conversion_to_bool.ir": [
+   4,
+   "137f862a954af4aa"
+  ],
+  "tests/ir/poison_beside_a_conversion_to_bool_and_an_index_of_the_wrong_type.ir": [
+   7,
+   "083e32963c3a9f2b"
+  ],
+  "tests/ir/poison_beside_a_poisoned_index_of_a_poisoned_base_is_two_unknown_names.ir": [
+   2,
+   "d52dadf3f2b7b677"
+  ],
+  "tests/ir/poison_beside_an_arithmetic_operand_the_operator_can_never_take.ir": [
+   12,
+   "9582bcf9a9aeda2f"
+  ],
+  "tests/ir/poison_beside_an_index_of_a_base_that_is_not_indexable.ir": [
+   2,
+   "e9e3c7ee13aa66ac"
+  ],
+  "tests/ir/poison_beside_an_index_of_a_struct_an_array_and_a_field_of_a_poisoned_base.ir": [
+   6,
+   "c4109d002ba6d13e"
+  ],
+  "tests/ir/poison_beside_slice_bounds_of_a_base_that_is_not_indexable.ir": [
+   4,
+   "694d4d5192dccc03"
+  ],
+  "tests/ir/poison_beside_slice_bounds_that_can_never_be_an_index.ir": [
+   7,
+   "5064a93daf479eef"
+  ],
   "tests/ir/poison_comparison_as_an_argument_that_rejects_bool.ir": [
    2,
    "1b34266f35ddc697"
@@ -1935,6 +1967,38 @@
   "tests/ir/poison_complement_stays_silent.ir": [
    1,
    "ef637b22fd5648b7"
+  ],
+  "tests/ir/poison_control_a_conversion_to_an_integer_type_gives_only_the_unknown_name.ir": [
+   1,
+   "c2d868e0b93e6b28"
+  ],
+  "tests/ir/poison_control_a_literal_index_gives_only_the_unknown_name.ir": [
+   1,
+   "2e4fc6b63ca7a5f9"
+  ],
+  "tests/ir/poison_control_a_shift_by_a_typed_integer_gives_only_the_unknown_name.ir": [
+   1,
+   "adbdb14446cab589"
+  ],
+  "tests/ir/poison_control_a_unit_index_is_not_blamed_beside_a_poisoned_base.ir": [
+   1,
+   "70209423f3c95e74"
+  ],
+  "tests/ir/poison_control_an_integer_index_gives_only_the_unknown_name.ir": [
+   1,
+   "9cbc40ab4473083d"
+  ],
+  "tests/ir/poison_control_arithmetic_with_a_typed_integer_gives_only_the_unknown_name.ir": [
+   1,
+   "2de2287ded2e5acb"
+  ],
+  "tests/ir/poison_control_integer_slice_bounds_gives_only_the_unknown_name.ir": [
+   1,
+   "e14ba954e662b9ff"
+  ],
+  "tests/ir/poison_control_unary_minus_gives_only_the_unknown_name.ir": [
+   1,
+   "71f646c09fa569d5"
   ],
   "tests/ir/poison_equality_of_a_bool_is_defined_and_alone.ir": [
    1,
@@ -6032,12 +6096,12 @@
   "e0261_exhaustive.programs": 995456,
   "error_codes_documented": 55,
   "error_codes_with_fix": 8,
-  "generators": 27,
+  "generators": 29,
   "ir_fix_cases": 139,
-  "ir_goldens": 485,
+  "ir_goldens": 501,
   "lexer_goldens": 15,
   "memory_stress_cases": 8,
-  "mistakes_sidecars": 42,
+  "mistakes_sidecars": 50,
   "nocascade_goldens": 449,
   "nocascade_index_rows": 449,
   "nocascade_sweep_points": 26871,

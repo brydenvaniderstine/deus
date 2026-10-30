@@ -1,0 +1,6 @@
+manna v0;
+struct P { a: u8, }
+fn f(b: bool, x: u8, xs: [4]u8, p: P) -> bool {
+    let t8 = -nope8;
+    return true;
+}

@@ -1,0 +1,8 @@
+manna v0;
+struct P { a: u8, }
+fn f(b: bool, x: u8, xs: [4]u8, p: P) -> bool {
+    let i1 = nope1[p];
+    let i2 = nope2[xs];
+    let i3 = nope3.zz[b];
+    return true;
+}

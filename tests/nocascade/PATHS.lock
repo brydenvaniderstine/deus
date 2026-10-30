@@ -84,6 +84,9 @@
   "Type_array_elem__local_arith__unknown_type",
   "Type_array_elem__local_assign__unknown_type"
  ],
+ "ir_expr.c::check_index_beside_bad_base::569b2161::0": [
+  "poison_beside_a_poisoned_index_of_a_poisoned_base_is_two_unknown_names"
+ ],
  "ir_expr.c::check_index_operand::8b1a708a::0": [
   "Expr_index_index__read__bad_operator",
   "Expr_index_index__read__no_fields"
@@ -94,6 +97,10 @@
  "ir_expr.c::deciding_type::8b1a708a::0": [
   "Expr_array_elems_list__inferred_first_then_arith__bad_operator",
   "Expr_array_elems_list__inferred_first_then_arith__no_fields"
+ ],
+ "ir_expr.c::finish_convert::5d518bc3::0": [
+  "poison_beside_a_conversion_to_bool",
+  "poison_beside_a_conversion_to_bool_and_an_index_of_the_wrong_type"
  ],
  "ir_expr.c::finish_convert::b22c1816::0": [
   "Expr_convert_operand__u8__bad_operator",
@@ -198,10 +205,11 @@
   "one_error_compare_literal_with_bool"
  ],
  "ir_expr.c::typed_binary::b8ded544::0": [
-  "poison_comparison_other_operand_type_is_still_checked"
+  "poison_beside_a_conversion_to_bool_and_an_index_of_the_wrong_type",
+  "poison_beside_an_arithmetic_operand_the_operator_can_never_take"
  ],
  "ir_expr.c::typed_binary::ed84387e::0": [
-  "Expr_array_elems_list__inferred_first_then_compare__bad_operator",
-  "Expr_array_elems_list__inferred_first_then_compare__no_fields"
+  "Expr_array_elems_list__inferred_first_then_arith__bad_operator",
+  "Expr_array_elems_list__inferred_first_then_arith__no_fields"
  ]
 }

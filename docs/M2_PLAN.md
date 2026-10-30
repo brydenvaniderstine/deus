@@ -642,6 +642,12 @@ IrType   interned & canonical per module (pointer equality == type equality):
          A comparison, `&&`, `||` and `!` are bool, a conversion has its target type, a call has the callee's return type, `len` is u64: the context then reports
          ITS OWN mistake next to the first one (`return a < nope;` in a `-> u32` is E0230 and E0223), and the operand that is not poisoned is still checked for its
          own mistake (`nope && 1`, `nope < b` with a bool `b`). Arithmetic, bitwise, shift and unary `-` / `~` take their operand's type and stay ERROR.
+         D1 extended (step 22g, Bryden 2026-10-30, round-4 finding 5): a mistake that is certain WHATEVER the poisoned part turns out to be is reported beside it; one that depends on the
+         poisoned part's type is not (no cascade). Certain: a conversion to `bool` (no operand type converts to it: E0265, worded `can't convert to bool; ...` without the operand's type); an
+         index or slice bound whose own type can never be an index (bool, a struct, an array: E0253), also when the base is not poisoned but not indexable (`x[true]`, `x: u8`: E0252 AND E0253);
+         an operator the non-poisoned operand's own type can never take (`nope + b` with a bool `b`: E0260), for arithmetic, bitwise and shift operators as already for comparisons (the result
+         type is unchanged: it stays ERROR). Not claimed: a conversion to an integer type, an integer index or bound, `nope + x` with `x: u8` (E0261 depends on the unknown type), unary operators
+         (one operand, and it is the poisoned one). A unit value stays unreported beside a failing context (step 10: "a unit value is not blamed where another error already says so").
 IrStruct { name, fields[{name, type, span}], size, align }
 IrFunc   { name, id "fn:name" (§7 item 5), kernel_hook:bool, params[IrLocal], ret:IrType, locals[IrLocal], body }
 IrLocal  { slot (declaration order), name, type, span, is_param }

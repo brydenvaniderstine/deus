@@ -66,7 +66,7 @@ if __name__ == "__main__":
         e(L, 7, "u8(p)", "E0265", cannot("P", "u8")), e(L, 8, "u16(a)", "E0265", cannot("[2]u8", "u16")), e(L, 9, "i8(s)", "E0265", cannot("[]u8", "i8")),
         e(L, 10, "u8(true)", "E0265", cannot("bool", "u8")), e(L, 11, "1", "E0225", infer)])
     L = ["manna v0;", "fn nothing() {", "}", "fn f(b: bool) {", "    let a = u8(nothing());", "    let c = u8(nope);", "    let d = bool(nope);", "    let e: bool = u8(b);", "    let g: u8 = u8(nope);", "}"]
-    g.errors("convert_unit_error_operands_and_the_result_type", L, [e(L, 5, "nothing()", "E0226", msg_unit), e(L, 6, "nope", "E0230", unk("nope")), e(L, 7, "nope", "E0230", unk("nope")),
+    g.errors("convert_unit_error_operands_and_the_result_type", L, [e(L, 5, "nothing()", "E0226", msg_unit), e(L, 6, "nope", "E0230", unk("nope")), e(L, 7, "nope", "E0230", unk("nope")), e(L, 7, "bool(nope)", "E0265", "can't convert to bool; conversions are between integer types only"),
         e(L, 8, "u8(b)", "E0265", cannot("bool", "u8")), e(L, 8, "u8(b)", "E0223", mismatch("bool", "u8")), e(L, 9, "nope", "E0230", unk("nope"))])
     L = ["manna v0;", "fn f(x: u8) {", "    u8(x) = 1;", "    u32(x) = u32(x);", "}"]
     g.errors("convert_is_not_an_lvalue", L, [e(L, 3, "u8(x)", "E0270", "can't assign to this expression"), e(L, 4, "u32(x)", "E0270", "can't assign to this expression", 0)])

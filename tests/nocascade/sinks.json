@@ -155,6 +155,11 @@
    "function": "construct_shape_ok"
   },
   {
+   "constructor": "diag_ir_cannot_convert_to",
+   "file": "ir_expr.c",
+   "function": "finish_convert"
+  },
+  {
    "constructor": "diag_ir_len_argument",
    "file": "ir_expr.c",
    "function": "finish_len"
@@ -591,6 +596,7 @@
   "call_target",
   "check_array_literal",
   "check_ident",
+  "check_index_beside_bad_base",
   "check_index_operand",
   "construct_field",
   "construct_finish",
@@ -792,6 +798,18 @@
     }
    ],
    "file": "ir_expr.c",
+   "function": "check_index_beside_bad_base",
+   "id": "ir_expr.c::check_index_beside_bad_base::569b2161::0",
+   "text": "s.group || is_unit(s) || has_error(s)"
+  },
+  {
+   "atoms": [
+    {
+     "replace": "0",
+     "text": "has_error(s)"
+    }
+   ],
+   "file": "ir_expr.c",
    "function": "check_index_operand",
    "id": "ir_expr.c::check_index_operand::8b1a708a::0",
    "text": "has_error(s)"
@@ -831,6 +849,18 @@
    "function": "finish_convert",
    "id": "ir_expr.c::finish_convert::b22c1816::0",
    "text": "from->kind != IR_T_ERROR && !(is_int(from) && is_int(target))"
+  },
+  {
+   "atoms": [
+    {
+     "replace": "0",
+     "text": "from->kind == IR_T_ERROR"
+    }
+   ],
+   "file": "ir_expr.c",
+   "function": "finish_convert",
+   "id": "ir_expr.c::finish_convert::5d518bc3::0",
+   "text": "from->kind == IR_T_ERROR && target->kind == IR_T_BOOL"
   },
   {
    "atoms": [
