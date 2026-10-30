@@ -1,0 +1,8 @@
+ERRORS:
+3:13 E0230 unknown name 'nope'
+3:13 E0260 operator '<' is not defined for bool
+4:18 E0230 unknown name 'nope2'
+4:13 E0265 can't convert to bool; conversions are between integer types only
+5:13 E0230 unknown name 'nope3'
+5:19 E0253 index/bound must be an integer, found bool
+6:16 E0253 index/bound must be an integer, found bool

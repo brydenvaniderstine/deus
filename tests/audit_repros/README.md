@@ -52,3 +52,18 @@ These files are not part of `make test-*`; they exist for the re-audit. The same
 | `R3_r1`, `R3_r2` | the rename is offered and reaches the stale spelling: `let q: my_fn = 1;` (still E0220), `P(1, my_field: 2)` (still E0240). Before: r1 was refused, r2 left `myField:` behind |
 | `R3_r3`, `R3_r4` | the rename is refused (a real collision: `my_field:` is written where it resolves to nothing and would start to resolve): the source is returned unchanged, E0280 + E0240 / E0242 |
 | `R3_mu1`..`mu4` | one E0261 and **no fix** in a position that does not hand its place to what is inside it: the first element of an un-annotated array (`let r = [a + b, c];`), a `len` argument, a field base, under `!`. The auditor's mutants 2 and 3 (re-audit 3, findings 7 and 8) gave a fix whose re-check reported E0223 / E0255 / E0251 / E0260. See the mutant table in the step 19 report |
+
+## Round-4 audit of 604213f (inputs `R4_*.mn`, fixed in steps 22a-22h; reproduced on Linux by the reviewer)
+
+Written by `tools/gen_audit_repros_r4.py` (inputs only); the recorded outputs were read against this table. `make test-audit-repros` runs every one with `--fixed` and the re-check of the fixed source.
+
+| Input | Expected now (what the audit found before) |
+|---|---|
+| `R4_f1a_e0215_two_line_attribute_before_a_rename` | Finding 1. E0280 (`g_G`) and E0215, exit 0; `--fixed` deletes the repeated attribute (`[kernel_hook]  fn f() {}`, a newline gone) and leaves `g_G` for the next round (a declaration error withholds renames, register C10); the re-check reports the E0280 one line up. Before: exit 4 (the self-check keyed on the line) |
+| `R4_f1b_e0210_quotes_a_position_the_e0215_fix_moves` | Finding 1. E0210 (`'f' is already declared at 2:32`) and E0215; after the fix the E0210 quotes `2:19`. Before: exit 4 (the message quotes L:C) |
+| `R4_f2a_e0261_wrap_past_the_depth_limit_254_parentheses` | Finding 2. One E0261 and no fix, exit 0 (the wrap would pass the nesting limit E0103; 253 parentheses keep the fix). Before: exit 4, "the fixed source does not parse: E0103" |
+| `R4_f2b_e0261_wrap_past_the_depth_limit_127_ifs` | Finding 2. One E0261 and no fix (126 nested `if`s keep it). Before: exit 4 |
+| `R4_f3` (no file) | Finding 3. A rename whose fixed source overflows the parser's 16 MiB arena (`fn f(N: u8) { N; ... }`, a 200-character camelCase `N` used 35,711 times, ~10 MB): the E0280 is reported with no fix, exit 0; below the boundary the fix is offered. NOT stored: `make test-ir-fix-limits` (`tools/ir_fix_limits_test.py`) generates it, finds the boundary and asserts both sides. Before: exit 4 |
+| `R4_f4a`..`R4_f4d` | Finding 4. E0222 beside the unrelated mistake: `a: Nope, b: [4294967296]u8` (E0220, E0222), the reverse order, with a repeated field (E0211, E0220, E0222), and `struct A { a: A, ... }` (E0221, E0222). Before: only the unrelated mistake |
+| `R4_f5_conversion_and_index_beside_a_poisoned_part` | Finding 5. `bool(nope2)` is E0230 and E0265 (`can't convert to bool; ...`), `nope3[b]` E0230 and E0253, `xs[b]` E0253, `nope < b` E0230 and E0260. Before: only the E0230 for `nope2` and `nope3` |
+| `R4_f6_field_rename_and_a_parenthesized_construction_name` | Finding 6. E0280 and E0241; `--fixed` gives `struct P { my_x: u8, }` and `P((my_x): 1)` (the spelling inside the parentheses is renamed, the parentheses stay). Before: `(myX)` was left stale |

@@ -1,0 +1,3 @@
+ERRORS:
+2:15 E0220 unknown type 'Nope'
+2:24 E0222 type is too large (size exceeds the limit)

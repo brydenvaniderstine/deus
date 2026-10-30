@@ -384,6 +384,86 @@
    1,
    "84a5bc08aef6ce1e"
   ],
+  "tests/audit_repros/R4_f1a_e0215_two_line_attribute_before_a_rename.fixed.out": [
+   1,
+   "751fb7eec45817fd"
+  ],
+  "tests/audit_repros/R4_f1a_e0215_two_line_attribute_before_a_rename.out": [
+   2,
+   "ecd48f809724858b"
+  ],
+  "tests/audit_repros/R4_f1b_e0210_quotes_a_position_the_e0215_fix_moves.fixed.out": [
+   1,
+   "efe6172697df40b6"
+  ],
+  "tests/audit_repros/R4_f1b_e0210_quotes_a_position_the_e0215_fix_moves.out": [
+   2,
+   "71287dc9819cd692"
+  ],
+  "tests/audit_repros/R4_f2a_e0261_wrap_past_the_depth_limit_254_parentheses.fixed.out": [
+   1,
+   "051f3cf7a3f8a835"
+  ],
+  "tests/audit_repros/R4_f2a_e0261_wrap_past_the_depth_limit_254_parentheses.out": [
+   1,
+   "051f3cf7a3f8a835"
+  ],
+  "tests/audit_repros/R4_f2b_e0261_wrap_past_the_depth_limit_127_ifs.fixed.out": [
+   1,
+   "ef7a737eef4ce09a"
+  ],
+  "tests/audit_repros/R4_f2b_e0261_wrap_past_the_depth_limit_127_ifs.out": [
+   1,
+   "ef7a737eef4ce09a"
+  ],
+  "tests/audit_repros/R4_f4a_e0222_after_an_unknown_type.fixed.out": [
+   2,
+   "abd8b151d6354d22"
+  ],
+  "tests/audit_repros/R4_f4a_e0222_after_an_unknown_type.out": [
+   2,
+   "abd8b151d6354d22"
+  ],
+  "tests/audit_repros/R4_f4b_e0222_before_an_unknown_type.fixed.out": [
+   2,
+   "5a88a0e1836a698e"
+  ],
+  "tests/audit_repros/R4_f4b_e0222_before_an_unknown_type.out": [
+   2,
+   "5a88a0e1836a698e"
+  ],
+  "tests/audit_repros/R4_f4c_e0222_beside_a_duplicate_field.fixed.out": [
+   3,
+   "d55242dd663d95f5"
+  ],
+  "tests/audit_repros/R4_f4c_e0222_beside_a_duplicate_field.out": [
+   3,
+   "d55242dd663d95f5"
+  ],
+  "tests/audit_repros/R4_f4d_e0222_in_a_struct_that_contains_itself.fixed.out": [
+   2,
+   "4f2bee4c8bc30a78"
+  ],
+  "tests/audit_repros/R4_f4d_e0222_in_a_struct_that_contains_itself.out": [
+   2,
+   "4f2bee4c8bc30a78"
+  ],
+  "tests/audit_repros/R4_f5_conversion_and_index_beside_a_poisoned_part.fixed.out": [
+   7,
+   "083e32963c3a9f2b"
+  ],
+  "tests/audit_repros/R4_f5_conversion_and_index_beside_a_poisoned_part.out": [
+   7,
+   "083e32963c3a9f2b"
+  ],
+  "tests/audit_repros/R4_f6_field_rename_and_a_parenthesized_construction_name.fixed.out": [
+   1,
+   "4e9ba5cce61a5ba3"
+  ],
+  "tests/audit_repros/R4_f6_field_rename_and_a_parenthesized_construction_name.out": [
+   2,
+   "52b2914d1a55ef35"
+  ],
   "tests/ir/array_is_a_value_assignment_copy.ir": [
    0,
    "118e9ee76b2702bf"
@@ -6115,7 +6195,7 @@
  },
  "metrics": {
   "audit_poison_reasons": 0,
-  "audit_repro_inputs": 48,
+  "audit_repro_inputs": 58,
   "e0261_exhaustive.fixes_offered": 286968,
   "e0261_exhaustive.programs": 995456,
   "error_codes_documented": 55,

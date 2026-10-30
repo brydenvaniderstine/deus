@@ -1,0 +1,5 @@
+manna v0;
+struct P { myX: u8, }
+fn f() -> P {
+    return P((myX): 1);
+}
