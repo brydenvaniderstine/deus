@@ -11,6 +11,8 @@ does not COMPILE is a failure of this tool (exit 2), never a skip.
   --check     recompute and compare with the lock, then apply the rules:
                 F1/F7  every sink has a proving golden; a sink without one is listed in tests/nocascade/UNPROVEN.txt with an OPEN register entry that owns it
                 F2     the lock equals what is computed now
+                F8     (step 22j, round-4 finding 8) a sink proven ONLY by deaths (a crash, an assert, a sanitizer report, the fix self-check, a hang) needs a one-line written reason in
+                       tests/nocascade/DEATH_ONLY.txt saying why only a crash can show it; a line for a sink that is not death-only any more must go
 Prints, per sink, how many goldens prove it and the first two.
 
 The real builder and every mutant are built the SAME way on every OS: -O1, ASan + UBSan (no recovery) and -ftrivial-auto-var-init=zero, so a read of an unset local is a zero, an
@@ -25,6 +27,7 @@ SRCDIR = "tools/mannac"
 SRCS = "arena ast diag parser_state parser lexer ir ir_dump ir_build ir_decls ir_expr ir_body ir_calls ir_names ir_rename ir_selfcheck ir_main".split()
 LOCK = "tests/nocascade/PATHS.lock"
 UNPROVEN = "tests/nocascade/UNPROVEN.txt"
+DEATH_ONLY = "tests/nocascade/DEATH_ONLY.txt"
 TIMEOUT = 10  # seconds per candidate run; a timeout is a kill
 DIAG = re.compile(r"^\d+:\d+ E\d{4} ", re.M)
 
@@ -333,6 +336,23 @@ def unproven_owners(root):
     return out
 
 
+def death_justifications(root):
+    """{sink id: reason} from tests/nocascade/DEATH_ONLY.txt (`sink id<TAB>one line`)"""
+    path = os.path.join(root, DEATH_ONLY)
+    out = {}
+    if os.path.exists(path):
+        for ln in open(path).read().split("\n"):
+            if ln.strip() and not ln.startswith("#"):
+                parts = ln.split("\t", 1)
+                out[parts[0]] = parts[1].strip() if len(parts) > 1 else ""
+    return out
+
+
+def death_only_ids(sinks, kinds):
+    """the sinks that have proofs, every one of them a death or a hang"""
+    return sorted(s["id"] for s in sinks if kinds[s["id"]] and all(base_kind(k) in DEATH for ks in kinds[s["id"]].values() for k in ks))
+
+
 def open_entries(root):
     text = open(os.path.join(root, "docs", "DEGRADATION.md"), encoding="utf-8").read()
     return {m.group(1) for m in re.finditer(r"^### (\S+) - .*?^- \*\*Status:\*\* ([^\n]*)", text, re.M | re.S) if m.group(2).startswith(("OPEN", "PARTLY CLOSED"))}
@@ -380,7 +400,7 @@ def report(sinks, kinds):
             print("  %-52s %s" % (sid[:52], "; ".join("%s x%d" % (w, n) for w, n in sorted(whys[sid].items(), key=lambda x: -x[1])[:3])))
 
 
-def check_rules(sinks, proofs, owners, live, old_lock, lock):
+def check_rules(sinks, proofs, owners, live, old_lock, lock, kinds=None, justified=None):
     """the problems F1/F7/F2 find: every sink proven or owned by an OPEN register entry; no stale owner line; the lock equals what was computed"""
     problems = []
     for s in sinks:
@@ -394,6 +414,17 @@ def check_rules(sinks, proofs, owners, live, old_lock, lock):
             problems.append("F7: %s lists %s, which is not a sink any more" % (UNPROVEN, sid))
         elif proofs[sid]:
             problems.append("F7: %s lists %s, which is proven now: remove the line" % (UNPROVEN, sid))
+    if kinds is not None:
+        justified = justified or {}
+        dead = death_only_ids(sinks, kinds)
+        for sid in dead:
+            if len(justified.get(sid, "")) < 20:
+                problems.append("F8: sink %s is proven only by a death and %s has no reason for it (a discriminating golden that proves it by a difference, or one line saying why only a crash can show it)" % (sid, DEATH_ONLY))
+        for sid in sorted(justified):
+            if sid not in proofs:
+                problems.append("F8: %s lists %s, which is not a sink any more" % (DEATH_ONLY, sid))
+            elif sid not in dead:
+                problems.append("F8: %s lists %s, which is not proven only by a death now: remove the line" % (DEATH_ONLY, sid))
     if old_lock is None:
         problems.append("F2: %s is missing (run with --write)" % LOCK)
     elif old_lock != lock:
@@ -436,6 +467,10 @@ def main(argv):
     for s in sinks:
         p = proofs[s["id"]]
         print("  %-52s %4d  %s" % (s["id"][:52], len(p), ", ".join(os.path.splitext(os.path.basename(x))[0] for x in p[:2]) if p else "UNPROVEN"))
+    n_mute = len(man["muting"]) if only is None else 0
+    n_dead = len(death_only_ids(sinks, kinds))
+    print("\nNUMBERS: %d static sinks + %d muting sites = %d total, %d proven, %d proven only by a death" %
+          (len(sinks) - n_mute, n_mute, len(sinks), sum(1 for s in sinks if proofs[s["id"]]), n_dead))
     if "--report" in argv:
         report(sinks, kinds)
     lock = lock_of(sinks, proofs)
@@ -448,12 +483,12 @@ def main(argv):
         print("wrote %s (%d sinks)" % (LOCK, len(lock)))
     if "--check" in argv:
         old = json.load(open(lockfile)) if os.path.exists(lockfile) else None
-        problems = check_rules(sinks, proofs, unproven_owners(root), open_entries(root), old, lock)
+        problems = check_rules(sinks, proofs, unproven_owners(root), open_entries(root), old, lock, None if only else kinds, death_justifications(root))
         for p in problems:
             print(p)
         if problems:
             return 1
-        print("nocascade_prove: ok (%d sinks, every one proven by a golden or owned by an open register entry; the lock is current)" % len(sinks))
+        print("nocascade_prove: ok (%d sinks, every one proven by a golden or owned by an open register entry; every death-only one has its reason; the lock is current)" % len(sinks))
     return 0
 
 

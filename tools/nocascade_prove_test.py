@@ -158,6 +158,19 @@ check("F7: an owner line for a sink that is proven now must go", any("proven now
 check("F7: an owner line for a sink that no longer exists must go", any("not a sink any more" in p for p in np_.check_rules(S, P, {"s2": "C1", "gone": "C1"}, {"C1"}, lock, lock)))
 check("F2: a lock that differs from what was computed fails and names a sink", any("F2: tests/nocascade/PATHS.lock is stale for 1 sink(s), e.g. s1" in p for p in np_.check_rules(S, P, {"s2": "C1"}, {"C1"}, {"s1": ["zzz"], "s2": []}, lock)))
 check("F2: a missing lock fails", any("is missing" in p for p in np_.check_rules(S, P, {"s2": "C1"}, {"C1"}, None, lock)))
+# F8 (step 22j, round-4 finding 8): a sink proven only by deaths needs a written reason
+K = {"s1": {"tests/ir/a.mn": ["died: assert"]}, "s2": {"tests/ir/b.mn": ["more", "died: assert"]}}
+S2 = [{"id": "s1"}, {"id": "s2"}]
+P2 = {"s1": ["tests/ir/a.mn"], "s2": ["tests/ir/b.mn"]}
+L2 = {"s1": ["a"], "s2": ["b"]}
+WHY = "blind, the NULL element type is read at once and nothing is printed before it"
+check("F8: the death-only sinks are the ones whose every proof is a death or a hang", np_.death_only_ids(S2, K) == ["s1"] and np_.death_only_ids(S2, {"s1": {}, "s2": K["s2"]}) == [])
+check("F8: a sink proven only by a death with no reason fails and names the file", any("F8: sink s1 is proven only by a death" in p and "DEATH_ONLY.txt" in p for p in np_.check_rules(S2, P2, {}, set(), L2, L2, K, {})))
+check("F8: ... it passes with a reason", np_.check_rules(S2, P2, {}, set(), L2, L2, K, {"s1": WHY}) == [])
+check("F8: a one-word reason is not a reason", any("F8: sink s1" in p for p in np_.check_rules(S2, P2, {}, set(), L2, L2, K, {"s1": "crash"})))
+check("F8: a reason for a sink that a difference also proves must go", any("not proven only by a death now" in p for p in np_.check_rules(S2, P2, {}, set(), L2, L2, K, {"s1": WHY, "s2": WHY})))
+check("F8: a reason for a sink that no longer exists must go", any("F8: tests/nocascade/DEATH_ONLY.txt lists gone, which is not a sink any more" in p for p in np_.check_rules(S2, P2, {}, set(), L2, L2, K, {"s1": WHY, "gone": WHY})))
+check("F8: the file of the repo parses into one reason per line (tab separated) and every sink in it exists", all(len(v) >= 20 for v in np_.death_justifications(REPO).values()) and len(np_.death_justifications(REPO)) >= 1)
 check("lock_of keeps the first two proving goldens, sorted by name", np_.lock_of([{"id": "s"}], {"s": ["tests/ir/z.mn", "tests/ir/b.mn", "tests/nocascade/a.mn"]}) == {"s": ["a", "b"]})
 
 print("\n%d failure(s)" % len(fails) if fails else "\nall passed")

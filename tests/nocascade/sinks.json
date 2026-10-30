@@ -3,6 +3,7 @@
   "P_ERROR"
  ],
  "carriers": [
+  "fix_diag",
   "pending",
   "poisoned",
   "ptype",
@@ -718,6 +719,18 @@
    "atoms": [
     {
      "replace": "0",
+     "text": "pending"
+    }
+   ],
+   "file": "ir_body.c",
+   "function": "build_assign",
+   "id": "ir_body.c::build_assign::e2258693::0",
+   "text": "pending"
+  },
+  {
+   "atoms": [
+    {
+     "replace": "0",
      "text": "t->kind == IR_T_ERROR"
     }
    ],
@@ -1297,6 +1310,22 @@
    "function": "settle_pending",
    "id": "ir_expr.c::settle_pending::406d93d4::0",
    "text": "bool p_left = l.pending != 0;"
+  },
+  {
+   "atoms": [
+    {
+     "replace": "0",
+     "text": "l->fix_diag"
+    },
+    {
+     "replace": "0",
+     "text": "l->fix_diag"
+    }
+   ],
+   "file": "ir_expr.c",
+   "function": "synth_leaf",
+   "id": "ir_expr.c::synth_leaf::8f650dc2::0",
+   "text": "l->fix_diag && st->diags.items[l->fix_diag - 1].fix"
   },
   {
    "atoms": [

@@ -3,6 +3,9 @@
   "fix_e0261_in_an_unannotated_let_has_no_fix_a_literal_beside_it_does_not_fit",
   "fix_e0261_in_an_unannotated_let_has_no_fix_it_is_assigned_another_type"
  ],
+ "ir_body.c::build_assign::e2258693::0": [
+  "fix_e0261_in_an_unannotated_let_has_no_fix_it_is_assigned_another_type"
+ ],
  "ir_decls.c::build_fields::3bc4fbf1::0": [
   "layout_dependents_of_a_struct_with_a_failed_repeated_field_stay_silent"
  ],
@@ -194,6 +197,10 @@
   "fix_e0261_in_an_unannotated_let_keeps_its_fix_a_copy_an_assignment_with_a_literal_and_a_sum_accept_the_type"
  ],
  "ir_expr.c::settle_pending::8bac09b0::0": [
+  "fix_e0261_in_an_unannotated_for_let_has_no_fix_the_condition_compares_another_type",
+  "fix_e0261_in_an_unannotated_let_has_no_fix_a_comparison_of_it_is_returned_as_another_type"
+ ],
+ "ir_expr.c::synth_leaf::8f650dc2::0": [
   "fix_e0261_in_an_unannotated_for_let_has_no_fix_the_condition_compares_another_type",
   "fix_e0261_in_an_unannotated_let_has_no_fix_a_comparison_of_it_is_returned_as_another_type"
  ],

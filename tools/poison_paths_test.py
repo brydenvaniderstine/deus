@@ -209,6 +209,30 @@ try:
 finally:
     shutil.rmtree(root, ignore_errors=True)
 
+# ---- carriers that travel (step 22j, round-4 findings 7 and 8): out-parameters, locals, struct fields ----
+CARRY_HEADER = HEADER + "typedef struct { unsigned fix; Type *fix_type; } Local;\n"
+CARRY_BODY = """
+static void prims(State *st) { st->prim[P_ERROR].kind = IR_T_ERROR; }
+Synth settle(Type *t) { Synth s = {0}; if (t->kind == IR_T_ERROR) s.pending = 1; return s; }
+static Type *infer(State *st, Synth s, unsigned *pend) { *pend = s.pending; return s.node; }
+int build(State *st, Synth s, Local *l) { unsigned pending; infer(st, s, &pending); l->fix = pending; if (pending) return 1; return 0; }
+int leaf(Local *l) { if (l->fix && l->fix > 1) return 1; return 0; }
+int copy_only(Synth s) { unsigned q = s.pending; return (int)q; }
+int derived(Synth s) { int left = s.pending != 0; if (left) return 1; return 0; }
+"""
+root = scratch(body=CARRY_BODY, header=CARRY_HEADER)
+try:
+    prog = pp.load(root)
+    man = prog.manifest()
+    sk = {(x["function"], x["text"]) for x in man["sinks"]}
+    check("carrier travel: a value written through an out-parameter (`*pend = s.pending`) makes the caller's `&pending` local a carrier, and a decision on it is a sink",
+          ("build", "pending") in sk and 2 in prog.out_carriers.get("infer", set()) and "pending" in prog.carrier_vars.get("build", set()))
+    check("carrier travel: a struct field copied from that local (`l->fix = pending`) is a carrier, and a decision on the field is a sink", "fix" in man["carriers"] and ("leaf", "l->fix && l->fix > 1") in sk)
+    check("carrier travel: a local copied from a carrier and only used (no decision) is flow, not a sink", "copy_only" not in {f for f, _ in sk})
+    check("carrier travel: a value merely DERIVED from a carrier (`left = s.pending != 0`) is not a carrier: the comparison is the one sink, the later `if (left)` is not (no false sink)", {t for f, t in sk if f == "derived"} == {"int left = s.pending != 0;"})
+finally:
+    shutil.rmtree(root, ignore_errors=True)
+
 # the real tree
 os.chdir(REPO)
 pp.ROOT = REPO
@@ -219,6 +243,8 @@ check("real tree: the tool classifies every one of the audit's %d lines" % len(c
 check("real tree: the muting sites are found: the recorder and the two dry checks that raise the flag (check_muted is gone since C11: a bad assignment target is checked with diagnostics on)",
       sorted((x["function"], x["role"]) for x in man["muting"]) == [("group_fits", "site"), ("ir_assign_to_pending", "site"), ("ir_error", "recorder")])
 check("real tree: the sinks are found (%d)" % len(man["sinks"]), len(man["sinks"]) >= 30)
+check("real tree: the two decisions the carrier rule once missed are sinks: `if (pending)` in build_assign and the fix_diag test in synth_leaf (round-4 findings 7 and 8)",
+      {("build_assign", "pending"), ("synth_leaf", "l->fix_diag && st->diags.items[l->fix_diag - 1].fix")} <= {(x["function"], x["text"]) for x in man["sinks"]})
 check("real tree: every ir_error call site is an emitter with a diag_ir_ constructor",
       len(man["emitters"]) >= 45 and all(e["constructor"] for e in man["emitters"]))
 check("real tree: has_error is derived as a predicate", "has_error" in man["predicates"] and man["aliases"])

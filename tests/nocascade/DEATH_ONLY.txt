@@ -1,0 +1,22 @@
+# A sink proven ONLY by deaths (tools/nocascade_prove.py --check, rule F8): `sink id<TAB>one line saying why only a crash can show it`. Blinding the guard does not change any
+# output on any golden: the blind path dereferences a NULL type, asserts, divides by zero, or keeps a fix that only the fix self-check (exit 4) can judge. A line is removed the day
+# a golden proves its sink by a difference, and F8 fails on a line whose sink is not death-only any more.
+ir_body.c::build_assign::e2258693::0	blind, the assignment keeps an E0261 fix that its own value makes wrong; a wrong fix has no output of its own, only the fix self-check (ir_dump exit 4, a loud internal error in the product) sees that the fixed source does not re-check
+ir_expr.c::array_done::0a63c4a0::0	blind, the array node is built from the NULL array type that literal_array_type returned after reporting the size limit (E0222) and the NULL is read at once (group_against); nothing is printed before the read
+ir_expr.c::array_infer::0a63c4a0::0	blind, the elements go on with the NULL type deciding_type returned after its report, and the first read of that type (group_against in ir_check_expr) dereferences NULL: there is no wrong output, only the read
+ir_expr.c::check_array_literal::929fb757::0	blind, an ERROR expectation reaches element_type(), which has no element to return for it (NULL), and group_against reads the NULL hint
+ir_expr.c::check_array_literal::0a63c4a0::0	blind, the NULL type literal_array_type returned after the size error (E0222) is compared with and printed against the expected type: report_mismatch_types reads its kind
+ir_expr.c::deciding_type::5dcbdf37::0	`expected` is NULL when nothing is expected (not a poison value: the static pass finds it because callers pass it on); blind, it is taken as a type and report_mismatch reads NULL
+ir_expr.c::finish_index::935f7fa2::0	blind, a base with no element type (poisoned or not indexable) is reported through the SAME check_index_operand E0253 and then ir_expr_index reads the NULL element type: the guard's only effect is the crash it prevents
+ir_expr.c::finish_slice::935f7fa2::0	as finish_index: blind, the same bounds diagnostics are reported and ir_expr_slice then reads the NULL element type
+ir_expr.c::finish_unary::7a8e6b1b::0	blind, a unary operator keeps an E0261 fix whose new type the operator does not take; the wrong fix shows only in the fix self-check (exit 4: the fixed source reports E0260), never in an output
+ir_expr.c::reject_pending::ee7646b0::0	blind, a consumer that cannot take the new type (an array element that decides a type, the argument of len) keeps the E0261 fix; only the fix self-check (exit 4) sees the fixed source fail
+ir_expr.c::repeat_done::0a63c4a0::0	blind, the repeat node is built from the NULL array type literal_array_type returned after the size error (E0222), and ir_expr_repeat reads its kind
+ir_expr.c::settle_pending::406d93d4::0	blind, `p_left` says the left operand never waits, so the pending operand is taken from the right, which has none: its NULL ptype is read by is_int (UBSan null member access); the flag only decides which operand to read
+ir_decls.c::ir_check_type_size::3bc4fbf1::0	blind, an ERROR type reaches type_layout, which asserts that anything that is not an integer, bool, array or slice is a struct (ir_decls.c type_layout): the guard keeps an unknown type out of the layout
+ir_decls.c::ir_resolve_type::2172e690::0	blind, an array of an unknown element type is built instead of being ERROR, and type_layout asserts on its ERROR element: no output is produced before the assert
+ir_decls.c::ir_resolve_type::2172e690::1	blind, a slice of an unknown element type is built instead of being ERROR, and type_layout asserts on its ERROR element
+ir_decls.c::layout_struct::5ba98046::0	blind, a field whose type failed is laid out like any field, and type_layout asserts on the ERROR type (the mistake was reported where the type was resolved)
+ir_decls.c::layout_struct::fb9f6d4f::0	blind, a field of unknown size (LAY_UNSIZED, a cycle or a failed struct) is not counted as 0: its alignment 0 reaches align_up, which divides by it (UBSan division by zero at ir_decls.c align_up)
+ir_decls.c::layout_struct::ca4cc230::0	blind, a repeated field whose type failed is laid out, and type_layout asserts on the ERROR type
+ir_decls.c::type_layout::e11146f2::0	blind, an element whose size is unknown (a cycle through arrays) is read as sized with alignment 0, and align_up divides by it (UBSan division by zero at ir_decls.c align_up)

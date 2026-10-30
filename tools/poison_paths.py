@@ -9,7 +9,9 @@ fact it starts from is the enumerator IR_T_ERROR (ir.h), the definition of poiso
   predicates  a function returning bool/int whose return value tests a poison enumerator, or calls another predicate  (has_error)
   producers   a function that returns, or builds the value it returns from, a poison enumerator or another producer  (ir_type_error, error_node, is_error)
   carriers    a struct field assigned under a poison test, from a poison test, or on a variable that was initialised by a producer
-              (StructInfo.poisoned, Synth.pending ...); a field assigned from a carrier read is a carrier too
+              (StructInfo.poisoned, Synth.pending ...); a field assigned from a carrier read is a carrier too. A carrier read also travels: `*out = s.pending`
+              makes that out-parameter a carrier, a caller's local passed as `&x` for it is a carrier variable, and a local copied from a carrier read is one
+              too (step 22j: `*pending = s.pending` ... `l->fix_diag = pending`: a decision on `pending` and on `fix_diag` are sinks)
   null-poison a function that returns a pointer and returns NULL on a path guarded by a poison test or following a reported error; its callers' NULL
               tests are sinks too (`if (!t) return is_error(...)`)
 
@@ -200,6 +202,9 @@ class Program:
         self.predicates, self.producers, self.nullpoison, self.reporters = set(), set(), set(), set()
         self.poison_params = {}  # function -> {parameter name}: a parameter that a caller fills with a null-poison value
         self.carriers = set()
+        self.out_carriers = {}           # function -> {parameter index}: a pointer parameter written (`*p = <carrier read>`) with a carrier value
+        self.carrier_vars = {}           # function -> {local variable name}: a local copied from a carrier read, or filled through a carrier out-parameter
+        self._cvars = set()
         self.local_flags = {}            # function -> local variables set to true under a poison test (`if (r == LAY_UNSIZED) { unsized = true; continue; }`): a decision on one is a sink
         self._flags = set()
         self.omission_carriers = set()   # flags that are TRUE for a healthy value and left false for a poisoned one: "not poison" is the constant 1, not 0
@@ -238,12 +243,28 @@ class Program:
         # 2. predicates, producers, null-poison, carriers: one fixpoint
         for _ in range(20):
             self.changed = False
-            before = (len(self.predicates), len(self.producers), len(self.nullpoison), len(self.carriers), len(self.reporters))
+            before = self.fix_state()
             for name, (f, fn) in self.funcs.items():
                 self.classify(name, fn)
-            if before == (len(self.predicates), len(self.producers), len(self.nullpoison), len(self.carriers), len(self.reporters)) and not self.changed:
+            if before == self.fix_state() and not self.changed:
                 return
         raise Fail("poison fixpoint did not converge")
+
+    def fix_state(self):
+        return (len(self.predicates), len(self.producers), len(self.nullpoison), len(self.carriers), len(self.reporters),
+                sum(len(v) for v in self.out_carriers.values()), sum(len(v) for v in self.carrier_vars.values()))
+
+    def is_carrier_read(self, n):
+        """the value IS a carrier read (casts and parentheses aside): a carrier field, or a carrier variable of the function being analysed. An expression that merely
+        contains one (`l.pending != 0`, a type looked up from `ptype`) is a derived value, not the carrier: its decisions are sinks only if it tests poison itself"""
+        x = strip(n)
+        return (x.get("kind") == "MemberExpr" and x.get("name") in self.carriers) or \
+            (x.get("kind") == "DeclRefExpr" and ref_name(x)[1] == "VarDecl" and ref_name(x)[0] in self._cvars)
+
+    @staticmethod
+    def scalar(n):
+        """a variable that holds a number or a flag (`uint32_t pending`), not a pointer: zero means "no poison" for it, and a pointer set to zero would only crash"""
+        return not n.get("type", {}).get("qualType", "*").rstrip().endswith("*")
 
     def ret_kind(self, fn):
         q = fn.get("type", {}).get("qualType", "")
@@ -290,6 +311,7 @@ class Program:
                         self.changed = True
         # carriers
         self._flags = self.local_flags.get(name, set())
+        self._cvars = self.carrier_vars.setdefault(name, set())
         self.find_carriers(body, name)
 
     def is_test_value(self, v):
@@ -353,9 +375,19 @@ class Program:
     def find_carriers(self, body, fname=None):
         init_poison_vars = set()
         nv = self.nullvars_of(body, fname)   # a test of a null-poison value (`r == LAY_UNSIZED`) is a poison test too
+        params = [c.get("name") for c in kids(self.funcs[fname][1]) if c.get("kind") == "ParmVarDecl"] if fname in self.funcs else []
         for n in walk(body):
             if n.get("kind") == "VarDecl" and kids(n) and self.makes_poison(kids(n)[0]):
                 init_poison_vars.add(n.get("name"))
+            if n.get("kind") == "VarDecl" and kids(n) and self.is_carrier_read(kids(n)[0]) and self.scalar(n):
+                self._cvars.add(n.get("name"))
+            if n.get("kind") == "CallExpr" and callee(n) in self.out_carriers:
+                for i, a in enumerate(kids(n)[1:]):
+                    a = strip(a)
+                    if i in self.out_carriers[callee(n)] and a.get("kind") == "UnaryOperator" and a.get("opcode") == "&":
+                        v = strip(kids(a)[0])
+                        if v.get("kind") == "DeclRefExpr" and ref_name(v)[1] == "VarDecl" and self.scalar(v):
+                            self._cvars.add(ref_name(v)[0])
 
         def go(n, guarded, flagged):
             """guarded: inside a branch decided by a poison test of a field or an enumerator (carries a FIELD); flagged: also by a test of a null-poison value (`r == LAY_UNSIZED`),
@@ -368,6 +400,12 @@ class Program:
                     rv = strip(r)
                     if rv.get("kind") == "IntegerLiteral" and rv.get("value") == "1" or ref_name(rv)[0] == "true" or rv.get("kind") == "CXXBoolLiteralExpr":
                         self.local_flags.setdefault(fname, set()).add(ref_name(l)[0])
+                if l.get("kind") == "UnaryOperator" and l.get("opcode") == "*" and self.is_carrier_read(r):
+                    pv = strip(kids(l)[0])
+                    if pv.get("kind") == "DeclRefExpr" and ref_name(pv)[0] in params:
+                        self.out_carriers.setdefault(fname, set()).add(params.index(ref_name(pv)[0]))
+                if l.get("kind") == "DeclRefExpr" and ref_name(l)[1] == "VarDecl" and self.is_carrier_read(r) and self.scalar(l):
+                    self._cvars.add(ref_name(l)[0])
                 if l.get("kind") == "MemberExpr":
                     base = next((ref_name(b)[0] for b in walk(l) if b.get("kind") == "DeclRefExpr"), None)
                     if guarded or self.atoms_in(r, set()) or base in init_poison_vars:
@@ -431,6 +469,8 @@ class Program:
                 return "0"
         if k == "DeclRefExpr" and logic and ref_name(n)[1] in ("VarDecl", "ParmVarDecl") and ref_name(n)[0] in nullvars:
             return "1"
+        if k == "DeclRefExpr" and ref_name(n)[1] == "VarDecl" and ref_name(n)[0] in self._cvars:
+            return "0"   # a local that carries a carrier's value (copied from it, or filled through an out-parameter): zero is "not poison"
         if k == "DeclRefExpr" and ref_name(n)[1] == "VarDecl" and ref_name(n)[0] in self._flags:
             return "0"   # a local flag set under a poison test: false is "not poisoned"
         return None
@@ -473,6 +513,7 @@ class Program:
             body = next(c for c in kids(fn) if c.get("kind") == "CompoundStmt")
             nv = self.nullvars_of(body, name)
             self._flags = self.local_flags.get(name, set())
+            self._cvars = self.carrier_vars.get(name, set())
             groups, flow, owner = {}, {}, {}
 
             def visit(n, ctx, logic, dec):
