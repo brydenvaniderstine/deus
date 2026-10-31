@@ -244,14 +244,14 @@ RATCHET-WAIVER rename_property.part1.fixes_changed 1618 -> 1592 C10
 - **Trigger:** Step 20 (every generated-test count is asserted in the Makefile/CI); done
 - **Trigger-id:** `step-20`
 
-### C8 - M2_PLAN: two error-policy sections still say 'pending review'
+### C8 - M2_PLAN: three error-policy sections said 'pending review'
 
-- **Status:** OPEN
-- **Reason:** Steps 11 and 12 recorded their policy points as 'pending review'; whether the review happened is not recorded.
-- **Promise:** `docs/M2_PLAN.md:704` "the points the rules above leave open, pending review"
-- **Where it stands:** `docs/M2_PLAN.md:731` "the points the rules above leave open, pending review"
+- **Status:** CLOSED (2026-10-31, Bryden: "Approve, updated"; the sections were matched to the compiler at 182bdd62 and marked approved)
+- **Reason:** The "Error policy as implemented" sections of typed-IR steps 13, 11 and 12 recorded their policy points as 'pending review'; no record that the review happened exists (git log, docs/ and docs/history/ searched in batch S). This entry named two sections (steps 11 and 12) and cited a step-13 line; there are three. Bryden decided on 2026-10-31 to approve all three after they were checked bullet by bullet against the compiler, the goldens and `docs/error_codes.md`: step 13 (conversions) gained the `bool(<poisoned operand>)` `E0265`, step 12 (indexing) the `E0253` beside a bad base (both step 22g); step 11 needed no bullet change.
+- **Promise:** `docs/M2_PLAN.md:704` "the points the rules above leave open; approved by Bryden 2026-10-31"
+- **Where it stands:** `docs/M2_PLAN.md:731` "the points the rules above leave open; approved by Bryden 2026-10-31"; `docs/M2_PLAN.md:747` "the points the rules above leave open; approved by Bryden 2026-10-31"
 - **Owner:** Bryden (decision); Claude Code (work)
-- **Trigger:** The m2-ir-v0 tag (the refinement loop's review step) (PROPOSED by Claude Code, approved by Bryden 2026-10-24)
+- **Trigger:** The m2-ir-v0 tag (the refinement loop's review step) (PROPOSED by Claude Code, approved by Bryden 2026-10-24); done
 - **Trigger-id:** `m2-ir-v0`
 
 ### C9 - E0261: two un-annotated lets whose fixes meet in one operator get no fix
