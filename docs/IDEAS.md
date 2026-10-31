@@ -239,7 +239,11 @@ Options: (a) protection keys (supervisor keys, PKS, since Deus code runs in ring
 HARD CONSTRAINT AREA: any option is Bryden's decision; nothing here changes CLAUDE.md.
 Earliest milestone boundary: the Spectre mitigation plan CLAUDE.md requires before networking.
 Admission Test status: not applicable (OS design).
-Status: candidate
+Status: promoted 2026-10-31 (the threat model only; see the dated line below)
+
+**Update 2026-10-30 (28 Oct architecture audit, ranked item 2; foundation plan, Phase 1): a Spectre boundary for mutually distrusting tenants.** The audit's verdict is that speculative attacks "defeat all language-enforced confidentiality" in one address space (V8 team; Chrome moved to process isolation), so language isolation alone cannot keep a secret from another sandbox. The proposal is a threat model that **names which tenants may share the address space** and requires a second boundary for tenants that distrust each other, options (a) and (b) above being the candidates for that boundary (the audit also lists the compiler-emitted fences and coarsened timers CLAUDE.md names, as unvalidated). It also moves the trigger: from "before networking" (register A5's soft trigger) to "before M3 runs untrusted code", and adds the test "a Spectre-v1 Wasm test cannot read another sandbox's secret". Guard-region memory (below) removes the bounds-check gadget on linear memory but not the indirect-call-table and `br_table` gadgets. Still **HARD CONSTRAINT AREA**: the threat model is a document; choosing option (b), or any change to the one-CR3 rule, is Bryden's decision. Nothing in `CLAUDE.md` or the register changes by this update.
+
+**Promoted 2026-10-31 (Bryden, `docs/REFINEMENT.md` "Review 2026-10-30"): the threat model only.** Decided: write the threat model (which tenants may share the address space; a second boundary for tenants that distrust each other), and move register A5's trigger from "before networking" to "before M3 runs untrusted code". Not decided: the choice between (a) protection keys and (b) separate page tables, which stays open for the M3 design. The one-CR3 rule is unchanged and `CLAUDE.md` is not edited.
 
 ## 2026-10-18: Small trusted checker, untrusted compiler
 
@@ -253,7 +257,11 @@ Prior art: the Wasm validator, seL4, proof-carrying code.
 Alternatives rejected: trust the whole compiler (TCB too large); fully verified compiler, CompCert-style (cost too high for now).
 Earliest milestone boundary: before the verifier is designed (M2).
 Admission Test status: not applicable (security architecture, not a language feature).
-Status: candidate
+Status: promoted 2026-10-31 (a decision for the verifier stage; see the dated line below)
+
+**Update 2026-10-30 (28 Oct architecture audit, ranked items 3 and 4; foundation plan, Phase 1): which component is the trusted base, and the resident compiler as an unprivileged Wasm guest.** The audit's correction: for user apps the trusted base is the **Wasm runtime** (its validator, code generator and host calls; WAMR is C), not mannac; mannac is trusted only for `[kernel_hook]` native code. The order in which to shrink it: (1) mannac is freestanding C, so compile it to wasm32 and run the resident compiler as a **guest** under the app runtime, unprivileged (a TempleOS-style resident compiler must be always available, not privileged; a parser bug should crash a sandbox, not the kernel); (2) trust checkers, not producers: a Wasm code generator whose output is checked or proven (vWasm and rWasm, Bosamiya et al., USENIX Security 2022); (3) the verifier checks the emitted native code of `[kernel_hook]` code, or a typed form of it, and stays small and specified; (4) treat WAMR as trusted C: fuzz it like mannac and differentially test its interpreter against its AOT output (register A3). Test the plan proposes: a deliberately crashing mannac build leaves the kernel and other guests running. The audit advises **against** rewriting mannac in Manna as a security measure (self-hosting does not shrink the trusted base). This repo's own evidence for "trust the checker": four external audit rounds of the typed IR, and the fix self-check (`ir_fix_selfcheck`) is already a checker that does not trust the producer of a fix. Nothing in `CLAUDE.md` or the register changes by this update.
+
+**Promoted 2026-10-31 (Bryden, `docs/REFINEMENT.md` "Review 2026-10-30"): a decision for the verifier stage; closes register A2.** Decided: the trusted checker is a separate, small component with its own line budget of **5,000 lines of C, excluding tests and generated tables, revisited when the verifier-stage plan is written**. Not decided: how the checker is specified or proved, and which components it checks. Nothing is built now, and there is no Wasm-guest build of the compiler (that waits for M3).
 
 ## 2026-10-19: Supervised restart of trapped tasks
 
@@ -377,6 +385,157 @@ Status:                 candidate
 4. How a service is configured and updated without a shell (connects to "Provenance on every module" and "Live component replacement", IDEAS 2026-10-19).
    - Prior art: Omarchy runs updates through one locked command with timestamp-ordered, idempotent one-time migrations that leave completion markers.
 5. Benchmarks that would show it is better, not just smaller: boot time, memory, request latency, against a Linux micro-VM running the same Wasm app.
+
+## 2026-10-30: Captured from the 28 Oct architecture audit and foundation plan (refinement loop at m2-ir-v0)
+
+Source documents: the Deus & Manna architecture audit and the Deus foundation plan, both dated 28 Oct 2026 (PDFs; Bryden has them), and the reviews of them. Every entry below is a **candidate**: none is a commitment, none changes `CLAUDE.md`, and the Admission Test has not been run on any of them except where the review in `docs/REFINEMENT.md` ("Review 2026-10-30") says so. The audit's own repository facts (line numbers in `paging.c`, `gdt.c`, `idt.c`) were measured at its head `604213f`, not at this tree; each is to be re-read before work starts. Two existing entries were updated instead of duplicated: "Hardware backstop for Spectre" and "Small trusted checker, untrusted compiler" (2026-10-30 update blocks inside them).
+
+```
+Title:                  Kernel write protection: read-only aliases, read-only tables, page 0 unmapped
+Date:                   2026-10-30
+Source:                 outside AI (28 Oct architecture audit, ranked item 1; foundation plan, Phase 1)
+Problem it solves:      One kernel write bug becomes code execution: the identity map and the HHDM keep the frames of .text, .rodata and the page tables writable, the page tables sit in writable .bss, the IDT is writable, and virtual page 0 is mapped read-write (register K3 covers only the first of these).
+Helps humans how / helps AI how:
+                        Humans: a stray write in the runtime or a [kernel_hook] faults at the write instead of corrupting code. AI: each protection has one faulting test case, so a change that loses it fails a test.
+Alternatives rejected:  Leave it to W^X on the higher-half alias alone (the other aliases stay writable). Protection keys (PKS) as the first step (a write path is only needed once M3 changes mappings at run time; PKS patches were unmerged proposals in the audit's sources).
+Earliest milestone boundary:
+                        Before any untrusted code runs (register K3, trigger-id `untrusted-code`).
+Admission Test status:  not applicable (kernel design, not a language feature)
+Status:                 candidate
+```
+
+Shape (the audit's, to be re-verified against the tree): split only what needs splitting (the 1 GiB entry holding the kernel image into 2 MiB entries, the blocks holding the image and page 0 into 4 KiB entries); mark `.text`, `.rodata` and the page-table frames read-only and NX in every alias; move the page tables, GDT and IDT to a page-aligned section the higher-half map already makes read-only; unmap page 0. All of it happens before the single CR3 load, so no flush is added. Two details the review added: after `lgdt` and `ltr` the GDT is read-only, so every descriptor's accessed bit must be preset (a segment load writes it), and `ltr` writes the TSS descriptor's busy bit, so it runs before the table is locked. Limits to state honestly: ring-0 code can still clear CR0.WP or reload CR3, so this stops a data write bug becoming a code change and is not a boundary against code that already runs; function pointers and return addresses in writable memory remain (supervisor CET is a later layer).
+**HARD CONSTRAINT AREA:** `CLAUDE.md` says "1 GiB pages for the identity map and the HHDM alias" and lists the writable-`.text` risk as open; splitting those pages changes both statements. Bryden's explicit OK is needed before any edit there.
+Test the audit proposes: `make test-wx` gains four faulting cases (write `.text` through the identity map, through the HHDM, write a page-table entry, write through a null pointer).
+
+```
+Title:                  Guard-region Wasm memory: one 8 GiB slot per memory32 instance, recycled, never unmapped
+Date:                   2026-10-30
+Source:                 outside AI (28 Oct architecture audit, ranked item 5; foundation plan, Phase 1 "M3 memory layout")
+Problem it solves:      The 5-20% bounds-check budget (CLAUDE.md, register A4) and the speculative bounds-check gadget on linear memory.
+Helps humans how / helps AI how:
+                        Humans: an out-of-bounds load is a page fault that traps the instance, with no bounds-check instruction in generated code. AI: the rule "a fault past the committed size is a trap" is one testable sentence.
+Alternatives rejected:  Explicit bounds checks only (the current budget). Pointer-masking features (PAC, BTI, LAM, UAI): they do not check bounds. Wasm memory64 (it brings explicit checks back; stay on memory32).
+Earliest milestone boundary:
+                        The M3 memory layout; the decision belongs before the verifier stage because it decides whether the verifier proves linear-memory bounds at all (register A4).
+Admission Test status:  not run
+Status:                 promoted 2026-10-31 (the written decision only; see the dated line below)
+```
+
+Shape (the audit's sketch, not compiled or booted): 4 GiB addressable plus a 4 GiB guard per instance, about 16,000 slots in the lower canonical half; making a non-present page present needs no TLB invalidation, so `memory.grow` stays flush-free; guard entries stay all-zero so a speculative walk carries no frame number. **The condition the review added:** a recycled slot may have been bigger than its next tenant. Recycling a slot must make every page beyond the NEW instance's size non-present again, and removing a present page is a flush. So teardown is a flush point; it is batched per epoch (one shootdown for every slot recycled in the epoch) and is never on the fast path. Zeroing the pages alone is not enough. Indirect-call tables and `br_table` still need hardening, and the check that no slot overlaps the HHDM's PML4 entry runs at boot.
+**Promoted 2026-10-31 (Bryden, `docs/REFINEMENT.md` "Review 2026-10-30"): the written decision only**, including the flush-on-slot-recycle condition above. Nothing is built. `CLAUDE.md` is NOT edited.
+
+```
+Title:                  Restate "zero TLB flushes" as "no flush on the fast path", with the allowed flush points listed
+Date:                   2026-10-30
+Source:                 outside AI (28 Oct architecture audit, ranked item 8; foundation plan, Phase 1 "TLB rule")
+Problem it solves:      The hard constraint "Zero TLB flushes" cannot survive the roadmap: JIT code publication (M4), sandbox slot teardown, SMP shootdowns and IOMMU revocation all remove or downgrade mappings.
+Helps humans how / helps AI how:
+                        Humans: the rule says what is forbidden and what is allowed, so a flush is a named, reviewed event. AI: every flush call site is named in a test or a comment a check reads, so a new flush fails a test.
+Alternatives rejected:  Keep the absolute rule and design around it (it forces never unmapping, which the guard-region slot design cannot always honour). Drop the rule (loses the property the hard constraint exists for).
+Earliest milestone boundary:
+                        Before M3 is designed.
+Admission Test status:  not applicable (OS design)
+Status:                 promoted 2026-10-31 (the written decision only, as part of the guard-region decision; see the dated line below)
+```
+
+Allowed flush points the plan lists: sandbox teardown epochs, IOMMU revocation (device-side IOTLB, not the CPU fast path), JIT code publication. Unmaps stay off the fast path: never unmap code, recycle sandbox slots, batch any unavoidable unmap into one shootdown per epoch.
+**HARD CONSTRAINT AREA:** this rewords a hard constraint in `CLAUDE.md` ("Paging stays on", "Zero TLB flushes"). Changing it needs Bryden's explicit OK, separately from any review decision on this entry.
+**Promoted 2026-10-31 (Bryden, `docs/REFINEMENT.md` "Review 2026-10-30", decision 3): the written decision only.** Not decided: the rewording of the hard constraint in `CLAUDE.md`, which needs Bryden's separate OK and is deferred to Phase 1. Nothing is built.
+
+```
+Title:                  Kernel stack guard pages and a page-fault path with its own stack
+Date:                   2026-10-30
+Source:                 outside AI (review of the 28 Oct architecture audit)
+Problem it solves:      Once pages can be non-present on purpose (guard regions, unmapped page 0, read-only tables), a stack overflow or a fault taken on a bad stack must not escalate to a double fault with no information. Today only #DF has its own IST stack.
+Helps humans how / helps AI how:
+                        Humans: a kernel stack overflow is a clean, logged fault. AI: a test can overflow a stack on purpose and read the log line.
+Alternatives rejected:  Larger stacks only (hides the overflow, does not report it).
+Earliest milestone boundary:
+                        With the first protection that makes a page non-present on purpose (kernel write protection, above).
+Admission Test status:  not applicable (kernel design)
+Status:                 candidate
+```
+
+Shape (the reviewer's, to be designed): every kernel and task stack has an unmapped guard page below it; the #PF handler runs on its own IST stack, so a fault caused by a full stack still reaches a handler that can print. Interacts with the guard-region entry above (the #PF handler is also the Wasm trap path).
+
+```
+Title:                  A page fault is a guest's trap only when the faulting RIP is in that guest's generated code
+Date:                   2026-10-30
+Source:                 outside AI (review of the 28 Oct architecture audit; refines the audit's #PF sketch)
+Problem it solves:      The audit's sketch treats any fault whose CR2 lies in the running instance's slot, past its committed size, as that instance's trap. A fault at such an address can also be taken by kernel or runtime code acting for the guest (a host call copying a buffer), and that is a runtime bug or a host-call check that failed, not a guest trap.
+Helps humans how / helps AI how:
+                        Humans: a bug in a host call is reported as a kernel fault, not blamed on the guest. AI: the attribution rule is one predicate over RIP.
+Alternatives rejected:  Attribute by CR2 alone (the audit's sketch). Attribute by "currently running instance" (a fault in a host call is still blamed on it).
+Earliest milestone boundary:
+                        With the guard-region layout (M3 memory layout).
+Admission Test status:  not applicable (runtime design)
+Status:                 candidate
+```
+
+Open point for review: the rule needs the address range of each instance's generated code, which the runtime (WAMR or a replacement) must expose; with an interpreter there is no generated code, so the rule needs a second form there. This reasoning is Claude's expansion of the review's one-line note and is to be checked at review.
+
+```
+Title:                  The verifier's pointer model as capabilities (base, length, permissions)
+Date:                   2026-10-30
+Source:                 outside AI (28 Oct architecture audit, "CHERI, CXL and accelerators"; foundation plan, Phase 1)
+Problem it solves:      A pointer model designed as raw addresses makes a later move to hardware capabilities (CHERI) a language change; designed as capabilities, only the backend changes.
+Helps humans how / helps AI how:
+                        Humans: one definition of "what a pointer may touch". AI: bounds and permissions are data the verifier states, not conventions.
+Alternatives rejected:  Raw pointers with side-tables (no single definition). Waiting for CHERI (no x86 implementation or plan; a port means Morello or RISC-V, against the x86-only rule).
+Earliest milestone boundary:
+                        Verifier design (register A2 and A4 share this trigger).
+Admission Test status:  not run (touches the pointer rules of the language spec)
+Status:                 candidate
+```
+
+Distinct from "Capabilities instead of ambient authority" (2026-10-15), which is about authority to act (files, network), not about what memory a pointer may address. CHERI does not fix Spectre.
+
+```
+Title:                  Per-core, message-shaped scheduler, telemetry and IPC structures, kept that way from the start
+Date:                   2026-10-30
+Source:                 outside AI (28 Oct architecture audit, "Multi-core"; foundation plan, Phase 1)
+Problem it solves:      SMP breaks three current rules (one shared run queue, no TLB flushes, one LAPIC timer calibrated once); structures written single-core and shared need a rewrite when a second core arrives.
+Helps humans how / helps AI how:
+                        Humans: SMP becomes a deployment change. AI: one shape (a ring or a message per pair of cores) to extend.
+Alternatives rejected:  Global run queue with a lock (a contended line). Replicating state before there is a second core (add agreement protocols when SMP lands).
+Earliest milestone boundary:
+                        The first scheduler or IPC code written after M1 (M3).
+Admission Test status:  not applicable (kernel design)
+Status:                 candidate
+```
+
+Shape (the audit's, from Barrelfish): one scheduler and run queue per core, tasks move only by explicit message; one telemetry ring per core read by an aggregator; IPC as single-producer, single-consumer rings per core pair with head and tail on separate cache lines; a payload buffer has one owner and sending it moves ownership. Each core needs the calibrated timer rate. Nothing here asks for a second core now.
+
+```
+Title:                  One limits header and one fix module in the compiler
+Date:                   2026-10-30
+Source:                 outside AI (foundation plan, Phase 1 and Phase 2; round-4 findings 2 and 3)
+Problem it solves:      Parser bounds live in ast.h, parser_state.h and ir.h, and the 16 MiB parser arena is a literal in the harnesses; round 4 found E0103 and E0110 unguarded after E0111 was guarded. Fix machinery (waiting E0261 fixes, rename finalisation, edit padding, the withhold rule) is spread over ir_expr.c, ir_rename.c and ir_selfcheck.c, and fix-its are the most defect-prone code.
+Helps humans how / helps AI how:
+                        Humans: every bound in one place; fix-its reviewable as a unit. AI: one function every fix producer calls to check a fixed source against all bounds.
+Alternatives rejected:  Keep checking bounds per fix producer (what step 22b and 22c did, one code at a time).
+Earliest milestone boundary:
+                        The first steps of the verifier stage, before the compiler grows (foundation plan, Phase 2).
+Admission Test status:  not applicable (internal refactor, no language change)
+Status:                 candidate
+```
+
+Today's state, for the record: `ir_withhold_over_limit` in `ir_selfcheck.c` already checks a fixed source against the E0111 height, the E0103 depth and the arena (steps 22b and 22c) and `make test-ir-fix-limits` tests it. The entry is about moving the bounds and the fix machinery into one home, not about a missing check.
+
+```
+Title:                  Diagnostics carry related positions as data, not inside message text
+Date:                   2026-10-30
+Source:                 outside AI (foundation plan, Phase 2; round-4 finding 1)
+Problem it solves:      E0210 prints L:C inside its message text, so the fix self-check's identity rule has to parse or ignore message text when a fix moves a line; a position in text cannot be mapped through an edit.
+Helps humans how / helps AI how:
+                        Humans: messages are for reading, positions are for tools. AI: positions in `manna check --json` are fields (register P2).
+Alternatives rejected:  Keep positions in message text and map them in the self-check (what step 22a did for the cases found).
+Earliest milestone boundary:
+                        With `manna check --json` (register P2).
+Admission Test status:  not applicable (diagnostics format; docs/error_codes.md is the spec)
+Status:                 candidate
+```
 
 ## 2026-10-09: Considered and rejected ("Omni/AetherOS" brainstorm)
 

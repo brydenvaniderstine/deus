@@ -280,8 +280,8 @@ RATCHET-WAIVER rename_property.part1.fixes_changed 1618 -> 1592 C10
 
 - **Status:** CLOSED (2026-10-25, ci.yml run 40166779034 on 3258f9d)
 - **Reason:** Leak-clean is enforced only by the reviewer's Linux LSan run. The Linux job runs every host-side suite with gcc, ASan + UBSan and LSan (`detect_leaks=1`, `halt_on_error=1`). CLOSED: the Linux job ran every host-side suite with gcc, ASan + UBSan + LSan (`detect_leaks=1`, `halt_on_error=1`) and `-Werror`, green, in ci.yml run 40166779034 on 3258f9d.
-- **Promise:** `docs/REFINEMENT.md:82` "Test harnesses and measurement probes must be leak-clean like product code"
-- **Where it stands:** (before step 20) `docs/REFINEMENT.md:83` "(no CI job runs LSan)"
+- **Promise:** `docs/REFINEMENT.md:119` "Test harnesses and measurement probes must be leak-clean like product code"
+- **Where it stands:** (before step 20) `docs/REFINEMENT.md:120` "(no CI job runs LSan)"
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** Step 20 (an Ubuntu gcc ASan+UBSan+LSan job)
 - **Trigger-id:** `step-20`
@@ -301,7 +301,7 @@ RATCHET-WAIVER rename_property.part1.fixes_changed 1618 -> 1592 C10
 - **Status:** CLOSED (2026-10-24, step 20a)
 - **Reason:** CI compared output to the golden and could not see that the golden was edited to match. Now `make test-ratchet` replays the history of `tests/ratchet.json` and compares the diagnostic count of every expected output under `tests/`, and every test count, across every consecutive pair of committed versions; a decrease fails unless a `RATCHET-WAIVER` line names an open register entry. Since step 22l (round-4 finding 10) it also records, per expected output, the diagnostic CODES in order, and the hash of every `*.fixed.mn` / `*.fixed2.mn` of `tests/ir_fix` and `tests/audit_repros`: a swapped, lost or reordered code (a code only ADDED is fine) and a changed or removed fixed source fail unless `RATCHET-WAIVER <path> CHANGED <open entry>` names that file.
 - **Promise:** `CLAUDE.md:176` "A golden that loses diagnostics or AST nodes in a commit is STOP-tier"
-- **Where it stands:** `docs/REFINEMENT.md:77` "**Enforced since step 20a by `make test-ratchet` (`tools/ratchet.py`):**"
+- **Where it stands:** `docs/REFINEMENT.md:114` "**Enforced since step 20a by `make test-ratchet` (`tools/ratchet.py`):**"
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** Step 20 (the CI ratchet: counts that never decrease, diagnostics per golden); done in 20a
 - **Trigger-id:** `step-20`
@@ -310,8 +310,8 @@ RATCHET-WAIVER rename_property.part1.fixes_changed 1618 -> 1592 C10
 
 - **Status:** CLOSED (2026-10-25, ci.yml run 40213325096 on d478be8)
 - **Reason:** Stated in REFINEMENT, applied in `measure_ir_stack.sh` only. CLOSED: `tools/measure_expr_height.sh` now counts only a signal exit (rc > 128) as a crash and exports `abort_on_error=1`; `make test-measure-height-script` (fake probes and the real ASan probe under a 128 KB stack) ran green in the macOS and Linux jobs of ci.yml run 40213325096 on d478be8.
-- **Promise:** `docs/REFINEMENT.md:82` "a measurement script counts only a signal exit (rc > 128) as a crash"
-- **Where it stands:** (before step 20) `docs/REFINEMENT.md:83` "`tools/measure_expr_height.sh` is not yet changed to follow it."
+- **Promise:** `docs/REFINEMENT.md:119` "a measurement script counts only a signal exit (rc > 128) as a crash"
+- **Where it stands:** (before step 20) `docs/REFINEMENT.md:120` "`tools/measure_expr_height.sh` is not yet changed to follow it."
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** Step 20
 - **Trigger-id:** `step-20`
@@ -347,14 +347,13 @@ RATCHET-WAIVER rename_property.part1.fixes_changed 1618 -> 1592 C10
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** Enforced from 2026-10-23 (CLAUDE.md 'No degradation'); verified at each tag (PROPOSED by Claude Code, approved by Bryden 2026-10-24)
 - **Trigger-id:** `each-tag`
-- **Checked at:** 
-
+- **Checked at:** m2-ir-v0 (2026-10-31): `make check-batch-cap` ok (it counted 0 steps in origin/main..HEAD, nothing unpushed); the history before that (steps 17-19 as 7-8 commit batches) is the entry's reason and stays; steps 20-22 were pushed in batches under the check.
 ### R2 - The refinement loop is due at m2-ir-v0
 
-- **Status:** OPEN
+- **Status:** CLOSED (2026-10-31, the review decisions are recorded)
 - **Reason:** It ran at m2-parser-v0.1 and has not run for the typed IR stage.
 - **Promise:** `CLAUDE.md:162` "At every tag, run the refinement loop in docs/REFINEMENT.md before starting the next stage."
-- **Where it stands:** The last refinement-loop record is for the tag `m2-parser-v0.1` (`docs/REFINEMENT.md`).
+- **Where it stands:** Run 2026-10-30 for `m2-ir-v0` and written in `docs/REFINEMENT.md` (capture log, "Review 2026-10-30", "Retro 2026-10-30", the `m2-ir-v0` Measure row and the foundation-plan metrics) and `docs/IDEAS.md`. Bryden decided the three candidates on 2026-10-31 (all promoted: the trusted checker with a 5,000-line budget, the Spectre threat model only, the guard-region and TLB written decision only); the decisions are recorded in `docs/REFINEMENT.md` "Review 2026-10-30" and `docs/IDEAS.md`. There is no verifier-stage plan document yet, so they are not yet in a plan; that is not a reason to keep this entry open (a plan is not what this entry promised), and the verifier-stage plan, when written, carries them.
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** The m2-ir-v0 tag (from the audit: 'due at m2-ir-v0')
 - **Trigger-id:** `m2-ir-v0`
@@ -388,19 +387,17 @@ RATCHET-WAIVER rename_property.part1.fixes_changed 1618 -> 1592 C10
 - **Owner:** Bryden (decision); Claude Code (work)
 - **Trigger:** Closed by the CLAUDE.md rule of 2026-10-23; re-checked at each tag (PROPOSED by Claude Code, approved by Bryden 2026-10-24)
 - **Trigger-id:** `each-tag`
-- **Checked at:** 
-
+- **Checked at:** m2-ir-v0 (2026-10-31): the commit subjects since `m2-parser-v0.1` (196) were scanned for 'turn off', 'accepted', 'documented exception', 'known issue' and 'stub'; two subjects match (`1ae51c9d`, `244bc397`, both step 17/18-era wording about the E0261 fix and known-issue records), neither offers to turn off, withhold or accept as a way to finish. The step reports themselves were not re-read in this session; that part of the entry's check is not done by this line.
 ### R6 - Review-time rules have no automated check
 
 - **Status:** OPEN
 - **Reason:** The retro-rule inventory (`docs/REFINEMENT.md`, step 20i) found rules that no tool can check: re-verifying a grammar guarantee before reusing it, the brew advice, quote-checking prose docs beyond the register, the quoted-heredoc commit message, the approval tiers (ROUTINE / STOP), the plain-English step report, commit size, and the judgement "this behaviour change has no test". Each stays a rule, enforced by the reviewer reading the reports; the inventory marks them as unenforced and `make check-retro-rules` fails if one loses its row. A rule whose row names a check AND this entry is PARTLY enforced (the check covers only part of it: the batch cap for the approval tiers, W^X for "ask before changing a hard constraint", the ratchet for "no behavior change without a test"); the checker prints enforced, partly and unenforced apart (Linux review of batch C, finding 4), so a partial check never counts as full enforcement.
 - **Promise:** `CLAUDE.md:34` "Every retro rule lives in a check, or sits in the register as"
-- **Where it stands:** `docs/REFINEMENT.md:121` "## Retro-rule inventory (step 20i)"
+- **Where it stands:** `docs/REFINEMENT.md:226` "## Retro-rule inventory (step 20i)"
 - **Owner:** Bryden (decision); Claude Code (work)
 - **Trigger:** Re-read at every tag: a rule that can become a check is turned into one; each tag's `Checked at` line names which inventory rows were re-read and whether any became a check (PROPOSED by Claude Code, approved by Bryden 2026-10-25 as written, each-tag)
 - **Trigger-id:** `each-tag`
-- **Checked at:** 
-
+- **Checked at:** m2-ir-v0 (2026-10-31): `make check-retro-rules` ok, 35 rules: 19 enforced by a check, 7 partly enforced, 9 unenforced (29 rules and 14/7/8 at step 20i). The Retro 2026-10-30 rules (a)-(c) each name a check; (d) (a prompt line that touches a settled decision must name it) is unenforced and stays in this entry.
 ## 6. Planned work: degradation risks ahead
 
 ### A1 - The native backend (the kernel's real compile target) has no milestone
@@ -415,9 +412,9 @@ RATCHET-WAIVER rename_property.part1.fixes_changed 1618 -> 1592 C10
 
 ### A2 - The 'small trusted checker, untrusted compiler' decision is open
 
-- **Status:** OPEN
-- **Reason:** If the verifier is designed without it the TCB stays the whole compiler by default.
-- **Promise:** `docs/IDEAS.md:254` "Earliest milestone boundary: before the verifier is designed (M2)."
+- **Status:** CLOSED (2026-10-31, decided by Bryden, `docs/REFINEMENT.md` "Review 2026-10-30", decision 1)
+- **Reason:** If the verifier is designed without it the TCB stays the whole compiler by default. CLOSED by decision: a small trusted checker with untrusted producers is promoted as a decision for the verifier stage, with a line budget of 5,000 lines of C, excluding tests and generated tables, revisited when the verifier-stage plan is written (Bryden, 2026-10-31). Nothing is built, there is no Wasm-guest build, and the checker's specification and proof are not decided; the verifier-stage plan document does not exist yet, so the decision is recorded in `docs/REFINEMENT.md` and `docs/IDEAS.md` and is to be carried into that plan when it is written.
+- **Promise:** `docs/IDEAS.md:258` "Earliest milestone boundary: before the verifier is designed (M2)."
 - **Where it stands:** `CLAUDE.md:134` "- **TCB:** the compiler, verifier, and Wasm runtime all run in ring 0."
 - **Owner:** Bryden (decision); Claude Code (work)
 - **Trigger:** Before verifier design
@@ -446,12 +443,12 @@ RATCHET-WAIVER rename_property.part1.fixes_changed 1618 -> 1592 C10
 ### A5 - Spectre mitigation has no plan and a soft trigger
 
 - **Status:** OPEN
-- **Reason:** 'Before networking' is not a milestone; both candidate mitigations are unvalidated.
+- **Reason:** 'Before networking' is not a milestone; both candidate mitigations are unvalidated. TRIGGER MOVED 2026-10-31 (Bryden, `docs/REFINEMENT.md` "Review 2026-10-30", decision 2; a settled decision changed): from `m3-start` / "before networking" to before M3 runs untrusted code (`untrusted-code`). The threat model (which tenants may share the address space, and the second boundary for tenants that distrust each other) is promoted as a document; the choice between (a) protection keys and (b) separate page tables stays open for the M3 design, and the one-CR3 rule is unchanged.
 - **Promise:** `CLAUDE.md:133` "A mitigation plan is required before networking."
 - **Where it stands:** `CLAUDE.md:133` "Neither is implemented or proven sufficient; both need real measurement before being trusted."
 - **Owner:** Bryden (decision); Claude Code (work)
-- **Trigger:** M3 start: the plan is written and the networking milestone is blocked on it (PROPOSED by Claude Code, approved by Bryden 2026-10-24)
-- **Trigger-id:** `m3-start`
+- **Trigger:** Before M3 runs untrusted code: the threat model is written and the boundary chosen (moved from M3 start by Bryden, 2026-10-31; was: M3 start, the plan written and the networking milestone blocked on it, PROPOSED by Claude Code, approved by Bryden 2026-10-24)
+- **Trigger-id:** `untrusted-code`
 
 ## 7. Fix-it exceptions (principle 6 / policy C)
 
