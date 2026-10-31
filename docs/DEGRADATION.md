@@ -363,7 +363,7 @@ RATCHET-WAIVER rename_property.part1.fixes_changed 1618 -> 1592 C10
 - **Status:** PARTLY CLOSED
 - **Reason:** STATUS.md said step 18 was unpushed and not fuzzed (both done; brought up to date in the commit that created this register); VISION.md is last re-verified 2026-10-08.
 - **Promise:** `docs/README.md:20` "re-read `docs/STATUS.md` against the actual repo state"
-- **Where it stands:** `VISION.md:95` "Last re-verified 2026-10-08"
+- **Where it stands:** `VISION.md:95` "Last re-verified 2026-10-31"; batch S: `docs/STATUS.md` brought up to date with step 22 and the real remaining work, `VISION.md` re-verified and its three stale phrases corrected, the project-file snapshot refreshed; still open: the consistency check and the verification snapshot at the tag, where this entry closes
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** The m2-ir-v0 tag (consistency check re-reads VISION.md and the project-file snapshot) (PROPOSED by Claude Code, approved by Bryden 2026-10-24)
 - **Trigger-id:** `m2-ir-v0`

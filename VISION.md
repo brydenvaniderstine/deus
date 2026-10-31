@@ -92,7 +92,7 @@ A standing discipline, not a marketing claim: every item below is either somethi
 
 ### Claims we can already demonstrate
 
-Each bullet names the file or command that backs it. Last re-verified 2026-10-08 (r1 Phase C): `make test-wx` run, the greps below run, the parser/lexer goldens run via `make test-lexer`/`make test-parser`.
+Each bullet names the file or command that backs it. Last re-verified 2026-10-31 (batch S, before the tag `m2-ir-v0`; before that 2026-10-08, r1 Phase C): `make test-wx` run (all three cases `boot_check wx N: ok`), the `paging.c` line numbers and the single `load_cr3` / `%cr3` site and the absence of `invlpg`/`invpcid` in `kernel/` re-checked by grep, every test file named below confirmed to exist. The lexer, parser and IR suites were not re-run for this check (CI run 41156604750 on `645177b6` ran them green); the tag's verification snapshot re-runs them.
 
 - **W^X + NX on the higher-half kernel-image mapping.** Per-section flags are set in `kernel/arch/x86/paging.c:199-201` (`.text` R+X, `.rodata` R+NX, `.data`/`.bss` RW+NX), with `EFER.NXE` enabled before the CR3 load and `CR0.WP` after - the serial log shows `[paging] EFER.NXE enabled`, then `CR3 loaded`, then `CR0.WP enabled`, in that order. `make test-wx` runs three deliberate violations and each takes the predicted `#PF`: writing `.text` -> error code `0x3`; executing `.data` -> `0x11`; executing `.text` through the identity alias -> `0x11`. **What the tests do not cover:** `.rodata` and `.bss` specifically, and - a real hole, tracked in `CLAUDE.md`'s open risks - the same physical bytes stay read/write/exec-capable through the 1 GiB identity/HHDM aliases, so W^X is enforced on the kernel-image alias only. `make test-wx` is run by hand; CI builds the kernel (`make all`) but does not run it.
 - **One CR3 load, ever.** `kernel/arch/x86/paging.c:212` is the only call to `load_cr3`, and `paging.c:78` the only `mov ... %cr3` in `kernel/`; there is no `invlpg`/`invpcid` anywhere in `kernel/` (checked by grep, 2026-10-08). The evidence is source inspection, not a runtime counter, and the one boot-time CR3 load itself flushes the TLB once. Context switches (`switch.S`) save and restore registers only.
@@ -103,9 +103,9 @@ Each bullet names the file or command that backs it. Last re-verified 2026-10-08
 
 These were listed above as demonstrable before r1 Phase C; none has a test or a running implementation today, so they are design intent, not results. Each moves back up only with a cited test.
 
-- **Bounds-checked slices (`arr[a..b]`).** The slice *syntax* parses (`tests/parser/block_let_slice_type.mn`), but nothing checks a bound: the checks live in the typed IR, static verifier and Wasm backend (`docs/M2_PLAN.md` §3), none of which exists yet.
-- **No undefined behavior.** A principle (`docs/MANNA_PRINCIPLES.md` principle 4), not a property of anything running: there is no semantics beyond parsing to be defined or undefined.
-- **Runtime overflow traps (no silent wraparound in arithmetic).** Specified (`docs/M2_PLAN.md` §2); needs IR and backend. Only the literal-range check above exists.
+- **Bounds-checked slices (`arr[a..b]`).** The slice *syntax* parses (`tests/parser/block_let_slice_type.mn`) and the typed IR types slices and indexing (typed-IR step 12, `E0252`-`E0257`), but nothing checks a bound at run time or proves one: those checks live in the static verifier and the Wasm backend (`docs/M2_PLAN.md` §3), which do not exist yet.
+- **No undefined behavior.** A principle (`docs/MANNA_PRINCIPLES.md` principle 4), not a property of anything running: there is no semantics beyond parsing and typing (the typed IR) to be defined or undefined; nothing executes.
+- **Runtime overflow traps (no silent wraparound in arithmetic).** Specified (`docs/M2_PLAN.md` §2); needs the backend (and the verifier). Only the literal-range check above exists.
 
 The bar for the first list is a file, a test, or a log line in this repo right now. The second list is not a claim and must not be quoted as one.
 

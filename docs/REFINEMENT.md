@@ -45,16 +45,16 @@ The first entries recorded under this loop. The entries themselves live in `docs
 | 2026-10-15 | Undoable agent actions | Claude | post-M3, with the agent service | not applicable | candidate |
 | 2026-10-15 | Contracts as the human review surface | Claude | v1, with contracts | not run | candidate |
 | 2026-10-15 | Deterministic simulation testing of kernel logic | Claude | M3 (when IPC exists) | not applicable | candidate |
-| 2026-10-15 | Hardware backstop for Spectre | lesson | the Spectre mitigation plan CLAUDE.md requires before networking | not applicable | candidate |
-| 2026-10-18 | Small trusted checker, untrusted compiler | Claude | before the verifier is designed (M2) | not applicable | candidate |
+| 2026-10-15 | Hardware backstop for Spectre | lesson | the Spectre mitigation plan CLAUDE.md requires before networking | not applicable | promoted 2026-10-31 (the threat model only) |
+| 2026-10-18 | Small trusted checker, untrusted compiler | Claude | before the verifier is designed (M2) | not applicable | promoted 2026-10-31 (a decision for the verifier stage) |
 | 2026-10-19 | Supervised restart of trapped tasks | outside AI | M3 (Wasm runtime + IPC) | not applicable | candidate |
 | 2026-10-19 | Live component replacement | outside AI | post-M3 | not applicable | candidate |
 | 2026-10-19 | Provenance on every module | outside AI | M3 (Wasm loader) | not applicable | candidate |
 | 2026-10-25 | Model-chosen resource policy (AI policy agent) | Bryden | decision at M3 start (resolves register R4); build after M3, with the agent service | not applicable | candidate |
 | 2026-10-25 | Single-service mode for cloud guests | Bryden | decide at M3; build after the M3 runtime and virtio exist | not applicable | candidate |
 | 2026-10-30 | Kernel write protection: read-only aliases, read-only tables, page 0 unmapped | outside AI | before any untrusted code runs (register K3) | not applicable | candidate |
-| 2026-10-30 | Guard-region Wasm memory: one 8 GiB slot per memory32 instance, recycled, never unmapped | outside AI | the M3 memory layout; decided before the verifier stage (register A4) | not run | candidate |
-| 2026-10-30 | Restate "zero TLB flushes" as "no flush on the fast path", with the allowed flush points listed | outside AI | before M3 is designed | not applicable | candidate |
+| 2026-10-30 | Guard-region Wasm memory: one 8 GiB slot per memory32 instance, recycled, never unmapped | outside AI | the M3 memory layout; decided before the verifier stage (register A4) | not run | promoted 2026-10-31 (the written decision only) |
+| 2026-10-30 | Restate "zero TLB flushes" as "no flush on the fast path", with the allowed flush points listed | outside AI | before M3 is designed | not applicable | promoted 2026-10-31 (the written decision only; `CLAUDE.md` not edited) |
 | 2026-10-30 | Kernel stack guard pages and a page-fault path with its own stack | outside AI | with the first protection that makes a page non-present on purpose | not applicable | candidate |
 | 2026-10-30 | A page fault is a guest's trap only when the faulting RIP is in that guest's generated code | outside AI | with the guard-region layout | not applicable | candidate |
 | 2026-10-30 | The verifier's pointer model as capabilities (base, length, permissions) | outside AI | verifier design (registers A2, A4) | not run | candidate |
@@ -62,7 +62,7 @@ The first entries recorded under this loop. The entries themselves live in `docs
 | 2026-10-30 | One limits header and one fix module in the compiler | outside AI | first steps of the verifier stage | not applicable | candidate |
 | 2026-10-30 | Diagnostics carry related positions as data, not inside message text | outside AI | with `manna check --json` (register P2) | not applicable | candidate |
 
-Two existing entries were **updated, not duplicated**, on 2026-10-30 (a dated update block inside each, status unchanged): "Hardware backstop for Spectre" (a Spectre boundary for mutually distrusting tenants; the trigger moves from "before networking" to "before M3 runs untrusted code" if approved) and "Small trusted checker, untrusted compiler" (the Wasm runtime as the real trusted base; the resident compiler as an unprivileged Wasm guest). The nine new entries come from the 28 Oct architecture audit and foundation plan and the reviews of them; the template fields are in the entries.
+Two existing entries were **updated, not duplicated**, on 2026-10-30 (a dated update block inside each; both are promoted since 2026-10-31, see "Review 2026-10-30"): "Hardware backstop for Spectre" (a Spectre boundary for mutually distrusting tenants; the trigger moved from "before networking" to "before M3 runs untrusted code" on 2026-10-31, register A5) and "Small trusted checker, untrusted compiler" (the Wasm runtime as the real trusted base; the resident compiler as an unprivileged Wasm guest). The nine new entries come from the 28 Oct architecture audit and foundation plan and the reviews of them; the template fields are in the entries.
 
 **Review 2026-10-13 (`m2-parser-v0.1`):** the six 2026-10-11 candidates are **Parked** (reason: none belongs in the IR skeleton); none promoted, none rejected. §2 says "pick at most 3 candidates"; reviewing all six is a deliberate deviation: the cap exists to limit promotions and Admission Test runs, and neither happened (no Admission Test was run, nothing entered the next stage's plan). Recorded in each entry's status line in `docs/IDEAS.md`.
 
@@ -92,7 +92,7 @@ The Feature Admission Test (`docs/MANNA_PRINCIPLES.md`) is written for language 
 | 1. Violates no principle 1-20 or locked decision | holds: supports principle 8 (unsafe by declaration) and principle 11 (AI-emitted AST passes the same verifier); principle 12 (deterministic builds) is not touched | holds: no principle is touched (a threat model is a document) | holds: principle 10 (predictable cost) is served by the removal of per-access checks; no locked decision touched |
 | 2. Spec entry, goldens, error messages | no language spec entry needed; proposed test: a deliberately crashing mannac build leaves the kernel and other guests running (needs M3, so not testable in the next stage) | no spec entry; proposed test: a Spectre-v1 Wasm program cannot read another sandbox's secret (needs M3) | no language spec entry; proposed test: an out-of-bounds load traps with no bounds-check instruction emitted (needs M3 and a backend) |
 | 3. Fits the next stage's scope | holds for the **decision** (verifier design is the next stage, register A2's trigger is `verifier-design`); the guest-compiler build does not fit before M3 | holds for the **document** only; the mitigation does not fit before M3 | holds for the **written decision** (it decides whether the verifier proves linear-memory bounds, register A4); the layout and slot allocator are M3 work |
-| 4. Machine cost documented | not yet: needs the trusted checker's line budget (separate from the kernel's 120k) | not yet: the cost of option (a) (PKS support check) or (b) (breaks one CR3) is unmeasured | partly: the audit gives the layout's cost (about 16,000 slots, split-page TLB entries) but not a measurement; teardown flushes are the cost to state |
+| 4. Machine cost documented | decided 2026-10-31: 5,000 lines of C, excluding tests and generated tables, separate from the kernel's 120k, revisited when the verifier-stage plan is written (at the time of the proposal it was "not yet: needs the trusted checker's line budget") | not yet: the cost of option (a) (PKS support check) or (b) (breaks one CR3) is unmeasured | partly: the audit gives the layout's cost (about 16,000 slots, split-page TLB entries) but not a measurement; teardown flushes are the cost to state |
 | 5. No second way to express something that exists | holds | holds | holds |
 
 **Proposals as made 2026-10-30** (one reason each; decided above, kept for the record):
@@ -142,7 +142,7 @@ Four external audit rounds and steps 22a to 22l (round 4). Severity fell round b
 **Points for the next review** (found while closing the stage; none is a defect report, each is a place to look):
 
 1. The **step-10 unit-silent rule** beside a poisoned part: E0226 (a `unit` value used as a value) is "not reported where another error already says the same thing" (`docs/error_codes.md`); check whether that silence still holds when the other part of the expression is poisoned (the D1 rule, step 22g).
-2. **E0234 leaving a parameter spelling unrenamed:** the real case from round 4 is `g(myY: 1)`: a named argument whose parameter spelling (`myY`) is not renamed when the parameter is, because E0234 checks the named argument for its own mistakes only; check the rename fix against it.
+2. **E0234 leaving a parameter spelling unrenamed:** the real case is `g(myY: 1)`, found in the reviewer's step-22C Linux verify (not in round 4; an earlier version of this line said round 4, which was wrong): a named argument whose parameter spelling (`myY`) is not renamed when the parameter is, because E0234 checks the named argument for its own mistakes only; check the rename fix against it.
 3. **Fix withholding lives inside the self-check, and its largest-bytes rule can over-drop on depth.** When only the combination of fixes exceeds a limit, the fix adding the most bytes goes first (`docs/error_codes.md`, fix rules); for the depth limit (E0103) the byte count is not what decides, so a different fix than the largest may be the one to withhold, and the rule may withhold a fix that was not needed.
 
 ## 4. Measure (at each tag)
