@@ -63,7 +63,7 @@ QEMU_FLAGS   := $(QEMU_MACHINE) \
                 -serial file:serial.log -monitor stdio -no-reboot \
                 -d int,cpu_reset -D qemu.log
 
-.PHONY: test-makefile-no-qemu check-nocascade-wired test-nocascade-wired-script all image run debug clean limine stage-esp test-wx test-lexer test-lexer-asan test-arena test-arena-asan test-ast test-ast-asan test-parser-state test-parser-state-asan test-parser-fixes test-parser-fixes-asan test-parser test-parser-asan test-determinism test-ir test-ir-asan test-ir-unit test-ir-unit-asan test-ir-ndebug test-ir-fix test-ir-fix-asan test-ir-error-codes audit-ir-poison test-poison-paths-script check-poison-paths check-nocascade-holes check-nocascade-index check-nocascade-reach test-nocascade-reach-script check-nocascade-prove check-nocascade-sinks test-nocascade-prove-script nocascade-all check-generated test-check-generated-script test-gen-nocascade-script test-nocascade-sinks-script nocascade-sink-report test-nocascade-inject test-nocascade-inject-script check-inject-hook-absent test-e0261-exhaustive test-rename-property test-ir-memory-stress test-ir-fix-limits test-ratchet test-ratchet-script ratchet-update check-register register-fix-lines test-register-script check-ci-targets test-ci-targets-script test-audit-repros test-fuzz-script test-boot test-boot-check-script check-kernel-loc test-kernel-loc-script test-measure-height-script coverage-check test-coverage-check-script check-batch-cap test-batch-cap-script check-retro-rules test-retro-rules-script coverage fuzz fuzz-lexer fuzz-parser fuzz-ir fuzz-ir-ungated measure-height measure-ir-stack measure-ir-build-stack
+.PHONY: test-makefile-no-qemu check-nocascade-wired test-nocascade-wired-script all image run debug clean limine stage-esp test-wx test-lexer test-lexer-asan test-arena test-arena-asan test-ast test-ast-asan test-parser-state test-parser-state-asan test-parser-fixes test-parser-fixes-asan test-parser test-parser-asan test-determinism test-ir test-ir-asan test-ir-unit test-ir-unit-asan test-ir-field-lookup check-field-probe-hook-absent test-ir-ndebug test-ir-fix test-ir-fix-asan test-ir-error-codes audit-ir-poison test-poison-paths-script check-poison-paths check-nocascade-holes check-nocascade-index check-nocascade-reach test-nocascade-reach-script check-nocascade-prove check-nocascade-sinks test-nocascade-prove-script nocascade-all check-generated test-check-generated-script test-gen-nocascade-script test-nocascade-sinks-script nocascade-sink-report test-nocascade-inject test-nocascade-inject-script check-inject-hook-absent test-e0261-exhaustive test-rename-property test-ir-memory-stress test-ir-fix-limits test-ratchet test-ratchet-script ratchet-update check-register register-fix-lines test-register-script check-ci-targets test-ci-targets-script test-audit-repros test-fuzz-script test-boot test-boot-check-script check-kernel-loc test-kernel-loc-script test-measure-height-script coverage-check test-coverage-check-script check-batch-cap test-batch-cap-script check-retro-rules test-retro-rules-script coverage fuzz fuzz-lexer fuzz-parser fuzz-ir fuzz-ir-ungated measure-height measure-ir-stack measure-ir-build-stack
 
 all: $(KERNEL_ELF)
 
@@ -427,6 +427,23 @@ test-ir-ndebug:
 	@mkdir -p $(IR_TEST_DIR)
 	$(MANNAC_CC) -std=c11 -Wall -Wextra $(MANNAC_WERROR) -O2 -DNDEBUG -o $(IR_TEST_DIR)/ir_ndebug_test $(IR_NDEBUG_SRCS)
 	$(IR_TEST_DIR)/ir_ndebug_test
+
+# Register C3: a field is found by name in O(log n) comparisons (tools/mannac/ir_field_lookup_test.c). The counter that makes this testable without a clock is
+# compiled in only here (-DMANNA_COUNT_FIELD_PROBES); check-field-probe-hook-absent proves a normal build has none.
+IR_FIELD_SRCS := tools/mannac/arena.c tools/mannac/ast.c tools/mannac/diag.c \
+                 tools/mannac/ir.c tools/mannac/ir_dump.c tools/mannac/ir_build.c tools/mannac/ir_decls.c tools/mannac/ir_expr.c tools/mannac/ir_body.c tools/mannac/ir_calls.c tools/mannac/ir_names.c tools/mannac/ir_rename.c tools/mannac/ir_selfcheck.c \
+                 tools/mannac/parser_state.c tools/mannac/parser.c tools/mannac/lexer.c \
+                 tools/mannac/ir_field_lookup_test.c
+
+test-ir-field-lookup:
+	@mkdir -p $(IR_TEST_DIR)
+	$(MANNAC_CC) -std=c11 -Wall -Wextra $(MANNAC_WERROR) -O2 -g -DMANNA_COUNT_FIELD_PROBES -o $(IR_TEST_DIR)/ir_field_lookup_test $(IR_FIELD_SRCS)
+	$(IR_TEST_DIR)/ir_field_lookup_test
+	$(MANNAC_CC) -std=c11 -Wall -Wextra $(MANNAC_WERROR) -g -fsanitize=address,undefined -DMANNA_COUNT_FIELD_PROBES -o $(IR_TEST_DIR)/ir_field_lookup_test-asan $(IR_FIELD_SRCS)
+	$(IR_TEST_DIR)/ir_field_lookup_test-asan
+
+check-field-probe-hook-absent:
+	@sh tools/check_field_probe_hook_absent.sh
 
 test-ir-unit-asan:
 	@mkdir -p $(IR_TEST_DIR)

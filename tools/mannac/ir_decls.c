@@ -110,6 +110,63 @@ static void declare_names(Ctx *cx, const NodeList *items) {
     }
 }
 
+#ifdef MANNA_COUNT_FIELD_PROBES
+unsigned long ir_field_lookups = 0, ir_field_probes = 0, ir_field_probe_max = 0;
+#endif
+
+size_t ir_field_find(const StructInfo *si, const char *name) {
+    const IrField *fields = si->ir->fields;
+    size_t lo = 0, hi = si->ir->n_fields;
+#ifdef MANNA_COUNT_FIELD_PROBES
+    unsigned long mine = 0;
+    ir_field_lookups++;
+#endif
+    size_t found = SIZE_MAX;
+    while (lo < hi) {
+        size_t mid = lo + (hi - lo) / 2;
+#ifdef MANNA_COUNT_FIELD_PROBES
+        mine++;
+#endif
+        int c = strcmp(fields[si->by_name[mid]].name, name);
+        if (c == 0) {
+            found = si->by_name[mid];
+            break;
+        }
+        if (c < 0) lo = mid + 1;
+        else hi = mid;
+    }
+#ifdef MANNA_COUNT_FIELD_PROBES
+    ir_field_probes += mine;
+    if (mine > ir_field_probe_max) ir_field_probe_max = mine;
+#endif
+    return found;
+}
+
+/* Sorts by_name[0..n) by the names of the fields it points at. Heapsort: in place, no recursion, O(n log n) whatever the names are (the names of the kept
+ * fields are all different, so there are no ties to order). */
+static void sift_down(const IrField *fields, uint32_t *a, size_t root, size_t n) {
+    for (;;) {
+        size_t child = 2 * root + 1;
+        if (child >= n) return;
+        if (child + 1 < n && strcmp(fields[a[child]].name, fields[a[child + 1]].name) < 0) child++;
+        if (strcmp(fields[a[root]].name, fields[a[child]].name) >= 0) return;
+        uint32_t t = a[root];
+        a[root] = a[child];
+        a[child] = t;
+        root = child;
+    }
+}
+
+static void sort_field_index(const IrField *fields, uint32_t *a, size_t n) {
+    for (size_t i = n / 2; i-- > 0;) sift_down(fields, a, i, n);
+    for (size_t end = n; end-- > 1;) {
+        uint32_t t = a[0];
+        a[0] = a[end];
+        a[end] = t;
+        sift_down(fields, a, 0, end);
+    }
+}
+
 /* Pass 2: each struct's fields, in order: a repeated field name is E0211 (the
  * first wins; the repeat's type is still resolved for its own errors, but it is
  * not a field), and each field type is resolved. */
@@ -164,6 +221,11 @@ static void build_fields(Ctx *cx, StructInfo *s) {
         out->span = f->span;
         out->type = t;
         out->offset = 0;
+    }
+    if (ir->n_fields) {
+        s->by_name = arena_alloc(st->arena, ir->n_fields * sizeof(uint32_t), alignof(uint32_t));
+        for (size_t k = 0; k < ir->n_fields; k++) s->by_name[k] = (uint32_t)k;
+        sort_field_index(ir->fields, s->by_name, ir->n_fields);
     }
 }
 

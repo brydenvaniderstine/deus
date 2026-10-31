@@ -210,8 +210,7 @@ static bool collides(IrState *st, const Ctx *cx, LocalIndex *li, const Rename *r
             if (symtab_lookup(&cx->top, target)) return true;
             break;
         case REN_FIELD: {
-            const IrStruct *s = &cx->irs[r->scope];
-            for (size_t i = 0; i < s->n_fields; i++) if (strcmp(s->fields[i].name, target) == 0) return true;
+            if (ir_field_find(&cx->structs[r->scope], target) != SIZE_MAX) return true;
             break;
         }
         case REN_LOCAL: {

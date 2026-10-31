@@ -101,6 +101,10 @@ jobs:
         if: ${{ !cancelled() }}
       - run: make test-ir-unit-asan
         if: ${{ !cancelled() }}
+      - run: make test-ir-field-lookup
+        if: ${{ !cancelled() }}
+      - run: make check-field-probe-hook-absent
+        if: ${{ !cancelled() }}
       - run: make test-ir-ndebug
         if: ${{ !cancelled() }}
       - run: make test-determinism
@@ -267,6 +271,10 @@ jobs:
       - run: make test-ir-unit
         if: ${{ !cancelled() }}
       - run: make test-ir-unit-asan
+        if: ${{ !cancelled() }}
+      - run: make test-ir-field-lookup
+        if: ${{ !cancelled() }}
+      - run: make check-field-probe-hook-absent
         if: ${{ !cancelled() }}
       - run: make test-ir-ndebug
         if: ${{ !cancelled() }}

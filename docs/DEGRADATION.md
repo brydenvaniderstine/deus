@@ -51,7 +51,7 @@ Each entry's **Trigger-id** is one of the ids below, in the order they fall due.
 
 - **Status:** OPEN
 - **Reason:** The same physical bytes stay reachable read/write through the 1 GiB identity and HHDM aliases; closing it needs the kernel's range split out of those pages.
-- **Promise:** `docs/STATUS.md:34` "W^X+NX enforced and regression-tested (`make test-wx`)"
+- **Promise:** `docs/STATUS.md:33` "W^X+NX enforced and regression-tested (`make test-wx`)"
 - **Where it stands:** `CLAUDE.md:142` "Kernel `.text` is writable via identity/HHDM aliases (1 GiB RW pages)."; `CLAUDE.md:142` "Revisit before untrusted code runs."
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** Before any untrusted code runs
@@ -61,7 +61,7 @@ Each entry's **Trigger-id** is one of the ids below, in the order they fall due.
 
 - **Status:** CLOSED (2026-10-25, ci.yml run 40213325096 on d478be8)
 - **Reason:** CI compiles the kernel and never boots it, so the W^X regression test runs only when someone runs it. CLOSED: `make test-wx` now asserts (vector 14, the exact error code, cr2 = the printed address, rip for the execute case, a halt; `tools/boot_check.py wx`) and runs in the `boot` job of ci.yml run 40213325096 on d478be8 (QEMU 8.2.2, OVMF 4M, the 8 GiB machine, TCG): WX_TEST=1, 2 and 3 each `boot_check wx N: ok`. Mutation proof on the Mac: `.text` writable and `.data` not NX each make it fail.
-- **Promise:** `docs/STATUS.md:34` "W^X+NX enforced and regression-tested (`make test-wx`)"
+- **Promise:** `docs/STATUS.md:33` "W^X+NX enforced and regression-tested (`make test-wx`)"
 - **Where it stands:** (before step 20) `VISION.md:97` "`make test-wx` is run by hand; CI builds the kernel (`make all`) but does not run it."
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** Step 20 (guardrails: a QEMU boot smoke test plus `make test-wx` in CI)
@@ -72,7 +72,7 @@ Each entry's **Trigger-id** is one of the ids below, in the order they fall due.
 - **Status:** CLOSED (2026-10-25, ci.yml run 40213325096 on d478be8)
 - **Reason:** The CI job is a compile check; boots are manual. CLOSED: the `boot` job of ci.yml run 40213325096 on d478be8 runs `make test-boot` on the 8 GiB machine (never shrunk; the runner has 7.9 GiB of RAM and TCG booted it): `qemu_boot: reached /starting A/B preemption proof/ after 3s`, `boot_check smoke: ok` against `tests/boot_expected.txt` (memmap, GDT, IDT, the three mappings and the CR3 load, calibration source and rate, interleaved A/B).
 - **Promise:** `CLAUDE.md:7` "Every milestone must boot in QEMU."
-- **Where it stands:** (before step 20) `.github/workflows/ci.yml:146` "# Kernel compile check only (make all -> build/kernel.elf). Does not"
+- **Where it stands:** (before step 20) `.github/workflows/ci.yml:150` "# Kernel compile check only (make all -> build/kernel.elf). Does not"
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** Step 20 (a QEMU boot smoke test asserting the M1 serial-log lines)
 - **Trigger-id:** `step-20`
@@ -181,14 +181,14 @@ Each entry's **Trigger-id** is one of the ids below, in the order they fall due.
 - **Trigger:** Post-m2-ir-v0 recovery pass, together with the fix-it pass (the parser is a tagged component: audit after changing) (PROPOSED by Claude Code, approved by Bryden 2026-10-24)
 - **Trigger-id:** `post-m2-ir-v0`
 
-### C3 - IR known issues: the linear field lookup (the E0261 511-chain issue and the `--fixed` NUL truncation are fixed)
+### C3 - IR known issues: the linear field lookup (fixed; the E0261 511-chain issue and the `--fixed` NUL truncation were fixed earlier)
 
-- **Status:** PARTLY CLOSED
-- **Reason:** The 511-operation E0261 fix that produced E0111 was fixed in step 19 (19c-5, de84d89). Fixed in step 20f: `ir_dump --fixed` truncated at a NUL byte (the fuzz self-check found it; `ir_apply_fixes_n` returns the length). Open: field lookup in an access is a linear scan (0.8 s to 1.7 s plain, 5 s to 10 s under ASan for 20,000 fields accessed 20,000 times).
-- **Promise:** `docs/STATUS.md:30` "Revisit (per-struct hash) at the `m2-ir-v0` tag."
-- **Where it stands:** `docs/STATUS.md:29` "`--fixed` is a test harness, not the compiler."; `docs/STATUS.md:30` "Field lookup in an access is a linear scan:"
+- **Status:** CLOSED (2026-10-31, Bryden's decision: a sorted index with binary search, not a hash table; local runs green, the CI run is recorded at the push)
+- **Reason:** The 511-operation E0261 fix that produced E0111 was fixed in step 19 (19c-5, de84d89). Fixed in step 20f: `ir_dump --fixed` truncated at a NUL byte (the fuzz self-check found it; `ir_apply_fixes_n` returns the length). Fixed in step T2: a field was found by a scan of the struct's fields (0.8 s to 1.7 s plain, 5 s to 10 s under ASan for 20,000 fields accessed 20,000 times; a construction written in reverse order was as slow). Every struct now keeps a sorted index of its kept fields' positions (`StructInfo.by_name`, built once in `build_fields`), and the three lookups (field access, construction, the rename collision check) binary-search it with `ir_field_find`: at most floor(log2 n) + 1 name comparisons whatever the names are (a hash would have degraded to a scan on crafted colliding names; the compiler reads untrusted source). A repeated field (E0211) is not in the index, so a name finds the first declaration. Proof without a clock: `make test-ir-field-lookup` (`tools/mannac/ir_field_lookup_test.c`) counts the comparisons in a build compiled with `-DMANNA_COUNT_FIELD_PROBES` (`make check-field-probe-hook-absent`: a normal build has no counter) for structs of 1000, 2000, 4000 and 8000 fields and asserts at most ceil(log2 N) + 1 per lookup; it fails on the code before T2 (about 500 comparisons per access at N = 1000).
+- **Promise:** `docs/STATUS.md@e195dc77:30` "Revisit (per-struct hash) at the `m2-ir-v0` tag."
+- **Where it stands:** `tools/mannac/ir_decls.c:117` "size_t ir_field_find(const StructInfo *si, const char *name) {"; `docs/STATUS.md:29` "`--fixed` is a test harness, not the compiler."
 - **Owner:** Claude Code (work); Bryden (approval)
-- **Trigger:** The m2-ir-v0 tag (STATUS already says so for the lookup; the NUL truncation is added to it) (PROPOSED by Claude Code, approved by Bryden 2026-10-24)
+- **Trigger:** The m2-ir-v0 tag (STATUS already said so for the lookup; the NUL truncation was added to it) (PROPOSED by Claude Code, approved by Bryden 2026-10-24); done
 - **Trigger-id:** `m2-ir-v0`
 
 ### C4 - E0261: missing fixes presented as conservatism

@@ -120,7 +120,18 @@ typedef struct {
     const IrType **dup_ir;
     size_t        n_dup;
     Rename      **field_renames; /* per kept field, NULL entries for the well-named; the array itself NULL if none */
+    uint32_t     *by_name;     /* the KEPT fields' positions sorted by name bytes (strcmp), ir->n_fields entries, NULL when there are none: ir_field_find binary-searches it (C3) */
 } StructInfo;
+
+/* The position of the kept field called `name` in si->ir->fields, or SIZE_MAX. A repeated field (E0211) is not kept, so the first declaration is what a name finds, as a
+ * scan from the front would. Binary search over si->by_name: at most floor(log2 n) + 1 name comparisons, whatever the names are. */
+size_t ir_field_find(const StructInfo *si, const char *name);
+
+#ifdef MANNA_COUNT_FIELD_PROBES
+/* Test builds only (make test-ir-field-lookup): the calls of ir_field_find, the name comparisons they made in all, and the most any one call made. Absent from every normal
+ * build (make check-field-probe-hook-absent). */
+extern unsigned long ir_field_lookups, ir_field_probes, ir_field_probe_max;
+#endif
 
 typedef struct CallEdge {
     uint32_t caller, callee; /* function positions in declaration order */

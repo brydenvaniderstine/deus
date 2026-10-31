@@ -668,25 +668,17 @@ static IR_NOINLINE bool call_shape_ok(BodyCtx *bc, const Expr *e, const IrFunc *
  * values in declaration order (which a valid construction also writes them in). */
 
 typedef struct {
-    const IrStruct *s;
-    IrExpr        **slots;         /* per field: its checked value, NULL = not given */
+    const IrStruct   *s;
+    const StructInfo *si;          /* s's lookup index (ir_field_find) */
+    IrExpr          **slots;         /* per field: its checked value, NULL = not given */
     size_t          highest;       /* 1 + the index of the last-declared field written so far (0 = none) */
     bool            order_reported;
     bool            unrecognized;  /* E0240, E0241 or E0242 was reported: E0243 would only echo it */
 } Construct;
 
-/* The index of the field called `name`, or SIZE_MAX. The search starts at `hint` (the field a
- * well-ordered construction names next) and wraps, so the usual case is one comparison. */
-static size_t field_index(const IrStruct *s, const char *name, size_t hint) {
-    for (size_t i = 0; i < s->n_fields; i++) {
-        size_t k = hint + i < s->n_fields ? hint + i : hint + i - s->n_fields;
-        if (strcmp(s->fields[k].name, name) == 0) return k;
-    }
-    return SIZE_MAX;
-}
-
 static IR_NOINLINE void construct_begin(BodyCtx *bc, Construct *c, size_t struct_index) {
-    c->s = bc->decls->structs[struct_index].ir;
+    c->si = &bc->decls->structs[struct_index];
+    c->s = c->si->ir;
     c->slots = NULL;
     if (c->s->n_fields) {
         c->slots = arena_alloc(bc->st->arena, c->s->n_fields * sizeof(IrExpr *), alignof(IrExpr *));
@@ -712,7 +704,7 @@ static IR_NOINLINE bool construct_shape_ok(BodyCtx *bc, const Construct *c, cons
             const Expr *b = args->items[j];
             if (b->kind != EXPR_NAMED_ARG || b->as.named_arg.name->kind != EXPR_IDENT) continue;
             const char *name = b->as.named_arg.name->as.ident.name;
-            size_t k = field_index(c->s, name, 0);
+            size_t k = ir_field_find(c->si, name);
             if (k != SIZE_MAX) ir_note_field_use(bc, c->s, k, b->as.named_arg.name->as.ident.name_span); /* the name token only: a parenthesized name keeps its parentheses */
             else ir_note_unresolved(bc->st, bc->decls, NS_FIELD, (size_t)(c->s - bc->decls->irs), name);
         }
@@ -734,14 +726,14 @@ static IR_NOINLINE long construct_field(BodyCtx *bc, Construct *c, const Expr *a
          * parentheses), and a name that is none is written-but-unresolved (a rename whose target is that spelling would make it resolve once the parentheses go). Any other left side
          * (`1`, `a.b`, a call) has no spelling. */
         if (n->kind == EXPR_IDENT) {
-            size_t k = field_index(c->s, n->as.ident.name, 0);
+            size_t k = ir_field_find(c->si, n->as.ident.name);
             if (k != SIZE_MAX) ir_note_field_use(bc, c->s, k, n->as.ident.name_span);
             else ir_note_unresolved(st, bc->decls, NS_FIELD, (size_t)(c->s - bc->decls->irs), n->as.ident.name);
         }
         return -1;
     }
     const char *name = n->as.ident.name;
-    size_t k = field_index(c->s, name, c->highest < c->s->n_fields ? c->highest : 0);
+    size_t k = ir_field_find(c->si, name);
     if (k == SIZE_MAX) {
         ir_note_unresolved(st, bc->decls, NS_FIELD, (size_t)(c->s - bc->decls->irs), name);
         ir_error(st, diag_ir_no_such_field(st->arena, n->span, c->s->name, name));
@@ -892,11 +884,10 @@ static IR_NOINLINE Synth finish_field(BodyCtx *bc, const Expr *e, Synth b) {
         return is_error(st, e->span);
     }
     const IrStruct *s = t->as.strukt.decl;
-    for (size_t k = 0; k < s->n_fields; k++) {
-        if (strcmp(s->fields[k].name, e->as.field_access.name) == 0) {
-            ir_note_field_use(bc, s, k, e->as.field_access.name_span);
-            return is_node(ir_expr_field(st, e->span, s->fields[k].type, b.node, (uint32_t)k));
-        }
+    size_t k = ir_field_find(&bc->decls->structs[s - bc->decls->irs], e->as.field_access.name);
+    if (k != SIZE_MAX) {
+        ir_note_field_use(bc, s, k, e->as.field_access.name_span);
+        return is_node(ir_expr_field(st, e->span, s->fields[k].type, b.node, (uint32_t)k));
     }
     report_no_such_field(bc, e, s);
     return is_error(st, e->span);
