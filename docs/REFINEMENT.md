@@ -152,7 +152,7 @@ Add one row per tag. Fill a cell only with a number from a command run at that t
 | Tag | Date | Goldens (lexer + parser) | Unit tests (PASS lines) | Fuzz, zero crashes | Open known issues | Token-benchmark ratio | IR goldens (`tests/ir`) | No-cascade goldens | Fix cases (`tests/ir_fix`) | Audit repros |
 |---|---|---|---|---|---|---|---|---|---|---|
 | `m2-parser-v0.1` | 2026-10-12 | 15 + 376 = 391 | `parser_fixes_test` 20, `ast_test` 7, `parser_state_test` 5, `arena_test` 9 = 41 | 601 s + 601 s (479,554 + 439,834 execs), 0 crashes (*) | 0 open in STATUS "Known issues" (1 fixed); 5 accepted limitations in M2_PLAN "Known limitations" | | | | | | |
-| `m2-ir-v0` | measured 2026-10-30 at `645177b6`; tag date filled at tagging | 15 + 376 = 391 | `ir_test` 96, `parser_fixes_test` 20, `ast_test` 7, `parser_state_test` 5, `arena_test` 9 = 137 | `fuzz-ir` 600 s (228,757 execs) + `fuzz-ir-ungated` 600 s (225,014 execs), 0 crashes (**) | 24 open + 2 partly closed of 41 register entries (`docs/DEGRADATION.md`); the STATUS "Known issues" list is not counted | | 501 | 449 | 145 | 58 |
+| `m2-ir-v0` | measured 2026-10-30 at `645177b6`; dated 2026-10-31 | 15 + 376 = 391 | `ir_test` 96, `parser_fixes_test` 20, `ast_test` 7, `parser_state_test` 5, `arena_test` 9 = 137 | `fuzz-ir` 600 s (228,757 execs) + `fuzz-ir-ungated` 600 s (225,014 execs), 0 crashes (**) | 24 open + 2 partly closed of 41 register entries (`docs/DEGRADATION.md`); the STATUS "Known issues" list is not counted | | 501 | 449 | 145 | 58 |
 
 (*) Cited from the runs recorded in the `docs/STATUS.md` verification snapshot (`make fuzz-parser DURATION_PARSER=600`, twice, 2026-10-12), not re-run for this commit; every other cell was produced by the commands below at the time of writing.
 
