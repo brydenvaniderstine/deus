@@ -347,7 +347,7 @@ RATCHET-WAIVER rename_property.part1.fixes_changed 1618 -> 1592 C10
 - **Owner:** Claude Code (work); Bryden (approval)
 - **Trigger:** Enforced from 2026-10-23 (CLAUDE.md 'No degradation'); verified at each tag (PROPOSED by Claude Code, approved by Bryden 2026-10-24)
 - **Trigger-id:** `each-tag`
-- **Checked at:** m2-ir-v0 (2026-10-31): `make check-batch-cap` ok (it counted 0 steps in origin/main..HEAD, nothing unpushed); the history before that (steps 17-19 as 7-8 commit batches) is the entry's reason and stays; steps 20-22 were pushed in batches under the check.
+- **Checked at:** m2-ir-v0, 2026-10-31: `make check-batch-cap` ok (it counted 0 steps in origin/main..HEAD, nothing unpushed); the history before that (steps 17-19 as 7-8 commit batches) is the entry's reason and stays; steps 20-22 were pushed in batches under the check.
 ### R2 - The refinement loop is due at m2-ir-v0
 
 - **Status:** CLOSED (2026-10-31, the review decisions are recorded)
@@ -360,12 +360,12 @@ RATCHET-WAIVER rename_property.part1.fixes_changed 1618 -> 1592 C10
 
 ### R3 - Docs lag the repository
 
-- **Status:** PARTLY CLOSED
-- **Reason:** STATUS.md said step 18 was unpushed and not fuzzed (both done; brought up to date in the commit that created this register); VISION.md is last re-verified 2026-10-08.
+- **Status:** CLOSED (2026-10-31, step 24b: STATUS.md current, VISION.md re-verified in batch S, the consistency check run, the verification snapshot re-run on this tree)
+- **Reason:** STATUS.md said step 18 was unpushed and not fuzzed (both done; brought up to date in the commit that created this register); VISION.md was last re-verified 2026-10-08. Closed at the `m2-ir-v0` tag gate: `docs/STATUS.md` was brought up to date with steps 22 to 24 and the real remaining work, `VISION.md` was re-verified (batch S) and its three stale phrases corrected, the `docs/README.md` consistency check was run (it found one contradiction in `CLAUDE.md`'s "Later phases", reported to Bryden, who owns that file), and every number of the typed-IR verification snapshot was re-measured on the tree of commit `1a4e8ad0`.
 - **Promise:** `docs/README.md:20` "re-read `docs/STATUS.md` against the actual repo state"
-- **Where it stands:** `VISION.md:95` "Last re-verified 2026-10-31"; batch S: `docs/STATUS.md` brought up to date with step 22 and the real remaining work, `VISION.md` re-verified and its three stale phrases corrected, the project-file snapshot refreshed; still open: the consistency check and the verification snapshot at the tag, where this entry closes
+- **Where it stands:** `docs/STATUS.md:75` "Verification snapshot: typed IR (re-run 2026-10-31, step 24b"; `VISION.md:95` "Last re-verified 2026-10-31"
 - **Owner:** Claude Code (work); Bryden (approval)
-- **Trigger:** The m2-ir-v0 tag (consistency check re-reads VISION.md and the project-file snapshot) (PROPOSED by Claude Code, approved by Bryden 2026-10-24)
+- **Trigger:** The m2-ir-v0 tag (consistency check re-reads VISION.md and the project-file snapshot) (PROPOSED by Claude Code, approved by Bryden 2026-10-24); done
 - **Trigger-id:** `m2-ir-v0`
 
 ### R4 - Two docs contradict each other about models in Deus
@@ -387,7 +387,7 @@ RATCHET-WAIVER rename_property.part1.fixes_changed 1618 -> 1592 C10
 - **Owner:** Bryden (decision); Claude Code (work)
 - **Trigger:** Closed by the CLAUDE.md rule of 2026-10-23; re-checked at each tag (PROPOSED by Claude Code, approved by Bryden 2026-10-24)
 - **Trigger-id:** `each-tag`
-- **Checked at:** m2-ir-v0 (2026-10-31): the commit subjects since `m2-parser-v0.1` (196) were scanned for 'turn off', 'accepted', 'documented exception', 'known issue' and 'stub'; two subjects match (`1ae51c9d`, `244bc397`, both step 17/18-era wording about the E0261 fix and known-issue records), neither offers to turn off, withhold or accept as a way to finish. The step reports themselves were not re-read in this session; that part of the entry's check is not done by this line.
+- **Checked at:** m2-ir-v0, 2026-10-31: the commit subjects since `m2-parser-v0.1` (196) were scanned for 'turn off', 'accepted', 'documented exception', 'known issue' and 'stub'; two subjects match (`1ae51c9d`, `244bc397`, both step 17/18-era wording about the E0261 fix and known-issue records), neither offers to turn off, withhold or accept as a way to finish. The step reports themselves were not re-read in this session; that part of the entry's check is not done by this line.
 ### R6 - Review-time rules have no automated check
 
 - **Status:** OPEN
@@ -397,7 +397,7 @@ RATCHET-WAIVER rename_property.part1.fixes_changed 1618 -> 1592 C10
 - **Owner:** Bryden (decision); Claude Code (work)
 - **Trigger:** Re-read at every tag: a rule that can become a check is turned into one; each tag's `Checked at` line names which inventory rows were re-read and whether any became a check (PROPOSED by Claude Code, approved by Bryden 2026-10-25 as written, each-tag)
 - **Trigger-id:** `each-tag`
-- **Checked at:** m2-ir-v0 (2026-10-31): `make check-retro-rules` ok, 35 rules: 19 enforced by a check, 7 partly enforced, 9 unenforced (29 rules and 14/7/8 at step 20i). The Retro 2026-10-30 rules (a)-(c) each name a check; (d) (a prompt line that touches a settled decision must name it) is unenforced and stays in this entry.
+- **Checked at:** m2-ir-v0, 2026-10-31: `make check-retro-rules` ok, 35 rules: 19 enforced by a check, 7 partly enforced, 9 unenforced (29 rules and 14/7/8 at step 20i). The Retro 2026-10-30 rules (a)-(c) each name a check; (d) (a prompt line that touches a settled decision must name it) is unenforced and stays in this entry.
 ## 6. Planned work: degradation risks ahead
 
 ### A1 - The native backend (the kernel's real compile target) has no milestone
