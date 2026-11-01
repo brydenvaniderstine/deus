@@ -1,5 +1,5 @@
 #!/bin/sh
-# Register C3 (step T2): the field-lookup counter must not exist in a normal build. Builds ir_dump twice from the same sources, once as the Makefile does (no
+# Register C3 (step 23b): the field-lookup counter must not exist in a normal build. Builds ir_dump twice from the same sources, once as the Makefile does (no
 # -DMANNA_COUNT_FIELD_PROBES) and once with the macro, and looks at the symbol tables with nm: the normal one must hold no `ir_field_probe` / `ir_field_lookups` symbol; the
 # counting one must hold all three counters, which proves the check can fail. (Same shape as check_inject_hook_absent.sh.)
 set -eu

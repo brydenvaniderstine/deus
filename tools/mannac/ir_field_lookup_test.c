@@ -88,7 +88,7 @@ static Run run(const char *src) {
     return r;
 }
 
-/* The k-th field to declare, 0 <= k < n: a permutation of 0..n-1 (7919 is prime and larger than no n tested, so coprime to each). */
+/* The k-th field to declare, 0 <= k < n: a permutation of 0..n-1 (7919 is prime and divides none of the sizes tested, so the map is one-to-one for each). */
 static unsigned scramble(unsigned k, unsigned n) {
     return (unsigned)(((unsigned long)k * 7919u) % n);
 }
