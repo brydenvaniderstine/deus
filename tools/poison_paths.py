@@ -32,7 +32,7 @@ ROOT = os.getcwd()
 SRCDIR = "tools/mannac"
 # Files that are NOT the builder: test programs, the dumper, the harnesses, the self-check, the generated-test driver, the parser/lexer side.
 # Everything else named ir*.c is analysed, so a new builder file is included without anyone editing this tool.
-EXCLUDE = {"ir_test.c", "ir_ndebug_test.c", "ir_main.c", "ir_dump.c", "ir_selfcheck.c", "ir_e0261_exhaustive.c", "ir_inject.c", "fuzz_ir.c"}
+EXCLUDE = {"ir_test.c", "ir_ndebug_test.c", "ir_main.c", "ir_dump.c", "ir_selfcheck.c", "ir_e0261_exhaustive.c", "ir_field_lookup_test.c", "ir_inject.c", "fuzz_ir.c"}
 ROOT_ENUM = "IR_T_ERROR"
 ASSERT_FUNCS = {"__assert_rtn", "__assert_fail", "__assert", "_wassert", "__assert_perror_fail"}
 

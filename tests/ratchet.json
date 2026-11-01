@@ -11601,6 +11601,7 @@
   "script_checks.ratchet_test.py": 56,
   "unit_test_functions.arena_test.c": 7,
   "unit_test_functions.ast_test.c": 6,
+  "unit_test_functions.ir_field_lookup_test.c": 2,
   "unit_test_functions.ir_ndebug_test.c": 0,
   "unit_test_functions.ir_test.c": 50,
   "unit_test_functions.parser_fixes_test.c": 20,
